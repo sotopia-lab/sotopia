@@ -25,7 +25,7 @@ jobs:
         # Log this mypy version for debuggability.
         mypy --version
         # Run this mypy instance against our main package.
-        mypy --install-types --non-interactive browser_env
+        mypy --install-types --non-interactive sotopia
         mypy --strict .
     - name: Test with pytest
       run: |
