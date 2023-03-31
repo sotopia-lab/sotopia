@@ -15,3 +15,18 @@ This package supports Python 3.11 and above. We recommend using a virtual enviro
 ```
 pip install -r requirements.txt; pip install -e .
 ```
+
+## Contribution
+### Install dev options
+```bash
+pip install -e ".[dev]"
+mypy --install-types --non-interactive browser_env
+pip install pre-commit
+pre-commit install
+```
+### New branch for each feature
+`git checkout -b feature/feature-name` and PR to `main` branch.
+### Before committing
+Run `pytest` to make sure all tests pass (this will ensure dynamic typing passed with beartype) and `mypy --strict .` to check static typing.
+### Check github action result
+Check the github action result to make sure all tests pass. If not, fix the errors and push again.
