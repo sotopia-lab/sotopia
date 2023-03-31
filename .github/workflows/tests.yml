@@ -28,6 +28,7 @@ jobs:
         mypy --install-types --non-interactive sotopia
         mypy --strict .
     - name: Test with pytest
+      env: # Or as an environment variable
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
-        # ignore annotation notebook because it requires a browser
-        pytest --nbmake --ignore=notebooks/annotation.ipynb
+        pytest
