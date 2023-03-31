@@ -20,7 +20,7 @@ pip install -r requirements.txt; pip install -e .
 ### Install dev options
 ```bash
 pip install -e ".[dev]"
-mypy --install-types --non-interactive browser_env
+mypy --install-types --non-interactive sotopia
 pip install pre-commit
 pre-commit install
 ```
