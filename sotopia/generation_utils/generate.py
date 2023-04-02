@@ -90,3 +90,33 @@ def generate_episode(model_name: LLM_Name) -> str:
     )
     scripts = overall_chain.run("Jack, Rose")
     return scripts
+
+
+@beartype
+def generate_episode_singleRound(model_name: LLM_Name) -> str:
+    """
+    Using langchain to generate an example episode but with a single chain
+    """
+    template = """
+            Given {participants}, and {topic},
+            generate an episode as one would do in a movie script. Please use the following format:
+            Scenario:
+            Participant 1's intro:
+            Participant 2's intro:
+            (Add more participants if given)
+            The social goal of the participant 1:
+            The social goal of the participant 2:
+            (Add more goals of participants if given)
+            Conversation:
+            (In the format of Participant 1: , Participant 2: , etc.)
+            If it comes to the end of the conversation, generate '--end--'
+            generate a number (1-10) indicating how well participants achieve their goals.
+            Please use the following format:
+            Participant 1: , Participant 2: , etc.
+    """
+    input_variable = ["participants", "topic"]
+    chain = obtain_chain(model_name, template, input_variable)
+    scripts = chain.predict(
+        participants="Jack (a greedy person), Rose", topic="lawsuit"
+    )
+    return scripts
