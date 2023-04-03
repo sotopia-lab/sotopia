@@ -1,14 +1,19 @@
+import re
+from typing import cast
+
 import langchain
 from beartype import beartype
 from langchain.chains import LLMChain, SimpleSequentialChain
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
+from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     PromptTemplate,
 )
 from langchain.schema import HumanMessage
+from pydantic import BaseModel, Field, validator
 from typing_extensions import Literal
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
@@ -45,6 +50,20 @@ def obtain_chain(
             return chain
         case _:
             raise ValueError(f"Invalid model name: {model_name}")
+
+
+# Define your desired data structure.
+class Script(BaseModel):
+    scenario: str = Field(description="scenario of the episode")
+    p1_background: str = Field(description="background of participant 1")
+    p2_background: str = Field(description="background of participant 2")
+    p1_goal: str = Field(description="goal of participant 1")
+    p2_goal: str = Field(description="goal of participant 2")
+    conversation: list[tuple[int, str]] = Field(
+        description="conversation between participants"
+    )
+    p1_rate: int = Field(description="rating of participant 1")
+    p2_rate: int = Field(description="rating of participant 2")
 
 
 @beartype
@@ -92,31 +111,42 @@ def generate_episode(model_name: LLM_Name) -> str:
     return scripts
 
 
+class ScriptPydanticOutputParser(PydanticOutputParser):
+    def __init__(self) -> None:
+        super(ScriptPydanticOutputParser, self).__init__(
+            pydantic_object=Script
+        )
+
+    def parse(self, text: str) -> Script:
+        # remove trailing commas before ) or ] from text
+        text = re.sub(r",\s*(\)|\])", r"\1", text)
+        return cast(Script, super().parse(text))
+
+    def get_format_instructions(self) -> str:
+        format_instruction = super().get_format_instructions()
+        return (
+            format_instruction
+            + "conversation is a list of tuples, where the first element is the speaker id (1 or 2) and the second element is the message. Don't leave trailing commas."
+        )
+
+
 @beartype
-def generate_episode_singleRound(model_name: LLM_Name) -> str:
+def generate_episode_single_round(model_name: LLM_Name) -> Script:
     """
     Using langchain to generate an example episode but with a single chain
     """
     template = """
             Given {participants}, and {topic},
             generate an episode as one would do in a movie script. Please use the following format:
-            Scenario:
-            Participant 1's intro:
-            Participant 2's intro:
-            (Add more participants if given)
-            The social goal of the participant 1:
-            The social goal of the participant 2:
-            (Add more goals of participants if given)
-            Conversation:
-            (In the format of Participant 1: , Participant 2: , etc.)
-            If it comes to the end of the conversation, generate '--end--'
-            generate a number (1-10) indicating how well participants achieve their goals.
-            Please use the following format:
-            Participant 1: , Participant 2: , etc.
+            {format_instructions}
     """
-    input_variable = ["participants", "topic"]
+    input_variable = re.findall(r"{(.*?)}", template)
     chain = obtain_chain(model_name, template, input_variable)
+    parser = ScriptPydanticOutputParser()
     scripts = chain.predict(
-        participants="Jack (a greedy person), Rose", topic="lawsuit"
+        participants="Jack (a greedy person), Rose",
+        topic="lawsuit",
+        format_instructions=parser.get_format_instructions(),
     )
-    return scripts
+    result = parser.parse(scripts)
+    return result
