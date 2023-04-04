@@ -1,13 +1,13 @@
 from rich import print
 
-from sotopia.generation_utils import generate_episode_single_round
+from sotopia.generation_utils import generate_episode
 
 
 def create_example_episode() -> None:
     """
     Create an example episode
     """
-    episode = generate_episode_single_round("gpt-3.5-turbo")
+    episode = generate_episode("gpt-3.5-turbo", "direct")
     print(episode)
 
 

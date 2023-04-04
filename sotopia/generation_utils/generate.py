@@ -19,6 +19,38 @@ from typing_extensions import Literal
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
 
 
+class Script(BaseModel):
+    scenario: str = Field(description="scenario of the episode")
+    p1_background: str = Field(description="background of participant 1")
+    p2_background: str = Field(description="background of participant 2")
+    p1_goal: str = Field(description="goal of participant 1")
+    p2_goal: str = Field(description="goal of participant 2")
+    conversation: list[tuple[int, str]] = Field(
+        description="conversation between participants"
+    )
+    p1_rate: int = Field(description="rating of participant 1")
+    p2_rate: int = Field(description="rating of participant 2")
+
+
+class ScriptPydanticOutputParser(PydanticOutputParser):
+    def __init__(self) -> None:
+        super(ScriptPydanticOutputParser, self).__init__(
+            pydantic_object=Script
+        )
+
+    def parse(self, text: str) -> Script:
+        # remove trailing commas before ) or ] from text
+        text = re.sub(r",\s*(\)|\])", r"\1", text)
+        return cast(Script, super().parse(text))
+
+    def get_format_instructions(self) -> str:
+        format_instruction = super().get_format_instructions()
+        return (
+            format_instruction
+            + "conversation is a list of tuples, where the first element is the speaker id (1 or 2) and the second element is the message. Don't leave trailing commas."
+        )
+
+
 @beartype
 def obtain_chain(
     model_name: LLM_Name, template: str, input_variable: list[str]
@@ -52,22 +84,8 @@ def obtain_chain(
             raise ValueError(f"Invalid model name: {model_name}")
 
 
-# Define your desired data structure.
-class Script(BaseModel):
-    scenario: str = Field(description="scenario of the episode")
-    p1_background: str = Field(description="background of participant 1")
-    p2_background: str = Field(description="background of participant 2")
-    p1_goal: str = Field(description="goal of participant 1")
-    p2_goal: str = Field(description="goal of participant 2")
-    conversation: list[tuple[int, str]] = Field(
-        description="conversation between participants"
-    )
-    p1_rate: int = Field(description="rating of participant 1")
-    p2_rate: int = Field(description="rating of participant 2")
-
-
 @beartype
-def generate_episode(model_name: LLM_Name) -> str:
+def _generate_episode_multi_step(model_name: LLM_Name) -> str:
     """
     Using langchain to generate an example episode
     """
@@ -111,27 +129,8 @@ def generate_episode(model_name: LLM_Name) -> str:
     return scripts
 
 
-class ScriptPydanticOutputParser(PydanticOutputParser):
-    def __init__(self) -> None:
-        super(ScriptPydanticOutputParser, self).__init__(
-            pydantic_object=Script
-        )
-
-    def parse(self, text: str) -> Script:
-        # remove trailing commas before ) or ] from text
-        text = re.sub(r",\s*(\)|\])", r"\1", text)
-        return cast(Script, super().parse(text))
-
-    def get_format_instructions(self) -> str:
-        format_instruction = super().get_format_instructions()
-        return (
-            format_instruction
-            + "conversation is a list of tuples, where the first element is the speaker id (1 or 2) and the second element is the message. Don't leave trailing commas."
-        )
-
-
 @beartype
-def generate_episode_single_round(model_name: LLM_Name) -> Script:
+def _generate_episode_direct(model_name: LLM_Name) -> Script:
     """
     Using langchain to generate an example episode but with a single chain
     """
@@ -150,3 +149,17 @@ def generate_episode_single_round(model_name: LLM_Name) -> Script:
     )
     result = parser.parse(scripts)
     return result
+
+
+@beartype
+def generate_episode(
+    model_name: LLM_Name, method: Literal["direct", "multi_step"]
+) -> Script:
+    match method:
+        case "direct":
+            return _generate_episode_direct(model_name=model_name)
+        case "multi_step":
+            raise NotImplementedError("Multi-step method is not finished yet")
+            return _generate_episode_multi_step(model_name=model_name)
+        case _:
+            raise ValueError(f"Invalid method: {method}")
