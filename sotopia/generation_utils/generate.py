@@ -3,9 +3,14 @@ from typing import cast
 
 import langchain
 from beartype import beartype
-from langchain.chains import LLMChain, SimpleSequentialChain
+from langchain.chains import (
+    ConversationChain,
+    LLMChain,
+    SimpleSequentialChain,
+)
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
+from langchain.memory import ConversationBufferMemory
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -73,6 +78,7 @@ def obtain_chain(
             chain = LLMChain(llm=chat, prompt=chat_prompt_template)
             return chain
         case "text-davinci-003":
+            # Warning: no interactive mode for 003
             llm = OpenAI(model_name=model_name)  # type: ignore[call-arg]
             prompt = PromptTemplate(
                 input_variables=input_variable,
@@ -85,54 +91,39 @@ def obtain_chain(
 
 
 @beartype
-def _generate_episode_multi_step(model_name: LLM_Name) -> str:
+def _generate_episode_interactive(model_name: LLM_Name) -> Script:
     """
-    Using langchain to generate an example episode
+    Using langchain to generate an example episode enabling users input certain parts of the episode
     """
     # Obtain participants
-    participants_variable = ["participants"]
-    participants_template = "The participants are: {participants}, generate the participants' profiles as one would do in a movie script (include their occupations). Please use the following format: Participant 1: profile 1, Participant 2: profile 2, etc."
-    participants_chain = obtain_chain(
-        model_name, participants_template, participants_variable
+    template = """
+            Given {participants}, and {topic},
+            generate an episode as one would do in a movie script. Please use the following format:
+            {format_instructions}
+            Additionally, you can write the script with the following information: {extra_info}
+    """
+    input_variable = re.findall(r"{(.*?)}", template)
+    chain = obtain_chain(model_name, template, input_variable)
+    parser = ScriptPydanticOutputParser()
+    partipants = (
+        input("Enter the participants:") or "Jack (a greedy person), Rose"
     )
-
-    # Obtain scenarios& goals
-    openings_variable = ["participants_profiles"]
-    openings_template = "The participants are: {participants_profiles}, generate a scenario and participants' goals as one would do in a movie script. Please use the following format: Scenario: , goal of participant 1: , goal of participant 2: , etc. End after the goals are generated"
-    openings_chain = obtain_chain(
-        model_name, openings_template, openings_variable
+    topic = input("Enter the topic:") or "lawsuit"
+    extra_info = input("Enter extra information:") or ""
+    scripts = chain.predict(
+        participants=partipants,
+        topic=topic,
+        format_instructions=parser.get_format_instructions(),
+        extra_info=extra_info,
     )
-
-    # Obtain pseudo conversations
-    conversations_variable = ["scenarios_and_goals"]
-    conversations_template = "Given the following scenarios and goals: {scenarios_and_goals}, generate the conversations as one would do in a movie script. Please use the following format: Participant 1: , Participant 2: , etc. Do not exceed 8 rounds of conversation. Reinterate the goals at the end of the conversation"
-    conversations_chain = obtain_chain(
-        model_name, conversations_template, conversations_variable
-    )
-
-    # Obtain rewards
-    rewards_variable = ["conversations"]
-    rewards_template = "Given the following conversations: {conversations}, generate a number (1-10) indicating how well participants achieve their goals. Please use the following format: Participant 1: , Participant 2: , etc."
-    rewards_chain = obtain_chain(
-        model_name, rewards_template, rewards_variable
-    )
-    overall_chain = SimpleSequentialChain(
-        chains=[
-            participants_chain,
-            openings_chain,
-            conversations_chain,
-            rewards_chain,
-        ],
-        verbose=True,
-    )
-    scripts = overall_chain.run("Jack, Rose")
-    return scripts
+    result = parser.parse(scripts)
+    return result
 
 
 @beartype
 def _generate_episode_direct(model_name: LLM_Name) -> Script:
     """
-    Using langchain to generate an example episode but with a single chain
+    Using langchain to generate an example episode
     """
     template = """
             Given {participants}, and {topic},
@@ -153,13 +144,12 @@ def _generate_episode_direct(model_name: LLM_Name) -> Script:
 
 @beartype
 def generate_episode(
-    model_name: LLM_Name, method: Literal["direct", "multi_step"]
+    model_name: LLM_Name, method: Literal["direct", "interactive"]
 ) -> Script:
     match method:
         case "direct":
             return _generate_episode_direct(model_name=model_name)
-        case "multi_step":
-            raise NotImplementedError("Multi-step method is not finished yet")
-            return _generate_episode_multi_step(model_name=model_name)
+        case "interactive":
+            return _generate_episode_interactive(model_name=model_name)
         case _:
             raise ValueError(f"Invalid method: {method}")

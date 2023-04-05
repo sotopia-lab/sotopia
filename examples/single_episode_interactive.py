@@ -7,7 +7,7 @@ def create_example_episode() -> None:
     """
     Create an example episode
     """
-    episode = generate_episode("gpt-3.5-turbo", "direct")
+    episode = generate_episode("gpt-3.5-turbo", "interactive")
     print(episode)
 
 
