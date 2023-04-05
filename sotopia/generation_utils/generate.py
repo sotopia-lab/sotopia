@@ -1,26 +1,118 @@
+import re
+from typing import cast
+
 import langchain
 from beartype import beartype
+from langchain.chains import (
+    ConversationChain,
+    LLMChain,
+    SimpleSequentialChain,
+)
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
+from langchain.memory import ConversationBufferMemory
+from langchain.output_parsers import PydanticOutputParser
+from langchain.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    PromptTemplate,
+)
 from langchain.schema import HumanMessage
+from pydantic import BaseModel, Field, validator
 from typing_extensions import Literal
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
 
 
+class Script(BaseModel):
+    scenario: str = Field(description="scenario of the episode")
+    p1_background: str = Field(description="background of participant 1")
+    p2_background: str = Field(description="background of participant 2")
+    p1_goal: str = Field(description="goal of participant 1")
+    p2_goal: str = Field(description="goal of participant 2")
+    conversation: list[tuple[int, str]] = Field(
+        description="conversation between participants"
+    )
+    p1_rate: int = Field(description="rating of participant 1")
+    p2_rate: int = Field(description="rating of participant 2")
+
+
+class ScriptPydanticOutputParser(PydanticOutputParser):
+    def __init__(self) -> None:
+        super(ScriptPydanticOutputParser, self).__init__(
+            pydantic_object=Script
+        )
+
+    def parse(self, text: str) -> Script:
+        # remove trailing commas before ) or ] from text
+        text = re.sub(r",\s*(\)|\])", r"\1", text)
+        return cast(Script, super().parse(text))
+
+    def get_format_instructions(self) -> str:
+        format_instruction = super().get_format_instructions()
+        return (
+            format_instruction
+            + "conversation is a list of tuples, where the first element is the speaker id (1 or 2) and the second element is the message. Don't leave trailing commas."
+        )
+
+
 @beartype
-def generate_scenario(model_name: LLM_Name) -> str:
+def obtain_chain(
+    model_name: LLM_Name, template: str, input_variable: list[str]
+) -> LLMChain:
     """
-    Using langchain to generate a scenario
+    Using langchain to sample profiles for participants
     """
-    text = "Please generate a plausible scenario for a conversation between a man and a woman:"
     match model_name:
         case "gpt-3.5-turbo" | "gpt-4":
-            chat_llm = ChatOpenAI(model_name=model_name)  # type: ignore[call-arg]
-            message = HumanMessage(content=text)
-            return chat_llm([message]).content
+            human_message_prompt = HumanMessagePromptTemplate(
+                prompt=PromptTemplate(
+                    template=template,
+                    input_variables=input_variable,
+                )
+            )
+            chat_prompt_template = ChatPromptTemplate.from_messages(
+                [human_message_prompt]
+            )
+            chat = ChatOpenAI(model_name=model_name)  # type: ignore[call-arg]
+            chain = LLMChain(llm=chat, prompt=chat_prompt_template)
+            return chain
         case "text-davinci-003":
-            llm = OpenAI(model_name="text-davinci-003")  # type: ignore[call-arg]
-            return llm(text)
+            # Warning: no interactive mode for 003
+            llm = OpenAI(model_name=model_name)  # type: ignore[call-arg]
+            prompt = PromptTemplate(
+                input_variables=input_variable,
+                template=template,
+            )
+            chain = LLMChain(llm=llm, prompt=prompt)
+            return chain
         case _:
             raise ValueError(f"Invalid model name: {model_name}")
+
+
+@beartype
+def generate_episode(
+    model_name: LLM_Name,
+    participants: str = "Jack (a greedy person), Rose",
+    topic: str = "lawsuit",
+    extra_info: str = "",
+) -> Script:
+    """
+    Using langchain to generate an example episode
+    """
+    template = """
+            Given {participants}, and {topic},
+            generate an episode as one would do in a movie script. Please use the following format:
+            {format_instructions}
+    """
+    input_variable = re.findall(r"{(.*?)}", template)
+    chain = obtain_chain(model_name, template, input_variable)
+    parser = ScriptPydanticOutputParser()
+    scripts = chain.predict(
+        participants=participants,
+        topic=topic,
+        format_instructions=parser.get_format_instructions(),
+        extra_info=extra_info,
+    )
+    result = parser.parse(scripts)
+    return result

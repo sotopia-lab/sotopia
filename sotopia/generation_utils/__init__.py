@@ -1,5 +1,3 @@
-from .generate import generate_scenario
+from .generate import Script, generate_episode
 
-__all__ = [
-    "generate_scenario",
-]
+__all__ = ["generate_episode", "Script"]
