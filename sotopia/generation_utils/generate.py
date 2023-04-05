@@ -91,37 +91,12 @@ def obtain_chain(
 
 
 @beartype
-def _generate_episode_interactive(model_name: LLM_Name) -> Script:
-    """
-    Using langchain to generate an example episode enabling users input certain parts of the episode
-    """
-    # Obtain participants
-    template = """
-            Given {participants}, and {topic},
-            generate an episode as one would do in a movie script. Please use the following format:
-            {format_instructions}
-            Additionally, you can write the script with the following information: {extra_info}
-    """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    parser = ScriptPydanticOutputParser()
-    partipants = (
-        input("Enter the participants:") or "Jack (a greedy person), Rose"
-    )
-    topic = input("Enter the topic:") or "lawsuit"
-    extra_info = input("Enter extra information:") or ""
-    scripts = chain.predict(
-        participants=partipants,
-        topic=topic,
-        format_instructions=parser.get_format_instructions(),
-        extra_info=extra_info,
-    )
-    result = parser.parse(scripts)
-    return result
-
-
-@beartype
-def _generate_episode_direct(model_name: LLM_Name) -> Script:
+def generate_episode(
+    model_name: LLM_Name,
+    participants: str = "Jack (a greedy person), Rose",
+    topic: str = "lawsuit",
+    extra_info: str = "",
+) -> Script:
     """
     Using langchain to generate an example episode
     """
@@ -134,22 +109,10 @@ def _generate_episode_direct(model_name: LLM_Name) -> Script:
     chain = obtain_chain(model_name, template, input_variable)
     parser = ScriptPydanticOutputParser()
     scripts = chain.predict(
-        participants="Jack (a greedy person), Rose",
-        topic="lawsuit",
+        participants=participants,
+        topic=topic,
         format_instructions=parser.get_format_instructions(),
+        extra_info=extra_info,
     )
     result = parser.parse(scripts)
     return result
-
-
-@beartype
-def generate_episode(
-    model_name: LLM_Name, method: Literal["direct", "interactive"]
-) -> Script:
-    match method:
-        case "direct":
-            return _generate_episode_direct(model_name=model_name)
-        case "interactive":
-            return _generate_episode_interactive(model_name=model_name)
-        case _:
-            raise ValueError(f"Invalid method: {method}")
