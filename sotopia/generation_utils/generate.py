@@ -33,8 +33,12 @@ class Script(BaseModel):
     conversation: list[tuple[int, str]] = Field(
         description="conversation between participants"
     )
-    p1_rate: int = Field(description="rating of participant 1")
-    p2_rate: int = Field(description="rating of participant 2")
+    p1_rate: int = Field(
+        description="rating of participant 1, on the scale of 1 to 10"
+    )
+    p2_rate: int = Field(
+        description="rating of participant 2, on the scale of 1 to 10"
+    )
 
 
 class ScriptPydanticOutputParser(PydanticOutputParser):
@@ -104,6 +108,7 @@ def generate_episode(
             Given {participants}, and {topic},
             generate an episode as one would do in a movie script. Please use the following format:
             {format_instructions}
+            Use the following extra info if given: {extra_info}
     """
     input_variable = re.findall(r"{(.*?)}", template)
     chain = obtain_chain(model_name, template, input_variable)
