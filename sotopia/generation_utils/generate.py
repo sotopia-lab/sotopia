@@ -182,7 +182,7 @@ def generate_background(
     model_name: LLM_Name,
     participants: str = "Jack (a greedy person), Rose",
     topic: str = "lawsuit",
-    extra_info: str = "",
+    extra_info: str = "Jack speaks first, Rose speaks second",
 ) -> ScriptBackground:
     """
     Using langchain to generate an example episode
@@ -252,8 +252,10 @@ def generate_action(
             Here is the history of the episode: {history},
             What do you do next? You can choose from the following actions:
             (1) say something, please reply with message you want to say
-            (2) do nothing, please reply with action you want to take
-            Only ouput the action instead of the number
+            (2) say nothing, wait for the other party to say something
+
+            Your action should following the given format:
+            {format_instructions}
     """
     input_variable = re.findall(r"{(.*?)}", template)
     chain = obtain_chain(model_name, template, input_variable)
