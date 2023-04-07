@@ -46,7 +46,7 @@ class ParallelSotopiaEnv(ParallelEnv):
         }
 
     def step(
-        self, action: dict[str, str]
+        self, actions: dict[str, str]
     ) -> tuple[
         dict[str, str],
         dict[str, float],
@@ -59,9 +59,9 @@ class ParallelSotopiaEnv(ParallelEnv):
             str(self.background)
             + "\n"
             + "\n".join([str(x) for x in self.history]),
-            action,
+            actions,
         )
-        obs = str(action)
+        obs = str(actions)
         return (
             {
                 self.background.p1_name: obs,
