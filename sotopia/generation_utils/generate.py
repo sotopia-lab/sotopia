@@ -64,6 +64,13 @@ class ScriptEnvironmentResponse(BaseModel):
     )
 
 
+class AgentAction(BaseModel):
+    action_type: Literal["none", "speak"] = Field(
+        description="whether to speak at this turn or choose to not do anything"
+    )
+    utterance: str = Field(description="the utterance if choose to speak")
+
+
 class ScriptPydanticOutputParser(PydanticOutputParser):
     def __init__(self, pydantic_object: Type[BaseModel] = Script) -> None:
         super(ScriptPydanticOutputParser, self).__init__(
@@ -186,17 +193,21 @@ def generate_background(
             {format_instructions}
             Use the following extra info if given: {extra_info}
     """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    parser = PydanticOutputParser(pydantic_object=ScriptBackground)
-    scripts = chain.predict(
-        participants=participants,
-        topic=topic,
-        format_instructions=parser.get_format_instructions(),
-        extra_info=extra_info,
+    return generate(
+        model_name=model_name,
+        template="""
+            Given {participants}, and {topic},
+            generate a background as one would do in a movie script. Please use the following format:
+            {format_instructions}
+            Use the following extra info if given: {extra_info}
+        """,
+        input_values=dict(
+            participants=participants,
+            topic=topic,
+            extra_info=extra_info,
+        ),
+        output_struct=ScriptBackground,
     )
-    result = cast(ScriptBackground, parser.parse(scripts))
-    return result
 
 
 @beartype
@@ -206,35 +217,33 @@ def generate_environment_response(
     """
     Using langchain to generate an example episode
     """
-    template = """
+    assert len(action) == 2
+    agent_a, agent_b = list(action.keys())
+    return generate(
+        model_name=model_name,
+        template="""
             Here is the history of the conversation: {history},
             At this point,
             {agent_a} {action_a},
             {agent_b} {action_b},
             Is the conversation finished? How well does participants finish their goals? Please use the following format:
             {format_instructions}
-    """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    assert len(action) == 2
-    agent_a, agent_b = list(action.keys())
-    parser = PydanticOutputParser(pydantic_object=ScriptEnvironmentResponse)
-    result = parser.parse(
-        chain.predict(
+        """,
+        input_values=dict(
             history=history,
             agent_a=agent_a,
             action_a=action[agent_a],
             agent_b=agent_b,
             action_b=action[agent_b],
-            format_instructions=parser.get_format_instructions(),
-        )
+        ),
+        output_struct=ScriptEnvironmentResponse,
     )
-    result = cast(ScriptEnvironmentResponse, result)
-    return result
 
 
 @beartype
-def generate_action(model_name: LLM_Name, history: str, agent: str) -> str:
+def generate_action(
+    model_name: LLM_Name, history: str, agent: str
+) -> AgentAction:
     """
     Using langchain to generate an example episode
     """
@@ -244,7 +253,7 @@ def generate_action(model_name: LLM_Name, history: str, agent: str) -> str:
             What do you do next? You can choose from the following actions:
             (1) say something, please reply with message you want to say
             (2) do nothing, please reply with action you want to take
-            Only ouput the action instaed of the number
+            Only ouput the action instead of the number
     """
     input_variable = re.findall(r"{(.*?)}", template)
     chain = obtain_chain(model_name, template, input_variable)
@@ -253,7 +262,19 @@ def generate_action(model_name: LLM_Name, history: str, agent: str) -> str:
         agent=agent,
         action="",
     )
-    return result
+    return generate(
+        model_name=model_name,
+        template="""
+            You are {agent},
+            Here is the history of the episode: {history},
+            What do you do next? You can choose from the following actions:
+            (1) say something, please reply with message you want to say
+            (2) do nothing, please reply with action you want to take
+            Only ouput the action instead of the number
+        """,
+        input_values=dict(agent=agent, history=history),
+        output_struct=AgentAction,
+    )
 
 
 @beartype

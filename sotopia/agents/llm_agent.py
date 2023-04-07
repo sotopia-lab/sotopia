@@ -23,7 +23,10 @@ class LLMAgent(BaseAgent[str, str]):
         action = generate_action(
             self.model_name, "\n".join(self.history), self.agent_name
         )
-        return action
+        if action.action_type == "speak":
+            return action.utterance
+        else:
+            return ""
 
 
 class Agents(dict[str, LLMAgent]):
