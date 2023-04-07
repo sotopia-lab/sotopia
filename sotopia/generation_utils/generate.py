@@ -187,12 +187,6 @@ def generate_background(
     """
     Using langchain to generate an example episode
     """
-    template = """
-            Given {participants}, and {topic},
-            generate a background as one would do in a movie script. Please use the following format:
-            {format_instructions}
-            Use the following extra info if given: {extra_info}
-    """
     return generate(
         model_name=model_name,
         template="""
@@ -247,23 +241,6 @@ def generate_action(
     """
     Using langchain to generate an example episode
     """
-    template = """
-            You are {agent},
-            Here is the history of the episode: {history},
-            What do you do next? You can choose from the following actions:
-            (1) say something, please reply with message you want to say
-            (2) say nothing, wait for the other party to say something
-
-            Your action should following the given format:
-            {format_instructions}
-    """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    result = chain.predict(
-        history=history,
-        agent=agent,
-        action="",
-    )
     return generate(
         model_name=model_name,
         template="""
@@ -272,7 +249,8 @@ def generate_action(
             What do you do next? You can choose from the following actions:
             (1) say something, please reply with message you want to say
             (2) do nothing, please reply with action you want to take
-            Only ouput the action instead of the number
+            Your action should following the given format:
+            {format_instructions}
         """,
         input_values=dict(agent=agent, history=history),
         output_struct=AgentAction,
