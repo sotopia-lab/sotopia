@@ -18,6 +18,8 @@ class LLMAgent(BaseAgent[str, str]):
 
     def act(self, obs: str) -> str:
         self.history.append(obs)
+        if len(self.history) == 1:
+            self.history.append("Conversation Start:\n")
         action = generate_action(
             self.model_name, "\n".join(self.history), self.agent_name
         )

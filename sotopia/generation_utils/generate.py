@@ -213,10 +213,11 @@ def generate_action(model_name: LLM_Name, history: str, agent: str) -> str:
     """
     template = """
             You are {agent},
-            Here is the history of the conversation: {history},
+            Here is the history of the episode: {history},
             What do you do next? You can choose from the following actions:
             (1) say something, please reply with message you want to say
             (2) do nothing, please reply with action you want to take
+            Only ouput the action instaed of the number
     """
     input_variable = re.findall(r"{(.*?)}", template)
     chain = obtain_chain(model_name, template, input_variable)
@@ -225,4 +226,19 @@ def generate_action(model_name: LLM_Name, history: str, agent: str) -> str:
         agent=agent,
         action="",
     )
+    return result
+
+
+@beartype
+def process_history(script: ScriptBackground | Script | dict[str, str]) -> str:
+    """
+    Format the script background
+    """
+    result = ""
+    if isinstance(script, ScriptBackground | Script):
+        script = script.dict()
+        results = "The initial observation\n\n"
+    for key, value in script.items():
+        if value:
+            result += f"{key}: {value} \n"
     return result

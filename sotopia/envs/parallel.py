@@ -8,6 +8,7 @@ from sotopia.generation_utils.generate import (
     ScriptBackground,
     generate_background,
     generate_environment_response,
+    process_history,
 )
 
 
@@ -41,8 +42,8 @@ class ParallelSotopiaEnv(ParallelEnv):
         background_for_a.p2_goal = "Unknown"
         background_for_b.p1_goal = "Unknown"
         return {
-            self.background.p1_name: str(background_for_a),
-            self.background.p2_name: str(background_for_b),
+            self.background.p1_name: process_history(background_for_a),
+            self.background.p2_name: process_history(background_for_b),
         }
 
     def step(
@@ -61,7 +62,7 @@ class ParallelSotopiaEnv(ParallelEnv):
             + "\n".join([str(x) for x in self.history]),
             actions,
         )
-        obs = str(actions)
+        obs = process_history(actions)
         return (
             {
                 self.background.p1_name: obs,
