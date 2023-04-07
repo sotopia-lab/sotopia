@@ -1,5 +1,5 @@
 import re
-from typing import cast
+from typing import Type, TypeVar, cast
 
 import langchain
 from beartype import beartype
@@ -22,6 +22,9 @@ from pydantic import BaseModel, Field, validator
 from typing_extensions import Literal
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
+
+
+OutputType = TypeVar("OutputType", bound=BaseModel)
 
 
 class Script(BaseModel):
@@ -62,7 +65,7 @@ class ScriptEnvironmentResponse(BaseModel):
 
 
 class ScriptPydanticOutputParser(PydanticOutputParser):
-    def __init__(self) -> None:
+    def __init__(self, pydantic_object: Type[BaseModel] = Script) -> None:
         super(ScriptPydanticOutputParser, self).__init__(
             pydantic_object=Script
         )
@@ -82,7 +85,7 @@ class ScriptPydanticOutputParser(PydanticOutputParser):
 
 @beartype
 def obtain_chain(
-    model_name: LLM_Name, template: str, input_variable: list[str]
+    model_name: LLM_Name, template: str, input_variables: list[str]
 ) -> LLMChain:
     """
     Using langchain to sample profiles for participants
@@ -92,7 +95,7 @@ def obtain_chain(
             human_message_prompt = HumanMessagePromptTemplate(
                 prompt=PromptTemplate(
                     template=template,
-                    input_variables=input_variable,
+                    input_variables=input_variables,
                 )
             )
             chat_prompt_template = ChatPromptTemplate.from_messages(
@@ -105,13 +108,38 @@ def obtain_chain(
             # Warning: no interactive mode for 003
             llm = OpenAI(model_name=model_name)  # type: ignore[call-arg]
             prompt = PromptTemplate(
-                input_variables=input_variable,
+                input_variables=input_variables,
                 template=template,
             )
             chain = LLMChain(llm=llm, prompt=prompt)
             return chain
         case _:
             raise ValueError(f"Invalid model name: {model_name}")
+
+
+@beartype
+def generate(
+    model_name: LLM_Name,
+    template: str,
+    input_values: dict[str, str],
+    output_struct: Type[OutputType],
+    output_parser: Type[PydanticOutputParser] = PydanticOutputParser,
+) -> OutputType:
+    input_variables = re.findall(r"{(.*?)}", template)
+    assert set(input_variables) == set(
+        list(input_values.keys()) + ["format_instructions"]
+    ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
+    chain = obtain_chain(
+        model_name=model_name,
+        template=template,
+        input_variables=input_variables,
+    )
+    parser = output_parser(pydantic_object=output_struct)
+    if "format_instructions" not in input_values:
+        input_values["format_instructions"] = parser.get_format_instructions()
+    result = chain.predict(template=template, **input_values)
+    parsed_result = cast(OutputType, parser.parse(result))
+    return parsed_result
 
 
 @beartype
@@ -124,23 +152,22 @@ def generate_episode(
     """
     Using langchain to generate an example episode
     """
-    template = """
+    return generate(
+        model_name=model_name,
+        template="""
             Given {participants}, and {topic},
             generate an episode as one would do in a movie script. Please use the following format:
             {format_instructions}
             Use the following extra info if given: {extra_info}
-    """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    parser = ScriptPydanticOutputParser()
-    scripts = chain.predict(
-        participants=participants,
-        topic=topic,
-        format_instructions=parser.get_format_instructions(),
-        extra_info=extra_info,
+        """,
+        input_values=dict(
+            participants=participants,
+            topic=topic,
+            extra_info=extra_info,
+        ),
+        output_struct=Script,
+        output_parser=ScriptPydanticOutputParser,
     )
-    result = parser.parse(scripts)
-    return result
 
 
 @beartype

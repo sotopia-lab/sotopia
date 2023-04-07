@@ -7,7 +7,7 @@ obs = env.reset()
 for agent_name in env.agent_names:
     print(f"Here's {agent_name}'s initial observation\n{obs[agent_name]}")
 agents = Agents()
-for agent_name in env.agent_names:
+for agent_name in env.agents:
     agents[agent_name] = LLMAgent(agent_name)
 
 agents.reset()

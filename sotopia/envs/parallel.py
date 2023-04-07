@@ -1,6 +1,7 @@
 from copy import deepcopy
 from typing import Any
 
+from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
 
 from sotopia.generation_utils.generate import (
@@ -26,10 +27,8 @@ class ParallelSotopiaEnv(ParallelEnv):
             p2_name="",
         )
         self.history: list[dict[str, str]] = []
-
-    @property
-    def agent_names(self) -> list[str]:
-        return [self.background.p1_name, self.background.p2_name]
+        self.agents = []
+        self.action_spaces = {}
 
     def reset(
         self,
@@ -41,6 +40,8 @@ class ParallelSotopiaEnv(ParallelEnv):
         background_for_b = deepcopy(self.background)
         background_for_a.p2_goal = "Unknown"
         background_for_b.p1_goal = "Unknown"
+        self.agents = [self.background.p1_name, self.background.p2_name]
+        self.action_spaces = {agent: Text(256) for agent in self.agents}
         return {
             self.background.p1_name: process_history(background_for_a),
             self.background.p2_name: process_history(background_for_b),
