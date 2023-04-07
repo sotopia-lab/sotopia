@@ -4,7 +4,7 @@ from sotopia.generation_utils.generate import process_history
 
 env = ParallelSotopiaEnv()
 obs = env.reset()
-for agent_name in env.agent_names:
+for agent_name in env.agents:
     print(f"Here's {agent_name}'s initial observation\n{obs[agent_name]}")
 agents = Agents()
 for agent_name in env.agents:
