@@ -9,12 +9,15 @@ def create_example_episode() -> None:
     """
     participants = (
         input("Enter participants' names, separated by a comma:\t")
-        or "Jack (a greedy person), Rose"
+        or "Jack, Rose"
     )
-    topic = input("Enter topic:\t") or "lawsuit"
-    extra_info = input("Enter extra info:\t") or ""
+    topic = input("Enter topic:\t") or "in a coffee shop"
+    extra_info = (
+        input("Enter extra info:\t")
+        or "jack's goal is to figure out what rose would like for her birthday gift without letting her know"
+    )
     episode = generate_episode(
-        "gpt-3.5-turbo",
+        "gpt-4",
         participants=participants,
         topic=topic,
         extra_info=extra_info,
