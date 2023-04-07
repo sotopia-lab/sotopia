@@ -9,7 +9,7 @@ class BaseAgent(Generic[ObsType, ActType]):
         self.agent_name = agent_name
         pass
 
-    def act(self, obs: ObsType) -> str:
+    def act(self, obs: ObsType) -> ActType:
         raise NotImplementedError
 
     def reset(self) -> None:
