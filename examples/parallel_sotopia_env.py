@@ -5,7 +5,7 @@ env = ParallelSotopiaEnv()
 obs = env.reset()
 print(obs)
 agents = Agents()
-for agent_name in env.agent_names:
+for agent_name in env.agents:
     agents[agent_name] = LLMAgent(agent_name)
 
 agents.reset()
