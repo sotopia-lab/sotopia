@@ -41,6 +41,26 @@ class Script(BaseModel):
     )
 
 
+class ScriptBackground(BaseModel):
+    scenario: str = Field(description="scenario of the episode")
+    p1_name: str = Field(description="name of participant 1")
+    p2_name: str = Field(description="name of participant 2")
+    p1_background: str = Field(description="background of participant 1")
+    p2_background: str = Field(description="background of participant 2")
+    p1_goal: str = Field(description="goal of participant 1")
+    p2_goal: str = Field(description="goal of participant 2")
+
+
+class ScriptEnvironmentResponse(BaseModel):
+    terminate: bool = Field(description="whether the episode should terminate")
+    p1_rate: int | None = Field(
+        description="rating of participant 1, on the scale of 1 to 10"
+    )
+    p2_rate: int | None = Field(
+        description="rating of participant 2, on the scale of 1 to 10"
+    )
+
+
 class ScriptPydanticOutputParser(PydanticOutputParser):
     def __init__(self) -> None:
         super(ScriptPydanticOutputParser, self).__init__(
@@ -120,4 +140,89 @@ def generate_episode(
         extra_info=extra_info,
     )
     result = parser.parse(scripts)
+    return result
+
+
+@beartype
+def generate_background(
+    model_name: LLM_Name,
+    participants: str = "Jack (a greedy person), Rose",
+    topic: str = "lawsuit",
+    extra_info: str = "",
+) -> ScriptBackground:
+    """
+    Using langchain to generate an example episode
+    """
+    template = """
+            Given {participants}, and {topic},
+            generate a background as one would do in a movie script. Please use the following format:
+            {format_instructions}
+            Use the following extra info if given: {extra_info}
+    """
+    input_variable = re.findall(r"{(.*?)}", template)
+    chain = obtain_chain(model_name, template, input_variable)
+    parser = PydanticOutputParser(pydantic_object=ScriptBackground)
+    scripts = chain.predict(
+        participants=participants,
+        topic=topic,
+        format_instructions=parser.get_format_instructions(),
+        extra_info=extra_info,
+    )
+    result = cast(ScriptBackground, parser.parse(scripts))
+    return result
+
+
+@beartype
+def generate_environment_response(
+    model_name: LLM_Name, history: str, action: dict[str, str]
+) -> ScriptEnvironmentResponse:
+    """
+    Using langchain to generate an example episode
+    """
+    template = """
+            Here is the history of the conversation: {history},
+            At this point,
+            {agent_a} {action_a},
+            {agent_b} {action_b},
+            Is the conversation finished? How well does participants finish their goals? Please use the following format:
+            {format_instructions}
+    """
+    input_variable = re.findall(r"{(.*?)}", template)
+    chain = obtain_chain(model_name, template, input_variable)
+    assert len(action) == 2
+    agent_a, agent_b = list(action.keys())
+    parser = PydanticOutputParser(pydantic_object=ScriptEnvironmentResponse)
+    result = parser.parse(
+        chain.predict(
+            history=history,
+            agent_a=agent_a,
+            action_a=action[agent_a],
+            agent_b=agent_b,
+            action_b=action[agent_b],
+            format_instructions=parser.get_format_instructions(),
+        )
+    )
+    result = cast(ScriptEnvironmentResponse, result)
+    return result
+
+
+@beartype
+def generate_action(model_name: LLM_Name, history: str, agent: str) -> str:
+    """
+    Using langchain to generate an example episode
+    """
+    template = """
+            You are {agent},
+            Here is the history of the conversation: {history},
+            What do you do next? You can choose from the following actions:
+            (1) say something, please reply with message you want to say
+            (2) do nothing, please reply with action you want to take
+    """
+    input_variable = re.findall(r"{(.*?)}", template)
+    chain = obtain_chain(model_name, template, input_variable)
+    result = chain.predict(
+        history=history,
+        agent=agent,
+        action="",
+    )
     return result
