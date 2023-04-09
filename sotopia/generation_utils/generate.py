@@ -23,6 +23,7 @@ from langchain.prompts import (
 )
 from langchain.schema import HumanMessage
 from pydantic import BaseModel, Field, validator
+from rich import print
 from typing_extensions import Literal
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
@@ -139,7 +140,10 @@ def reformat_generation(
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
     Original string: {unformat}
+
     Format instructions: {format_instructions}
+
+    Please only generate the JSON:
     """
     chain = obtain_chain(
         model_name=model_name,
@@ -178,12 +182,11 @@ def generate(
     try:
         parsed_result = cast(OutputType, parser.parse(result))
     except:
-        print(f"Failed to parse result: {result}; start to reparse")
+        # print(f"[red] Failed to parse result: {result}; start to reparse")
         reformat_parsed_result = reformat_generation(
-            result, ormat_instructions=parser.get_format_instructions()
+            result, format_instructions=parser.get_format_instructions()
         )
         parsed_result = cast(OutputType, parser.parse(reformat_parsed_result))
-
     return parsed_result
 
 
@@ -287,26 +290,29 @@ def generate_action(
     """
     Using langchain to generate an example episode
     """
-    return generate(
-        model_name=model_name,
-        template="""
-            You are {agent}.
-            {history}
+    try:
+        return generate(
+            model_name=model_name,
+            template="""
+                You are {agent}.
+                {history}
 
 
-            You are at Turn #{turn_number}. Your available action types are
-            {action_list}.
-            Your action should follow the given format:
-            {format_instructions}
-        """,
-        input_values=dict(
-            agent=agent,
-            turn_number=str(turn_number),
-            history=history,
-            action_list=" ".join(action_types),
-        ),
-        output_struct=AgentAction,
-    )
+                You are at Turn #{turn_number}. Your available action types are
+                {action_list}.
+                Your action should follow the given format:
+                {format_instructions}
+            """,
+            input_values=dict(
+                agent=agent,
+                turn_number=str(turn_number),
+                history=history,
+                action_list=" ".join(action_types),
+            ),
+            output_struct=AgentAction,
+        )
+    except:
+        return AgentAction(action_type="none", argument="")
 
 
 @beartype

@@ -1,3 +1,5 @@
+from rich import print
+
 from sotopia.agents.llm_agent import Agents, LLMAgent
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import process_history
