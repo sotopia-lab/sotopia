@@ -1,6 +1,10 @@
 from copy import deepcopy
 from typing import Any, TypedDict
 
+from beartype import beartype
+from beartype.door import is_bearable
+from gymnasium.spaces.dict import Dict
+from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
 
@@ -44,7 +48,7 @@ class ParallelSotopiaEnv(ParallelEnv):
         self.history: list[dict[str, str]] = []
         self.agents = []
         self.action_spaces = {}
-        self.available_action_types = available_action_types
+        self.available_action_types = list(available_action_types)
 
     def reset(
         self,
@@ -57,7 +61,15 @@ class ParallelSotopiaEnv(ParallelEnv):
         background_for_a.p2_goal = "Unknown"
         background_for_b.p1_goal = "Unknown"
         self.agents = [self.background.p1_name, self.background.p2_name]
-        self.action_spaces = {agent: Text(256) for agent in self.agents}
+        self.action_spaces = {
+            agent: Dict(
+                dict(
+                    action_type=Discrete(len(self.available_action_types)),
+                    argument=Text(256),
+                )
+            )
+            for agent in self.agents
+        }
         self.turn_number = 0
         return {
             self.background.p1_name: Observation(
@@ -72,8 +84,9 @@ class ParallelSotopiaEnv(ParallelEnv):
             ),
         }
 
+    @beartype
     def step(
-        self, actions: dict[str, AgentAction]
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> tuple[
         dict[str, Observation],
         dict[str, float],
@@ -82,14 +95,24 @@ class ParallelSotopiaEnv(ParallelEnv):
         dict[str, dict[Any, Any]],
     ]:
         self.turn_number += 1
+        complied_actions: dict[str, AgentAction] = {}
+        for key in actions.keys():
+            action = actions[key]
+            if isinstance(action, AgentAction):
+                complied_actions[key] = action
+            else:
+                action["action_type"] = self.available_action_types[
+                    int(action["action_type"])
+                ]
+                complied_actions[key] = AgentAction.parse_obj(action)
         response = generate_environment_response(
             self.model_name,
             str(self.background)
             + "\n"
             + "\n".join([str(x) for x in self.history]),
-            actions,
+            complied_actions,
         )
-        obs = process_history(actions)
+        obs = process_history(complied_actions)
         return (
             {
                 self.background.p1_name: Observation(
