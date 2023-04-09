@@ -131,6 +131,30 @@ def obtain_chain(
 
 
 @beartype
+def reformat_generation(
+    unformat: str,
+    format_instructions: str,
+    model_name: LLM_Name = "gpt-3.5-turbo",
+) -> str:
+    template = """
+    Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
+    Original string: {unformat}
+    Format instructions: {format_instructions}
+    """
+    chain = obtain_chain(
+        model_name=model_name,
+        template=template,
+        input_variables=["unformat", "format_instructions"],
+    )
+    input_values = {
+        "unformat": unformat,
+        "format_instructions": format_instructions,
+    }
+    reformat = chain.predict(template=template, **input_values)
+    return reformat
+
+
+@beartype
 def generate(
     model_name: LLM_Name,
     template: str,
@@ -151,7 +175,15 @@ def generate(
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = parser.get_format_instructions()
     result = chain.predict(template=template, **input_values)
-    parsed_result = cast(OutputType, parser.parse(result))
+    try:
+        parsed_result = cast(OutputType, parser.parse(result))
+    except:
+        print(f"Failed to parse result: {result}; start to reparse")
+        reformat_parsed_result = reformat_generation(
+            result, ormat_instructions=parser.get_format_instructions()
+        )
+        parsed_result = cast(OutputType, parser.parse(reformat_parsed_result))
+
     return parsed_result
 
 
