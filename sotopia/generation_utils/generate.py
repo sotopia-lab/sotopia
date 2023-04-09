@@ -1,8 +1,9 @@
 import re
-from typing import Type, TypeVar, cast
+from typing import TypeVar, cast
 
 import langchain
 from beartype import beartype
+from beartype.typing import Type
 from langchain.chains import (
     ConversationChain,
     LLMChain,
@@ -11,7 +12,10 @@ from langchain.chains import (
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.memory import ConversationBufferMemory
-from langchain.output_parsers import PydanticOutputParser
+from langchain.output_parsers import (
+    PydanticOutputParser,
+    RetryWithErrorOutputParser,
+)
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -22,7 +26,7 @@ from pydantic import BaseModel, Field, validator
 from typing_extensions import Literal
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
-
+ActionType = Literal["none", "speak", "non-verbal communication", "action"]
 
 OutputType = TypeVar("OutputType", bound=BaseModel)
 
@@ -61,6 +65,15 @@ class ScriptEnvironmentResponse(BaseModel):
     )
     p2_rate: int | None = Field(
         description="rating of participant 2, on the scale of 1 to 10"
+    )
+
+
+class AgentAction(BaseModel):
+    action_type: ActionType = Field(
+        description="whether to speak at this turn or choose to not do anything"
+    )
+    argument: str = Field(
+        description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
 
 
@@ -180,90 +193,101 @@ def generate_background(
     """
     Using langchain to generate an example episode
     """
-    template = """
+    return generate(
+        model_name=model_name,
+        template="""
             Given {participants}, and {topic},
             generate a background as one would do in a movie script. Please use the following format:
             {format_instructions}
             Use the following extra info if given: {extra_info}
-    """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    parser = PydanticOutputParser(pydantic_object=ScriptBackground)
-    scripts = chain.predict(
-        participants=participants,
-        topic=topic,
-        format_instructions=parser.get_format_instructions(),
-        extra_info=extra_info,
+        """,
+        input_values=dict(
+            participants=participants,
+            topic=topic,
+            extra_info=extra_info,
+        ),
+        output_struct=ScriptBackground,
     )
-    result = cast(ScriptBackground, parser.parse(scripts))
-    return result
 
 
 @beartype
 def generate_environment_response(
-    model_name: LLM_Name, history: str, action: dict[str, str]
+    model_name: LLM_Name, history: str, action: dict[str, AgentAction]
 ) -> ScriptEnvironmentResponse:
     """
     Using langchain to generate an example episode
     """
-    template = """
+    assert len(action) == 2
+    agent_a, agent_b = list(action.keys())
+    return generate(
+        model_name=model_name,
+        template="""
             Here is the history of the conversation: {history},
             At this point,
             {agent_a} {action_a},
             {agent_b} {action_b},
             Is the conversation finished? How well does participants finish their goals? Please use the following format:
             {format_instructions}
-    """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    assert len(action) == 2
-    agent_a, agent_b = list(action.keys())
-    parser = PydanticOutputParser(pydantic_object=ScriptEnvironmentResponse)
-    result = parser.parse(
-        chain.predict(
+        """,
+        input_values=dict(
             history=history,
             agent_a=agent_a,
-            action_a=action[agent_a],
+            action_a=action[agent_a].action_type
+            + " "
+            + action[agent_a].argument,
             agent_b=agent_b,
-            action_b=action[agent_b],
-            format_instructions=parser.get_format_instructions(),
-        )
+            action_b=action[agent_b].action_type
+            + " "
+            + action[agent_b].argument,
+        ),
+        output_struct=ScriptEnvironmentResponse,
     )
-    result = cast(ScriptEnvironmentResponse, result)
-    return result
 
 
 @beartype
-def generate_action(model_name: LLM_Name, history: str, agent: str) -> str:
+def generate_action(
+    model_name: LLM_Name,
+    history: str,
+    turn_number: int,
+    action_types: list[str],
+    agent: str,
+) -> AgentAction:
     """
     Using langchain to generate an example episode
     """
-    template = """
-            You are {agent},
-            Here is the history of the episode: {history},
-            What do you do next? You can choose from the following actions:
-            (1) say something, please reply with message you want to say
-            (2) say nothing, wait for the other party to say something
-    """
-    input_variable = re.findall(r"{(.*?)}", template)
-    chain = obtain_chain(model_name, template, input_variable)
-    result = chain.predict(
-        history=history,
-        agent=agent,
-        action="",
+    return generate(
+        model_name=model_name,
+        template="""
+            You are {agent}.
+            {history}
+
+
+            You are at Turn #{turn_number}. Your available action types are
+            {action_list}.
+            Your action should follow the given format:
+            {format_instructions}
+        """,
+        input_values=dict(
+            agent=agent,
+            turn_number=str(turn_number),
+            history=history,
+            action_list=" ".join(action_types),
+        ),
+        output_struct=AgentAction,
     )
-    return result
 
 
 @beartype
-def process_history(script: ScriptBackground | Script | dict[str, str]) -> str:
+def process_history(
+    script: ScriptBackground | Script | dict[str, AgentAction]
+) -> str:
     """
     Format the script background
     """
     result = ""
     if isinstance(script, ScriptBackground | Script):
         script = script.dict()
-        results = "The initial observation\n\n"
+        result = "The initial observation\n\n"
     for key, value in script.items():
         if value:
             result += f"{key}: {value} \n"
