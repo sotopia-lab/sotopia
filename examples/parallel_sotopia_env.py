@@ -1,8 +1,16 @@
+import logging
+
 from rich import print
+from rich.logging import RichHandler
 
 from sotopia.agents.llm_agent import Agents, LLMAgent
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import process_history
+
+FORMAT = "%(message)s"
+logging.basicConfig(
+    level="WARNING", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+)
 
 env = ParallelSotopiaEnv(model_name="gpt-4")
 obs = env.reset()

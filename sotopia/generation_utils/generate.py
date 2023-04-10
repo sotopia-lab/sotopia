@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import TypeVar, cast
 
@@ -24,7 +25,10 @@ from langchain.prompts import (
 from langchain.schema import HumanMessage
 from pydantic import BaseModel, Field, validator
 from rich import print
+from rich.logging import RichHandler
 from typing_extensions import Literal
+
+log = logging.getLogger("generate")
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
 ActionType = Literal["none", "speak", "non-verbal communication", "action"]
@@ -132,14 +136,14 @@ def obtain_chain(
 
 
 @beartype
-def reformat_generation(
-    unformat: str,
+def format_bad_output(
+    ill_formed_output: str,
     format_instructions: str,
     model_name: LLM_Name = "gpt-3.5-turbo",
 ) -> str:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
-    Original string: {unformat}
+    Original string: {ill_formed_output}
 
     Format instructions: {format_instructions}
 
@@ -148,10 +152,10 @@ def reformat_generation(
     chain = obtain_chain(
         model_name=model_name,
         template=template,
-        input_variables=["unformat", "format_instructions"],
+        input_variables=re.findall(r"{(.*?)}", template),
     )
     input_values = {
-        "unformat": unformat,
+        "ill_formed_output": ill_formed_output,
         "format_instructions": format_instructions,
     }
     reformat = chain.predict(template=template, **input_values)
@@ -181,9 +185,12 @@ def generate(
     result = chain.predict(template=template, **input_values)
     try:
         parsed_result = cast(OutputType, parser.parse(result))
-    except:
-        # print(f"[red] Failed to parse result: {result}; start to reparse")
-        reformat_parsed_result = reformat_generation(
+    except Exception as e:
+        log.warning(
+            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
+            extra={"markup": True},
+        )
+        reformat_parsed_result = format_bad_output(
             result, format_instructions=parser.get_format_instructions()
         )
         parsed_result = cast(OutputType, parser.parse(reformat_parsed_result))
