@@ -25,14 +25,20 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.history.append(obs["history"])
         if len(self.history) == 1:
             self.history.append("Conversation Start:\n")
-        action = generate_action(
-            self.model_name,
-            history="\n".join(self.history),
-            turn_number=obs["turn_number"],
-            action_types=obs["available_actions"],
-            agent=self.agent_name,
-        )
-        return action
+        if (
+            len(obs["available_actions"]) == 1
+            and "none" in obs["available_actions"]
+        ):
+            return AgentAction(action_type="none", argument="")
+        else:
+            action = generate_action(
+                self.model_name,
+                history="\n".join(self.history),
+                turn_number=obs["turn_number"],
+                action_types=obs["available_actions"],
+                agent=self.agent_name,
+            )
+            return action
 
 
 class Agents(dict[str, LLMAgent]):
