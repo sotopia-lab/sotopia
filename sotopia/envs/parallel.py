@@ -1,5 +1,6 @@
+import random
 from copy import deepcopy
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 from beartype import beartype
 from beartype.door import is_bearable
@@ -31,6 +32,9 @@ class ParallelSotopiaEnv(ParallelEnv):
         available_action_types: set[ActionType] = set(
             ["none", "speak", "non-verbal communication", "action"]
         ),
+        action_order: Literal[
+            "simutaneous", "round-robin", "random"
+        ] = "simutaneous",
         model_name: LLM_Name = "gpt-3.5-turbo",
     ) -> None:
         super().__init__()
@@ -49,6 +53,8 @@ class ParallelSotopiaEnv(ParallelEnv):
         self.agents = []
         self.action_spaces = {}
         self.available_action_types = list(available_action_types)
+        self.action_order = action_order
+        self.action_mask: list[bool] = []
 
     def reset(
         self,
@@ -71,16 +77,30 @@ class ParallelSotopiaEnv(ParallelEnv):
             for agent in self.agents
         }
         self.turn_number = 0
+        self.action_mask = [False for _ in self.agents]
+        if self.action_order == "round-robin":
+            self.action_mask[0] = True
+        elif self.action_order == "random":
+            self.action_mask[
+                random.randint(0, len(self.action_mask) - 1)
+            ] = True
+        else:
+            self.action_mask = [True for _ in self.agents]
+
         return {
             self.background.p1_name: Observation(
                 history=process_history(background_for_a),
                 turn_number=0,
-                available_actions=list(self.available_action_types),
+                available_actions=list(self.available_action_types)
+                if self.action_mask[0]
+                else ["none"],
             ),
             self.background.p2_name: Observation(
                 history=process_history(background_for_b),
                 turn_number=0,
-                available_actions=list(self.available_action_types),
+                available_actions=list(self.available_action_types)
+                if self.action_mask[1]
+                else ["none"],
             ),
         }
 
@@ -96,6 +116,7 @@ class ParallelSotopiaEnv(ParallelEnv):
     ]:
         self.turn_number += 1
         complied_actions: dict[str, AgentAction] = {}
+        # For action sampled from action space, it needs to be converted into AgentAction
         for key in actions.keys():
             action = actions[key]
             if isinstance(action, AgentAction):
@@ -105,6 +126,12 @@ class ParallelSotopiaEnv(ParallelEnv):
                     int(action["action_type"])
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
+        # Masking actions from agent that are in turn
+        for idx, agent in enumerate(self.agents):
+            if not self.action_mask[idx]:
+                complied_actions[agent] = AgentAction(
+                    action_type="none", argument=""
+                )
         response = generate_environment_response(
             self.model_name,
             str(self.background)
@@ -113,17 +140,30 @@ class ParallelSotopiaEnv(ParallelEnv):
             complied_actions,
         )
         obs = process_history(complied_actions)
+        self.action_mask = [False for _ in self.agents]
+        if self.action_order == "round-robin":
+            self.action_mask[self.turn_number % len(self.action_mask)] = True
+        elif self.action_order == "random":
+            self.action_mask[
+                random.randint(0, len(self.action_mask) - 1)
+            ] = True
+        else:
+            self.action_mask = [True for _ in self.agents]
         return (
             {
                 self.background.p1_name: Observation(
                     history=obs,
                     turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types),
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[0]
+                    else ["none"],
                 ),
                 self.background.p2_name: Observation(
                     history=obs,
                     turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types),
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[1]
+                    else ["none"],
                 ),
             },
             {
