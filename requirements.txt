@@ -2,3 +2,4 @@ openai
 langchain
 tiktoken
 rich
+git+https://github.com/ProKil/PettingZoo.git
