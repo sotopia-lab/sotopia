@@ -26,6 +26,13 @@ class Observation(TypedDict):
     available_actions: list[str]
 
 
+def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
+    action_str = ""
+    for agent, action in actions.items():
+        action_str += f" {agent} {action.to_natural_language()};"
+    return action_str
+
+
 class ParallelSotopiaEnv(ParallelEnv):
     def __init__(
         self,
@@ -49,7 +56,7 @@ class ParallelSotopiaEnv(ParallelEnv):
             p2_name="",
         )
 
-        self.history: list[dict[str, str]] = []
+        self.history: list[str] = []
         self.agents = []
         self.action_spaces = {}
         self.available_action_types = list(available_action_types)
@@ -89,14 +96,14 @@ class ParallelSotopiaEnv(ParallelEnv):
 
         return {
             self.background.p1_name: Observation(
-                history=process_history(background_for_a),
+                history=background_for_a.to_natural_language(),
                 turn_number=0,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[0]
                 else ["none"],
             ),
             self.background.p2_name: Observation(
-                history=process_history(background_for_b),
+                history=background_for_b.to_natural_language(),
                 turn_number=0,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[1]
@@ -132,14 +139,15 @@ class ParallelSotopiaEnv(ParallelEnv):
                 complied_actions[agent] = AgentAction(
                     action_type="none", argument=""
                 )
+        obs = _actions_to_natural_language(complied_actions)
         response = generate_environment_response(
             self.model_name,
-            str(self.background)
+            self.background.to_natural_language()
             + "\n"
             + "\n".join([str(x) for x in self.history]),
-            complied_actions,
+            obs,
         )
-        obs = process_history(complied_actions)
+        self.history.append(f"Turn #{self.turn_number}:\n{obs}")
         self.action_mask = [False for _ in self.agents]
         if self.action_order == "round-robin":
             self.action_mask[self.turn_number % len(self.action_mask)] = True
@@ -171,8 +179,8 @@ class ParallelSotopiaEnv(ParallelEnv):
                 self.background.p2_name: response.p2_rate or 0,
             },
             {
-                self.background.p1_name: response.terminate,
-                self.background.p2_name: response.terminate,
+                self.background.p1_name: response.terminated,
+                self.background.p2_name: response.terminated,
             },
             {
                 self.background.p1_name: False,

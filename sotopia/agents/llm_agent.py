@@ -22,9 +22,14 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         return " ".join(self.history)
 
     def act(self, obs: Observation) -> AgentAction:
-        self.history.append(obs["history"])
-        if len(self.history) == 1:
+        if obs["turn_number"] == 0:
+            self.history.append(
+                f"Here is the background for the conversation:\n{obs['history']}"
+            )
             self.history.append("Conversation Start:\n")
+        else:
+            self.history.append(f"Turn #{obs['turn_number']-1}:")
+            self.history.append(obs["history"])
         if (
             len(obs["available_actions"]) == 1
             and "none" in obs["available_actions"]

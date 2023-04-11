@@ -62,9 +62,34 @@ class ScriptBackground(BaseModel):
     p1_goal: str = Field(description="goal of participant 1")
     p2_goal: str = Field(description="goal of participant 2")
 
+    def to_natural_language(self) -> str:
+        return f"""
+        Here is the context of this interaction: {self.scenario}
+        There are two participants in this interaction: {self.p1_name} and {self.p2_name}.
+        {self.p1_name} is {self.p1_background}.
+        {self.p2_name} is {self.p2_background}.
+        {self.p1_name}'s goal is {self.p1_goal}.
+        {self.p2_name}'s goal is {self.p2_goal}.
+        """
+
 
 class ScriptEnvironmentResponse(BaseModel):
-    terminate: bool = Field(description="whether the episode should terminate")
+    conversation_too_long: bool = Field(
+        description="whether the conversation is too long"
+    )
+    p1_leaving: bool = Field(
+        description="whether participant 1 is leaving the conversation"
+    )
+    p2_leaving: bool = Field(
+        description="whether participant 2 is leaving the conversation"
+    )
+    stale_too_long: bool = Field(
+        description="whether the conversation is stale for too long"
+    )
+    terminated: bool = Field(
+        description="whether the conversation is terminated",
+        default_factory=lambda: False,
+    )
     p1_rate: int | None = Field(
         description="rating of participant 1, on the scale of 1 to 10"
     )
@@ -80,6 +105,17 @@ class AgentAction(BaseModel):
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
+
+    def to_natural_language(self) -> str:
+        match self.action_type:
+            case "none":
+                return "did nothing"
+            case "speak":
+                return f"said {self.argument}"
+            case "non-verbal communication":
+                return f"{self.argument}"
+            case "action":
+                return f"did {self.argument}"
 
 
 class ScriptPydanticOutputParser(PydanticOutputParser):
@@ -210,10 +246,11 @@ def generate_episode(
     return generate(
         model_name=model_name,
         template="""
-            Given {participants}, and {topic},
-            generate an episode as one would do in a movie script. Please use the following format:
-            {format_instructions}
+            Please generate a episode for the interaction between {participants} regarding {topic}.
+            You should generate the personal backgrounds and goals in this interaction.
             Use the following extra info if given: {extra_info}
+            Please use the following format:
+            {format_instructions}
         """,
         input_values=dict(
             participants=participants,
@@ -228,20 +265,21 @@ def generate_episode(
 @beartype
 def generate_background(
     model_name: LLM_Name,
-    participants: str = "Jack (a greedy person), Rose",
-    topic: str = "lawsuit",
+    participants: str = "Jack, Rose",
+    topic: str = "borrow money",
     extra_info: str = "Jack speaks first, Rose speaks second",
 ) -> ScriptBackground:
     """
-    Using langchain to generate an example episode
+    Using langchain to generate the background
     """
     return generate(
         model_name=model_name,
         template="""
-            Given {participants}, and {topic},
-            generate a background as one would do in a movie script. Please use the following format:
-            {format_instructions}
+            Please generate the background for the interaction between {participants} regarding {topic}.
+            You should generate the personal backgrounds and goals in this interaction.
             Use the following extra info if given: {extra_info}
+            Please use the following format:
+            {format_instructions}
         """,
         input_values=dict(
             participants=participants,
@@ -254,36 +292,51 @@ def generate_background(
 
 @beartype
 def generate_environment_response(
-    model_name: LLM_Name, history: str, action: dict[str, AgentAction]
+    model_name: LLM_Name, history: str, action_str: str
 ) -> ScriptEnvironmentResponse:
     """
-    Using langchain to generate an example episode
+    Using langchain to generate the environment response
     """
-    assert len(action) == 2
-    agent_a, agent_b = list(action.keys())
-    return generate(
-        model_name=model_name,
-        template="""
-            Here is the history of the conversation: {history},
-            At this point,
-            {agent_a} {action_a},
-            {agent_b} {action_b},
-            Is the conversation finished? How well does participants finish their goals? Please use the following format:
-            {format_instructions}
-        """,
-        input_values=dict(
-            history=history,
-            agent_a=agent_a,
-            action_a=action[agent_a].action_type
-            + " "
-            + action[agent_a].argument,
-            agent_b=agent_b,
-            action_b=action[agent_b].action_type
-            + " "
-            + action[agent_b].argument,
-        ),
-        output_struct=ScriptEnvironmentResponse,
-    )
+    try:
+        response = generate(
+            model_name=model_name,
+            template="""
+                {history},
+                {action_str},
+                Is the conversation finished? Please consider the following questions:
+                1. Is the conversation too long? (more than 30 turns)
+                2. Is any of the agents leaving the conversation?
+                3. Is the conversation stale for too long, i.e. no body is doing anythig for more than 5 turns?
+                Only when one of the above questions is answered with yes, the conversation is finished.
+                How well does participants finish their goals? Please use the following format:
+                {format_instructions}
+            """,
+            input_values=dict(
+                history=history,
+                action_str=action_str,
+            ),
+            output_struct=ScriptEnvironmentResponse,
+        )
+        response.terminated = (
+            response.conversation_too_long
+            or response.p1_leaving
+            or response.p2_leaving
+            or response.stale_too_long
+        )
+        if response.terminated:
+            log.warning(f"[green] The conversation is terminated. {response}")
+        return response
+    except Exception as e:
+        log.warning(f"[red] Failed to generate environment response. {e}")
+        return ScriptEnvironmentResponse(
+            conversation_too_long=False,
+            p1_leaving=False,
+            p2_leaving=False,
+            stale_too_long=False,
+            terminated=False,
+            p1_rate=None,
+            p2_rate=None,
+        )
 
 
 @beartype
@@ -306,7 +359,7 @@ def generate_action(
 
 
                 You are at Turn #{turn_number}. Your available action types are
-                {action_list}.
+                {action_list}. Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:
                 {format_instructions}
             """,
