@@ -1,3 +1,4 @@
+import logging
 import random
 from copy import deepcopy
 from typing import Any, Literal, TypedDict
@@ -19,6 +20,8 @@ from sotopia.generation_utils.generate import (
     process_history,
 )
 
+log = logging.getLogger("env")
+
 
 class Observation(TypedDict):
     history: str
@@ -29,7 +32,7 @@ class Observation(TypedDict):
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     action_str = ""
     for agent, action in actions.items():
-        action_str += f" {agent} {action.to_natural_language()};"
+        action_str += f"{agent} {action.to_natural_language()};"
     return action_str
 
 
@@ -94,6 +97,10 @@ class ParallelSotopiaEnv(ParallelEnv):
         else:
             self.action_mask = [True for _ in self.agents]
 
+        log.info(f"Turn {self.turn_number} begins")
+        log.info(f"Background:\n{background_for_a.to_natural_language()}")
+        log.info(f"Background:\n{background_for_b.to_natural_language()}")
+
         return {
             self.background.p1_name: Observation(
                 history=background_for_a.to_natural_language(),
@@ -157,6 +164,10 @@ class ParallelSotopiaEnv(ParallelEnv):
             ] = True
         else:
             self.action_mask = [True for _ in self.agents]
+        log.info(f"Turn #{self.turn_number}:\n{obs}")
+        log.info(
+            f"Turn #{self.turn_number}:\n{response.to_natural_language()}"
+        )
         return (
             {
                 self.background.p1_name: Observation(

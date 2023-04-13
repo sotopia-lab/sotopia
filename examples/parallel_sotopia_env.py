@@ -9,7 +9,7 @@ from sotopia.generation_utils.generate import process_history
 
 FORMAT = "%(message)s"
 logging.basicConfig(
-    level="WARNING", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+    level="INFO", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
 )
 
 env = ParallelSotopiaEnv(model_name="gpt-4")

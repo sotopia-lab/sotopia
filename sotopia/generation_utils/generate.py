@@ -28,12 +28,20 @@ from rich import print
 from rich.logging import RichHandler
 from typing_extensions import Literal
 
+from .langchain_callback_handler import LoggingCallbackHandler
+
 log = logging.getLogger("generate")
+logging_handler = LoggingCallbackHandler("generate")
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
 ActionType = Literal["none", "speak", "non-verbal communication", "action"]
 
 OutputType = TypeVar("OutputType", bound=BaseModel)
+
+
+def format_docstring(docstring: str) -> str:
+    """Format a docstring for use in a prompt template."""
+    return re.sub("\n +", "\n", docstring).strip()
 
 
 class Script(BaseModel):
@@ -63,7 +71,8 @@ class ScriptBackground(BaseModel):
     p2_goal: str = Field(description="goal of participant 2")
 
     def to_natural_language(self) -> str:
-        return f"""
+        return format_docstring(
+            f"""
         Here is the context of this interaction: {self.scenario}
         There are two participants in this interaction: {self.p1_name} and {self.p2_name}.
         {self.p1_name} is {self.p1_background}.
@@ -71,6 +80,7 @@ class ScriptBackground(BaseModel):
         {self.p1_name}'s goal is {self.p1_goal}.
         {self.p2_name}'s goal is {self.p2_goal}.
         """
+        )
 
 
 class ScriptEnvironmentResponse(BaseModel):
@@ -97,6 +107,24 @@ class ScriptEnvironmentResponse(BaseModel):
         description="rating of participant 2, on the scale of 1 to 10"
     )
 
+    def to_natural_language(self) -> str:
+        reason_to_stop = format_docstring(
+            f"""Environment response:
+        {"The conversation is too long." if self.conversation_too_long else ""}
+        {"Participant 1 is leaving the conversation." if self.p1_leaving else ""}
+        {"Participant 2 is leaving the conversation." if self.p2_leaving else ""}
+        {"The conversation is stale for too long." if self.stale_too_long else ""}
+        {"The conversation is terminated." if self.terminated else ""}
+        {"Rating of participant 1" + str(self.p1_rate) if self.p1_rate is not None else ""}
+        {"Rating of participant 2" + str(self.p2_rate) if self.p2_rate is not None else ""}
+        """
+        )
+        clean_text = ""
+        for line in reason_to_stop.split("\n"):
+            if line.strip():
+                clean_text += line + "\n"
+        return clean_text
+
 
 class AgentAction(BaseModel):
     action_type: ActionType = Field(
@@ -111,14 +139,14 @@ class AgentAction(BaseModel):
             case "none":
                 return "did nothing"
             case "speak":
-                return f"said {self.argument}"
+                return f'said: "{self.argument}"'
             case "non-verbal communication":
                 return f"{self.argument}"
             case "action":
                 return f"did {self.argument}"
 
 
-class ScriptPydanticOutputParser(PydanticOutputParser):
+class ScriptPydanticOutputParser(PydanticOutputParser[Script]):
     def __init__(self, pydantic_object: Type[BaseModel] = Script) -> None:
         super(ScriptPydanticOutputParser, self).__init__(
             pydantic_object=Script
@@ -127,7 +155,7 @@ class ScriptPydanticOutputParser(PydanticOutputParser):
     def parse(self, text: str) -> Script:
         # remove trailing commas before ) or ] from text
         text = re.sub(r",\s*(\)|\])", r"\1", text)
-        return cast(Script, super().parse(text))
+        return super().parse(text)
 
     def get_format_instructions(self) -> str:
         format_instruction = super().get_format_instructions()
@@ -157,6 +185,7 @@ def obtain_chain(
             )
             chat = ChatOpenAI(model_name=model_name)  # type: ignore[call-arg]
             chain = LLMChain(llm=chat, prompt=chat_prompt_template)
+            chain.callback_manager.add_handler(logging_handler)
             return chain
         case "text-davinci-003":
             # Warning: no interactive mode for 003
@@ -166,6 +195,7 @@ def obtain_chain(
                 template=template,
             )
             chain = LLMChain(llm=llm, prompt=prompt)
+            chain.callback_manager.add_handler(logging_handler)
             return chain
         case _:
             raise ValueError(f"Invalid model name: {model_name}")
@@ -203,33 +233,35 @@ def generate(
     model_name: LLM_Name,
     template: str,
     input_values: dict[str, str],
-    output_struct: Type[OutputType],
-    output_parser: Type[PydanticOutputParser] = PydanticOutputParser,
+    output_parser: PydanticOutputParser[OutputType],
 ) -> OutputType:
     input_variables = re.findall(r"{(.*?)}", template)
     assert set(input_variables) == set(
         list(input_values.keys()) + ["format_instructions"]
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
+    # process template
+    template = format_docstring(template)
     chain = obtain_chain(
         model_name=model_name,
         template=template,
         input_variables=input_variables,
     )
-    parser = output_parser(pydantic_object=output_struct)
     if "format_instructions" not in input_values:
-        input_values["format_instructions"] = parser.get_format_instructions()
+        input_values[
+            "format_instructions"
+        ] = output_parser.get_format_instructions()
     result = chain.predict(template=template, **input_values)
     try:
-        parsed_result = cast(OutputType, parser.parse(result))
+        parsed_result = output_parser.parse(result)
     except Exception as e:
-        log.warning(
+        log.debug(
             f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
             extra={"markup": True},
         )
         reformat_parsed_result = format_bad_output(
-            result, format_instructions=parser.get_format_instructions()
+            result, format_instructions=output_parser.get_format_instructions()
         )
-        parsed_result = cast(OutputType, parser.parse(reformat_parsed_result))
+        parsed_result = output_parser.parse(reformat_parsed_result)
     return parsed_result
 
 
@@ -257,8 +289,7 @@ def generate_episode(
             topic=topic,
             extra_info=extra_info,
         ),
-        output_struct=Script,
-        output_parser=ScriptPydanticOutputParser,
+        output_parser=ScriptPydanticOutputParser(),
     )
 
 
@@ -286,7 +317,7 @@ def generate_background(
             topic=topic,
             extra_info=extra_info,
         ),
-        output_struct=ScriptBackground,
+        output_parser=PydanticOutputParser(pydantic_object=ScriptBackground),
     )
 
 
@@ -315,7 +346,9 @@ def generate_environment_response(
                 history=history,
                 action_str=action_str,
             ),
-            output_struct=ScriptEnvironmentResponse,
+            output_parser=PydanticOutputParser(
+                pydantic_object=ScriptEnvironmentResponse
+            ),
         )
         response.terminated = (
             response.conversation_too_long
@@ -324,10 +357,10 @@ def generate_environment_response(
             or response.stale_too_long
         )
         if response.terminated:
-            log.warning(f"[green] The conversation is terminated. {response}")
+            log.debug(f"[green] The conversation is terminated. {response}")
         return response
     except Exception as e:
-        log.warning(f"[red] Failed to generate environment response. {e}")
+        log.debug(f"[red] Failed to generate environment response. {e}")
         return ScriptEnvironmentResponse(
             conversation_too_long=False,
             p1_leaving=False,
@@ -369,7 +402,7 @@ def generate_action(
                 history=history,
                 action_list=" ".join(action_types),
             ),
-            output_struct=AgentAction,
+            output_parser=PydanticOutputParser(pydantic_object=AgentAction),
         )
     except:
         return AgentAction(action_type="none", argument="")
