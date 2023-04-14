@@ -8,10 +8,11 @@ from sotopia.agents.llm_agent import Agents, LLMAgent
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import process_history
 
-FORMAT = "%(message)s"
+# date and message only
+FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 
 logging.basicConfig(
-    level="INFO",
+    level=15,
     format=FORMAT,
     datefmt="[%X]",
     handlers=[

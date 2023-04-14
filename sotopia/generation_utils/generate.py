@@ -5,6 +5,7 @@ from typing import TypeVar, cast
 import langchain
 from beartype import beartype
 from beartype.typing import Type
+from langchain.callbacks import get_callback_manager
 from langchain.chains import (
     ConversationChain,
     LLMChain,
@@ -31,7 +32,8 @@ from typing_extensions import Literal
 from .langchain_callback_handler import LoggingCallbackHandler
 
 log = logging.getLogger("generate")
-logging_handler = LoggingCallbackHandler("generate")
+logging_handler = LoggingCallbackHandler("langchain")
+get_callback_manager().add_handler(logging_handler)
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
 ActionType = Literal["none", "speak", "non-verbal communication", "action"]
@@ -185,7 +187,6 @@ def obtain_chain(
             )
             chat = ChatOpenAI(model_name=model_name)  # type: ignore[call-arg]
             chain = LLMChain(llm=chat, prompt=chat_prompt_template)
-            chain.callback_manager.add_handler(logging_handler)
             return chain
         case "text-davinci-003":
             # Warning: no interactive mode for 003
@@ -195,7 +196,6 @@ def obtain_chain(
                 template=template,
             )
             chain = LLMChain(llm=llm, prompt=prompt)
-            chain.callback_manager.add_handler(logging_handler)
             return chain
         case _:
             raise ValueError(f"Invalid model name: {model_name}")
