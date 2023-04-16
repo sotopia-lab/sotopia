@@ -7,6 +7,7 @@ from rich.logging import RichHandler
 from sotopia.agents.llm_agent import Agents, LLMAgent
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import process_history
+from sotopia.sync_server import run_sync_server
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -21,17 +22,8 @@ logging.basicConfig(
     ],
 )
 
-env = ParallelSotopiaEnv(
+messages = run_sync_server(
     model_name="gpt-3.5-turbo", action_order="round-robin"
 )
-obs = env.reset()
-agents = Agents()
-for agent_name in env.agents:
-    agents[agent_name] = LLMAgent(agent_name)
-
-agents.reset()
-done = False
-while not done:
-    actions = agents.act(obs)
-    obs, _, terminated, ___, ____ = env.step(actions)
-    done = all(terminated.values())
+for sender, receiver, message in messages:
+    print(sender, receiver, message.to_natural_language())

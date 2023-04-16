@@ -29,6 +29,14 @@ from rich import print
 from rich.logging import RichHandler
 from typing_extensions import Literal
 
+from sotopia.messages import (
+    ActionType,
+    AgentAction,
+    ScriptBackground,
+    ScriptEnvironmentResponse,
+)
+from sotopia.utils import format_docstring
+
 from .langchain_callback_handler import LoggingCallbackHandler
 
 log = logging.getLogger("generate")
@@ -36,14 +44,8 @@ logging_handler = LoggingCallbackHandler("langchain")
 get_callback_manager().add_handler(logging_handler)
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
-ActionType = Literal["none", "speak", "non-verbal communication", "action"]
 
 OutputType = TypeVar("OutputType", bound=BaseModel)
-
-
-def format_docstring(docstring: str) -> str:
-    """Format a docstring for use in a prompt template."""
-    return re.sub("\n +", "\n", docstring).strip()
 
 
 class Script(BaseModel):
@@ -61,91 +63,6 @@ class Script(BaseModel):
     p2_rate: int = Field(
         description="rating of participant 2, on the scale of 1 to 10"
     )
-
-
-class ScriptBackground(BaseModel):
-    scenario: str = Field(description="scenario of the episode")
-    p1_name: str = Field(description="name of participant 1")
-    p2_name: str = Field(description="name of participant 2")
-    p1_background: str = Field(description="background of participant 1")
-    p2_background: str = Field(description="background of participant 2")
-    p1_goal: str = Field(description="goal of participant 1")
-    p2_goal: str = Field(description="goal of participant 2")
-
-    def to_natural_language(self) -> str:
-        return format_docstring(
-            f"""
-        Here is the context of this interaction: {self.scenario}
-        There are two participants in this interaction: {self.p1_name} and {self.p2_name}.
-        {self.p1_name} is {self.p1_background}.
-        {self.p2_name} is {self.p2_background}.
-        {self.p1_name}'s goal is {self.p1_goal}.
-        {self.p2_name}'s goal is {self.p2_goal}.
-        """
-        )
-
-
-class ScriptEnvironmentResponse(BaseModel):
-    conversation_too_long: bool = Field(
-        description="whether the conversation is too long"
-    )
-    p1_leaving: bool = Field(
-        description="whether participant 1 is leaving the conversation"
-    )
-    p2_leaving: bool = Field(
-        description="whether participant 2 is leaving the conversation"
-    )
-    stale_too_long: bool = Field(
-        description="whether the conversation is stale for too long"
-    )
-    terminated: bool = Field(
-        description="whether the conversation is terminated",
-        default_factory=lambda: False,
-    )
-    p1_rate: int | None = Field(
-        description="rating of participant 1, on the scale of 1 to 10"
-    )
-    p2_rate: int | None = Field(
-        description="rating of participant 2, on the scale of 1 to 10"
-    )
-
-    def to_natural_language(self) -> str:
-        reason_to_stop = format_docstring(
-            f"""Environment response:
-        {"The conversation is too long." if self.conversation_too_long else ""}
-        {"Participant 1 is leaving the conversation." if self.p1_leaving else ""}
-        {"Participant 2 is leaving the conversation." if self.p2_leaving else ""}
-        {"The conversation is stale for too long." if self.stale_too_long else ""}
-        {"The conversation is terminated." if self.terminated else ""}
-        {"Rating of participant 1" + str(self.p1_rate) if self.p1_rate is not None else ""}
-        {"Rating of participant 2" + str(self.p2_rate) if self.p2_rate is not None else ""}
-        """
-        )
-        clean_text = ""
-        for line in reason_to_stop.split("\n"):
-            if line.strip():
-                clean_text += line + "\n"
-        return clean_text
-
-
-class AgentAction(BaseModel):
-    action_type: ActionType = Field(
-        description="whether to speak at this turn or choose to not do anything"
-    )
-    argument: str = Field(
-        description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
-    )
-
-    def to_natural_language(self) -> str:
-        match self.action_type:
-            case "none":
-                return "did nothing"
-            case "speak":
-                return f'said: "{self.argument}"'
-            case "non-verbal communication":
-                return f"{self.argument}"
-            case "action":
-                return f"did {self.argument}"
 
 
 class ScriptPydanticOutputParser(PydanticOutputParser[Script]):
@@ -323,7 +240,7 @@ def generate_background(
 
 @beartype
 def generate_environment_response(
-    model_name: LLM_Name, history: str, action_str: str
+    model_name: LLM_Name, history: str
 ) -> ScriptEnvironmentResponse:
     """
     Using langchain to generate the environment response
@@ -333,7 +250,6 @@ def generate_environment_response(
             model_name=model_name,
             template="""
                 {history},
-                {action_str},
                 Is the conversation finished? Please consider the following questions:
                 1. Is the conversation too long? (more than 30 turns)
                 2. Is any of the agents leaving the conversation?
@@ -344,7 +260,6 @@ def generate_environment_response(
             """,
             input_values=dict(
                 history=history,
-                action_str=action_str,
             ),
             output_parser=PydanticOutputParser(
                 pydantic_object=ScriptEnvironmentResponse
@@ -377,7 +292,7 @@ def generate_action(
     model_name: LLM_Name,
     history: str,
     turn_number: int,
-    action_types: list[str],
+    action_types: list[ActionType],
     agent: str,
 ) -> AgentAction:
     """

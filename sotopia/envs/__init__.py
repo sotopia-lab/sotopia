@@ -1,3 +1,3 @@
-from .parallel import Observation, ParallelSotopiaEnv
+from .parallel import ParallelSotopiaEnv
 
-__all__ = ["ParallelSotopiaEnv", "Observation"]
+__all__ = ["ParallelSotopiaEnv"]

@@ -1,10 +1,6 @@
 from sotopia.agents import BaseAgent
-from sotopia.envs import Observation
-from sotopia.generation_utils.generate import (
-    AgentAction,
-    LLM_Name,
-    generate_action,
-)
+from sotopia.generation_utils.generate import LLM_Name, generate_action
+from sotopia.messages import AgentAction, Message, Observation
 
 
 class LLMAgent(BaseAgent[Observation, AgentAction]):
@@ -13,34 +9,27 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     ) -> None:
         super().__init__(agent_name=agent_name)
         self.model_name = model_name
-        self.history: list[str] = []
+        self.inbox: list[tuple[str, Message]] = []
 
     def reset(self) -> None:
-        self.history = []
+        self.inbox = []
 
-    def _prompt_generate(self) -> str:
-        return " ".join(self.history)
+    def recv_message(self, source: str, message: Message) -> None:
+        self.inbox.append((source, message))
 
     def act(self, obs: Observation) -> AgentAction:
-        if obs["turn_number"] == 0:
-            self.history.append(
-                f"Here is the background for the conversation:\n{obs['history']}"
-            )
-            self.history.append("Conversation Start:\n")
-        else:
-            self.history.append(f"Turn #{obs['turn_number']-1}:")
-            self.history.append(obs["history"])
-        if (
-            len(obs["available_actions"]) == 1
-            and "none" in obs["available_actions"]
-        ):
+        self.recv_message("Environment", obs)
+
+        if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="")
         else:
             action = generate_action(
                 self.model_name,
-                history="\n".join(self.history),
-                turn_number=obs["turn_number"],
-                action_types=obs["available_actions"],
+                history="\n".join(
+                    f"{x}: {y.to_natural_language()}" for x, y in self.inbox
+                ),
+                turn_number=obs.turn_number,
+                action_types=obs.available_actions,
                 agent=self.agent_name,
             )
             return action

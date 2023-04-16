@@ -11,22 +11,21 @@ from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
 
 from sotopia.generation_utils.generate import (
-    ActionType,
-    AgentAction,
     LLM_Name,
-    ScriptBackground,
     generate_background,
     generate_environment_response,
     process_history,
 )
+from sotopia.messages import (
+    ActionType,
+    AgentAction,
+    Message,
+    Observation,
+    ScriptBackground,
+    SimpleMessage,
+)
 
 log = logging.getLogger("env")
-
-
-class Observation(TypedDict):
-    history: str
-    turn_number: int
-    available_actions: list[str]
 
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
@@ -59,12 +58,15 @@ class ParallelSotopiaEnv(ParallelEnv):
             p2_name="",
         )
 
-        self.history: list[str] = []
+        self.inbox: list[tuple[str, Message]] = []
         self.agents = []
         self.action_spaces = {}
         self.available_action_types = list(available_action_types)
         self.action_order = action_order
         self.action_mask: list[bool] = []
+
+    def recv_message(self, source: str, message: Message) -> None:
+        self.inbox.append((source, message))
 
     def reset(
         self,
@@ -97,20 +99,22 @@ class ParallelSotopiaEnv(ParallelEnv):
         else:
             self.action_mask = [True for _ in self.agents]
 
+        self.recv_message("Environment", self.background)
+
         log.info(f"Turn {self.turn_number} begins")
         log.info(f"Background:\n{background_for_a.to_natural_language()}")
         log.info(f"Background:\n{background_for_b.to_natural_language()}")
 
         return {
             self.background.p1_name: Observation(
-                history=background_for_a.to_natural_language(),
+                last_turn=background_for_a.to_natural_language(),
                 turn_number=0,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[0]
                 else ["none"],
             ),
             self.background.p2_name: Observation(
-                history=background_for_b.to_natural_language(),
+                last_turn=background_for_b.to_natural_language(),
                 turn_number=0,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[1]
@@ -128,9 +132,11 @@ class ParallelSotopiaEnv(ParallelEnv):
         dict[str, bool],
         dict[str, dict[Any, Any]],
     ]:
+        # Time step ++
         self.turn_number += 1
-        complied_actions: dict[str, AgentAction] = {}
+
         # For action sampled from action space, it needs to be converted into AgentAction
+        complied_actions: dict[str, AgentAction] = {}
         for key in actions.keys():
             action = actions[key]
             if isinstance(action, AgentAction):
@@ -140,21 +146,32 @@ class ParallelSotopiaEnv(ParallelEnv):
                     int(action["action_type"])
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
+
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
                 complied_actions[agent] = AgentAction(
                     action_type="none", argument=""
                 )
-        obs = _actions_to_natural_language(complied_actions)
+
+        self.recv_message(
+            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
+        )
+        for agent, action in complied_actions.items():
+            self.recv_message(agent, action)
+
         response = generate_environment_response(
             self.model_name,
-            self.background.to_natural_language()
-            + "\n"
-            + "\n".join([str(x) for x in self.history]),
-            obs,
+            "\n".join(
+                [
+                    f"{x}: {y.to_natural_language()}"
+                    if x != "Environment"
+                    else y.to_natural_language()
+                    for x, y in self.inbox
+                ]
+            ),
         )
-        self.history.append(f"Turn #{self.turn_number}:\n{obs}")
+
         self.action_mask = [False for _ in self.agents]
         if self.action_order == "round-robin":
             self.action_mask[self.turn_number % len(self.action_mask)] = True
@@ -164,6 +181,7 @@ class ParallelSotopiaEnv(ParallelEnv):
             ] = True
         else:
             self.action_mask = [True for _ in self.agents]
+        obs = _actions_to_natural_language(complied_actions)
         log.info(f"Turn #{self.turn_number}:\n{obs}")
         log.info(
             f"Turn #{self.turn_number}:\n{response.to_natural_language()}"
@@ -171,14 +189,14 @@ class ParallelSotopiaEnv(ParallelEnv):
         return (
             {
                 self.background.p1_name: Observation(
-                    history=obs,
+                    last_turn=obs,
                     turn_number=self.turn_number,
                     available_actions=list(self.available_action_types)
                     if self.action_mask[0]
                     else ["none"],
                 ),
                 self.background.p2_name: Observation(
-                    history=obs,
+                    last_turn=obs,
                     turn_number=self.turn_number,
                     available_actions=list(self.available_action_types)
                     if self.action_mask[1]
