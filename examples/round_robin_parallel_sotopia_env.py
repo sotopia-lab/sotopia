@@ -18,12 +18,13 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[
         RichHandler(),
-        FileHandler("./logs/round_robin_parallel_sotopia_env.log"),
+        FileHandler("./logs/round_robin_parallel_sotopia_env_2.log"),
     ],
 )
 
 messages = run_sync_server(
     model_name="gpt-3.5-turbo", action_order="round-robin"
 )
-for sender, receiver, message in messages:
-    print(sender, receiver, message.to_natural_language())
+for index, (sender, receiver, message) in enumerate(messages):
+    if sender == "Environment" and index % 2 == 0:
+        print(message.to_natural_language())

@@ -29,9 +29,11 @@ from rich import print
 from rich.logging import RichHandler
 from typing_extensions import Literal
 
+from sotopia.envs.utils import RuleBasedResponse
 from sotopia.messages import (
     ActionType,
     AgentAction,
+    Message,
     ScriptBackground,
     ScriptEnvironmentResponse,
 )
@@ -142,6 +144,7 @@ def format_bad_output(
         "format_instructions": format_instructions,
     }
     reformat = chain.predict(template=template, **input_values)
+    log.info(f"Reformated output: {reformat}")
     return reformat
 
 
@@ -155,6 +158,8 @@ def generate(
     input_variables = re.findall(r"{(.*?)}", template)
     assert set(input_variables) == set(
         list(input_values.keys()) + ["format_instructions"]
+    ) or set(input_variables) == set(
+        list(input_values.keys())
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
     # process template
     template = format_docstring(template)
@@ -179,6 +184,7 @@ def generate(
             result, format_instructions=output_parser.get_format_instructions()
         )
         parsed_result = output_parser.parse(reformat_parsed_result)
+    log.info(f"Generated result: {parsed_result}")
     return parsed_result
 
 
@@ -239,8 +245,40 @@ def generate_background(
 
 
 @beartype
+def produce_environment_response(
+    model_name: LLM_Name,
+    stop_criteria: RuleBasedResponse,
+    turn_number: int,
+    message_box: list[tuple[str, Message]],
+) -> ScriptEnvironmentResponse:
+    initial_response = ScriptEnvironmentResponse(
+        conversation_too_long=False,
+        p1_leaving=False,
+        p2_leaving=False,
+        stale_too_long=False,
+        terminated=False,
+        p1_rate=None,
+        p2_rate=None,
+    )
+    response = stop_criteria(turn_number, message_box, initial_response)
+    response = generate_environment_response(
+        model_name,
+        "\n".join(
+            [
+                f"{x}: {y.to_natural_language()}"
+                if x != "Environment"
+                else y.to_natural_language()
+                for x, y in message_box
+            ]
+        ),
+        str(response.json()),
+    )
+    return response
+
+
+@beartype
 def generate_environment_response(
-    model_name: LLM_Name, history: str
+    model_name: LLM_Name, history: str, previous_response: str = ""
 ) -> ScriptEnvironmentResponse:
     """
     Using langchain to generate the environment response
@@ -250,16 +288,13 @@ def generate_environment_response(
             model_name=model_name,
             template="""
                 {history},
-                Is the conversation finished? Please consider the following questions:
-                1. Is the conversation too long? (more than 30 turns)
-                2. Is any of the agents leaving the conversation?
-                3. Is the conversation stale for too long, i.e. no body is doing anythig for more than 5 turns?
-                Only when one of the above questions is answered with yes, the conversation is finished.
-                How well does participants finish their goals? Please use the following format:
-                {format_instructions}
+                How well do participants achieve their goals (give scores on a scale of 1-10)?
+                Turn the answers into a JSON format by replacing the "null" with the correct values):
+                {previous_response}
             """,
             input_values=dict(
                 history=history,
+                previous_response=previous_response,
             ),
             output_parser=PydanticOutputParser(
                 pydantic_object=ScriptEnvironmentResponse

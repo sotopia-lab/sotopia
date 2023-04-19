@@ -1,4 +1,4 @@
-import logging
+import json
 import random
 from copy import deepcopy
 from typing import Any, Literal, TypedDict
@@ -15,6 +15,7 @@ from sotopia.generation_utils.generate import (
     generate_background,
     generate_environment_response,
     process_history,
+    produce_environment_response,
 )
 from sotopia.messages import (
     ActionType,
@@ -22,10 +23,11 @@ from sotopia.messages import (
     Message,
     Observation,
     ScriptBackground,
+    ScriptEnvironmentResponse,
     SimpleMessage,
 )
 
-log = logging.getLogger("env")
+from .utils import RuleBasedResponse
 
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
@@ -64,6 +66,7 @@ class ParallelSotopiaEnv(ParallelEnv):
         self.available_action_types = list(available_action_types)
         self.action_order = action_order
         self.action_mask: list[bool] = []
+        self.stop_criteria = RuleBasedResponse()
 
     def recv_message(self, source: str, message: Message) -> None:
         self.inbox.append((source, message))
@@ -100,10 +103,6 @@ class ParallelSotopiaEnv(ParallelEnv):
             self.action_mask = [True for _ in self.agents]
 
         self.recv_message("Environment", self.background)
-
-        log.info(f"Turn {self.turn_number} begins")
-        log.info(f"Background:\n{background_for_a.to_natural_language()}")
-        log.info(f"Background:\n{background_for_b.to_natural_language()}")
 
         return {
             self.background.p1_name: Observation(
@@ -160,16 +159,11 @@ class ParallelSotopiaEnv(ParallelEnv):
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
 
-        response = generate_environment_response(
-            self.model_name,
-            "\n".join(
-                [
-                    f"{x}: {y.to_natural_language()}"
-                    if x != "Environment"
-                    else y.to_natural_language()
-                    for x, y in self.inbox
-                ]
-            ),
+        response = produce_environment_response(
+            model_name=self.model_name,
+            stop_criteria=self.stop_criteria,
+            turn_number=self.turn_number,
+            message_box=self.inbox,
         )
 
         self.action_mask = [False for _ in self.agents]
@@ -182,10 +176,6 @@ class ParallelSotopiaEnv(ParallelEnv):
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
-        log.info(f"Turn #{self.turn_number}:\n{obs}")
-        log.info(
-            f"Turn #{self.turn_number}:\n{response.to_natural_language()}"
-        )
         return (
             {
                 self.background.p1_name: Observation(

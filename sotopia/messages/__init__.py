@@ -37,7 +37,7 @@ class Observation(Message):
 
     def to_natural_language(self) -> str:
         if self.turn_number == 0:
-            return f"Here is the background:\n{self.last_turn}\nConversation Starts:\nThe available actions are: {', '.join(self.available_actions)}\n"
+            return f"\n{self.last_turn}\nConversation Starts:\nThe available actions are: {', '.join(self.available_actions)}\n"
         else:
             return f"Turn #{self.turn_number-1}: {self.last_turn}\nThe available actions are: {', '.join(self.available_actions)}\n"
 
@@ -53,13 +53,13 @@ class ScriptBackground(Message):
 
     def to_natural_language(self) -> str:
         return format_docstring(
-            f"""
-        Here is the context of this interaction: {self.scenario}
-        There are two participants in this interaction: {self.p1_name} and {self.p2_name}.
-        {self.p1_name} is {self.p1_background}.
-        {self.p2_name} is {self.p2_background}.
-        {self.p1_name}'s goal is {self.p1_goal}.
-        {self.p2_name}'s goal is {self.p2_goal}.
+            f"""Here is the context of this interaction:
+        Scenario: {self.scenario}
+        Participants: {self.p1_name} and {self.p2_name}
+        {self.p1_name}'s background: {self.p1_background}
+        {self.p2_name}'s background: {self.p2_background}
+        {self.p1_name}'s goal: {self.p1_goal}
+        {self.p2_name}'s goal: {self.p2_goal}
         """
         )
 
@@ -122,6 +122,6 @@ class AgentAction(Message):
             case "speak":
                 return f'said: "{self.argument}"'
             case "non-verbal communication":
-                return f"{self.argument}"
+                return f"[{self.action_type}] {self.argument}"
             case "action":
-                return f"did {self.argument}"
+                return f"[{self.action_type}] {self.argument}"
