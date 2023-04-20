@@ -1,9 +1,6 @@
+from sotopia.envs import produce_environment_response
 from sotopia.envs.utils import RuleBasedResponse
-from sotopia.generation_utils import (
-    Script,
-    generate_episode,
-    produce_environment_response,
-)
+from sotopia.generation_utils import Script, generate_episode
 from sotopia.messages import ScriptEnvironmentResponse
 
 

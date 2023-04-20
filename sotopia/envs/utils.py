@@ -1,5 +1,9 @@
 from beartype import beartype
 
+from sotopia.generation_utils.generate import (
+    LLM_Name,
+    generate_environment_response,
+)
 from sotopia.messages import Message, ScriptEnvironmentResponse
 
 
@@ -47,3 +51,35 @@ class RuleBasedResponse:
                 initial_response.stale_too_long = True
                 initial_response.terminated = True
         return initial_response
+
+
+@beartype
+def produce_environment_response(
+    model_name: LLM_Name,
+    stop_criteria: RuleBasedResponse,
+    turn_number: int,
+    message_box: list[tuple[str, Message]],
+) -> ScriptEnvironmentResponse:
+    initial_response = ScriptEnvironmentResponse(
+        conversation_too_long=False,
+        p1_leaving=False,
+        p2_leaving=False,
+        stale_too_long=False,
+        terminated=False,
+        p1_rate=None,
+        p2_rate=None,
+    )
+    response = stop_criteria(turn_number, message_box, initial_response)
+    response = generate_environment_response(
+        model_name,
+        "\n".join(
+            [
+                f"{x}: {y.to_natural_language()}"
+                if x != "Environment"
+                else y.to_natural_language()
+                for x, y in message_box
+            ]
+        ),
+        str(response.json()),
+    )
+    return response

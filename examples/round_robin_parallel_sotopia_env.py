@@ -4,8 +4,6 @@ from logging import FileHandler
 from rich import print
 from rich.logging import RichHandler
 
-from sotopia.agents.llm_agent import Agents, LLMAgent
-from sotopia.envs import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import process_history
 from sotopia.sync_server import run_sync_server
 

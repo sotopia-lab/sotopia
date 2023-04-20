@@ -2,22 +2,13 @@ import logging
 import re
 from typing import TypeVar, cast
 
-import langchain
 from beartype import beartype
 from beartype.typing import Type
 from langchain.callbacks import get_callback_manager
-from langchain.chains import (
-    ConversationChain,
-    LLMChain,
-    SimpleSequentialChain,
-)
+from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
-from langchain.memory import ConversationBufferMemory
-from langchain.output_parsers import (
-    PydanticOutputParser,
-    RetryWithErrorOutputParser,
-)
+from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -29,11 +20,9 @@ from rich import print
 from rich.logging import RichHandler
 from typing_extensions import Literal
 
-from sotopia.envs.utils import RuleBasedResponse
 from sotopia.messages import (
     ActionType,
     AgentAction,
-    Message,
     ScriptBackground,
     ScriptEnvironmentResponse,
 )
@@ -242,38 +231,6 @@ def generate_background(
         ),
         output_parser=PydanticOutputParser(pydantic_object=ScriptBackground),
     )
-
-
-@beartype
-def produce_environment_response(
-    model_name: LLM_Name,
-    stop_criteria: RuleBasedResponse,
-    turn_number: int,
-    message_box: list[tuple[str, Message]],
-) -> ScriptEnvironmentResponse:
-    initial_response = ScriptEnvironmentResponse(
-        conversation_too_long=False,
-        p1_leaving=False,
-        p2_leaving=False,
-        stale_too_long=False,
-        terminated=False,
-        p1_rate=None,
-        p2_rate=None,
-    )
-    response = stop_criteria(turn_number, message_box, initial_response)
-    response = generate_environment_response(
-        model_name,
-        "\n".join(
-            [
-                f"{x}: {y.to_natural_language()}"
-                if x != "Environment"
-                else y.to_natural_language()
-                for x, y in message_box
-            ]
-        ),
-        str(response.json()),
-    )
-    return response
 
 
 @beartype

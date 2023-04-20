@@ -4,26 +4,19 @@ from copy import deepcopy
 from typing import Any, Literal, TypedDict
 
 from beartype import beartype
-from beartype.door import is_bearable
 from gymnasium.spaces.dict import Dict
 from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
 
-from sotopia.generation_utils.generate import (
-    LLM_Name,
-    generate_background,
-    generate_environment_response,
-    process_history,
-    produce_environment_response,
-)
+from sotopia.envs.utils import produce_environment_response
+from sotopia.generation_utils import LLM_Name, generate_background
 from sotopia.messages import (
     ActionType,
     AgentAction,
     Message,
     Observation,
     ScriptBackground,
-    ScriptEnvironmentResponse,
     SimpleMessage,
 )
 
