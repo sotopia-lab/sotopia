@@ -93,12 +93,12 @@ def obtain_chain(
             chat_prompt_template = ChatPromptTemplate.from_messages(
                 [human_message_prompt]
             )
-            chat = ChatOpenAI(model_name=model_name)  # type: ignore[call-arg]
+            chat = ChatOpenAI(model_name=model_name)
             chain = LLMChain(llm=chat, prompt=chat_prompt_template)
             return chain
         case "text-davinci-003":
             # Warning: no interactive mode for 003
-            llm = OpenAI(model_name=model_name)  # type: ignore[call-arg]
+            llm = OpenAI(model_name=model_name)
             prompt = PromptTemplate(
                 input_variables=input_variables,
                 template=template,
@@ -262,7 +262,7 @@ def generate_environment_response(
     Using langchain to generate the environment response
     """
     try:
-        response = generate(
+        response: ScriptEnvironmentResponse = generate(
             model_name=model_name,
             template="""
                 {history},
