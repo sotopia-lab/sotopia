@@ -1,4 +1,5 @@
 from sotopia.envs import ParallelSotopiaEnv
+from sotopia.messages import ScriptBackground
 
 
 def test_parallel_sotopia_env() -> None:
@@ -15,3 +16,13 @@ def test_parallel_sotopia_env() -> None:
         )
         if not max_steps:
             break
+
+
+def test_fillin_the_background() -> None:
+    env = ParallelSotopiaEnv()
+    env.reset(
+        options={"partial_background_file": "tests/envs/test_background.json"}
+    )
+    background = env.background
+    assert isinstance(background, ScriptBackground)
+    assert background.scenario != "<missing_info>"

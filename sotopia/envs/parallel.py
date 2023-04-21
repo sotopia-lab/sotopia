@@ -1,6 +1,7 @@
 import json
 import random
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Literal, TypedDict
 
 from beartype import beartype
@@ -10,7 +11,11 @@ from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
 
 from sotopia.envs.utils import produce_environment_response
-from sotopia.generation_utils import LLM_Name, generate_background
+from sotopia.generation_utils import (
+    LLM_Name,
+    fill_in_background,
+    generate_background,
+)
 from sotopia.messages import (
     ActionType,
     AgentAction,
@@ -41,6 +46,13 @@ class ParallelSotopiaEnv(ParallelEnv):
         ] = "simutaneous",
         model_name: LLM_Name = "gpt-3.5-turbo",
     ) -> None:
+        """A sotopia environment for parallel agents.
+
+        Args:
+            available_action_types (set[ActionType], optional): The action types that are available to the agents. Defaults to set(["none", "speak", "non-verbal communication", "action"]).
+            action_order (Literal["simutaneous", "round-robin", "random"], optional): The order in which the agents take actions. Defaults to "simutaneous".
+            model_name (LLM_Name, optional): The name of the language model to use. Defaults to "gpt-3.5-turbo".
+        """
         super().__init__()
         self.model_name = model_name
         self.background = ScriptBackground(
@@ -69,7 +81,23 @@ class ParallelSotopiaEnv(ParallelEnv):
         seed: int | None = None,
         options: dict[str, str] | None = None,
     ) -> dict[str, Observation]:
-        self.background = generate_background(model_name=self.model_name)
+        """Starting a new episode. Must be called before step().
+
+        Args:
+            seed (int, optional): Seed for the environment. Defaults to None. Not used right now.
+            options (dict, optional): Options for the environment. Defaults to None.
+                "partial_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound can be incompleted ("unknown" for missing parts), and the missing parts will be filled in by the environment.
+        """
+        if options and "partial_background_file" in options:
+            # load pydantic background from json file
+            self.background = ScriptBackground.parse_file(
+                Path(options["partial_background_file"])
+            )
+            self.background = fill_in_background(
+                self.model_name, self.background
+            )
+        else:
+            self.background = generate_background(model_name=self.model_name)
         background_for_a = deepcopy(self.background)
         background_for_b = deepcopy(self.background)
         background_for_a.p2_goal = "Unknown"

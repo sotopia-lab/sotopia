@@ -217,17 +217,38 @@ def generate_background(
     """
     return generate(
         model_name=model_name,
-        template="""
-            Please generate the background for the interaction between {participants} regarding {topic}.
+        template="""Please generate the background for the interaction between {participants} regarding {topic}.
             You should generate the personal backgrounds and goals in this interaction.
             Use the following extra info if given: {extra_info}
             Please use the following format:
             {format_instructions}
-        """,
+            """,
         input_values=dict(
             participants=participants,
             topic=topic,
             extra_info=extra_info,
+        ),
+        output_parser=PydanticOutputParser(pydantic_object=ScriptBackground),
+    )
+
+
+@beartype
+def fill_in_background(
+    model_name: LLM_Name,
+    partial_background: ScriptBackground,
+) -> ScriptBackground:
+    """
+    Fill in the missing information of the background
+    """
+    return generate(
+        model_name=model_name,
+        template="""Please fill in all missing information of the given background, don't leave any <missing_info> tag:
+            {partial_background}
+            Please use the following format:
+            {format_instructions}
+            """,
+        input_values=dict(
+            partial_background=partial_background.to_natural_language(),
         ),
         output_parser=PydanticOutputParser(pydantic_object=ScriptBackground),
     )
@@ -296,7 +317,6 @@ def generate_action(
             template="""
                 You are {agent}.
                 {history}
-
 
                 You are at Turn #{turn_number}. Your available action types are
                 {action_list}. Please only generate a JSON string including the action type and the argument.

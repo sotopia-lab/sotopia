@@ -9,13 +9,19 @@ from sotopia.messages import AgentAction, Message
 def run_sync_server(
     model_name: LLM_Name,
     action_order: Literal["simutaneous", "round-robin", "random"],
+    partial_background_file: str | None = None,
 ) -> list[tuple[str, str, Message]]:
 
     # Create Environment and agents
     # This step will be moved to outside this function
 
     env = ParallelSotopiaEnv(model_name=model_name, action_order=action_order)
-    environment_messages = env.reset()
+    if partial_background_file:
+        environment_messages = env.reset(
+            options={"partial_background_file": partial_background_file}
+        )
+    else:
+        environment_messages = env.reset()
     agents = Agents()
     for agent_name in env.agents:
         agents[agent_name] = LLMAgent(agent_name)
