@@ -34,7 +34,7 @@ log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
 get_callback_manager().add_handler(logging_handler)
 
-LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4"]
+LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4", "human"]
 
 OutputType = TypeVar("OutputType", bound=BaseModel)
 

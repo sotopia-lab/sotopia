@@ -9,13 +9,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     ) -> None:
         super().__init__(agent_name=agent_name)
         self.model_name = model_name
-        self.inbox: list[tuple[str, Message]] = []
-
-    def reset(self) -> None:
-        self.inbox = []
-
-    def recv_message(self, source: str, message: Message) -> None:
-        self.inbox.append((source, message))
 
     def act(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
@@ -35,7 +28,28 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             return action
 
 
-class Agents(dict[str, LLMAgent]):
+class HumanAgent(BaseAgent[Observation, AgentAction]):
+    """
+    A human agent that takes input from the command line.
+    """
+
+    def __init__(self, agent_name: str) -> None:
+        super().__init__(agent_name=agent_name)
+
+    def act(self, obs: Observation) -> AgentAction:
+        self.recv_message("Environment", obs)
+
+        print("Available actions:")
+        for i, action in enumerate(obs.available_actions):
+            print(f"{i}: {action}")
+
+        action_type = obs.available_actions[int(input("Action type: "))]
+        argument = input("Argument: ")
+
+        return AgentAction(action_type=action_type, argument=argument)
+
+
+class Agents(dict[str, LLMAgent | HumanAgent]):
     def reset(self) -> None:
         for agent in self.values():
             agent.reset()
