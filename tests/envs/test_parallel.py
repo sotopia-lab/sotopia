@@ -19,7 +19,7 @@ def test_parallel_sotopia_env() -> None:
 
 
 def test_fillin_the_background() -> None:
-    env = ParallelSotopiaEnv()
+    env = ParallelSotopiaEnv(model_name="gpt-4")
     env.reset(
         options={"partial_background_file": "tests/envs/test_background.json"}
     )

@@ -14,7 +14,11 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
     PromptTemplate,
 )
-from langchain.schema import HumanMessage
+from langchain.schema import (
+    BaseOutputParser,
+    HumanMessage,
+    OutputParserException,
+)
 from pydantic import BaseModel, Field, validator
 from rich import print
 from rich.logging import RichHandler
@@ -36,7 +40,7 @@ get_callback_manager().add_handler(logging_handler)
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4", "human"]
 
-OutputType = TypeVar("OutputType", bound=BaseModel)
+OutputType = TypeVar("OutputType", bound=object)
 
 
 class Script(BaseModel):
@@ -137,12 +141,20 @@ def format_bad_output(
     return reformat
 
 
+def generate_(
+    template: str,
+    output_parser: BaseOutputParser[OutputType],
+) -> OutputType:
+    parsed_result = output_parser.parse(template)
+    return parsed_result
+
+
 @beartype
 def generate(
     model_name: LLM_Name,
     template: str,
     input_values: dict[str, str],
-    output_parser: PydanticOutputParser[OutputType],
+    output_parser: BaseOutputParser[OutputType],
 ) -> OutputType:
     input_variables = re.findall(r"{(.*?)}", template)
     assert set(input_variables) == set(
@@ -254,53 +266,6 @@ def fill_in_background(
     )
 
 
-@beartype
-def generate_environment_response(
-    model_name: LLM_Name, history: str, previous_response: str = ""
-) -> ScriptEnvironmentResponse:
-    """
-    Using langchain to generate the environment response
-    """
-    try:
-        response: ScriptEnvironmentResponse = generate(
-            model_name=model_name,
-            template="""
-                {history},
-                How well do participants achieve their goals (give scores on a scale of 1-10)?
-                Turn the answers into a JSON format by replacing the "null" with the correct values):
-                {previous_response}
-            """,
-            input_values=dict(
-                history=history,
-                previous_response=previous_response,
-            ),
-            output_parser=PydanticOutputParser(
-                pydantic_object=ScriptEnvironmentResponse
-            ),
-        )
-        response.terminated = (
-            response.conversation_too_long
-            or response.p1_leaving
-            or response.p2_leaving
-            or response.stale_too_long
-        )
-        if response.terminated:
-            log.debug(f"[green] The conversation is terminated. {response}")
-        return response
-    except Exception as e:
-        log.debug(f"[red] Failed to generate environment response. {e}")
-        return ScriptEnvironmentResponse(
-            conversation_too_long=False,
-            p1_leaving=False,
-            p2_leaving=False,
-            stale_too_long=False,
-            terminated=False,
-            p1_rate=None,
-            p2_rate=None,
-        )
-
-
-@beartype
 def generate_action(
     model_name: LLM_Name,
     history: str,
@@ -350,3 +315,52 @@ def process_history(
         if value:
             result += f"{key}: {value} \n"
     return result
+
+
+class ListOfIntOutputParser(BaseOutputParser[list[int]]):
+    number_of_int: int | None
+    range_of_int: tuple[int, int] | None
+
+    def __init__(
+        self,
+        number_of_int: int | None = None,
+        range_of_int: tuple[int, int] | None = None,
+    ):
+        """
+        Parse the output to a list of integers
+
+        Args:
+            number_of_int (int | None): The number of integers in the output. If None, the number of integers is not fixed.
+        """
+        super().__init__()
+        self.number_of_int = number_of_int
+        self.range_of_int = range_of_int
+
+    def _get_description_text(self) -> str:
+        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by space"
+
+    def get_format_instructions(self) -> str:
+        return "Please output " + self._get_description_text()
+
+    def parse(self, output: str) -> list[int]:
+        try:
+            result = [int(x) for x in output.split(" ") if x]
+            if self.number_of_int and len(result) != self.number_of_int:
+                msg = (
+                    f"Expect {self.number_of_int} integers, got {len(result)}"
+                )
+                raise OutputParserException(msg)
+            if self.range_of_int:
+                for x in result:
+                    if x < self.range_of_int[0] or x > self.range_of_int[1]:
+                        msg = f"Expect integers within the range of {self.range_of_int}, got {result}"
+                        raise OutputParserException(msg)
+            return result
+        except Exception as e:
+            msg = f"Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}"
+            raise OutputParserException(msg)
+
+    @property
+    def _type(self) -> str:
+        """Return the type key."""
+        return "list[int]"

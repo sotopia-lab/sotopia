@@ -1,4 +1,5 @@
 import json
+import logging
 import random
 from copy import deepcopy
 from pathlib import Path
@@ -10,7 +11,6 @@ from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
 
-from sotopia.envs.utils import produce_environment_response
 from sotopia.generation_utils import (
     LLM_Name,
     fill_in_background,
@@ -25,7 +25,12 @@ from sotopia.messages import (
     SimpleMessage,
 )
 
-from .utils import RuleBasedResponse
+from .evaluators import (
+    Evaluator,
+    ReachGoalLLMEvaluator,
+    RuleBasedTerminatedEvaluator,
+    unweighted_aggregate_evaluate,
+)
 
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
@@ -39,12 +44,13 @@ class ParallelSotopiaEnv(ParallelEnv):
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
-            ["none", "speak", "non-verbal communication", "action"]
+            ["none", "speak", "non-verbal communication", "action", "leave"]
         ),
         action_order: Literal[
             "simutaneous", "round-robin", "random"
         ] = "simutaneous",
         model_name: LLM_Name = "gpt-3.5-turbo",
+        evaluators: list[Evaluator] = [],
     ) -> None:
         """A sotopia environment for parallel agents.
 
@@ -71,7 +77,7 @@ class ParallelSotopiaEnv(ParallelEnv):
         self.available_action_types = list(available_action_types)
         self.action_order = action_order
         self.action_mask: list[bool] = []
-        self.stop_criteria = RuleBasedResponse()
+        self.evaluators = evaluators
 
     def recv_message(self, source: str, message: Message) -> None:
         self.inbox.append((source, message))
@@ -180,11 +186,11 @@ class ParallelSotopiaEnv(ParallelEnv):
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
 
-        response = produce_environment_response(
-            model_name=self.model_name,
-            stop_criteria=self.stop_criteria,
-            turn_number=self.turn_number,
-            message_box=self.inbox,
+        response = unweighted_aggregate_evaluate(
+            [
+                evaluator(turn_number=self.turn_number, messages=self.inbox)
+                for evaluator in self.evaluators
+            ]
         )
 
         self.action_mask = [False for _ in self.agents]

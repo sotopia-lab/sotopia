@@ -1,11 +1,18 @@
 from typing import Literal
 
+from beartype import beartype
+
 from sotopia.agents import Agents, HumanAgent, LLMAgent
 from sotopia.envs import ParallelSotopiaEnv
+from sotopia.envs.evaluators import (
+    ReachGoalLLMEvaluator,
+    RuleBasedTerminatedEvaluator,
+)
 from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages import AgentAction, Message
 
 
+@beartype
 def run_sync_server(
     model_dict: dict[str, LLM_Name],
     action_order: Literal["simutaneous", "round-robin", "random"],
@@ -16,7 +23,12 @@ def run_sync_server(
     # This step will be moved to outside this function
 
     env = ParallelSotopiaEnv(
-        model_name=model_dict["env"], action_order=action_order
+        model_name=model_dict["env"],
+        action_order=action_order,
+        evaluators=[
+            ReachGoalLLMEvaluator(model_dict["env"]),
+            RuleBasedTerminatedEvaluator(),
+        ],
     )
     if partial_background_file:
         environment_messages = env.reset(
