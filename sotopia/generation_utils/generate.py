@@ -4,7 +4,7 @@ from typing import TypeVar, cast
 
 from beartype import beartype
 from beartype.typing import Type
-from langchain.callbacks import get_callback_manager
+from langchain.callbacks import StdOutCallbackHandler
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
@@ -36,7 +36,6 @@ from .langchain_callback_handler import LoggingCallbackHandler
 
 log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
-get_callback_manager().add_handler(logging_handler)
 
 LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4", "human"]
 
@@ -136,17 +135,9 @@ def format_bad_output(
         "ill_formed_output": ill_formed_output,
         "format_instructions": format_instructions,
     }
-    reformat = chain.predict(template=template, **input_values)
+    reformat = chain.predict([logging_handler], **input_values)
     log.info(f"Reformated output: {reformat}")
     return reformat
-
-
-def generate_(
-    template: str,
-    output_parser: BaseOutputParser[OutputType],
-) -> OutputType:
-    parsed_result = output_parser.parse(template)
-    return parsed_result
 
 
 @beartype
@@ -173,7 +164,7 @@ def generate(
         input_values[
             "format_instructions"
         ] = output_parser.get_format_instructions()
-    result = chain.predict(template=template, **input_values)
+    result = chain.predict([logging_handler], **input_values)
     try:
         parsed_result = output_parser.parse(result)
     except Exception as e:

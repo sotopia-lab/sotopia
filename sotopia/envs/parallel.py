@@ -1,16 +1,19 @@
 import json
 import logging
 import random
+import uuid
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, TypedDict, cast
 
 from beartype import beartype
 from gymnasium.spaces.dict import Dict
 from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
+from redis_om.model.model import NotFoundError
 
+from sotopia.database import EnvironmentProfile
 from sotopia.generation_utils import (
     LLM_Name,
     fill_in_background,
@@ -20,6 +23,7 @@ from sotopia.messages import (
     ActionType,
     AgentAction,
     Message,
+    MessengerMixin,
     Observation,
     ScriptBackground,
     SimpleMessage,
@@ -40,7 +44,7 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     return action_str
 
 
-class ParallelSotopiaEnv(ParallelEnv):
+class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
@@ -51,6 +55,7 @@ class ParallelSotopiaEnv(ParallelEnv):
         ] = "simutaneous",
         model_name: LLM_Name = "gpt-3.5-turbo",
         evaluators: list[Evaluator] = [],
+        uuid_str: str | None = None,
     ) -> None:
         """A sotopia environment for parallel agents.
 
@@ -71,7 +76,6 @@ class ParallelSotopiaEnv(ParallelEnv):
             p2_name="",
         )
 
-        self.inbox: list[tuple[str, Message]] = []
         self.agents = []
         self.action_spaces = {}
         self.available_action_types = list(available_action_types)
@@ -79,8 +83,15 @@ class ParallelSotopiaEnv(ParallelEnv):
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
 
-    def recv_message(self, source: str, message: Message) -> None:
-        self.inbox.append((source, message))
+        # if a uuid is provided, try to load the environment profile from the database
+        if uuid_str is not None:
+            # try retrieving profile from database
+            try:
+                self.profile = EnvironmentProfile.get(pk=uuid_str)
+            except NotFoundError:
+                raise ValueError(
+                    f"Agent with uuid {uuid_str} not found in database"
+                )
 
     def reset(
         self,
@@ -94,6 +105,8 @@ class ParallelSotopiaEnv(ParallelEnv):
             options (dict, optional): Options for the environment. Defaults to None.
                 "partial_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound can be incompleted ("unknown" for missing parts), and the missing parts will be filled in by the environment.
         """
+        super().__init__()
+        MessengerMixin.reset_inbox(self)
         if options and "partial_background_file" in options:
             # load pydantic background from json file
             self.background = ScriptBackground.parse_file(

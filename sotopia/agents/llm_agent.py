@@ -5,9 +5,12 @@ from sotopia.messages import AgentAction, Message, Observation
 
 class LLMAgent(BaseAgent[Observation, AgentAction]):
     def __init__(
-        self, agent_name: str, model_name: LLM_Name = "gpt-3.5-turbo"
+        self,
+        agent_name: str | None = None,
+        uuid_str: str | None = None,
+        model_name: LLM_Name = "gpt-3.5-turbo",
     ) -> None:
-        super().__init__(agent_name=agent_name)
+        super().__init__(agent_name=agent_name, uuid_str=uuid_str)
         self.model_name = model_name
 
     def act(self, obs: Observation) -> AgentAction:
