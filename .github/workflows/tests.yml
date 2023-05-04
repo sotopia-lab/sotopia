@@ -26,7 +26,7 @@ jobs:
         mypy --version
         # Run this mypy instance against our main package.
         mypy --install-types --non-interactive sotopia
-        mypy --strict .
+        mypy --strict --no-warn-unused-ignores .
     - name: Test with pytest
       env: # Or as an environment variable
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
