@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from sotopia.envs.evaluators import (
@@ -136,3 +138,96 @@ def test_unweighted_aggregate_evaluate() -> None:
     assert result.terminated == True
     assert result.p1_rate == pytest.approx(8.5)
     assert result.p2_rate == pytest.approx(5.75)
+
+
+# Async tests
+
+
+@pytest.mark.asyncio
+async def test_rule_based_teminated_evaluator_async() -> None:
+    evaluator = RuleBasedTerminatedEvaluator(2, 5)
+    response = await evaluator.__acall__(1, [])
+    assert response.conversation_too_long == False
+    response = await evaluator.__acall__(3, [])
+    assert response.conversation_too_long == True
+    response = await evaluator.__acall__(
+        1,
+        [
+            ("Alice", AgentAction(action_type="leave", argument="")),
+            ("Bob", AgentAction(action_type="none", argument="")),
+        ],
+    )
+    assert response.p1_leaving == True
+    assert response.p2_leaving == False
+    response = await evaluator.__acall__(
+        1,
+        [
+            ("Alice", AgentAction(action_type="speak", argument="Leave!")),
+            ("Bob", AgentAction(action_type="leave", argument="")),
+        ],
+    )
+    assert response.p1_leaving == False
+    assert response.p2_leaving == True
+    response = await evaluator.__acall__(
+        1, [("Alice", AgentAction(action_type="none", argument=""))]
+    )
+    assert response.stale_too_long == False
+    response = await evaluator.__acall__(
+        3,
+        [
+            ("Alice", AgentAction(action_type="none", argument="")),
+            ("Bob", AgentAction(action_type="none", argument="")),
+        ]
+        * 3,
+    )
+    assert response.stale_too_long == True
+
+
+@pytest.mark.asyncio
+async def test_reach_goal_llm_evaluator_async() -> None:
+    evaluator = ReachGoalLLMEvaluator("gpt-4")
+    response1, response2 = await asyncio.gather(
+        evaluator.__acall__(
+            1,
+            [
+                (
+                    "Environment",
+                    Observation(
+                        last_turn="Please say something.",
+                        turn_number=0,
+                        available_actions=["speak", "none"],
+                    ),
+                ),
+                ("Alice", AgentAction(action_type="speak", argument="")),
+                ("Bob", AgentAction(action_type="speak", argument="")),
+            ],
+        ),
+        evaluator.__acall__(
+            1,
+            [
+                (
+                    "Environment",
+                    Observation(
+                        last_turn="Please express gratitude to each other.",
+                        turn_number=0,
+                        available_actions=["speak", "none"],
+                    ),
+                ),
+                (
+                    "Alice",
+                    AgentAction(
+                        action_type="speak", argument="Thank you so much!"
+                    ),
+                ),
+                (
+                    "Bob",
+                    AgentAction(action_type="speak", argument="Fuck you!"),
+                ),
+            ],
+        ),
+    )
+    assert response1.p1_rate == 0
+    assert response1.p2_rate == 0
+    assert isinstance(response2.p1_rate, float)
+    assert isinstance(response2.p2_rate, float)
+    assert response2.p1_rate > response2.p2_rate

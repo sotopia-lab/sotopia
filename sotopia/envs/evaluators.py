@@ -7,6 +7,7 @@ from langchain.output_parsers import PydanticOutputParser
 from sotopia.generation_utils.generate import (
     ListOfIntOutputParser,
     LLM_Name,
+    agenerate,
     generate,
 )
 from sotopia.messages import (
@@ -24,6 +25,12 @@ class Evaluator(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
+        self, turn_number: int, messages: list[tuple[str, Message]]
+    ) -> ScriptEnvironmentResponse:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def __acall__(
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> ScriptEnvironmentResponse:
         raise NotImplementedError
@@ -79,6 +86,11 @@ class RuleBasedTerminatedEvaluator(Evaluator):
             p2_rate=0,
         )
 
+    async def __acall__(
+        self, turn_number: int, messages: list[tuple[str, Message]]
+    ) -> ScriptEnvironmentResponse:
+        return self(turn_number, messages)
+
 
 @beartype
 class ReachGoalLLMEvaluator(Evaluator):
@@ -121,6 +133,50 @@ class ReachGoalLLMEvaluator(Evaluator):
         except Exception as e:
             log.debug(f"[red] Failed to generate environment response. {e}")
             print(e)
+            return ScriptEnvironmentResponse(
+                conversation_too_long=False,
+                p1_leaving=False,
+                p2_leaving=False,
+                stale_too_long=False,
+                terminated=False,
+                p1_rate=None,
+                p2_rate=None,
+            )
+
+    async def __acall__(
+        self, turn_number: int, messages: list[tuple[str, Message]]
+    ) -> ScriptEnvironmentResponse:
+        history = "\n".join(
+            [
+                f"{x}: {y.to_natural_language()}"
+                if x != "Environment"
+                else y.to_natural_language()
+                for x, y in messages
+            ]
+        )
+
+        try:
+            response = await agenerate(
+                model_name=self.model_name,
+                template="""{history},
+                    How well do participants achieve their goals (give scores on a scale of 0-9, where 0 indicates that the participants did not achieve their goals at all and 9 indicates that the participants achieved their goals perfectly)?
+                    Please following the format:
+                    {format_instructions}
+                """,
+                input_values=dict(history=history),
+                output_parser=ListOfIntOutputParser(2, (0, 9)),
+            )
+            return ScriptEnvironmentResponse(
+                conversation_too_long=False,
+                p1_leaving=False,
+                p2_leaving=False,
+                stale_too_long=False,
+                terminated=False,
+                p1_rate=response[0],
+                p2_rate=response[1],
+            )
+        except Exception as e:
+            log.debug(f"[red] Failed to generate environment response. {e}")
             return ScriptEnvironmentResponse(
                 conversation_too_long=False,
                 p1_leaving=False,

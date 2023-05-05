@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import random
@@ -204,6 +205,100 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 evaluator(turn_number=self.turn_number, messages=self.inbox)
                 for evaluator in self.evaluators
             ]
+        )
+
+        self.action_mask = [False for _ in self.agents]
+        if self.action_order == "round-robin":
+            self.action_mask[self.turn_number % len(self.action_mask)] = True
+        elif self.action_order == "random":
+            self.action_mask[
+                random.randint(0, len(self.action_mask) - 1)
+            ] = True
+        else:
+            self.action_mask = [True for _ in self.agents]
+        obs = _actions_to_natural_language(complied_actions)
+        return (
+            {
+                self.background.p1_name: Observation(
+                    last_turn=obs,
+                    turn_number=self.turn_number,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[0]
+                    else ["none"],
+                ),
+                self.background.p2_name: Observation(
+                    last_turn=obs,
+                    turn_number=self.turn_number,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[1]
+                    else ["none"],
+                ),
+            },
+            {
+                self.background.p1_name: response.p1_rate or 0,
+                self.background.p2_name: response.p2_rate or 0,
+            },
+            {
+                self.background.p1_name: response.terminated,
+                self.background.p2_name: response.terminated,
+            },
+            {
+                self.background.p1_name: False,
+                self.background.p2_name: False,
+            },
+            {
+                self.background.p1_name: {},
+                self.background.p2_name: {},
+            },
+        )
+
+    @beartype
+    async def astep(
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+    ) -> tuple[
+        dict[str, Observation],
+        dict[str, float],
+        dict[str, bool],
+        dict[str, bool],
+        dict[str, dict[Any, Any]],
+    ]:
+        # Time step ++
+        self.turn_number += 1
+
+        # For action sampled from action space, it needs to be converted into AgentAction
+        complied_actions: dict[str, AgentAction] = {}
+        for key in actions.keys():
+            action = actions[key]
+            if isinstance(action, AgentAction):
+                complied_actions[key] = action
+            else:
+                action["action_type"] = self.available_action_types[
+                    int(action["action_type"])
+                ]
+                complied_actions[key] = AgentAction.parse_obj(action)
+
+        # Masking actions from agent that are in turn
+        for idx, agent in enumerate(self.agents):
+            if not self.action_mask[idx]:
+                complied_actions[agent] = AgentAction(
+                    action_type="none", argument=""
+                )
+
+        self.recv_message(
+            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
+        )
+        for agent, action in complied_actions.items():
+            self.recv_message(agent, action)
+
+        response = unweighted_aggregate_evaluate(
+            await asyncio.gather(
+                *[
+                    evaluator.__acall__(
+                        turn_number=self.turn_number, messages=self.inbox
+                    )
+                    for evaluator in self.evaluators
+                ]
+            )
         )
 
         self.action_mask = [False for _ in self.agents]

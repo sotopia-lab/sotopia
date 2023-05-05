@@ -35,5 +35,8 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
     def act(self, obs: ObsType) -> ActType:
         raise NotImplementedError
 
+    async def aact(self, obs: ObsType) -> ActType:
+        raise NotImplementedError
+
     def reset(self) -> None:
         self.reset_inbox()

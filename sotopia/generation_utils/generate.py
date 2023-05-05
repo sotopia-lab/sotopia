@@ -181,6 +181,46 @@ def generate(
 
 
 @beartype
+async def agenerate(
+    model_name: LLM_Name,
+    template: str,
+    input_values: dict[str, str],
+    output_parser: BaseOutputParser[OutputType],
+) -> OutputType:
+    input_variables = re.findall(r"{(.*?)}", template)
+    assert set(input_variables) == set(
+        list(input_values.keys()) + ["format_instructions"]
+    ) or set(input_variables) == set(
+        list(input_values.keys())
+    ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
+    # process template
+    template = format_docstring(template)
+    chain = obtain_chain(
+        model_name=model_name,
+        template=template,
+        input_variables=input_variables,
+    )
+    if "format_instructions" not in input_values:
+        input_values[
+            "format_instructions"
+        ] = output_parser.get_format_instructions()
+    result = await chain.apredict([logging_handler], **input_values)
+    try:
+        parsed_result = output_parser.parse(result)
+    except Exception as e:
+        log.debug(
+            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
+            extra={"markup": True},
+        )
+        reformat_parsed_result = format_bad_output(
+            result, format_instructions=output_parser.get_format_instructions()
+        )
+        parsed_result = output_parser.parse(reformat_parsed_result)
+    log.info(f"Generated result: {parsed_result}")
+    return parsed_result
+
+
+@beartype
 def generate_episode(
     model_name: LLM_Name,
     participants: str = "Jack (a greedy person), Rose",
@@ -257,6 +297,7 @@ def fill_in_background(
     )
 
 
+@beartype
 def generate_action(
     model_name: LLM_Name,
     history: str,
@@ -269,6 +310,41 @@ def generate_action(
     """
     try:
         return generate(
+            model_name=model_name,
+            template="""
+                You are {agent}.
+                {history}
+
+                You are at Turn #{turn_number}. Your available action types are
+                {action_list}. Please only generate a JSON string including the action type and the argument.
+                Your action should follow the given format:
+                {format_instructions}
+            """,
+            input_values=dict(
+                agent=agent,
+                turn_number=str(turn_number),
+                history=history,
+                action_list=" ".join(action_types),
+            ),
+            output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+        )
+    except:
+        return AgentAction(action_type="none", argument="")
+
+
+@beartype
+async def agenerate_action(
+    model_name: LLM_Name,
+    history: str,
+    turn_number: int,
+    action_types: list[ActionType],
+    agent: str,
+) -> AgentAction:
+    """
+    Using langchain to generate an example episode
+    """
+    try:
+        return await agenerate(
             model_name=model_name,
             template="""
                 You are {agent}.
