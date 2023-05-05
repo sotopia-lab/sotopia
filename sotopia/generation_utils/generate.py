@@ -78,6 +78,73 @@ class ScriptPydanticOutputParser(PydanticOutputParser[Script]):
         )
 
 
+class ListOfIntOutputParser(BaseOutputParser[list[int]]):
+    number_of_int: int | None
+    range_of_int: tuple[int, int] | None
+
+    def __init__(
+        self,
+        number_of_int: int | None = None,
+        range_of_int: tuple[int, int] | None = None,
+    ):
+        """
+        Parse the output to a list of integers
+
+        Args:
+            number_of_int (int | None): The number of integers in the output. If None, the number of integers is not fixed.
+        """
+        super().__init__()
+        self.number_of_int = number_of_int
+        self.range_of_int = range_of_int
+
+    def _get_description_text(self) -> str:
+        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by space"
+
+    def get_format_instructions(self) -> str:
+        return "Please output " + self._get_description_text()
+
+    def parse(self, output: str) -> list[int]:
+        try:
+            result = [int(x) for x in output.split(" ") if x]
+            if self.number_of_int and len(result) != self.number_of_int:
+                msg = (
+                    f"Expect {self.number_of_int} integers, got {len(result)}"
+                )
+                raise OutputParserException(msg)
+            if self.range_of_int:
+                for x in result:
+                    if x < self.range_of_int[0] or x > self.range_of_int[1]:
+                        msg = f"Expect integers within the range of {self.range_of_int}, got {result}"
+                        raise OutputParserException(msg)
+            return result
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            msg = f"Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}"
+            raise OutputParserException(msg)
+
+    @property
+    def _type(self) -> str:
+        """Return the type key."""
+        return "list[int]"
+
+
+class StrOutputParser(BaseOutputParser[str]):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def get_format_instructions(self) -> str:
+        return "Please output a string"
+
+    def parse(self, output: str) -> str:
+        return output
+
+    @property
+    def _type(self) -> str:
+        """Return the type key."""
+        return "str"
+
+
 @beartype
 def obtain_chain(
     model_name: LLM_Name, template: str, input_variables: list[str]
@@ -167,6 +234,8 @@ def generate(
     result = chain.predict([logging_handler], **input_values)
     try:
         parsed_result = output_parser.parse(result)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
     except Exception as e:
         log.debug(
             f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
@@ -249,7 +318,7 @@ def generate_episode(
 
 
 @beartype
-def generate_background(
+def generate_scenario_background(
     model_name: LLM_Name,
     participants: str = "Jack, Rose",
     topic: str = "borrow money",
@@ -304,6 +373,7 @@ def generate_action(
     turn_number: int,
     action_types: list[ActionType],
     agent: str,
+    goal: str,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -328,6 +398,53 @@ def generate_action(
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
         )
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
+    except:
+        return AgentAction(action_type="none", argument="")
+
+
+@beartype
+def generate_action_speak(
+    model_name: LLM_Name,
+    history: str,
+    turn_number: int,
+    action_types: list[ActionType],
+    agent: str,
+    goal: str,
+) -> AgentAction:
+    """
+    Using langchain to generate the action but only speak action is allowed
+    """
+    try:
+        utterance = generate(
+            model_name=model_name,
+            template="""
+                You are {agent}.
+                {history}
+
+                You are at Turn #{turn_number}. Your available action type is speak.
+                Your goal is: {goal}
+                Follow the given format:
+                {agent} said: <utterance>
+                <utterance> should not include any quotation marks, "Turn #", or etc.
+            """,
+            input_values=dict(
+                agent=agent,
+                turn_number=str(turn_number),
+                history=history,
+                goal=goal,
+            ),
+            output_parser=StrOutputParser(),
+        )
+        # delete the first line
+        utterance = utterance.replace(f"{agent} said:", "")
+        utterance = utterance.replace(f"Turn #{turn_number}:", "")
+        utterance = utterance.strip()
+        utterance = utterance.replace('"', "")
+        return AgentAction(action_type="speak", argument=utterance)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
     except:
         return AgentAction(action_type="none", argument="")
 
@@ -339,6 +456,7 @@ async def agenerate_action(
     turn_number: int,
     action_types: list[ActionType],
     agent: str,
+    goal: str,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -384,50 +502,80 @@ def process_history(
     return result
 
 
-class ListOfIntOutputParser(BaseOutputParser[list[int]]):
-    number_of_int: int | None
-    range_of_int: tuple[int, int] | None
+@beartype
+def generate_init_profile(
+    model_name: LLM_Name, basic_info: dict[str, str]
+) -> str:
+    """
+    Using langchain to generate the background
+    """
+    return generate(
+        model_name=model_name,
+        template="""Please expand a fictional background for {name}. Here is the basic information:
+            {name}'s age: {age}
+            {name}'s gender identity: {gender_identity}
+            {name}'s pronoun: {pronoun}
+            {name}'s occupation: {occupation}
+            {name}'s big 5 personality traits: {bigfive}
+            {name}'s moral Foundation: think {mft} is more important than others
+            {name}'s Schwartz portrait value: {schwartz}
+            {name}'s decision-making style: {decision_style}
+            {name}'s secret: {secret}
+            Include the previous information in the background.
+            Then expand the personal backgrounds with concrete details (e.g, look, family, hobbies, friends and etc.)
+            For the personality and values (e.g., MBTI, moral foundation, and etc.),
+            remember to use examples and behaviors in the person's life to demonstrate it.
+            """,
+        input_values=dict(
+            name=basic_info["name"],
+            age=basic_info["age"],
+            gender_identity=basic_info["gender_identity"],
+            pronoun=basic_info["pronoun"],
+            occupation=basic_info["occupation"],
+            bigfive=basic_info["Big_Five_Personality"],
+            mft=basic_info["Moral_Foundation"],
+            schwartz=basic_info["Schwartz_Portrait_Value"],
+            decision_style=basic_info["Decision_making_Style"],
+            secret=basic_info["secret"],
+        ),
+        output_parser=StrOutputParser(),
+    )
 
-    def __init__(
-        self,
-        number_of_int: int | None = None,
-        range_of_int: tuple[int, int] | None = None,
-    ):
-        """
-        Parse the output to a list of integers
 
-        Args:
-            number_of_int (int | None): The number of integers in the output. If None, the number of integers is not fixed.
-        """
-        super().__init__()
-        self.number_of_int = number_of_int
-        self.range_of_int = range_of_int
+@beartype
+def convert_narratives(model_name: LLM_Name, narrative: str, text: str) -> str:
+    if narrative == "first":
+        return generate(
+            model_name=model_name,
+            template="""Please convert the following text into a first-person narrative.
+            e.g, replace name, he, she, him, her, his, and hers with I, me, my, and mine.
+            {text}""",
+            input_values=dict(text=text),
+            output_parser=StrOutputParser(),
+        )
+    elif narrative == "second":
+        return generate(
+            model_name=model_name,
+            template="""Please convert the following text into a second-person narrative.
+            e.g, replace name, he, she, him, her, his, and hers with you, your, and yours.
+            {text}""",
+            input_values=dict(text=text),
+            output_parser=StrOutputParser(),
+        )
+    else:
+        raise ValueError(f"Narrative {narrative} is not supported.")
 
-    def _get_description_text(self) -> str:
-        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by space"
 
-    def get_format_instructions(self) -> str:
-        return "Please output " + self._get_description_text()
-
-    def parse(self, output: str) -> list[int]:
-        try:
-            result = [int(x) for x in output.split(" ") if x]
-            if self.number_of_int and len(result) != self.number_of_int:
-                msg = (
-                    f"Expect {self.number_of_int} integers, got {len(result)}"
-                )
-                raise OutputParserException(msg)
-            if self.range_of_int:
-                for x in result:
-                    if x < self.range_of_int[0] or x > self.range_of_int[1]:
-                        msg = f"Expect integers within the range of {self.range_of_int}, got {result}"
-                        raise OutputParserException(msg)
-            return result
-        except Exception as e:
-            msg = f"Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}"
-            raise OutputParserException(msg)
-
-    @property
-    def _type(self) -> str:
-        """Return the type key."""
-        return "list[int]"
+@beartype
+def generate_goal(model_name: LLM_Name, background: str) -> str:
+    """
+    Using langchain to generate the background
+    """
+    return generate(
+        model_name=model_name,
+        template="""Please generate your goal based on the background:
+            {background}
+            """,
+        input_values=dict(background=background),
+        output_parser=StrOutputParser(),
+    )

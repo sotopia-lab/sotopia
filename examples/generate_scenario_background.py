@@ -1,8 +1,10 @@
 import json
 
-from sotopia.generation_utils.generate import generate_background
+from sotopia.generation_utils.generate import (
+    generate_scenario_background,
+)
 
-background = generate_background(
+background = generate_scenario_background(
     model_name="gpt-3.5-turbo",
     participants="Jack, Rose",
     topic="borrow money",

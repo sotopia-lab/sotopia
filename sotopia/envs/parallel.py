@@ -18,7 +18,7 @@ from sotopia.database import EnvironmentProfile
 from sotopia.generation_utils import (
     LLM_Name,
     fill_in_background,
-    generate_background,
+    generate_scenario_background,
 )
 from sotopia.messages import (
     ActionType,
@@ -41,7 +41,11 @@ from .evaluators import (
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     action_str = ""
     for agent, action in actions.items():
-        action_str += f"{agent} {action.to_natural_language()};"
+        # Only record actions that did something
+        if action.action_type != "none":
+            if action_str != "":
+                action_str += ";"  # separate actions with semicolon
+            action_str += f"{agent} {action.to_natural_language()}"
     return action_str
 
 
@@ -105,6 +109,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
             seed (int, optional): Seed for the environment. Defaults to None. Not used right now.
             options (dict, optional): Options for the environment. Defaults to None.
                 "partial_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound can be incompleted ("unknown" for missing parts), and the missing parts will be filled in by the environment.
+                "full_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound must be completed (no "unknown" for missing parts).
         """
         super().__init__()
         MessengerMixin.reset_inbox(self)
@@ -116,8 +121,14 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
             self.background = fill_in_background(
                 self.model_name, self.background
             )
+        elif options and "full_background_file" in options:
+            self.background = ScriptBackground.parse_file(
+                Path(options["full_background_file"])
+            )
         else:
-            self.background = generate_background(model_name=self.model_name)
+            self.background = generate_scenario_background(
+                model_name=self.model_name
+            )
         background_for_a = deepcopy(self.background)
         background_for_b = deepcopy(self.background)
         background_for_a.p2_goal = "Unknown"

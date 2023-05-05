@@ -3,7 +3,7 @@ from typing import Literal, cast
 
 from beartype import beartype
 
-from sotopia.agents import Agents, HumanAgent, LLMAgent
+from sotopia.agents import Agents, HumanAgent, LLMAgent, SpeakAgent
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
@@ -15,19 +15,21 @@ from sotopia.messages import AgentAction, Message
 
 @beartype
 def run_sync_server(
-    model_dict: dict[str, LLM_Name],
+    model_name_dict: dict[str, LLM_Name],
     action_order: Literal["simutaneous", "round-robin", "random"],
+    agents_info: dict[str, dict[str, str]] | None = None,
     partial_background_file: str | None = None,
+    full_background_file: str | None = None,
+    mode: str | None = None,
 ) -> list[tuple[str, str, Message]]:
 
     # Create Environment and agents
     # This step will be moved to outside this function
 
     env = ParallelSotopiaEnv(
-        model_name=model_dict["env"],
+        model_name=model_name_dict["env"],
         action_order=action_order,
         evaluators=[
-            ReachGoalLLMEvaluator(model_dict["env"]),
             RuleBasedTerminatedEvaluator(),
         ],
     )
@@ -35,13 +37,19 @@ def run_sync_server(
         environment_messages = env.reset(
             options={"partial_background_file": partial_background_file}
         )
+    elif full_background_file:
+        environment_messages = env.reset(
+            options={"full_background_file": full_background_file}
+        )
     else:
         environment_messages = env.reset()
     agents = Agents()
-    agents_model_names = [model_dict["agent1"], model_dict["agent2"]]
+    agents_model_names = [model_name_dict["agent1"], model_name_dict["agent2"]]
     for agent_name, agent_model in zip(env.agents, agents_model_names):
         if agent_model == "human":
             agents[agent_name] = HumanAgent(agent_name)
+        elif mode == "speak":
+            agents[agent_name] = SpeakAgent(agent_name, model_name=agent_model)
         else:
             agents[agent_name] = LLMAgent(agent_name, model_name=agent_model)
     agents.reset()
@@ -54,10 +62,13 @@ def run_sync_server(
         messages.append(
             ("Environment", agent_name, environment_messages[agent_name])
         )
+
     while not done:
         # gather agent messages
         agent_messages: dict[str, AgentAction] = dict()
         for agent_name in env.agents:
+            if agents_info is not None:
+                agents[agent_name].goal = agents_info[agent_name]["goal"]
             agent_messages[agent_name] = agents[agent_name].act(
                 environment_messages[agent_name]
             )

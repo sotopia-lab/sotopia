@@ -12,8 +12,6 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 import torch
-from logzero import logger
-from tqdm import tqdm
 
 
 # IO

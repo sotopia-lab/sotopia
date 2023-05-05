@@ -15,7 +15,6 @@ import torch
 from logzero import logger
 from torch.cuda import amp
 from torch.utils.data import DataLoader, IterableDataset
-from tqdm import tqdm
 from transformers import (  # type: ignore[attr-defined]
     AutoModel,
     AutoModelForCausalLM,

@@ -1,11 +1,14 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from typing import Callable
 
 from sotopia.agents import BaseAgent
 from sotopia.generation_utils.generate import (
     LLM_Name,
     agenerate_action,
     generate_action,
+    generate_action_speak,
+    generate_goal,
 )
 from sotopia.messages import AgentAction, Message, Observation
 
@@ -29,20 +32,41 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         super().__init__(agent_name=agent_name, uuid_str=uuid_str)
         self.model_name = model_name
 
-    def act(self, obs: Observation) -> AgentAction:
+    @property
+    def goal(self) -> str:
+        if self._goal is not None:
+            return self._goal
+        goal = generate_goal(
+            self.model_name,
+            background=self.inbox[0][
+                1
+            ].scenario,  # Only consider the first message for now
+        )
+        return goal
+
+    @goal.setter
+    def goal(self, goal: str) -> None:
+        self._goal = goal
+
+    def act(
+        self,
+        obs: Observation,
+        gen_func: Callable[..., AgentAction] = generate_action,
+    ) -> AgentAction:
         self.recv_message("Environment", obs)
 
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="")
         else:
-            action = generate_action(
+            action = gen_func(
                 self.model_name,
                 history="\n".join(
-                    f"{x}: {y.to_natural_language()}" for x, y in self.inbox
+                    f"{y.to_natural_language()}" for x, y in self.inbox
                 ),
                 turn_number=obs.turn_number,
                 action_types=obs.available_actions,
                 agent=self.agent_name,
+                goal=self.goal,
             )
             return action
 
@@ -55,13 +79,23 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             action = await agenerate_action(
                 self.model_name,
                 history="\n".join(
-                    f"{x}: {y.to_natural_language()}" for x, y in self.inbox
+                    f"{y.to_natural_language()}" for x, y in self.inbox
                 ),
                 turn_number=obs.turn_number,
                 action_types=obs.available_actions,
                 agent=self.agent_name,
+                goal=self.goal,
             )
             return action
+
+
+class SpeakAgent(LLMAgent):
+    def act(
+        self,
+        obs: Observation,
+        gen_func: Callable[..., AgentAction] = generate_action_speak,
+    ) -> AgentAction:
+        return super().act(obs, gen_func=gen_func)
 
 
 class HumanAgent(BaseAgent[Observation, AgentAction]):
@@ -71,6 +105,17 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
 
     def __init__(self, agent_name: str) -> None:
         super().__init__(agent_name=agent_name)
+
+    @property
+    def goal(self) -> str:
+        if self._goal is not None:
+            return self._goal
+        goal = input("Goal: ")
+        return goal
+
+    @goal.setter
+    def goal(self, goal: str) -> None:
+        self._goal = goal
 
     def act(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
@@ -105,7 +150,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         return AgentAction(action_type=action_type, argument=argument)
 
 
-class Agents(dict[str, LLMAgent | HumanAgent]):
+class Agents(dict[str, LLMAgent | HumanAgent | SpeakAgent]):
     def reset(self) -> None:
         for agent in self.values():
             agent.reset()

@@ -32,6 +32,10 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
             ), "Either agent_name or uuid_str must be provided"
             self.agent_name = agent_name
 
+    @property
+    def goal(self) -> str:
+        raise NotImplementedError
+
     def act(self, obs: ObsType) -> ActType:
         raise NotImplementedError
 

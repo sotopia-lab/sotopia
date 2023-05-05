@@ -132,4 +132,7 @@ dmypy.json
 .vscode/
 
 # data
-data/
+data/*
+
+# deprecated
+deprecated/*
