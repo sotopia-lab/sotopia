@@ -138,17 +138,17 @@ conv_vicuna_v1_1 = Conversation(
     sep2="</s>",
 )
 
-# conv_vicuna_character = Conversation(
-#     system="My name is Emily Harrison and I am a 32-year-old woman. I am very compassionate and values caring for other people. I would like to answer any questions about myself.",
-#     roles=("INTERVIEWER", "ME"),
-#     messages=(),
-#     offset=0,
-#     sep_style=SeparatorStyle.TWO,
-#     sep=" ",
-#     sep2="</s>",
-# )
+conv_emily = Conversation(
+    system="My name is Emily Harrison and I am a 32-year-old woman. I am very compassionate and values caring for other people. I would like to answer any questions about myself.",
+    roles=["INTERVIEWER", "ME"],
+    messages=[],
+    offset=0,
+    sep_style=SeparatorStyle.TWO,
+    sep=" ",
+    sep2="</s>",
+)
 
-conv_vicuna_character = Conversation(
+conv_sasha = Conversation(
     system="My name is Sasha Ramirez and I am a 42-year-old female police officer. My decision-making style is logical, and my primary values are authority and loyalty. I would like to answer any questions about myself.",
     roles=["INTERVIEWER", "ME"],
     messages=[],
@@ -158,38 +158,32 @@ conv_vicuna_character = Conversation(
     sep2="</s>",
 )
 
-# conv_vicuna_character = Conversation(
-#     system="A chat between an interviewer and a person with specific characteristics. "
-#     "The person gives answers to the interviewer's questions in a personalized way.",
-#     roles=("INTERVIEWER", "CHARACTER"),
-#     messages=(),
-#     offset=0,
-#     sep_style=SeparatorStyle.TWO,
-#     sep=" ",
-#     sep2="</s>",
-# )
+conv_eli = Conversation(
+    system="My name is Eli Dawson, and I'm a 52-year-old forensic psychiatrist. I would like to answer any questions about myself.",
+    roles=["INTERVIEWER", "ME"],
+    messages=[],
+    offset=0,
+    sep_style=SeparatorStyle.TWO,
+    sep=" ",
+    sep2="</s>",
+)
 
 conv_templates = {
     "vicuna_v1_1": conv_vicuna_v1_1,
-    "vicuna_character": conv_vicuna_character,
+    "vicuna_emily": conv_emily,
+    "vicuna_sasha": conv_sasha,
+    "vicuna_eli": conv_eli,
 }
 
 
 def get_default_conv_template(model_name: str) -> Conversation:
-    model_name = model_name.lower()
-    if "vicuna_v1_1" in model_name or "output" in model_name:
-        return conv_vicuna_v1_1
-    elif "vicuna_character" in model_name:
-        return conv_vicuna_character
-    else:
-        raise ValueError(f"Invalid model name: {model_name}")
+    return conv_vicuna_v1_1
 
 
 def compute_skip_echo_len(
-    model_name: str, conv: Conversation, prompt: str
+    conv: Conversation, prompt: str, is_chatglm: bool = False
 ) -> int:
-    model_name = model_name.lower()
-    if "chatglm" in model_name:
+    if is_chatglm:
         assert len(conv.messages) >= 2
         assert conv.messages[-2][1] is not None
         skip_echo_len = len(conv.messages[-2][1]) + 1

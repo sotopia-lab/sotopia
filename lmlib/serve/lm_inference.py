@@ -101,7 +101,7 @@ def load_gen_model(
 
         ckpt_path = get_last_checkpoint(lora_path)
         if ckpt_path is None:
-            gen_model = PeftModel.from_pretrained(
+            gen_model = PeftModel.from_pretrained(  # type: ignore[attr-defined]
                 gen_model,
                 lora_path,
                 torch_dtype=torch.float16,
@@ -294,7 +294,7 @@ def chat_loop(
             generate_stream_func = generate_stream
             prompt = conv.get_prompt()
 
-            skip_echo_len = compute_skip_echo_len(model_path, conv, prompt)
+            skip_echo_len = compute_skip_echo_len(conv, prompt)
             stop_str = (
                 conv.sep
                 if conv.sep_style
