@@ -14,7 +14,9 @@ from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
 from redis_om.model.model import NotFoundError
 
+from sotopia.agents.llm_agent import Agents
 from sotopia.database import EnvironmentProfile
+from sotopia.database.persistent_profile import AgentProfile
 from sotopia.generation_utils import (
     LLM_Name,
     fill_in_background,
@@ -49,6 +51,10 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     return action_str
 
 
+def _agent_profile_to_bio(profile: AgentProfile) -> str:
+    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}."
+
+
 class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
     def __init__(
         self,
@@ -61,6 +67,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         model_name: LLM_Name = "gpt-3.5-turbo",
         evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,
+        env_profile: EnvironmentProfile | None = None,
     ) -> None:
         """A sotopia environment for parallel agents.
 
@@ -88,8 +95,11 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
 
+        # if an environment profile is provided, use it
+        if env_profile is not None:
+            self.profile = env_profile
         # if a uuid is provided, try to load the environment profile from the database
-        if uuid_str is not None:
+        elif uuid_str is not None:
             # try retrieving profile from database
             try:
                 self.profile = EnvironmentProfile.get(pk=uuid_str)
@@ -102,6 +112,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         self,
         seed: int | None = None,
         options: dict[str, str] | None = None,
+        agents: Agents | None = None,
     ) -> dict[str, Observation]:
         """Starting a new episode. Must be called before step().
 
@@ -113,22 +124,37 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         """
         super().__init__()
         MessengerMixin.reset_inbox(self)
-        if options and "partial_background_file" in options:
-            # load pydantic background from json file
-            self.background = ScriptBackground.parse_file(
-                Path(options["partial_background_file"])
-            )
-            self.background = fill_in_background(
-                self.model_name, self.background
-            )
-        elif options and "full_background_file" in options:
-            self.background = ScriptBackground.parse_file(
-                Path(options["full_background_file"])
+        assert (
+            not options
+            or not ("partial_background_file" in options)
+            and not ("full_background_file" in options)
+        ), "partial_background_file and full_background_file are not supported anymore"
+        if agents is not None:
+            assert agents, "agents must be provided"
+            assert len(agents) == 2, "Only supporting two agents right now"
+            agent_names = list(agents.keys())
+            agent_goals = self.profile.agent_goals
+            assert (
+                len(agent_goals) == 2
+            ), "Only supporting two agents right now"
+            self.background = ScriptBackground(
+                scenario=self.profile.scenario,
+                p1_background=_agent_profile_to_bio(
+                    agents[agent_names[0]].profile
+                ),
+                p2_background=_agent_profile_to_bio(
+                    agents[agent_names[1]].profile
+                ),
+                p1_goal=agent_goals[0],
+                p2_goal=agent_goals[1],
+                p1_name=agent_names[0],
+                p2_name=agent_names[1],
             )
         else:
             self.background = generate_scenario_background(
                 model_name=self.model_name
             )
+
         background_for_a = deepcopy(self.background)
         background_for_b = deepcopy(self.background)
         background_for_a.p2_goal = "Unknown"

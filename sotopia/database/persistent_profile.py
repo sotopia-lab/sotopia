@@ -11,7 +11,7 @@ class AgentProfile(JsonModel):
     age: int = Field(index=True, default_factory=lambda: 0)
     occupation: str = Field(index=True, default_factory=lambda: "")
     gender: str = Field(index=True, default_factory=lambda: "")
-    mbti: str = Field(index=True, default_factory=lambda: "")
+    big_five: str = Field(index=True, default_factory=lambda: "")
     moral_values: list[str] = Field(index=False, default_factory=lambda: [])
     schwartz_personal_values: list[str] = Field(
         index=False, default_factory=lambda: []

@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
 
 from sotopia.agents import BaseAgent
+from sotopia.database import AgentProfile
 from sotopia.generation_utils.generate import (
     LLM_Name,
     agenerate_action,
@@ -27,20 +28,28 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self,
         agent_name: str | None = None,
         uuid_str: str | None = None,
+        agent_profile: AgentProfile | None = None,
         model_name: LLM_Name = "gpt-3.5-turbo",
     ) -> None:
-        super().__init__(agent_name=agent_name, uuid_str=uuid_str)
+        super().__init__(
+            agent_name=agent_name,
+            uuid_str=uuid_str,
+            agent_profile=agent_profile,
+        )
         self.model_name = model_name
 
     @property
     def goal(self) -> str:
         if self._goal is not None:
             return self._goal
+        assert (
+            len(self.inbox) > 0
+        ), "attribute goal has to be called after at least one step"
         goal = generate_goal(
             self.model_name,
             background=self.inbox[0][
                 1
-            ].scenario,  # Only consider the first message for now
+            ].to_natural_language(),  # Only consider the first message for now
         )
         return goal
 
@@ -103,8 +112,17 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
     A human agent that takes input from the command line.
     """
 
-    def __init__(self, agent_name: str) -> None:
-        super().__init__(agent_name=agent_name)
+    def __init__(
+        self,
+        agent_name: str | None = None,
+        uuid_str: str | None = None,
+        agent_profile: AgentProfile | None = None,
+    ) -> None:
+        super().__init__(
+            agent_name=agent_name,
+            uuid_str=uuid_str,
+            agent_profile=agent_profile,
+        )
 
     @property
     def goal(self) -> str:
@@ -137,9 +155,21 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
             print(f"{i}: {action}")
 
         if obs.available_actions != ["none"]:
-            action_type = obs.available_actions[
-                int(await ainput("Action type: "))
-            ]
+            action_type_number = await ainput(
+                "Action type (Please only input the number): "
+            )
+            try:
+                action_type_number = int(action_type_number)  # type: ignore
+            except:
+                print("Please input a number.")
+                action_type_number = await ainput(
+                    "Action type (Please only input the number): "
+                )
+                action_type_number = int(action_type_number)  # type: ignore
+            assert isinstance(
+                action_type_number, int
+            ), "Please input a number."
+            action_type = obs.available_actions[action_type_number]
         else:
             action_type = "none"
         if action_type in ["speak", "non-verbal communication"]:
@@ -150,7 +180,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         return AgentAction(action_type=action_type, argument=argument)
 
 
-class Agents(dict[str, LLMAgent | HumanAgent | SpeakAgent]):
+class Agents(dict[str, BaseAgent[Observation, AgentAction]]):
     def reset(self) -> None:
         for agent in self.values():
             agent.reset()

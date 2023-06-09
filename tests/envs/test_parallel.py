@@ -1,9 +1,12 @@
+from sotopia.agents import Agents, LLMAgent
 from sotopia.envs import ParallelSotopiaEnv
-from sotopia.messages import ScriptBackground
+from sotopia.envs.evaluators import RuleBasedTerminatedEvaluator
+from sotopia.messages import AgentAction, Observation, ScriptBackground
+from sotopia.samplers import UniformSampler
 
 
 def test_parallel_sotopia_env() -> None:
-    env = ParallelSotopiaEnv()
+    env = ParallelSotopiaEnv(model_name="gpt-3.5-turbo")
     env.reset()
     max_steps = 5
     while env.agents:
@@ -16,13 +19,3 @@ def test_parallel_sotopia_env() -> None:
         )
         if not max_steps:
             break
-
-
-def test_fillin_the_background() -> None:
-    env = ParallelSotopiaEnv(model_name="gpt-4")
-    env.reset(
-        options={"partial_background_file": "tests/envs/test_background.json"}
-    )
-    background = env.background
-    assert isinstance(background, ScriptBackground)
-    assert background.scenario != "<missing_info>"
