@@ -24,8 +24,8 @@ logging.basicConfig(
 
 model_names: dict[str, LLM_Name] = {
     "env": "gpt-4",
-    "agent1": "gpt-4",
-    "agent2": "human",
+    "agent1": "gpt-3.5-turbo",
+    "agent2": "gpt-3.5-turbo",
 }
 
 messages = asyncio.run(

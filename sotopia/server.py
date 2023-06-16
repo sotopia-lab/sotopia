@@ -1,9 +1,12 @@
 import asyncio
+import functools
+import itertools
 from typing import Literal, cast
 
 from beartype import beartype
 
 from sotopia.agents import Agents, HumanAgent, LLMAgent, SpeakAgent
+from sotopia.database import EpisodeLog
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
@@ -104,7 +107,7 @@ async def run_async_server(
         "action_order": action_order,
         "evaluators": [
             ReachGoalLLMEvaluator(model_dict["env"]),
-            RuleBasedTerminatedEvaluator(),
+            RuleBasedTerminatedEvaluator(max_turn_number=2),
         ],
     }
     agents_model_dict = {
@@ -135,17 +138,20 @@ async def run_async_server(
             agents[agent_name] = LLMAgent(agent_name, model_name=agent_model)
     agents.reset()
 
-    messages: list[tuple[str, str, Message]] = []
+    messages: list[list[tuple[str, str, Message]]] = []
 
     # Main Event Loop
     done = False
-    for agent_name in env.agents:
-        messages.append(
+    messages.append(
+        [
             ("Environment", agent_name, environment_messages[agent_name])
-        )
+            for agent_name in env.agents
+        ]
+    )
     # set goal for agents
     for index, agent_name in enumerate(env.agents):
         agents[agent_name].goal = env.profile.agent_goals[index]
+    rewards: list[list[float]] = []
     while not done:
         # gather agent messages
         agent_messages: dict[str, AgentAction] = dict()
@@ -159,18 +165,40 @@ async def run_async_server(
         for idx, agent_name in enumerate(env.agents):
             agent_messages[agent_name] = actions[idx]
 
-            messages.append(
+            messages[-1].append(
                 (agent_name, "Environment", agent_messages[agent_name])
             )
 
         # send agent messages to environment
-        environment_messages, _, terminated, ___, ____ = await env.astep(
-            agent_messages
-        )
-        for agent_name in env.agents:
-            messages.append(
+        (
+            environment_messages,
+            rewards_in_turn,
+            terminated,
+            ___,
+            ____,
+        ) = await env.astep(agent_messages)
+        messages.append(
+            [
                 ("Environment", agent_name, environment_messages[agent_name])
-            )
+                for agent_name in env.agents
+            ]
+        )
+        rewards.append(
+            [rewards_in_turn[agent_name] for agent_name in env.agents]
+        )
         done = all(terminated.values())
 
-    return messages
+    EpisodeLog(
+        environment=env.profile.pk,
+        agents=[agent.profile.pk for agent in agent_list],
+        messages=[
+            [
+                (m[0], m[1], m[2].to_natural_language())
+                for m in messages_in_turn
+            ]
+            for messages_in_turn in messages
+        ],
+        rewards=rewards,
+    ).save()
+    # flatten nested list messages
+    return list(itertools.chain(*messages))

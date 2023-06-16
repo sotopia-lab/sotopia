@@ -1,6 +1,16 @@
+from typing import Any, Generator, cast
+
+import pytest
+from pydantic.error_wrappers import ValidationError
+
 from sotopia.agents import LLMAgent
-from sotopia.database import AgentProfile, EnvironmentProfile
+from sotopia.database import (
+    AgentProfile,
+    EnvironmentProfile,
+    EpisodeLog,
+)
 from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.messages import SimpleMessage
 
 
 def test_create_env_profile() -> None:
@@ -30,3 +40,71 @@ def test_create_agent_profile() -> None:
     agent = LLMAgent(uuid_str=pk)
     assert agent.profile == agent_profile
     AgentProfile.delete(pk)
+
+
+@pytest.fixture
+def _test_create_episode_log_setup_and_tear_down() -> Generator[
+    None, None, None
+]:
+    AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
+    AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
+    yield
+    AgentProfile.delete("tmppk_agent1")
+    AgentProfile.delete("tmppk_agent2")
+    EpisodeLog.delete("tmppk_episode_log")
+
+
+def test_create_episode_log(
+    _test_create_episode_log_setup_and_tear_down: Any,
+) -> None:
+    try:
+        _ = EpisodeLog(
+            environment="", agents=["", ""], messages=[], rewards=[[0, 0, 0]]
+        )
+        assert False
+    except Exception as e:
+        assert isinstance(e, ValidationError)
+
+    episode_log = EpisodeLog(
+        environment="env",
+        agents=["tmppk_agent1", "tmppk_agent2"],
+        messages=[
+            [
+                (
+                    "tmppk_agent1",
+                    "tmppk_agent2",
+                    SimpleMessage(message="Hello").to_natural_language(),
+                ),
+                (
+                    "tmppk_agent2",
+                    "tmppk_agent1",
+                    SimpleMessage(message="Hi").to_natural_language(),
+                ),
+            ],
+            [
+                (
+                    "Environment",
+                    "tmppk_agent2",
+                    SimpleMessage(message="Hello").to_natural_language(),
+                ),
+                (
+                    "tmppk_agent2",
+                    "tmppk_agent1",
+                    SimpleMessage(message="Hi").to_natural_language(),
+                ),
+            ],
+        ],
+        rewards=[[0, 0]],
+        pk="tmppk_episode_log",
+    )
+    episode_log.save()
+    assert episode_log.pk == "tmppk_episode_log"
+    retrieved_episode_log: EpisodeLog = EpisodeLog.get(episode_log.pk)  # type: ignore[assignment]
+
+    # test consistency
+    assert episode_log == retrieved_episode_log
+
+    # test render_for_humans
+    agent_profiles, messages_and_rewards = episode_log.render_for_humans()
+    assert len(agent_profiles) == 2
+    assert len(messages_and_rewards) == 2
