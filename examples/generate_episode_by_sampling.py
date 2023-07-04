@@ -1,11 +1,16 @@
 import asyncio
 import logging
+import sys
 from logging import FileHandler
 from typing import Literal
 
 from rich import print
 from rich.logging import RichHandler
 
+from sotopia.database.persistent_profile import (
+    AgentProfile,
+    EnvironmentProfile,
+)
 from sotopia.generation_utils.generate import LLM_Name
 from sotopia.server import run_async_server
 
@@ -28,21 +33,35 @@ model_names: dict[str, LLM_Name] = {
     "agent2": "gpt-3.5-turbo",
 }
 
-messages = asyncio.run(
-    run_async_server(model_dict=model_names, action_order="round-robin")
-)
+# buying_gift = EnvironmentProfile.get("01H2REANWK8METSXCW6AP244H3")
+# borrowing_money = EnvironmentProfile.get("01H2REANWE5XSSSBE1X9KHSF5E")
+# prison_dillema = EnvironmentProfile.get("01H2REANWTJJDSF00YR897SC28")
+# charity = EnvironmentProfile.get("01H2REANWP9QSXWM8VNV0CGC5H")
+# obtain env profiles
 
-env_messages = []
-for index, (sender, receiver, message) in enumerate(messages):
-    if receiver == "Environment":
-        env_messages.append((sender, message))
+env_pks = EnvironmentProfile.all_pks()  # type: ignore[attr-defined]
+env_candidates = []
+for pk in env_pks:
+    env_candidates.append(EnvironmentProfile.get(pk))
 
-history = "\n".join(
-    [
-        f"{x}: {y.to_natural_language()}"
-        if x != "Environment"
-        else y.to_natural_language()
-        for x, y in env_messages
-    ]
-)
-print(history)
+agents = [
+    AgentProfile.get("01H49HPQJ0S3J76KW94JZYFS1D"),
+    AgentProfile.get("01H49HPQKS32HSJ2XSMWRA8S7G"),
+]
+
+push_to_db = sys.argv[1]
+assert push_to_db in ["True", "False"], "push_to_db should be True or False"
+push_to_db_bool = push_to_db == "True"
+
+env_candidates = [EnvironmentProfile.get("01H4EFKY8VCAJJJM8WACW3KYWE")]
+
+for _ in range(1):
+    messages = asyncio.run(
+        run_async_server(
+            model_dict=model_names,
+            action_order="round-robin",
+            push_to_db=push_to_db_bool,
+            env_candidates=env_candidates,
+            #        agent_candidates=agents,
+        )
+    )

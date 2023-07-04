@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import json
 import logging
 import random
@@ -52,7 +53,11 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
 
 
 def _agent_profile_to_bio(profile: AgentProfile) -> str:
-    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}."
+    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronoun. {profile.public_info}"
+
+
+def _agent_profile_to_bio_self(profile: AgentProfile) -> str:
+    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronoun. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}"
 
 
 class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
@@ -66,6 +71,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         ] = "simutaneous",
         model_name: LLM_Name = "gpt-3.5-turbo",
         evaluators: list[Evaluator] = [],
+        terminal_evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,
         env_profile: EnvironmentProfile | None = None,
     ) -> None:
@@ -94,6 +100,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         self.action_order = action_order
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
+        self.terminal_evaluators = terminal_evaluators
 
         # if an environment profile is provided, use it
         if env_profile is not None:
@@ -139,10 +146,10 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
             ), "Only supporting two agents right now"
             self.background = ScriptBackground(
                 scenario=self.profile.scenario,
-                p1_background=_agent_profile_to_bio(
+                p1_background=_agent_profile_to_bio_self(
                     agents[agent_names[0]].profile
                 ),
-                p2_background=_agent_profile_to_bio(
+                p2_background=_agent_profile_to_bio_self(
                     agents[agent_names[1]].profile
                 ),
                 p1_goal=agent_goals[0],
@@ -157,6 +164,13 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
 
         background_for_a = deepcopy(self.background)
         background_for_b = deepcopy(self.background)
+        if agents is not None:
+            background_for_a.p2_background = _agent_profile_to_bio(
+                agents[agent_names[1]].profile
+            )
+            background_for_b.p1_background = _agent_profile_to_bio(
+                agents[agent_names[0]].profile
+            )
         background_for_a.p2_goal = "Unknown"
         background_for_b.p1_goal = "Unknown"
         self.agents = [self.background.p1_name, self.background.p2_name]
@@ -238,10 +252,16 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
             self.recv_message(agent, action)
 
         response = unweighted_aggregate_evaluate(
-            [
-                evaluator(turn_number=self.turn_number, messages=self.inbox)
-                for evaluator in self.evaluators
-            ]
+            list(
+                itertools.chain(
+                    *(
+                        evaluator(
+                            turn_number=self.turn_number, messages=self.inbox
+                        )
+                        for evaluator in self.evaluators
+                    )
+                )
+            )
         )
 
         self.action_mask = [False for _ in self.agents]
@@ -272,8 +292,20 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 ),
             },
             {
-                self.background.p1_name: response.p1_rate or 0,
-                self.background.p2_name: response.p2_rate or 0,
+                self.background.p1_name: (
+                    response.p1_rate
+                    if isinstance(response.p1_rate, float)
+                    else response.p1_rate[0]
+                )
+                if response.p1_rate
+                else 0,
+                self.background.p2_name: (
+                    response.p2_rate
+                    if isinstance(response.p2_rate, float)
+                    else response.p2_rate[0]
+                )
+                if response.p2_rate
+                else 0,
             },
             {
                 self.background.p1_name: response.terminated,
@@ -284,8 +316,14 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 self.background.p2_name: False,
             },
             {
-                self.background.p1_name: {},
-                self.background.p2_name: {},
+                self.background.p1_name: {
+                    "comments": response.comments or "",
+                    "complete_rating": response.p1_rate or 0,
+                },
+                self.background.p2_name: {
+                    "comments": response.comments or "",
+                    "complete_rating": response.p2_rate or 0,
+                },
             },
         )
 
@@ -328,15 +366,44 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
             self.recv_message(agent, action)
 
         response = unweighted_aggregate_evaluate(
-            await asyncio.gather(
-                *[
-                    evaluator.__acall__(
-                        turn_number=self.turn_number, messages=self.inbox
+            list(
+                itertools.chain(
+                    *await asyncio.gather(
+                        *[
+                            evaluator.__acall__(
+                                turn_number=self.turn_number,
+                                messages=self.inbox,
+                            )
+                            for evaluator in self.evaluators
+                        ]
                     )
-                    for evaluator in self.evaluators
-                ]
+                )
             )
         )
+
+        if response.terminated:
+            terminal_response = unweighted_aggregate_evaluate(
+                list(
+                    itertools.chain(
+                        *await asyncio.gather(
+                            *[
+                                evaluator.__acall__(
+                                    turn_number=self.turn_number,
+                                    messages=self.inbox,
+                                )
+                                for evaluator in self.terminal_evaluators
+                            ]
+                        )
+                    )
+                )
+            )
+            # incorporate terminal response into response
+            response.p1_rate = response.p1_rate or terminal_response.p1_rate
+            response.p2_rate = response.p2_rate or terminal_response.p2_rate
+            if response.comments and terminal_response.comments:
+                response.comments += terminal_response.comments
+            elif terminal_response.comments:
+                response.comments = terminal_response.comments
 
         self.action_mask = [False for _ in self.agents]
         if self.action_order == "round-robin":
@@ -366,8 +433,20 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 ),
             },
             {
-                self.background.p1_name: response.p1_rate or 0,
-                self.background.p2_name: response.p2_rate or 0,
+                self.background.p1_name: (
+                    response.p1_rate
+                    if isinstance(response.p1_rate, float)
+                    else response.p1_rate[0]
+                )
+                if response.p1_rate
+                else 0,
+                self.background.p2_name: (
+                    response.p2_rate
+                    if isinstance(response.p2_rate, float)
+                    else response.p2_rate[0]
+                )
+                if response.p2_rate
+                else 0,
             },
             {
                 self.background.p1_name: response.terminated,
@@ -378,8 +457,14 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 self.background.p2_name: False,
             },
             {
-                self.background.p1_name: {},
-                self.background.p2_name: {},
+                self.background.p1_name: {
+                    "comments": response.comments or "",
+                    "complete_rating": response.p1_rate or 0,
+                },
+                self.background.p2_name: {
+                    "comments": response.comments or "",
+                    "complete_rating": response.p2_rate or 0,
+                },
             },
         )
 

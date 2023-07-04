@@ -46,6 +46,7 @@ class LoggingCallbackHandler(StdOutCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Run when agent ends."""
+        # leave only prompt for environment
         logging.log(15, f"LLM Call: {text}")
 
     def on_agent_finish(self, *args: Any, **kwargs: Any) -> None:

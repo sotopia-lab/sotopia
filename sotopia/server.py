@@ -3,10 +3,15 @@ import functools
 import itertools
 from typing import Literal, cast
 
+import rich
 from beartype import beartype
 
 from sotopia.agents import Agents, HumanAgent, LLMAgent, SpeakAgent
 from sotopia.database import EpisodeLog
+from sotopia.database.persistent_profile import (
+    AgentProfile,
+    EnvironmentProfile,
+)
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
@@ -97,6 +102,9 @@ def run_sync_server(
 async def run_async_server(
     model_dict: dict[str, LLM_Name],
     action_order: Literal["simutaneous", "round-robin", "random"],
+    env_candidates: list[EnvironmentProfile] = [],
+    agent_candidates: list[AgentProfile] = [],
+    push_to_db: bool = False,
 ) -> list[tuple[str, str, Message]]:
 
     # Create Environment and agents
@@ -106,15 +114,20 @@ async def run_async_server(
         "model_name": model_dict["env"],
         "action_order": action_order,
         "evaluators": [
+            RuleBasedTerminatedEvaluator(max_turn_number=10, max_stale_turn=2),
+        ],
+        "terminal_evaluators": [
             ReachGoalLLMEvaluator(model_dict["env"]),
-            RuleBasedTerminatedEvaluator(max_turn_number=2),
         ],
     }
     agents_model_dict = {
         "agent1": model_dict["agent1"],
         "agent2": model_dict["agent2"],
     }
-    sampler = UniformSampler[Observation, AgentAction]()
+    sampler = UniformSampler[Observation, AgentAction](
+        env_candidates=env_candidates,
+        agent_candidates=agent_candidates,
+    )
     env, agent_list = sampler.sample(
         agent_classes=[
             LLMAgent if model_name != "human" else HumanAgent
@@ -152,6 +165,7 @@ async def run_async_server(
     for index, agent_name in enumerate(env.agents):
         agents[agent_name].goal = env.profile.agent_goals[index]
     rewards: list[list[float]] = []
+    reasons: list[str] = []
     while not done:
         # gather agent messages
         agent_messages: dict[str, AgentAction] = dict()
@@ -175,7 +189,7 @@ async def run_async_server(
             rewards_in_turn,
             terminated,
             ___,
-            ____,
+            info,
         ) = await env.astep(agent_messages)
         messages.append(
             [
@@ -186,9 +200,13 @@ async def run_async_server(
         rewards.append(
             [rewards_in_turn[agent_name] for agent_name in env.agents]
         )
+        reasons.append(
+            " ".join(info[agent_name]["comments"] for agent_name in env.agents)
+        )
         done = all(terminated.values())
 
-    EpisodeLog(
+    # TODO: clean up this part
+    epilog = EpisodeLog(
         environment=env.profile.pk,
         agents=[agent.profile.pk for agent in agent_list],
         messages=[
@@ -198,7 +216,18 @@ async def run_async_server(
             ]
             for messages_in_turn in messages
         ],
-        rewards=rewards,
-    ).save()
+        reasoning=info[env.agents[0]]["comments"],
+        rewards=[
+            info[agent_name]["complete_rating"] for agent_name in env.agents
+        ],
+    )
+    agent_profiles, conversation = epilog.render_for_humans()
+    for agent_profile in agent_profiles:
+        rich.print(agent_profile)
+    for message in conversation:
+        rich.print(message)
+
+    if push_to_db:
+        epilog.save()
     # flatten nested list messages
     return list(itertools.chain(*messages))

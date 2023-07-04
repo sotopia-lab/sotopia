@@ -59,7 +59,11 @@ def test_create_episode_log(
 ) -> None:
     try:
         _ = EpisodeLog(
-            environment="", agents=["", ""], messages=[], rewards=[[0, 0, 0]]
+            environment="",
+            agents=["", ""],
+            messages=[],
+            rewards=[[0, 0, 0]],
+            reasoning=[""],
         )
         assert False
     except Exception as e:
@@ -94,7 +98,23 @@ def test_create_episode_log(
                 ),
             ],
         ],
-        rewards=[[0, 0]],
+        rewards=[
+            (0, {"believability": 9.0}),
+            (
+                0,
+                {
+                    "believability": 9.0,
+                    "relationship": 2.0,
+                    "knowledge": 1.0,
+                    "secret": 0.0,
+                    "social_rules": 0.0,
+                    "financial_and_material_benifits": 0.0,
+                    "goal": 10.0,
+                    "overall_score": 0,
+                },
+            ),
+        ],
+        reasoning="",
         pk="tmppk_episode_log",
     )
     episode_log.save()
@@ -107,4 +127,4 @@ def test_create_episode_log(
     # test render_for_humans
     agent_profiles, messages_and_rewards = episode_log.render_for_humans()
     assert len(agent_profiles) == 2
-    assert len(messages_and_rewards) == 2
+    assert len(messages_and_rewards) == 4

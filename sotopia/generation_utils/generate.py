@@ -42,40 +42,32 @@ LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4", "human"]
 OutputType = TypeVar("OutputType", bound=object)
 
 
-class Script(BaseModel):
-    scenario: str = Field(description="scenario of the episode")
-    p1_background: str = Field(description="background of participant 1")
-    p2_background: str = Field(description="background of participant 2")
-    p1_goal: str = Field(description="goal of participant 1")
-    p2_goal: str = Field(description="goal of participant 2")
-    conversation: list[tuple[int, str]] = Field(
-        description="conversation between participants"
+class EnvResponse(BaseModel):
+    reasoning: str = Field(
+        description="first reiterate agents' social goals and then reason about what agents say/do and whether that aligns with their goals."
     )
     p1_rate: int = Field(
-        description="rating of participant 1, on the scale of 1 to 10"
+        description="rating of participant 1, on the scale of 0 to 9"
     )
     p2_rate: int = Field(
-        description="rating of participant 2, on the scale of 1 to 10"
+        description="rating of participant 2, on the scale of 0 to 9"
     )
 
 
-class ScriptPydanticOutputParser(PydanticOutputParser[Script]):
-    def __init__(self, pydantic_object: Type[BaseModel] = Script) -> None:
-        super(ScriptPydanticOutputParser, self).__init__(
-            pydantic_object=Script
+class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
+    def __init__(self, pydantic_object: Type[BaseModel] = EnvResponse) -> None:
+        super(EnvResponsePydanticOutputParser, self).__init__(
+            pydantic_object=pydantic_object
         )
 
-    def parse(self, text: str) -> Script:
+    def parse(self, text: str) -> EnvResponse:
         # remove trailing commas before ) or ] from text
         text = re.sub(r",\s*(\)|\])", r"\1", text)
         return super().parse(text)
 
     def get_format_instructions(self) -> str:
         format_instruction = super().get_format_instructions()
-        return (
-            format_instruction
-            + "conversation is a list of tuples, where the first element is the speaker id (1 or 2) and the second element is the message. Don't leave trailing commas."
-        )
+        return format_instruction
 
 
 class ListOfIntOutputParser(BaseOutputParser[list[int]]):
@@ -289,13 +281,14 @@ async def agenerate(
     return parsed_result
 
 
+# deprecated function
 @beartype
 def generate_episode(
     model_name: LLM_Name,
     participants: str = "Jack (a greedy person), Rose",
     topic: str = "lawsuit",
     extra_info: str = "",
-) -> Script:
+) -> EnvResponse:
     """
     Using langchain to generate an example episode
     """
@@ -313,7 +306,7 @@ def generate_episode(
             topic=topic,
             extra_info=extra_info,
         ),
-        output_parser=ScriptPydanticOutputParser(),
+        output_parser=EnvResponsePydanticOutputParser(),
     )
 
 
@@ -382,9 +375,9 @@ def generate_action(
         return generate(
             model_name=model_name,
             template="""
-                You are {agent}.
+                Imagine you are {agent}, your task is to act/speak like {agent} with {agent}'s social goal in mind.
+                You can find {agent}'s background and goal in the following history:
                 {history}
-
                 You are at Turn #{turn_number}. Your available action types are
                 {action_list}. Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:
@@ -465,9 +458,12 @@ async def agenerate_action(
         return await agenerate(
             model_name=model_name,
             template="""
-                You are {agent}.
-                {history}
-
+                Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
+                You can find {agent}'s background and goal in the 'Here is the context of the interaction' field.
+                Note that {agent}'s secret and goal is only visible to you.
+                You should try your best to achieve {agent}'s goal in a way that align with their character traits.
+                Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
+                {history}.
                 You are at Turn #{turn_number}. Your available action types are
                 {action_list}. Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:
@@ -487,13 +483,13 @@ async def agenerate_action(
 
 @beartype
 def process_history(
-    script: ScriptBackground | Script | dict[str, AgentAction]
+    script: ScriptBackground | EnvResponse | dict[str, AgentAction]
 ) -> str:
     """
     Format the script background
     """
     result = ""
-    if isinstance(script, ScriptBackground | Script):
+    if isinstance(script, ScriptBackground | EnvResponse):
         script = script.dict()
         result = "The initial observation\n\n"
     for key, value in script.items():

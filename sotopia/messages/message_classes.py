@@ -39,9 +39,9 @@ class Observation(Message):
 
     def to_natural_language(self) -> str:
         if self.turn_number == 0:
-            return f"\n{self.last_turn}\nConversation Starts:\nThe available actions are: {', '.join(self.available_actions)}\n"
+            return f"\n{self.last_turn}\nConversation Starts:\n"
         else:
-            return f"Turn #{self.turn_number-1}: {self.last_turn}\nThe available actions are: {', '.join(self.available_actions)}\n"
+            return f"Turn #{self.turn_number-1}: {self.last_turn}\n"
 
 
 class ScriptBackground(Message):
@@ -67,39 +67,27 @@ class ScriptBackground(Message):
 
 
 class ScriptEnvironmentResponse(Message):
-    conversation_too_long: bool = Field(
-        description="whether the conversation is too long"
-    )
-    p1_leaving: bool = Field(
-        description="whether participant 1 is leaving the conversation"
-    )
-    p2_leaving: bool = Field(
-        description="whether participant 2 is leaving the conversation"
-    )
-    stale_too_long: bool = Field(
-        description="whether the conversation is stale for too long"
-    )
     terminated: bool = Field(
         description="whether the conversation is terminated",
         default_factory=lambda: False,
     )
-    p1_rate: float | None = Field(
+    p1_rate: float | tuple[float, dict[str, float]] | None = Field(
         description="rating of participant 1, on the scale of 1 to 10"
     )
-    p2_rate: float | None = Field(
+    p2_rate: float | tuple[float, dict[str, float]] | None = Field(
         description="rating of participant 2, on the scale of 1 to 10"
+    )
+    comments: str | None = Field(
+        description="All of the comments supporting the termination and rating"
     )
 
     def to_natural_language(self) -> str:
         reason_to_stop = format_docstring(
             f"""Environment response:
-        {"The conversation is too long." if self.conversation_too_long else ""}
-        {"Participant 1 is leaving the conversation." if self.p1_leaving else ""}
-        {"Participant 2 is leaving the conversation." if self.p2_leaving else ""}
-        {"The conversation is stale for too long." if self.stale_too_long else ""}
         {"The conversation is terminated." if self.terminated else ""}
         {"Rating of participant 1" + str(self.p1_rate) if self.p1_rate is not None else ""}
         {"Rating of participant 2" + str(self.p2_rate) if self.p2_rate is not None else ""}
+        {self.comments if self.comments is not None else ""}
         """
         )
         clean_text = ""

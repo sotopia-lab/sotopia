@@ -35,14 +35,45 @@ def add_env_profile(**kwargs: dict[str, Any]) -> None:
     env_profile.save()
 
 
+def add_env_profiles(env_profiles: list[dict[str, Any]]) -> None:
+    for env_profile in env_profiles:
+        add_env_profile(**env_profile)
+
+
+def delete_all_agents() -> None:
+    pks = AgentProfile.all_pks()  # type: ignore[attr-defined]
+    for id in pks:
+        AgentProfile.delete(id)
+
+
+def delete_all_env_profiles() -> None:
+    pks = EnvironmentProfile.all_pks()  # type: ignore[attr-defined]
+    for id in pks:
+        EnvironmentProfile.delete(id)
+
+
 if __name__ == "__main__":
-    assert len(sys.argv) == 2, "Please provide a csv file with agent profiles"
+    assert (
+        len(sys.argv) == 3
+    ), "Please provide a csv file with agent or environment profiles, and the type of profile (agent or environment)"
     df = pd.read_csv(sys.argv[1])
-    agents = cast(list[dict[str, Any]], df.to_dict(orient="records"))
-    for agent in agents:
-        agent["age"] = int(agent["age"])
-        agent["moral_values"] = agent["moral_values"].split(",")
-        agent["schwartz_personal_values"] = agent[
-            "schwartz_personal_values"
-        ].split(",")
-    add_agents_to_database(agents)
+    type = sys.argv[2]
+    if type == "agent":
+        # delete_all_agents()
+        agents = cast(list[dict[str, Any]], df.to_dict(orient="records"))
+        for agent in agents:
+            agent["age"] = int(agent["age"])
+            agent["moral_values"] = agent["moral_values"].split(",")
+            agent["schwartz_personal_values"] = agent[
+                "schwartz_personal_values"
+            ].split(",")
+        add_agents_to_database(agents)
+    elif type == "environment":
+        # drop columns that are not needed
+        delete_all_env_profiles()
+        df = df.drop("more comments", axis=1)
+        df = df.drop("comments", axis=1)
+        envs = cast(list[dict[str, Any]], df.to_dict(orient="records"))
+        for env in envs:
+            env["agent_goals"] = env["agent_goals"].split("----")
+        add_env_profiles(envs)

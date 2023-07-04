@@ -43,8 +43,8 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
         if self.env_candidates:
             env_profile = random.choice(self.env_candidates)
         else:
-            env_profile = random.choice(list(EnvironmentProfile.all_pks()))  # type: ignore[attr-defined]
-            env_profile = EnvironmentProfile.get(env_profile)
+            env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))  # type: ignore[attr-defined]
+            env_profile = EnvironmentProfile.get(env_profile_id)
         env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
         if self.agent_candidates:
