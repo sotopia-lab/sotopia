@@ -379,7 +379,10 @@ def generate_action(
                 You can find {agent}'s background and goal in the following history:
                 {history}
                 You are at Turn #{turn_number}. Your available action types are
-                {action_list}. Please only generate a JSON string including the action type and the argument.
+                {action_list}.
+                Note: You can "leave" this conversation if 1. this conversation makes you uncomfortable, 2. you find it uninteresting/you lose your patience, 3. you have achieved your social goals, 4. or for other reasons you want to leave.
+
+                Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:
                 {format_instructions}
             """,
@@ -465,7 +468,10 @@ async def agenerate_action(
                 Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
                 {history}.
                 You are at Turn #{turn_number}. Your available action types are
-                {action_list}. Please only generate a JSON string including the action type and the argument.
+                {action_list}.
+                Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
+
+                Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:
                 {format_instructions}
             """,
