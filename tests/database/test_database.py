@@ -64,6 +64,7 @@ def test_create_episode_log(
             messages=[],
             rewards=[[0, 0, 0]],
             reasoning=[""],
+            rewards_prompt="",
         )
         assert False
     except Exception as e:
@@ -108,7 +109,7 @@ def test_create_episode_log(
                     "knowledge": 1.0,
                     "secret": 0.0,
                     "social_rules": 0.0,
-                    "financial_and_material_benifits": 0.0,
+                    "financial_and_material_benefits": 0.0,
                     "goal": 10.0,
                     "overall_score": 0,
                 },
@@ -116,6 +117,7 @@ def test_create_episode_log(
         ],
         reasoning="",
         pk="tmppk_episode_log",
+        rewards_prompt="",
     )
     episode_log.save()
     assert episode_log.pk == "tmppk_episode_log"

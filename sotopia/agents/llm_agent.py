@@ -85,7 +85,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="")
         else:
-            action = await agenerate_action(
+            action, prompt = await agenerate_action(
                 self.model_name,
                 history="\n".join(
                     f"{y.to_natural_language()}" for x, y in self.inbox

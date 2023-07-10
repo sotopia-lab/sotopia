@@ -15,6 +15,7 @@ episode_dict: dict[str, list[str]] = {
     "messages": [],
     "reasoning": [],
     "rewards": [],
+    "rewards_prompt": [],
 }
 
 try:
@@ -25,6 +26,7 @@ try:
     episode_dict["messages"] = list(df["messages"])
     episode_dict["reasoning"] = list(df["reasoning"])
     episode_dict["rewards"] = list(df["rewards"])
+    episode_dict["rewards_prompt"] = list(df["rewards_prompt"])
 except:
     pass
 
@@ -56,7 +58,7 @@ for episode_log_pk in episode_log_pks_list:
     episode_dict["messages"].append(messages)
     episode_dict["reasoning"].append(reasoning)
     episode_dict["rewards"].append(rewards)
-
+    episode_dict["rewards_prompt"].append(episode_log.rewards_prompt)
 
 df = pd.DataFrame(episode_dict)
 df.to_csv("./data/episodes.csv")

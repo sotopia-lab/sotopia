@@ -15,6 +15,7 @@ class LoggingCallbackHandler(StdOutCallbackHandler):
         """Initialize callback handler."""
         super().__init__()
         self.logger = logging.getLogger(name)
+        self.prompt = ""
 
     def on_chain_start(self, *args: Any, **kwargs: Any) -> None:
         pass
@@ -47,7 +48,12 @@ class LoggingCallbackHandler(StdOutCallbackHandler):
     ) -> None:
         """Run when agent ends."""
         # leave only prompt for environment
+        text = text.replace("\x1b[32;1m\x1b[1;3mHuman: ", "")
         logging.log(15, f"LLM Call: {text}")
+        self.prompt = text
+
+    def retrive_prompt(self) -> str:
+        return self.prompt
 
     def on_agent_finish(self, *args: Any, **kwargs: Any) -> None:
         """Run on agent end."""

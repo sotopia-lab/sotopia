@@ -415,6 +415,19 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
+        info = {
+            self.background.p1_name: {
+                "comments": response.comments or "",
+                "complete_rating": response.p1_rate or 0,
+            },
+            self.background.p2_name: {
+                "comments": response.comments or "",
+                "complete_rating": response.p2_rate or 0,
+            },
+        }
+        if response.terminated:
+            info["rewards_prompt"] = {"overall_prompt": self.terminal_evaluators[0].prompt}  # type: ignore
+
         return (
             {
                 self.background.p1_name: Observation(
@@ -456,16 +469,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 self.background.p1_name: False,
                 self.background.p2_name: False,
             },
-            {
-                self.background.p1_name: {
-                    "comments": response.comments or "",
-                    "complete_rating": response.p1_rate or 0,
-                },
-                self.background.p2_name: {
-                    "comments": response.comments or "",
-                    "complete_rating": response.p2_rate or 0,
-                },
-            },
+            info,
         )
 
     def render(self, mode: str = "human") -> None:

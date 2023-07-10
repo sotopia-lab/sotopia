@@ -247,7 +247,7 @@ async def agenerate(
     template: str,
     input_values: dict[str, str],
     output_parser: BaseOutputParser[OutputType],
-) -> OutputType:
+) -> tuple[OutputType, str]:
     input_variables = re.findall(r"{(.*?)}", template)
     assert set(input_variables) == set(
         list(input_values.keys()) + ["format_instructions"]
@@ -266,6 +266,7 @@ async def agenerate(
             "format_instructions"
         ] = output_parser.get_format_instructions()
     result = await chain.apredict([logging_handler], **input_values)
+    prompt = logging_handler.retrive_prompt()
     try:
         parsed_result = output_parser.parse(result)
     except Exception as e:
@@ -278,7 +279,7 @@ async def agenerate(
         )
         parsed_result = output_parser.parse(reformat_parsed_result)
     log.info(f"Generated result: {parsed_result}")
-    return parsed_result
+    return parsed_result, prompt
 
 
 # deprecated function
@@ -453,7 +454,7 @@ async def agenerate_action(
     action_types: list[ActionType],
     agent: str,
     goal: str,
-) -> AgentAction:
+) -> tuple[AgentAction, str]:
     """
     Using langchain to generate an example episode
     """
@@ -484,7 +485,7 @@ async def agenerate_action(
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
         )
     except:
-        return AgentAction(action_type="none", argument="")
+        return AgentAction(action_type="none", argument=""), ""
 
 
 @beartype

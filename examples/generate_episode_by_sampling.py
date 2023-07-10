@@ -53,9 +53,9 @@ push_to_db = sys.argv[1]
 assert push_to_db in ["True", "False"], "push_to_db should be True or False"
 push_to_db_bool = push_to_db == "True"
 
-env_candidates = [EnvironmentProfile.get("01H4EFKY8VCAJJJM8WACW3KYWE")]
+# env_candidates = [EnvironmentProfile.get("01H4EFKY8VCAJJJM8WACW3KYWE")]
 
-for _ in range(1):
+for _ in range(10):
     messages = asyncio.run(
         run_async_server(
             model_dict=model_names,
