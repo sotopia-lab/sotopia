@@ -13,3 +13,5 @@ transformers
 logzero
 fastapi
 uvicorn
+gin-config
+absl-py

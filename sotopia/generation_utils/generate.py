@@ -2,6 +2,7 @@ import logging
 import re
 from typing import TypeVar, cast
 
+import gin
 from beartype import beartype
 from beartype.typing import Type
 from langchain.callbacks import StdOutCallbackHandler
@@ -139,7 +140,10 @@ class StrOutputParser(BaseOutputParser[str]):
 
 @beartype
 def obtain_chain(
-    model_name: LLM_Name, template: str, input_variables: list[str]
+    model_name: LLM_Name,
+    template: str,
+    input_variables: list[str],
+    temperature: float = 0.7,
 ) -> LLMChain:
     """
     Using langchain to sample profiles for participants
@@ -155,12 +159,12 @@ def obtain_chain(
             chat_prompt_template = ChatPromptTemplate.from_messages(
                 [human_message_prompt]
             )
-            chat = ChatOpenAI(model_name=model_name)
+            chat = ChatOpenAI(model_name=model_name, temperature=temperature)
             chain = LLMChain(llm=chat, prompt=chat_prompt_template)
             return chain
         case "text-davinci-003":
             # Warning: no interactive mode for 003
-            llm = OpenAI(model_name=model_name)
+            llm = OpenAI(model_name=model_name, temperature=temperature)
             prompt = PromptTemplate(
                 input_variables=input_variables,
                 template=template,
@@ -205,6 +209,7 @@ def generate(
     template: str,
     input_values: dict[str, str],
     output_parser: BaseOutputParser[OutputType],
+    temperature: float = 0.7,
 ) -> OutputType:
     input_variables = re.findall(r"{(.*?)}", template)
     assert set(input_variables) == set(
@@ -218,6 +223,7 @@ def generate(
         model_name=model_name,
         template=template,
         input_variables=input_variables,
+        temperature=temperature,
     )
     if "format_instructions" not in input_values:
         input_values[
@@ -241,12 +247,14 @@ def generate(
     return parsed_result
 
 
+@gin.configurable
 @beartype
 async def agenerate(
     model_name: LLM_Name,
     template: str,
     input_values: dict[str, str],
     output_parser: BaseOutputParser[OutputType],
+    temperature: float = 0.7,
 ) -> tuple[OutputType, str]:
     input_variables = re.findall(r"{(.*?)}", template)
     assert set(input_variables) == set(
@@ -260,6 +268,7 @@ async def agenerate(
         model_name=model_name,
         template=template,
         input_variables=input_variables,
+        temperature=temperature,
     )
     if "format_instructions" not in input_values:
         input_values[
@@ -446,6 +455,7 @@ def generate_action_speak(
         return AgentAction(action_type="none", argument="")
 
 
+@gin.configurable
 @beartype
 async def agenerate_action(
     model_name: LLM_Name,
@@ -454,6 +464,7 @@ async def agenerate_action(
     action_types: list[ActionType],
     agent: str,
     goal: str,
+    temperature: float = 0.7,
 ) -> tuple[AgentAction, str]:
     """
     Using langchain to generate an example episode
@@ -483,6 +494,7 @@ async def agenerate_action(
                 action_list=" ".join(action_types),
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+            temperature=temperature,
         )
     except:
         return AgentAction(action_type="none", argument=""), ""

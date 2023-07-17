@@ -1,0 +1,10 @@
+from __gin__ import dynamic_registration
+import __main__ as train_script
+import sotopia.generation_utils.generate as generate
+import sotopia.envs.evaluators as evaluators
+
+generate.agenerate_action:
+    temperature = 1.0
+
+evaluators.ReachGoalLLMEvaluator.__acall__:
+    temperature = 0.0

@@ -11,9 +11,10 @@
 
 ## Installation
 
-This package supports Python 3.11 and above. We recommend using a virtual environment to install this package, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia`. Then, install the requirements and this package.
+This package supports Python 3.11 and above. We recommend using a virtual environment to install this package, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia; conda install -c conda-forge pip`. Then, install the requirements and this package.
 ```bash
-pip install -r requirements.txt; pip install -e .
+python -m pip install -r requirements.txt # make sure the packages are installed in the specific conda environment
+python -m pip install -e .
 ```
 
 OpenAI key is required to run the code. Please set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:
@@ -26,12 +27,18 @@ A redis-stack server is required to run the code. Please follow the [instruction
 conda env config vars set REDIS_OM_URL="redis://user:password@host:port"
 ```
 
+## Easy Sample Server
+You can view an episode demo with default parameters using the following command:
+```python
+python -m sotopia_conf.server --gin_file="sotopia_conf/server_conf/server.gin" --gin_file="sotopia_conf/generation_utils_conf/generate.gin"
+```
+
 ## Contribution
 ### Install dev options
 ```bash
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 mypy --install-types --non-interactive sotopia
-pip install pre-commit
+python -m pip install pre-commit
 pre-commit install
 ```
 ### New branch for each feature

@@ -2,6 +2,7 @@ import abc
 import logging
 from collections import defaultdict
 
+import gin
 from beartype import beartype
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field, validator
@@ -151,8 +152,8 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         return self(turn_number, messages)
 
 
-@beartype
 class ReachGoalLLMEvaluator(Evaluator):
+    @beartype
     def __init__(self, model_name: LLM_Name) -> None:
         self.model_name = model_name
         self.prompt = ""
@@ -164,8 +165,13 @@ class ReachGoalLLMEvaluator(Evaluator):
             "ReachGoalLLMEvaluator is not implemented for synchronous evaluation"
         )
 
+    @gin.configurable
+    @beartype
     async def __acall__(
-        self, turn_number: int, messages: list[tuple[str, Message]]
+        self,
+        turn_number: int,
+        messages: list[tuple[str, Message]],
+        temperature: float = 0.7,
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # filter did nothing
         messages_filtered = [
@@ -194,6 +200,7 @@ class ReachGoalLLMEvaluator(Evaluator):
                 output_parser=PydanticOutputParser[EnvResponse](
                     pydantic_object=EnvResponse
                 ),
+                temperature=temperature,
             )
             self.prompt = prompt
             response_list = []
