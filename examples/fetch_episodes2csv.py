@@ -6,7 +6,7 @@ import rich
 from sotopia.database.logs import EpisodeLog
 
 # get all the episode logs
-episode_log_pks: Generator[str, None, None] = EpisodeLog.all_pks()  # type: ignore[attr-defined]
+episode_log_pks: Generator[str, None, None] = EpisodeLog.all_pks()
 
 episode_dict: dict[str, list[str]] = {
     "episode_log_pk": [],

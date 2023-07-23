@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from pydantic import ConstrainedList, conlist, root_validator
 from redis_om import HashModel, JsonModel
-from redis_om.model.model import Field  # type: ignore[attr-defined]
+from redis_om.model.model import Field
 
 from sotopia.database.persistent_profile import AgentProfile
 from sotopia.messages import Message

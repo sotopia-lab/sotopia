@@ -39,7 +39,7 @@ model_names: dict[str, LLM_Name] = {
 # charity = EnvironmentProfile.get("01H2REANWP9QSXWM8VNV0CGC5H")
 # obtain env profiles
 
-env_pks = EnvironmentProfile.all_pks()  # type: ignore[attr-defined]
+env_pks = EnvironmentProfile.all_pks()
 env_candidates = []
 for pk in env_pks:
     env_candidates.append(EnvironmentProfile.get(pk))

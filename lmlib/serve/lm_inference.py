@@ -101,7 +101,7 @@ def load_gen_model(
 
         ckpt_path = get_last_checkpoint(lora_path)
         if ckpt_path is None:
-            gen_model = PeftModel.from_pretrained(  # type: ignore[attr-defined]
+            gen_model = PeftModel.from_pretrained(
                 gen_model,
                 lora_path,
                 torch_dtype=torch.float16,

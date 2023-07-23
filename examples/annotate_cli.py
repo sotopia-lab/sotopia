@@ -8,7 +8,7 @@ from tqdm import tqdm
 from sotopia.database import AnnotationForEpisode, Annotator, EpisodeLog
 
 # get all the episode logs
-episode_log_pks: Generator[str, None, None] = EpisodeLog.all_pks()  # type: ignore[attr-defined]
+episode_log_pks: Generator[str, None, None] = EpisodeLog.all_pks()
 
 annotator_id = Prompt.ask("Enter your annotator id")
 try:
@@ -23,7 +23,7 @@ except:
 
 annotated_episode = set()
 try:
-    prev_annotations = AnnotationForEpisode.find(  # type: ignore[attr-defined]
+    prev_annotations = AnnotationForEpisode.find(
         (AnnotationForEpisode.annotator_id == annotator_id)
     ).all()
 except:

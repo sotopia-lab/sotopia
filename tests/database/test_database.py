@@ -54,6 +54,13 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[
     EpisodeLog.delete("tmppk_episode_log")
 
 
+def test_get_agent_by_name(
+    _test_create_episode_log_setup_and_tear_down: Any,
+) -> None:
+    agent_profile = AgentProfile.find(AgentProfile.first_name == "John").all()
+    assert agent_profile[0].pk == "tmppk_agent1"
+
+
 def test_create_episode_log(
     _test_create_episode_log_setup_and_tear_down: Any,
 ) -> None:

@@ -1,8 +1,8 @@
 import uuid
 from typing import Any, cast
 
-from pydantic import ConstrainedList, Field, conlist
-from redis_om import HashModel, JsonModel
+from redis_om import JsonModel
+from redis_om.model.model import Field
 
 
 class AgentProfile(JsonModel):

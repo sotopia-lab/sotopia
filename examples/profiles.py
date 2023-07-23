@@ -20,7 +20,7 @@ def add_agents_to_database(agents: list[dict[str, Any]]) -> None:
 
 
 def retrieve_agent_by_first_name(first_name: str) -> AgentProfile:
-    result = AgentProfile.find(AgentProfile.first_name == first_name).all()  # type: ignore[attr-defined]
+    result = AgentProfile.find(AgentProfile.first_name == first_name).all()
     if len(result) == 0:
         raise ValueError(f"Agent with first name {first_name} not found")
     elif len(result) > 1:
@@ -41,13 +41,13 @@ def add_env_profiles(env_profiles: list[dict[str, Any]]) -> None:
 
 
 def delete_all_agents() -> None:
-    pks = AgentProfile.all_pks()  # type: ignore[attr-defined]
+    pks = AgentProfile.all_pks()
     for id in pks:
         AgentProfile.delete(id)
 
 
 def delete_all_env_profiles() -> None:
-    pks = EnvironmentProfile.all_pks()  # type: ignore[attr-defined]
+    pks = EnvironmentProfile.all_pks()
     for id in pks:
         EnvironmentProfile.delete(id)
 

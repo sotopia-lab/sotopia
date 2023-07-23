@@ -43,7 +43,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
         if self.env_candidates:
             env_profile = random.choice(self.env_candidates)
         else:
-            env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))  # type: ignore[attr-defined]
+            env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
             env_profile = EnvironmentProfile.get(env_profile_id)
         env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
@@ -54,7 +54,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
                     f"Number of agent candidates ({len(agent_profile_candidates)}) is less than number of agents ({n_agent})"
                 )
         else:
-            agent_profile_candidates_keys = list(AgentProfile.all_pks())  # type: ignore[attr-defined]
+            agent_profile_candidates_keys = list(AgentProfile.all_pks())
             if len(agent_profile_candidates_keys) < n_agent:
                 raise ValueError(
                     f"Number of agent profile candidates ({len(agent_profile_candidates_keys)}) in database is less than number of agents ({n_agent})"
