@@ -1,4 +1,5 @@
 pandas
+lxml
 openai
 langchain
 tiktoken

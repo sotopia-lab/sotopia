@@ -31,6 +31,7 @@ class AgentProfile(JsonModel):
 class EnvironmentProfile(JsonModel):
     scenario: str = Field(index=True, default_factory=lambda: "")
     agent_goals: list[str] = Field(default_factory=lambda: [])
+    relationship: str = Field(index=True, default_factory=lambda: "")
 
     @classmethod
     def get(cls, pk: Any) -> "EnvironmentProfile":

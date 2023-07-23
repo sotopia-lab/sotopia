@@ -44,9 +44,13 @@ env_candidates = []
 for pk in env_pks:
     env_candidates.append(EnvironmentProfile.get(pk))
 
+all_agent_pks = list(AgentProfile.all_pks())  # type: ignore[attr-defined]
+assert (
+    len(all_agent_pks) >= 2
+), "There should be at least 2 agents in the database"
 agents = [
-    AgentProfile.get("01H49HPQJ0S3J76KW94JZYFS1D"),
-    AgentProfile.get("01H49HPQKS32HSJ2XSMWRA8S7G"),
+    all_agent_pks[0],
+    all_agent_pks[1],
 ]
 
 push_to_db = sys.argv[1]

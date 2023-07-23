@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
 from beartype import beartype
+from gin import configurable
 from gymnasium.spaces.dict import Dict
 from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
@@ -32,6 +33,7 @@ from sotopia.messages import (
     ScriptBackground,
     SimpleMessage,
 )
+from sotopia.renderers import RenderContext, XMLRenderer
 
 from .evaluators import (
     Evaluator,
@@ -52,12 +54,41 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     return action_str
 
 
-def _agent_profile_to_bio(profile: AgentProfile) -> str:
-    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronoun. {profile.public_info}"
+def _agent_profile_to_bio_self(profile: AgentProfile, agent_id: int) -> str:
+    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronoun. {profile.public_info} <p viewer='agent_{agent_id}'>Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
 
 
-def _agent_profile_to_bio_self(profile: AgentProfile) -> str:
-    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronoun. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}"
+@configurable
+def render_text_for_agent(
+    raw_text: str,
+    agent_id: int,
+    tags_to_render: list[str] = [
+        "extra_info",
+        "clarification_hint",
+        "strategy_hint",
+    ],
+) -> str:
+    return XMLRenderer()(
+        raw_text,
+        RenderContext(
+            viewer=f"agent_{agent_id}", tags_to_render=tags_to_render
+        ),
+    )
+
+
+@configurable
+def render_text_for_environment(
+    raw_text: str,
+    tags_to_render: list[str] = [
+        "extra_info",
+        "clarification_hint",
+        "strategy_hint",
+    ],
+) -> str:
+    return XMLRenderer()(
+        raw_text,
+        RenderContext(viewer="environment", tags_to_render=tags_to_render),
+    )
 
 
 class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
@@ -144,36 +175,60 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
             assert (
                 len(agent_goals) == 2
             ), "Only supporting two agents right now"
-            self.background = ScriptBackground(
+            raw_background = ScriptBackground(
                 scenario=self.profile.scenario,
                 p1_background=_agent_profile_to_bio_self(
-                    agents[agent_names[0]].profile
+                    agents[agent_names[0]].profile, agent_id=0
                 ),
                 p2_background=_agent_profile_to_bio_self(
-                    agents[agent_names[1]].profile
+                    agents[agent_names[1]].profile, agent_id=1
                 ),
-                p1_goal=agent_goals[0],
-                p2_goal=agent_goals[1],
+                p1_goal=f"<root viewer='agent_0'>{agent_goals[0]}</root>",
+                p2_goal=f"<root viewer='agent_1'>{agent_goals[1]}</root>",
                 p1_name=agent_names[0],
                 p2_name=agent_names[1],
+            )
+            self.background = ScriptBackground(
+                scenario=render_text_for_environment(raw_background.scenario),
+                p1_background=render_text_for_environment(
+                    raw_background.p1_background
+                ),
+                p2_background=render_text_for_environment(
+                    raw_background.p2_background
+                ),
+                p1_goal=render_text_for_environment(raw_background.p1_goal),
+                p2_goal=render_text_for_environment(raw_background.p2_goal),
+                p1_name=raw_background.p1_name,
+                p2_name=raw_background.p2_name,
             )
         else:
             self.background = generate_scenario_background(
                 model_name=self.model_name
             )
+            raw_background = self.background
 
-        background_for_a = deepcopy(self.background)
-        background_for_b = deepcopy(self.background)
-        if agents is not None:
-            background_for_a.p2_background = _agent_profile_to_bio(
-                agents[agent_names[1]].profile
+        self.agents = [self.background.p1_name, self.background.p2_name]
+        agent_backgrounds: list[ScriptBackground] = []
+        for i in range(self.num_agents):
+            agent_backgrounds.append(
+                ScriptBackground(
+                    scenario=render_text_for_agent(raw_background.scenario, i),
+                    p1_background=render_text_for_agent(
+                        raw_background.p1_background, i
+                    ),
+                    p2_background=render_text_for_agent(
+                        raw_background.p2_background, i
+                    ),
+                    p1_goal=render_text_for_agent(raw_background.p1_goal, i),
+                    p2_goal=render_text_for_agent(raw_background.p2_goal, i),
+                    p1_name=raw_background.p1_name,
+                    p2_name=raw_background.p2_name,
+                )
             )
-            background_for_b.p1_background = _agent_profile_to_bio(
-                agents[agent_names[0]].profile
-            )
+        background_for_a = agent_backgrounds[0]
+        background_for_b = agent_backgrounds[1]
         background_for_a.p2_goal = "Unknown"
         background_for_b.p1_goal = "Unknown"
-        self.agents = [self.background.p1_name, self.background.p2_name]
         self.action_spaces = {
             agent: Dict(
                 dict(
@@ -277,14 +332,14 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         return (
             {
                 self.background.p1_name: Observation(
-                    last_turn=obs,
+                    last_turn=render_text_for_agent(obs, agent_id=0),
                     turn_number=self.turn_number,
                     available_actions=list(self.available_action_types)
                     if self.action_mask[0]
                     else ["none"],
                 ),
                 self.background.p2_name: Observation(
-                    last_turn=obs,
+                    last_turn=render_text_for_agent(obs, agent_id=1),
                     turn_number=self.turn_number,
                     available_actions=list(self.available_action_types)
                     if self.action_mask[1]
@@ -431,14 +486,14 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         return (
             {
                 self.background.p1_name: Observation(
-                    last_turn=obs,
+                    last_turn=render_text_for_agent(obs, agent_id=0),
                     turn_number=self.turn_number,
                     available_actions=list(self.available_action_types)
                     if self.action_mask[0]
                     else ["none"],
                 ),
                 self.background.p2_name: Observation(
-                    last_turn=obs,
+                    last_turn=render_text_for_agent(obs, agent_id=1),
                     turn_number=self.turn_number,
                     available_actions=list(self.available_action_types)
                     if self.action_mask[1]
