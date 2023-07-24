@@ -44,7 +44,7 @@ env_candidates = []
 for pk in env_pks:
     env_candidates.append(EnvironmentProfile.get(pk))
 
-all_agent_pks = list(AgentProfile.all_pks())  # type: ignore[attr-defined]
+all_agent_pks = list(AgentProfile.all_pks())
 assert (
     len(all_agent_pks) >= 2
 ), "There should be at least 2 agents in the database"
