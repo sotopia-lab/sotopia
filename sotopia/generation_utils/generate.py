@@ -25,6 +25,7 @@ from rich import print
 from rich.logging import RichHandler
 from typing_extensions import Literal
 
+from sotopia.database import EnvironmentProfile
 from sotopia.messages import (
     ActionType,
     AgentAction,
@@ -321,29 +322,28 @@ def generate_episode(
 
 
 @beartype
-def generate_scenario_background(
+async def agenerate_env_profile(
     model_name: LLM_Name,
-    participants: str = "Jack, Rose",
-    topic: str = "borrow money",
-    extra_info: str = "Jack speaks first, Rose speaks second",
-) -> ScriptBackground:
+    inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
+    examples: str = "",
+) -> tuple[EnvironmentProfile, str]:
     """
     Using langchain to generate the background
     """
-    return generate(
+    return await agenerate(
         model_name=model_name,
-        template="""Please generate the background for the interaction between {participants} regarding {topic}.
-            You should generate the personal backgrounds and goals in this interaction.
-            Use the following extra info if given: {extra_info}
-            Please use the following format:
-            {format_instructions}
-            """,
+        template="""Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
+        Examples:
+        {examples}
+        Inspirational prompt: {inspiration_prompt}
+        Please use the following format:
+        {format_instructions}
+        """,
         input_values=dict(
-            participants=participants,
-            topic=topic,
-            extra_info=extra_info,
+            inspiration_prompt=inspiration_prompt,
+            examples=examples,
         ),
-        output_parser=PydanticOutputParser(pydantic_object=ScriptBackground),
+        output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
     )
 
 
@@ -529,7 +529,7 @@ def generate_init_profile(
         template="""Please expand a fictional background for {name}. Here is the basic information:
             {name}'s age: {age}
             {name}'s gender identity: {gender_identity}
-            {name}'s pronoun: {pronoun}
+            {name}'s pronouns: {pronoun}
             {name}'s occupation: {occupation}
             {name}'s big 5 personality traits: {bigfive}
             {name}'s moral Foundation: think {mft} is more important than others

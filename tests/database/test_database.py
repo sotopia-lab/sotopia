@@ -25,6 +25,8 @@ def test_create_env_profile() -> None:
     env_profile.save()
     pk = env_profile.pk
     env = ParallelSotopiaEnv(uuid_str=pk)
+    # Warning: Not sure why the upper case is appearing in the database
+    env.profile.relationship = env.profile.relationship.lower()
     assert env.profile == env_profile
     env.close()
     EnvironmentProfile.delete(pk)

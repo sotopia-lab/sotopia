@@ -1,7 +1,9 @@
+import ast
 import sys
 from typing import Any, cast
 
 import pandas as pd
+from redis_om import Migrator  # type: ignore
 
 from sotopia.database.persistent_profile import (
     AgentProfile,
@@ -75,5 +77,6 @@ if __name__ == "__main__":
         df = df.drop("comments", axis=1)
         envs = cast(list[dict[str, Any]], df.to_dict(orient="records"))
         for env in envs:
-            env["agent_goals"] = env["agent_goals"].split("----")
+            env["agent_goals"] = ast.literal_eval(env["agent_goals"])
         add_env_profiles(envs)
+        Migrator().run()

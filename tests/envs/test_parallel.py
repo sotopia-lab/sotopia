@@ -1,6 +1,10 @@
 import pytest
 
 from sotopia.agents import Agents, LLMAgent
+from sotopia.database.persistent_profile import (
+    AgentProfile,
+    EnvironmentProfile,
+)
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import RuleBasedTerminatedEvaluator
 from sotopia.messages import AgentAction, Observation, ScriptBackground
@@ -9,8 +13,31 @@ from sotopia.samplers import UniformSampler
 
 @pytest.mark.asyncio
 async def test_parallel_sotopia_env() -> None:
-    env = ParallelSotopiaEnv(model_name="gpt-3.5-turbo")
-    env.reset()
+    env_profile = EnvironmentProfile(
+        code_name="test",
+        scenario="test",
+        agent_goals=["test 1", "test 2"],
+    )
+    env = ParallelSotopiaEnv(env_profile=env_profile)
+    agents = Agents(
+        {
+            "agent1": LLMAgent(
+                "agent1",
+                model_name="gpt-3.5-turbo",
+                agent_profile=AgentProfile(
+                    **{"first_name": "John", "last_name": "Doe"}
+                ),
+            ),
+            "agent2": LLMAgent(
+                "agent2",
+                model_name="gpt-3.5-turbo",
+                agent_profile=AgentProfile(
+                    **{"first_name": "Jane", "last_name": "Doe"}
+                ),
+            ),
+        }
+    )
+    env.reset(agents=agents)
     max_steps = 5
     while env.agents:
         max_steps -= 1

@@ -19,11 +19,7 @@ from redis_om.model.model import NotFoundError
 from sotopia.agents.llm_agent import Agents
 from sotopia.database import EnvironmentProfile
 from sotopia.database.persistent_profile import AgentProfile
-from sotopia.generation_utils import (
-    LLM_Name,
-    fill_in_background,
-    generate_scenario_background,
-)
+from sotopia.generation_utils import LLM_Name
 from sotopia.messages import (
     ActionType,
     AgentAction,
@@ -55,7 +51,7 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
 
 
 def _agent_profile_to_bio_self(profile: AgentProfile, agent_id: int) -> str:
-    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronoun. {profile.public_info} <p viewer='agent_{agent_id}'>Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
+    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronouns. {profile.public_info} <p viewer='agent_{agent_id}'>Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
 
 
 @configurable
@@ -134,6 +130,9 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         self.terminal_evaluators = terminal_evaluators
 
         # if an environment profile is provided, use it
+        assert (
+            env_profile or uuid_str
+        ), "Either env_profile or uuid_str must be provided"
         if env_profile is not None:
             self.profile = env_profile
         # if a uuid is provided, try to load the environment profile from the database
@@ -202,10 +201,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 p2_name=raw_background.p2_name,
             )
         else:
-            self.background = generate_scenario_background(
-                model_name=self.model_name
-            )
-            raw_background = self.background
+            raise ValueError("agents must be provided")
 
         self.agents = [self.background.p1_name, self.background.p2_name]
         agent_backgrounds: list[ScriptBackground] = []
@@ -229,6 +225,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
         background_for_b = agent_backgrounds[1]
         background_for_a.p2_goal = "Unknown"
         background_for_b.p1_goal = "Unknown"
+
         self.action_spaces = {
             agent: Dict(
                 dict(
