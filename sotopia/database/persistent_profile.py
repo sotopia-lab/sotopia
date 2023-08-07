@@ -1,9 +1,19 @@
 import uuid
+from enum import IntEnum
 from typing import Any, cast
 
 from pydantic import validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
+
+
+class RelationshipType(IntEnum):
+    stranger = 0
+    know_by_name = 1
+    acquaintance = 2
+    friend = 3
+    romantic_relationship = 4
+    family_member = 5
 
 
 class AgentProfile(JsonModel):
@@ -24,10 +34,6 @@ class AgentProfile(JsonModel):
     secret: str = Field(default_factory=lambda: "")
     model_id: str = Field(default_factory=lambda: "")
 
-    @classmethod
-    def get(cls, pk: Any) -> "AgentProfile":
-        return cast(AgentProfile, super().get(pk))
-
 
 class EnvironmentProfile(JsonModel):
     codename: str = Field(
@@ -44,10 +50,10 @@ class EnvironmentProfile(JsonModel):
         default_factory=lambda: [],
         description="The social goals of each agent, which could include <extra_info>...</extra_info>, <clarification_hint>...</clarification_hint>, and <strategy_hint>...</strategy_hint> to help the agent achieve the goal. Avoid providing too specific strategy hint, try to be as abstract as possible. For example, use 'you can provide financial benefits to achieve your goal' instead of 'you can buy him a boba tea to achieve your goal.'",
     )
-    relationship: str = Field(
+    relationship: RelationshipType = Field(
         index=True,
-        default_factory=lambda: "stranger",
-        description="The relationship between the two agents, choose from: stranger, know_by_name, acquaintance, friend, romantic_relationship, family_member. Do not make up a relationship, but choose from the list",
+        default_factory=lambda: RelationshipType.stranger,
+        description="The relationship between the two agents, choose from: stranger, know_by_name, acquaintance, friend, romantic_relationship, family_member. Do not make up a relationship, but choose from the list, 0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
     )
     age_constraint: str | None = Field(
         default_factory=lambda: None,
@@ -57,23 +63,16 @@ class EnvironmentProfile(JsonModel):
         default_factory=lambda: None,
         description="The occupation constraint of the environment, a list of lists, each list is a list of occupations, e.g., '[['student', 'teacher'], ['doctor', 'nurse']]' means the environment is only available to agent one if agent one is a student or a teacher, and agent two is a doctor or a nurse",
     )
+    agent_constraint: list[list[str]] | None = Field(
+        default_factory=lambda: None,
+    )
 
-    @validator("relationship")
-    @classmethod
-    def name_must_contain_space(cls, v: str) -> str:
-        if v not in [
-            "stranger",
-            "know_by_name",
-            "acquaintance",
-            "friend",
-            "romantic_relationship",
-            "family_member",
-        ]:
-            raise ValueError(
-                f"Relationship must be one of: stranger, know_by_name, acquaintance, friend, romantic_relationship, family_member, but got: {v}"
-            )
-        return v.title()
 
-    @classmethod
-    def get(cls, pk: Any) -> "EnvironmentProfile":
-        return cast(EnvironmentProfile, super().get(pk))
+class RelationshipProfile(JsonModel):
+    agent_1_id: str = Field(index=True)
+    agent_2_id: str = Field(index=True)
+    relationship: RelationshipType = Field(
+        index=True,
+        description="0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
+    )  # this could be improved by limiting str to a relationship Enum
+    background_story: str | None = Field(default_factory=lambda: None)

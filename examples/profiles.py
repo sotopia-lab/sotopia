@@ -8,6 +8,8 @@ from redis_om import Migrator  # type: ignore
 from sotopia.database.persistent_profile import (
     AgentProfile,
     EnvironmentProfile,
+    RelationshipProfile,
+    RelationshipType,
 )
 
 
@@ -42,6 +44,18 @@ def add_env_profiles(env_profiles: list[dict[str, Any]]) -> None:
         add_env_profile(**env_profile)
 
 
+def add_relationship_profile(**kwargs: dict[str, Any]) -> None:
+    relationship_profile = RelationshipProfile(**kwargs)
+    relationship_profile.save()
+
+
+def add_relationship_profiles(
+    relationship_profiles: list[dict[str, Any]]
+) -> None:
+    for relationship_profile in relationship_profiles:
+        add_relationship_profile(**relationship_profile)
+
+
 def delete_all_agents() -> None:
     pks = AgentProfile.all_pks()
     for id in pks:
@@ -52,6 +66,18 @@ def delete_all_env_profiles() -> None:
     pks = EnvironmentProfile.all_pks()
     for id in pks:
         EnvironmentProfile.delete(id)
+
+
+def delete_all_relationships() -> None:
+    pks = list(RelationshipProfile.all_pks())
+    for id in pks:
+        RelationshipProfile.delete(id)
+    pks = list(RelationshipProfile.all_pks())
+    print("Relationships deleted, all relationships: ", len(list(pks)))
+
+
+def relationship_map(relationship: str) -> int:
+    return int(eval(relationship))
 
 
 if __name__ == "__main__":
@@ -78,5 +104,17 @@ if __name__ == "__main__":
         envs = cast(list[dict[str, Any]], df.to_dict(orient="records"))
         for env in envs:
             env["agent_goals"] = ast.literal_eval(env["agent_goals"])
+            env["relationship"] = relationship_map(env["relationship"])
         add_env_profiles(envs)
+        Migrator().run()
+    elif type == "relationship":
+        delete_all_relationships()
+        relationships = cast(
+            list[dict[str, Any]], df.to_dict(orient="records")
+        )
+        for relationship in relationships:
+            relationship["relationship"] = relationship_map(
+                relationship["relationship"]
+            )
+        add_relationship_profiles(relationships)
         Migrator().run()

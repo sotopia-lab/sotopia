@@ -1,9 +1,11 @@
 import abc
-from typing import Any, Generator
+from typing import Any, Generator, TypeVar
 
 from pydantic import BaseModel, Field
 from pydantic.main import ModelMetaclass
 from redis_om.model.model import FindQuery
+
+InheritedJsonModel = TypeVar("InheritedJsonModel", bound="JsonModel")
 
 class ModelMeta(ModelMetaclass): ...
 
@@ -20,7 +22,7 @@ class HashModel(RedisModel, abc.ABC):
 
 class JsonModel(RedisModel, abc.ABC):
     @classmethod
-    def get(cls, pk: Any) -> "JsonModel": ...
+    def get(cls: type[InheritedJsonModel], pk: Any) -> InheritedJsonModel: ...
     @classmethod
     def all_pks(cls) -> Generator[str, None, None]: ...
     @classmethod

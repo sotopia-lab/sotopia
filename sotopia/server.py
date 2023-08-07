@@ -1,12 +1,13 @@
 import asyncio
 import functools
 import itertools
-from typing import Literal, cast
+from typing import Callable, Literal, Sequence, cast
 
 import rich
 from beartype import beartype
 
 from sotopia.agents import Agents, HumanAgent, LLMAgent, SpeakAgent
+from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import EpisodeLog
 from sotopia.database.persistent_profile import (
     AgentProfile,
@@ -19,7 +20,12 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages import AgentAction, Message, Observation
-from sotopia.samplers import UniformSampler
+from sotopia.samplers import (
+    BaseSampler,
+    ConstraintBasedSampler,
+    EnvAgentCombo,
+    UniformSampler,
+)
 
 
 @beartype
@@ -98,49 +104,13 @@ def run_sync_server(
     return messages
 
 
-@beartype
-async def run_async_server(
+async def arun_one_episode(
+    env: ParallelSotopiaEnv,
+    agent_list: Sequence[BaseAgent[Observation, AgentAction]],
     model_dict: dict[str, LLM_Name],
-    action_order: Literal["simutaneous", "round-robin", "random"],
-    env_candidates: list[EnvironmentProfile] = [],
-    agent_candidates: list[AgentProfile] = [],
+    tag: str | None = None,
     push_to_db: bool = False,
 ) -> list[tuple[str, str, Message]]:
-
-    # Create Environment and agents
-    # This step will be moved to outside this function
-
-    env_params = {
-        "model_name": model_dict["env"],
-        "action_order": action_order,
-        "evaluators": [
-            RuleBasedTerminatedEvaluator(max_turn_number=10, max_stale_turn=2),
-        ],
-        "terminal_evaluators": [
-            ReachGoalLLMEvaluator(model_dict["env"]),
-        ],
-    }
-    agents_model_dict = {
-        "agent1": model_dict["agent1"],
-        "agent2": model_dict["agent2"],
-    }
-    sampler = UniformSampler[Observation, AgentAction](
-        env_candidates=env_candidates,
-        agent_candidates=agent_candidates,
-    )
-    env, agent_list = sampler.sample(
-        agent_classes=[
-            LLMAgent if model_name != "human" else HumanAgent
-            for model_name in agents_model_dict.values()
-        ],
-        n_agent=len(agents_model_dict),
-        env_params=env_params,
-        agents_params=[
-            {"model_name": model_name} if model_name != "human" else {}
-            for model_name in agents_model_dict.values()
-        ],
-    )
-
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     environment_messages = env.reset(agents=agents)
     agents_model_names = [model_dict["agent1"], model_dict["agent2"]]
@@ -209,6 +179,8 @@ async def run_async_server(
     epilog = EpisodeLog(
         environment=env.profile.pk,
         agents=[agent.profile.pk for agent in agent_list],
+        tag=tag,
+        models=[model_dict["env"], model_dict["agent1"], model_dict["agent2"]],
         messages=[
             [
                 (m[0], m[1], m[2].to_natural_language())
@@ -233,3 +205,73 @@ async def run_async_server(
         epilog.save()
     # flatten nested list messages
     return list(itertools.chain(*messages))
+
+
+@beartype
+async def run_async_server(
+    model_dict: dict[str, LLM_Name],
+    action_order: Literal["simutaneous", "round-robin", "random"],
+    sampler: BaseSampler[Observation, AgentAction],
+    env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
+    tag: str | None = None,
+    push_to_db: bool = False,
+    using_async: bool = True,
+) -> list[list[tuple[str, str, Message]]]:
+    """
+    Doc incomplete
+
+    Note: env_agent_combo_list is optional. When it defaults to [], sampler is used
+    else the sampler is not used. Please pass in BaseSampler when using this option.
+    """
+
+    # Create Environment and agents
+    # This step will be moved to outside this function
+
+    env_params = {
+        "model_name": model_dict["env"],
+        "action_order": action_order,
+        "evaluators": [
+            RuleBasedTerminatedEvaluator(max_turn_number=10, max_stale_turn=2),
+        ],
+        "terminal_evaluators": [
+            ReachGoalLLMEvaluator(model_dict["env"]),
+        ],
+    }
+    agents_model_dict = {
+        "agent1": model_dict["agent1"],
+        "agent2": model_dict["agent2"],
+    }
+
+    if env_agent_combo_list:
+        assert type(sampler) is BaseSampler
+        env_agent_combo_iter = iter(env_agent_combo_list)
+    else:
+        env_agent_combo_iter = sampler.sample(
+            agent_classes=[
+                LLMAgent if model_name != "human" else HumanAgent
+                for model_name in agents_model_dict.values()
+            ],
+            n_agent=len(agents_model_dict),
+            env_params=env_params,
+            agents_params=[
+                {"model_name": model_name} if model_name != "human" else {}
+                for model_name in agents_model_dict.values()
+            ],
+        )
+
+    episode_futures = [
+        arun_one_episode(
+            env=env_agent_combo[0],
+            agent_list=env_agent_combo[1],
+            model_dict=model_dict,
+            tag=tag,
+            push_to_db=push_to_db,
+        )
+        for env_agent_combo in env_agent_combo_iter
+    ]
+
+    return (
+        await asyncio.gather(*episode_futures)
+        if using_async
+        else [await i for i in episode_futures]
+    )

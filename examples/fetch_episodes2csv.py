@@ -36,7 +36,7 @@ episode_log_pks_list = [
 
 for episode_log_pk in episode_log_pks_list:
     try:
-        episode_log = cast(EpisodeLog, EpisodeLog.get(episode_log_pk))
+        episode_log = EpisodeLog.get(episode_log_pk)
     except:
         rich.print(
             f"[red] Episode log {episode_log_pk} not found. Skipping..."

@@ -15,6 +15,8 @@ class EpisodeLog(JsonModel):
 
     environment: str = Field(index=True)
     agents: list[str] = Field(index=True)
+    tag: str | None = Field(index=True)
+    models: list[str] | None = Field(index=True)
     messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
     reasoning: str
     rewards: list[

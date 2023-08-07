@@ -74,7 +74,7 @@ def test_renderer_in_env() -> None:
         "Scenario: test\n"
         "Participants: John and Jane\n"
         "John's background: John Doe is a 0-year-old  .  pronouns.  Personality and values description:  John's secrets: \n"
-        "Jane's background: Jane Doe is a 0-year-old  .  pronouns.  \n"
+        "Jane's background: Jane Doe is a 0-year-old  .  pronouns.  Personality and values description:  Jane's secrets: \n"
         "John's goal: agent_1's goal\n"
         "Jane's goal: Unknown"
     )

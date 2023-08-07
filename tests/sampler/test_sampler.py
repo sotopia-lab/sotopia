@@ -8,7 +8,7 @@ from sotopia.database.persistent_profile import (
 )
 from sotopia.envs.evaluators import RuleBasedTerminatedEvaluator
 from sotopia.messages import AgentAction, Observation
-from sotopia.samplers import UniformSampler
+from sotopia.samplers import ConstraintBasedSampler, UniformSampler
 
 
 def _generate_name() -> str:
@@ -85,11 +85,55 @@ def test_uniform_sampler() -> None:
             RuleBasedTerminatedEvaluator(),
         ],
     }
-    env, agent_list = sampler.sample(
-        agent_classes=[LLMAgent] * n_agent,
-        n_agent=n_agent,
-        env_params=env_params,
-        agents_params=[{"model_name": "gpt-3.5-turbo"}] * n_agent,
+    env, agent_list = next(
+        sampler.sample(
+            agent_classes=[LLMAgent] * n_agent,
+            n_agent=n_agent,
+            env_params=env_params,
+            agents_params=[{"model_name": "gpt-3.5-turbo"}] * n_agent,
+        )
+    )
+    agents = Agents({agent.agent_name: agent for agent in agent_list})
+    env.reset(agents=agents)
+
+
+def test_constrain_sampler() -> None:
+    n_agent = 2
+    borrow_money = EnvironmentProfile.find(
+        EnvironmentProfile.codename == "borrow_money"
+    ).all()[0]
+    assert borrow_money
+    constrain_sampler = ConstraintBasedSampler[Observation, AgentAction](
+        env_candidates=[str(borrow_money.pk)]
+    )
+    env_params = {
+        "model_name": "gpt-3.5-turbo",
+        "action_order": "random",
+        "evaluators": [
+            RuleBasedTerminatedEvaluator(),
+        ],
+    }
+    env, agent_list = next(
+        constrain_sampler.sample(
+            agent_classes=[LLMAgent] * n_agent,
+            n_agent=n_agent,
+            replacement=False,
+            size=2,
+            env_params=env_params,
+            agents_params=[{"model_name": "gpt-3.5-turbo"}] * n_agent,
+        )
+    )
+    agents = Agents({agent.agent_name: agent for agent in agent_list})
+    env.reset(agents=agents)
+    env, agent_list = next(
+        constrain_sampler.sample(
+            agent_classes=[LLMAgent] * n_agent,
+            n_agent=n_agent,
+            replacement=True,
+            size=2,
+            env_params=env_params,
+            agents_params=[{"model_name": "gpt-3.5-turbo"}] * n_agent,
+        )
     )
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     env.reset(agents=agents)
