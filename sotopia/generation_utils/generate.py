@@ -123,6 +123,47 @@ class ListOfIntOutputParser(BaseOutputParser[list[int]]):
         return "list[int]"
 
 
+class ListOfStrOutputParser(BaseOutputParser[list[str]]):
+    number_of_str: int | None
+
+    def __init__(
+        self,
+        number_of_str: int | None = None,
+    ):
+        """
+        Parse the output to a list of strings
+
+        Args:
+            number_of_str (int | None): The number of strings in the output. If None, the number of strings is not fixed.
+        """
+        super().__init__()
+        self.number_of_str = number_of_str
+
+    def _get_description_text(self) -> str:
+        return f"a list of{' ' + str(self.number_of_str) if self.number_of_str else ''} strings separated by space"
+
+    def get_format_instructions(self) -> str:
+        return "Please output " + self._get_description_text()
+
+    def parse(self, output: str) -> list[str]:
+        try:
+            result = output.split(" ")
+            if self.number_of_str and len(result) != self.number_of_str:
+                msg = f"Expect {self.number_of_str} strings, got {len(result)}"
+                raise OutputParserException(msg)
+            return result
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            msg = f"Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}"
+            raise OutputParserException(msg)
+
+    @property
+    def _type(self) -> str:
+        """Return the type key."""
+        return "list[str]"
+
+
 class StrOutputParser(BaseOutputParser[str]):
     def __init__(self) -> None:
         super().__init__()
@@ -321,6 +362,7 @@ def generate_episode(
     )
 
 
+@gin.configurable
 @beartype
 async def agenerate_env_profile(
     model_name: LLM_Name,

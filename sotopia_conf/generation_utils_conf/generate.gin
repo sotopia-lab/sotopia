@@ -8,3 +8,6 @@ generate.agenerate_action:
 
 evaluators.ReachGoalLLMEvaluator.__acall__:
     temperature = 0.0
+
+generate.agenerate_env_profile:
+    model_name = "gpt-3.5-turbo"
