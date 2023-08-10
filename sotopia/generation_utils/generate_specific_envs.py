@@ -102,11 +102,16 @@ async def generate_craigslist_bargains_envs() -> tuple[str, list[str]]:
 
     goals: list[str] = []
     for i in range(2):
+        if datum["agent_info"]["Role"][i] == "seller":
+            markup_ratio = np.random.exponential(0.5)
+            datum["agent_info"]["Target"][i] = datum["items"]["Price"][0] / (
+                1 + markup_ratio
+            )
         goal = generate(
             model_name="gpt-4",
             template="The following sentence is automatically generated with the following"
-            'template: "You are the <role> for this item. Your target price '
-            "is $<price>. You will get penalty if you sell or buy it "
+            'template: "You want to <role> this item. Your target price '
+            "is $<price> (round up to two decimals). You will get penalty if you sell or buy it "
             "for a price that is significantly lower than (if <role> is seller) or significantly"
             "higher than (if <role> is buyer) the target price, but will get bonus if you successfully "
             "sell it higher than the target price (if <role> is seller) or buy it for lower than"
