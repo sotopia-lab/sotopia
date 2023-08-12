@@ -136,3 +136,5 @@ data/*
 
 # deprecated
 deprecated/*
+
+*.csv

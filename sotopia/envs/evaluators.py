@@ -26,7 +26,7 @@ log = logging.getLogger("evaluators")
 class EvaluationBySocialDimensions(BaseModel):
     believability: tuple[str, int] = Field(
         ...,
-        description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? 3. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
+        description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? c. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
         "2. Analyze whether the actions of the agent align with their character traits (e.g., personality, values, and etc.). Start the analysis with tag <consistency>. "
         "Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 1 and 10 in the 'score' field. A higher score indicates that the agent is more believable.",
     )
