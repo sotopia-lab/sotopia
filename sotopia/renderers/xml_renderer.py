@@ -1,11 +1,4 @@
 """XML Renderer for background, goal, observation, etc.
-The message passed to the renderer is a string of xml.
-If the xml string is not wrapped with <root></root>, we will wrap it with <root></root> automatically.
-The tags to render are specified in RenderContext.tags_to_render. ('root' and 'p' are always rendered)
-The viewer is specified in RenderContext.viewer. ('human', 'agent_0', 'agent_1', 'environment')
-environment: render all text
-human: render the raw xml
-agent_i: render the text that is viewable by agent_i
 """
 from typing import cast
 
@@ -59,6 +52,19 @@ class XMLRenderer(BaseRenderer):
             root = etree.fromstring(xml_string)
         except etree.XMLSyntaxError:
             # try wrapping the xml_string with a pair of root tags
-            root = etree.fromstring(f"<root>{xml_string}</root>")
+            try:
+                root = etree.fromstring(f"<root>{xml_string}</root>")
+            except etree.XMLSyntaxError:
+                # try escaping the xml_string
+                table = str.maketrans(
+                    {
+                        "&": "&amp;",
+                        "'": "&apos;",
+                        '"': "&quot;",
+                    }
+                )
+                root = etree.fromstring(
+                    f"<root>{xml_string.translate(table)}</root>"
+                )
 
         return _render_xml(root, context)
