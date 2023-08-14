@@ -35,11 +35,19 @@ from sotopia.messages import (
 from sotopia.utils import format_docstring
 
 from .langchain_callback_handler import LoggingCallbackHandler
+from .llama2 import Llama2
 
 log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
 
-LLM_Name = Literal["gpt-3.5-turbo", "text-davinci-003", "gpt-4", "human"]
+LLM_Name = Literal[
+    "togethercomputer/llama-2-7b-chat",
+    "togethercomputer/llama-2-70b-chat",
+    "gpt-3.5-turbo",
+    "text-davinci-003",
+    "gpt-4",
+    "human",
+]
 
 OutputType = TypeVar("OutputType", bound=object)
 
@@ -99,6 +107,8 @@ class ListOfIntOutputParser(BaseOutputParser[list[int]]):
 
     def parse(self, output: str) -> list[int]:
         try:
+            if ":" in output:
+                output = output.split(":")[1]
             result = [int(x) for x in output.split(" ") if x]
             if self.number_of_int and len(result) != self.number_of_int:
                 msg = (
@@ -212,6 +222,21 @@ def obtain_chain(
                 template=template,
             )
             chain = LLMChain(llm=llm, prompt=prompt)
+            return chain
+        case "togethercomputer/llama-2-7b-chat" | "togethercomputer/llama-2-70b-chat":
+            human_message_prompt = HumanMessagePromptTemplate(
+                prompt=PromptTemplate(
+                    template=template,
+                    input_variables=input_variables,
+                )
+            )
+            chat_prompt_template = ChatPromptTemplate.from_messages(
+                [human_message_prompt]
+            )
+            together_llm = Llama2(
+                model_name=model_name, temperature=temperature
+            )
+            chain = LLMChain(llm=together_llm, prompt=chat_prompt_template)
             return chain
         case _:
             raise ValueError(f"Invalid model name: {model_name}")

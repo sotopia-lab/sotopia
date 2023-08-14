@@ -31,5 +31,6 @@ jobs:
       env: # Or as an environment variable
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         REDIS_OM_URL: ${{ secrets.REDIS_OM_URL }}
+        TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
       run: |
         pytest
