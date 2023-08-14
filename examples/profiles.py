@@ -99,8 +99,25 @@ if __name__ == "__main__":
     elif type == "environment":
         # drop columns that are not needed
         delete_all_env_profiles()
-        df = df.drop("more comments", axis=1)
-        df = df.drop("comments", axis=1)
+        df = df[
+            (
+                df["Xuhui"].astype(float).fillna(0)
+                + df["Leena"].astype(float).fillna(0)
+                + df["Hao"].astype(float).fillna(0)
+            )
+            > 1
+        ]
+        df = df[
+            [
+                "codename",
+                "scenario",
+                "agent_goals",
+                "relationship",
+                "age_constraint",
+                "occupation_constraint",
+                "source",
+            ]
+        ]
         envs = cast(list[dict[str, Any]], df.to_dict(orient="records"))
         for env in envs:
             env["agent_goals"] = ast.literal_eval(env["agent_goals"])

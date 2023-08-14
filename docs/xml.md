@@ -20,4 +20,4 @@ Here is how the `viewer` determines the visibility of the text:
 > [!WARNING]
 > The input to the xml render should be valid xml strings. Currently, we automatically fix the following two issues:
 > - The `xml_string` is not a tree (e.g. `<a></a><b></b>`). We will automatically wrap the string with `<root></root>` if it is not wrapped.
-> - The `xml_string` is not escaped properly. We only escape three special characters: `'`, `"`, and `&`. `<` and `>` are not escaped by us.
+> - The `xml_string` is not escaped properly. We only escape `&`. Quotations, `<` and `>` are not escaped by us.

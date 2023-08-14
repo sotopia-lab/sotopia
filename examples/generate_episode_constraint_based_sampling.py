@@ -43,7 +43,7 @@ logging.basicConfig(
 model_names: dict[str, LLM_Name] = {
     "env": "gpt-4",
     "agent1": "gpt-3.5-turbo",
-    "agent2": "human",
+    "agent2": "gpt-3.5-turbo",
 }
 
 push_to_db = sys.argv[1]
@@ -51,7 +51,7 @@ assert push_to_db in ["True", "False"], "push_to_db should be True or False"
 push_to_db_bool = push_to_db == "True"
 env_ids: list[str] = []
 
-for code_name in ["borrow_money"]:
+for code_name in ["mutual_friend_00003"]:
     envs_with_code_name = EnvironmentProfile.find(
         EnvironmentProfile.codename == code_name
     ).all()
@@ -104,7 +104,6 @@ for env_id in env_ids:
         ]
 
         env_agent_combo_list.append((env, agents))
-
     asyncio.run(
         run_async_server(
             model_dict=model_names,

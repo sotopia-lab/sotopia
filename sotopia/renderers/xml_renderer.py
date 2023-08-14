@@ -59,8 +59,6 @@ class XMLRenderer(BaseRenderer):
                 table = str.maketrans(
                     {
                         "&": "&amp;",
-                        "'": "&apos;",
-                        '"': "&quot;",
                     }
                 )
                 root = etree.fromstring(

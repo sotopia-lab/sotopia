@@ -1,3 +1,4 @@
+import ast
 import random
 from typing import Any, Generator, Type, TypeVar
 
@@ -25,6 +26,22 @@ def _get_fit_agents_for_one_env(
     available_relationships = RelationshipProfile.find(
         RelationshipProfile.relationship == relationship_constraint
     ).all()
+    age_contraint = env.age_constraint
+    assert isinstance(age_contraint, str)
+    if age_contraint != "[(18, 70), (18, 70)]":
+        age_contraint_list = ast.literal_eval(age_contraint)
+        available_relationships = [
+            relationship
+            for relationship in available_relationships
+            if (
+                age_contraint_list[0][0]
+                <= AgentProfile.get(relationship.agent_1_id).age  # type: ignore[attr-defined]
+                <= age_contraint_list[0][1]
+                and age_contraint_list[1][0]
+                <= AgentProfile.get(relationship.agent_2_id).age  # type: ignore[attr-defined]
+                <= age_contraint_list[1][1]
+            )
+        ]
     if len(available_relationships) < size:
         raise ValueError(
             f"Number of available relationships ({len(available_relationships)}) "

@@ -41,6 +41,11 @@ class EnvironmentProfile(JsonModel):
         default_factory=lambda: "",
         description="The codename of the environment",
     )
+    source: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The source of the environment",
+    )
     scenario: str = Field(
         index=True,
         default_factory=lambda: "",
