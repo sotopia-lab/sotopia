@@ -50,26 +50,38 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     return action_str
 
 
+def _map_gender_to_adj(gender: str) -> str:
+    gender_to_adj = {
+        "Man": "male",
+        "Woman": "female",
+        "Nonbinary": "nonbinary",
+    }
+    if gender:
+        return gender_to_adj[gender]
+    else:
+        return ""
+
+
 def _agent_profile_to_stranger_self(
     profile: AgentProfile, agent_id: int
 ) -> str:
-    return f"<p viewer='agent_{agent_id}'>{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
+    return f"<p viewer='agent_{agent_id}'>{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
 
 
 def _agent_profile_to_name_self(profile: AgentProfile, agent_id: int) -> str:
-    return f"{profile.first_name} {profile.last_name} <p viewer='agent_{agent_id}'>is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
+    return f"{profile.first_name} {profile.last_name} <p viewer='agent_{agent_id}'>is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
 
 
 def _agent_profile_to_aquaintance_self(
     profile: AgentProfile, agent_id: int
 ) -> str:
-    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronouns. {profile.public_info} <p viewer='agent_{agent_id}'>Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
+    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} <p viewer='agent_{agent_id}'>Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
 
 
 def _agent_profile_to_friendabove_self(
     profile: AgentProfile, agent_id: int
 ) -> str:
-    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {profile.gender} {profile.occupation}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} <p viewer='agent_{agent_id}'>{profile.first_name}'s secrets: {profile.secret}</p>"
+    return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} <p viewer='agent_{agent_id}'>{profile.first_name}'s secrets: {profile.secret}</p>"
 
 
 @configurable

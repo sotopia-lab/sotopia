@@ -51,7 +51,7 @@ assert push_to_db in ["True", "False"], "push_to_db should be True or False"
 push_to_db_bool = push_to_db == "True"
 env_ids: list[str] = []
 
-for code_name in ["mutual_friend_00003"]:
+for code_name in ["secret_feeling"]:
     envs_with_code_name = EnvironmentProfile.find(
         EnvironmentProfile.codename == code_name
     ).all()
@@ -85,7 +85,7 @@ for env_id in env_ids:
             action_order="round-robin",
             evaluators=[
                 RuleBasedTerminatedEvaluator(
-                    max_turn_number=10, max_stale_turn=2
+                    max_turn_number=20, max_stale_turn=2
                 ),
             ],
             terminal_evaluators=[

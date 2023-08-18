@@ -190,6 +190,15 @@ class StrOutputParser(BaseOutputParser[str]):
         return "str"
 
 
+def _return_fixed_model_version(
+    model_name: Literal["gpt-3.5-turbo", "gpt-4"]
+) -> str:
+    return {
+        "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
+        "gpt-4": "gpt-4-0613",
+    }[model_name]
+
+
 @beartype
 def obtain_chain(
     model_name: LLM_Name,
@@ -211,7 +220,10 @@ def obtain_chain(
             chat_prompt_template = ChatPromptTemplate.from_messages(
                 [human_message_prompt]
             )
-            chat = ChatOpenAI(model_name=model_name, temperature=temperature)
+            chat = ChatOpenAI(
+                model_name=_return_fixed_model_version(model_name),
+                temperature=temperature,
+            )
             chain = LLMChain(llm=chat, prompt=chat_prompt_template)
             return chain
         case "text-davinci-003":

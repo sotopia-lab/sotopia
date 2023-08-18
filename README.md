@@ -40,6 +40,8 @@ python -m sotopia_conf.server --gin_file="sotopia_conf/server_conf/server.gin" -
 
 ## Contribution
 ### Install dev options
+Follow the installation instruction above and then, instead of running `python -m pip install -e .`, run the following commands:
+
 ```bash
 python -m pip install -e ".[dev]"
 mypy --install-types --non-interactive sotopia
@@ -53,3 +55,24 @@ Run `pytest` to make sure all tests pass (this will ensure dynamic typing passed
 (You can also run `pre-commit run --all-files` to run all checks)
 ### Check github action result
 Check the github action result to make sure all tests pass. If not, fix the errors and push again.
+
+## Running Experiments
+
+### Asynchronous Mode
+To run the experiments in asynchronous mode, run the following command:
+```python
+python examples/generate_episode_constraint_based_sampling.py False
+```
+You use this mode to generate episodes for inspection.
+The first argument is a boolean indicating whether to push the generated episode to the redis-stack server. Usually you want to set it to `False` to avoid polluting the server under this mode.
+
+### Synchronous Mode
+
+To run the experiments in synchronous mode, run the following command:
+```python
+python examples/experiment_eval.py True
+```
+You use this mode to run the experiments for evaluation. Usually you want to set the first argument to `True` to push the generated episode to the redis-stack server.
+
+### Check the generated episodes
+Go to the `examples/redis_stats.ipynb` notebook to check the generated episodes (Episode Log section). As well as calculate the performance.

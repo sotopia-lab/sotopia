@@ -231,7 +231,7 @@ async def run_async_server(
         "model_name": model_dict["env"],
         "action_order": action_order,
         "evaluators": [
-            RuleBasedTerminatedEvaluator(max_turn_number=10, max_stale_turn=2),
+            RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         "terminal_evaluators": [
             ReachGoalLLMEvaluator(model_dict["env"]),

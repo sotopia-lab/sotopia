@@ -70,7 +70,7 @@ assert all(
 push_to_db = sys.argv[1]
 assert push_to_db in ["True", "False"], "push_to_db should be True or False"
 push_to_db_bool = push_to_db == "True"
-tag = "6_initial_aug5"
+tag = "6_initial_aug14_full"
 
 sampler = ConstraintBasedSampler[Observation, AgentAction]()
 
@@ -130,7 +130,12 @@ for env_id in env_ids:
         env_agent_combo_list: list[
             EnvAgentCombo[Observation, AgentAction]
         ] = []
-        for env_agent_combo_storage in env_agent_combo_storage_list:
+        for index, env_agent_combo_storage in enumerate(
+            env_agent_combo_storage_list
+        ):
+            # TEMP: select only the the first pair of agents selected
+            if not index % 10 == 0:
+                continue
             env_agent_combo_storage = cast(
                 EnvAgentComboStorage, env_agent_combo_storage
             )
@@ -149,7 +154,7 @@ for env_id in env_ids:
                 action_order="round-robin",
                 evaluators=[
                     RuleBasedTerminatedEvaluator(
-                        max_turn_number=10, max_stale_turn=2
+                        max_turn_number=20, max_stale_turn=2
                     ),
                 ],
                 terminal_evaluators=[
@@ -168,13 +173,15 @@ for env_id in env_ids:
 
             env_agent_combo_list.append((env, agents))
 
-        asyncio.run(
-            run_async_server(
-                model_dict=model_names,
-                action_order="round-robin",
-                sampler=BaseSampler[Observation, AgentAction](),
-                env_agent_combo_list=env_agent_combo_list,
-                tag=tag,
-                push_to_db=push_to_db_bool,
+        if env_agent_combo_list:
+            asyncio.run(
+                run_async_server(
+                    model_dict=model_names,
+                    action_order="round-robin",
+                    sampler=BaseSampler[Observation, AgentAction](),
+                    env_agent_combo_list=env_agent_combo_list,
+                    tag=tag,
+                    push_to_db=push_to_db_bool,
+                    using_async=True,
+                )
             )
-        )
