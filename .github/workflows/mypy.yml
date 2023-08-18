@@ -1,8 +1,8 @@
-name: Pytest
+name: Mypy
 on: [push]
 
 jobs:
-  Pytest:
+  Static-Type-Checking:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 5
@@ -18,10 +18,12 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install -e .[dev]
-    - name: Test with pytest
-      env: # Or as an environment variable
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        REDIS_OM_URL: ${{ secrets.REDIS_OM_URL }}
-        TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+    - name: Type-checking package with mypy
       run: |
-        pytest
+        # Manually install mypy in the standard way.
+        pip --quiet install -U mypy
+        # Log this mypy version for debuggability.
+        mypy --version
+        # Run this mypy instance against our main package.
+        mypy --install-types --non-interactive sotopia
+        mypy --strict .
