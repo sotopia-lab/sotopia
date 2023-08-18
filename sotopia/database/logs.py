@@ -66,9 +66,14 @@ class EpisodeLog(JsonModel):
                         if "did nothing" in message:
                             continue
                         else:
-                            messages_in_this_turn.append(
-                                f"{sender}: {message}"
-                            )
+                            if "said:" in message:
+                                messages_in_this_turn.append(
+                                    f"{sender} {message}"
+                                )
+                            else:
+                                messages_in_this_turn.append(
+                                    f"{sender}: {message}"
+                                )
                     else:
                         messages_in_this_turn.append(message)
             messages_and_rewards.append("\n".join(messages_in_this_turn))
