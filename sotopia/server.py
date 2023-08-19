@@ -1,8 +1,10 @@
 import asyncio
 import functools
 import itertools
+import logging
 from typing import Callable, Literal, Sequence, cast
 
+import gin
 import rich
 from beartype import beartype
 
@@ -202,16 +204,22 @@ async def arun_one_episode(
         rich.print(message)
 
     if push_to_db:
-        epilog.save()
+        try:
+            epilog.save()
+        except Exception as e:
+            logging.error(f"Failed to save episode log: {e}")
     # flatten nested list messages
     return list(itertools.chain(*messages))
 
 
+@gin.configurable
 @beartype
 async def run_async_server(
     model_dict: dict[str, LLM_Name],
-    action_order: Literal["simutaneous", "round-robin", "random"],
     sampler: BaseSampler[Observation, AgentAction],
+    action_order: Literal[
+        "simutaneous", "round-robin", "random"
+    ] = "round-robin",
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
     tag: str | None = None,
     push_to_db: bool = False,
@@ -223,6 +231,10 @@ async def run_async_server(
     Note: env_agent_combo_list is optional. When it defaults to [], sampler is used
     else the sampler is not used. Please pass in BaseSampler when using this option.
     """
+
+    assert not (
+        push_to_db and tag is None
+    ), "please provide a tag when push to db"
 
     # Create Environment and agents
     # This step will be moved to outside this function

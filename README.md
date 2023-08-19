@@ -57,22 +57,20 @@ Run `pytest` to make sure all tests pass (this will ensure dynamic typing passed
 Check the github action result to make sure all tests pass. If not, fix the errors and push again.
 
 ## Running Experiments
-
-### Asynchronous Mode
-To run the experiments in asynchronous mode, run the following command:
-```python
-python examples/generate_episode_constraint_based_sampling.py False
+We use `gin-config` to configure the experiments. You don't need to be an expert to use it. The basic syntax is
+```bash
+python <code_file.py> --gin_file <gin_file1> --gin_file <gin_file2> '--gin.PARAM1=value1' '--gin.PARAM2=value2'
 ```
-You use this mode to generate episodes for inspection.
-The first argument is a boolean indicating whether to push the generated episode to the redis-stack server. Usually you want to set it to `False` to avoid polluting the server under this mode.
+The `--gin_file` is used to load and compose the default configuration. The `--gin.PARAM1=value1` is used to overwrite the default configuration. The later configuration will always overwrite the previous one.
 
-### Synchronous Mode
+Here is an example of running an experiment:
 
-To run the experiments in synchronous mode, run the following command:
-```python
-python examples/experiment_eval.py True
+```bash
+python examples/experiment_eval.py --gin_file sotopia_conf/generation_utils_conf/generate.gin --gin_file sotopia_conf/server_conf/server.gin --gin_file sotopia_conf/run_async_server_in_batch.gin '--gin.ENV_IDS=["01H7VFHPDZVVCDZR3AARA547CY"]' '--gin.AGENT1_MODEL="gpt-4"' '--gin.BATCH_SIZE=20'
 ```
-You use this mode to run the experiments for evaluation. Usually you want to set the first argument to `True` to push the generated episode to the redis-stack server.
+For the complete set of parameters, please check the `sotopia_conf` folder.
+
+To run a large batch of environments, you can change the `ENV_IDS` parameter in `sotopia_conf/run_async_server_in_batch.gin` to a list of environment ids. When `gin.ENV_IDS==[]`, all environments on the DB will be used.
 
 ### Check the generated episodes
 Go to the `examples/redis_stats.ipynb` notebook to check the generated episodes (Episode Log section). As well as calculate the performance.

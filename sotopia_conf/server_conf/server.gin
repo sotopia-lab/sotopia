@@ -3,8 +3,11 @@ import __main__ as train_script
 import sotopia.server as server
 
 ACTION_ORDER="round-robin"
+TAG=None
 
 server.run_async_server:
     model_dict={"env": "gpt-4", "agent1": "gpt-3.5-turbo", "agent2": "gpt-3.5-turbo"}
     action_order=%ACTION_ORDER
     push_to_db=False
+    using_async=True
+    tag=%TAG

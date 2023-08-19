@@ -14,6 +14,15 @@ def test_render_non_escaped_str() -> None:
     )
 
 
+def test_hanging_tag() -> None:
+    assert (
+        XMLRenderer()(
+            "<root><human>ABCD</root>", RenderContext(viewer="environment")
+        )
+        == "ABCD"
+    )
+
+
 def test_nested_visibility() -> None:
     assert (
         XMLRenderer()(

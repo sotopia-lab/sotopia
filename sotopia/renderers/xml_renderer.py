@@ -1,5 +1,6 @@
 """XML Renderer for background, goal, observation, etc.
 """
+from io import StringIO
 from typing import cast
 
 from beartype.door import is_bearable
@@ -44,6 +45,7 @@ def _render_xml(xml_node: etree._Element | str, context: RenderContext) -> str:
 class XMLRenderer(BaseRenderer):
     def __init__(self) -> None:
         super().__init__()
+        self.parser = etree.XMLParser(recover=True, encoding="utf-8")
 
     def __call__(
         self, xml_string: str, context: RenderContext = RenderContext()
@@ -61,8 +63,15 @@ class XMLRenderer(BaseRenderer):
                         "&": "&amp;",
                     }
                 )
-                root = etree.fromstring(
-                    f"<root>{xml_string.translate(table)}</root>"
-                )
+                try:
+                    root = etree.parse(
+                        StringIO(
+                            f"<root>{xml_string.translate(table)}</root>"
+                        ),
+                        self.parser,
+                    ).getroot()
+                except etree.XMLSyntaxError as e:
+                    e.add_note(f"The xml_string is {xml_string}")
+                    raise e
 
         return _render_xml(root, context)

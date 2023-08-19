@@ -1,9 +1,14 @@
 import asyncio
 import logging
+import os
+import subprocess
 import sys
+from datetime import datetime
 from logging import FileHandler
-from typing import Literal, cast
+from typing import Any, Callable, Generator, Literal, Sequence, cast
 
+import gin
+from absl import app, flags
 from rich import print
 from rich.logging import RichHandler
 
@@ -20,16 +25,27 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import LLM_Name
-from sotopia.messages import AgentAction, Observation
+from sotopia.messages import AgentAction, Message, Observation
 from sotopia.samplers import (
     BaseSampler,
     ConstraintBasedSampler,
     EnvAgentCombo,
 )
 from sotopia.server import run_async_server
+from sotopia_conf.gin_utils import parse_gin_flags, run
+
+_DEFAULT_GIN_SEARCH_PATHS = [
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+]
+FLAGS = flags.FLAGS
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+
+process = subprocess.Popen(
+    ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
+)
+git_head_hash = process.communicate()[0].strip()
 
 logging.basicConfig(
     level=15,
@@ -37,29 +53,12 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[
         RichHandler(),
-        FileHandler("./logs/round_robin_parallel_sotopia_env_2.log"),
+        FileHandler(
+            datetime.now().strftime(
+                f"./logs/%H_%M_%d_%m_%Y_{str(git_head_hash.decode('utf-8'))}.log"
+            )
+        ),
     ],
-)
-
-agent_model_1: LLM_Name = "gpt-3.5-turbo"
-agent_model_2: LLM_Name = "gpt-4"
-
-
-model_names: dict[str, LLM_Name] = {
-    "env": "gpt-4",
-    "agent1": agent_model_1,
-    "agent2": agent_model_2,
-}
-
-model_names_dual: dict[str, LLM_Name] = {
-    "env": "gpt-4",
-    "agent1": agent_model_2,
-    "agent2": agent_model_1,
-}
-
-model_triple_list: tuple[dict[str, LLM_Name], dict[str, LLM_Name]] = (
-    model_names,
-    model_names_dual,
 )
 
 env_ids: list[str] = list(EnvironmentProfile.all_pks())
@@ -67,20 +66,21 @@ assert all(
     isinstance(env_id, str) for env_id in env_ids
 ), "env_ids should be a list of strings"
 
-push_to_db = sys.argv[1]
-assert push_to_db in ["True", "False"], "push_to_db should be True or False"
-push_to_db_bool = push_to_db == "True"
-tag = "6_initial_aug14_full"
-
-sampler = ConstraintBasedSampler[Observation, AgentAction]()
-
 
 def check_existing_episodes(
-    env_id: str, agent_ids: list[str], tag: str, models: dict[str, LLM_Name]
+    env_id: str,
+    agent_ids: list[str],
+    models: dict[str, LLM_Name],
+    tag: str | None = None,
 ) -> bool:
-    existing_episode = EpisodeLog.find(
-        (EpisodeLog.environment == env_id) & (EpisodeLog.tag == tag)
-    ).all()
+    if tag:
+        existing_episode = EpisodeLog.find(
+            (EpisodeLog.environment == env_id) & (EpisodeLog.tag == tag)
+        ).all()
+    else:
+        existing_episode = EpisodeLog.find(
+            EpisodeLog.environment == env_id
+        ).all()
     if existing_episode:
         for episode in existing_episode:
             assert isinstance(
@@ -109,9 +109,15 @@ def _sample_env_agent_combo_and_push_to_db(env_id: str) -> None:
         ).save()
 
 
-episode_number = 0
-for env_id in env_ids:
-    for model_names in model_triple_list:
+@gin.configurable
+def _iterate_env_agent_combo_not_in_db(
+    model_names: dict[str, LLM_Name],
+    env_ids: list[str] = [],
+) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
+    """We iterate over each environment and return the **first** env-agent combo that is not in the database."""
+    if not env_ids:
+        env_ids = list(EnvironmentProfile.all_pks())
+    for env_id in env_ids:
         assert env_id is not None, "env_id should not be None"
         env_agent_combo_storage_list = list(
             EnvAgentComboStorage.find(
@@ -126,27 +132,22 @@ for env_id in env_ids:
                 ).all()
             )
             assert env_agent_combo_storage_list
-        agents_not_in_log: list[list[str]] = []
-        env_agent_combo_list: list[
-            EnvAgentCombo[Observation, AgentAction]
-        ] = []
-        for index, env_agent_combo_storage in enumerate(
-            env_agent_combo_storage_list
-        ):
-            # TEMP: select only the the first pair of agents selected
-            if not index % 10 == 0:
-                continue
+        first_env_agent_combo_storage_to_run: EnvAgentComboStorage | None = (
+            None
+        )
+        for env_agent_combo_storage in env_agent_combo_storage_list:
             env_agent_combo_storage = cast(
                 EnvAgentComboStorage, env_agent_combo_storage
             )
             agent_ids = env_agent_combo_storage.agent_ids
-            if check_existing_episodes(env_id, agent_ids, tag, model_names):
-                episode_number += 1
-                print(
-                    f"Episode {episode_number} for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
+            if check_existing_episodes(env_id, agent_ids, model_names):
+                logging.info(
+                    f"Episode for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
                 )
                 continue
-
+            first_env_agent_combo_storage_to_run = env_agent_combo_storage
+            break
+        if first_env_agent_combo_storage_to_run:
             env_profile = EnvironmentProfile.get(env_id)
             env = ParallelSotopiaEnv(
                 env_profile=env_profile,
@@ -171,17 +172,81 @@ for env_id in env_ids:
                 )
             ]
 
-            env_agent_combo_list.append((env, agents))
+            yield env, agents
 
-        if env_agent_combo_list:
-            asyncio.run(
-                run_async_server(
-                    model_dict=model_names,
-                    action_order="round-robin",
-                    sampler=BaseSampler[Observation, AgentAction](),
-                    env_agent_combo_list=env_agent_combo_list,
-                    tag=tag,
-                    push_to_db=push_to_db_bool,
-                    using_async=True,
+
+@gin.configurable
+def run_async_server_in_batch(
+    *,
+    batch_size: int = 10,
+    model_names: dict[str, LLM_Name] = {
+        "env": "gpt-4",
+        "agent1": "gpt-3.5-turbo",
+        "agent2": "gpt-3.5-turbo",
+    },
+) -> None:
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names)
+    env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
+    while True:
+        for env_agent_combo in env_agent_combo_iter:
+            env_agent_combo_batch.append(env_agent_combo)
+            if len(env_agent_combo_batch) == batch_size:
+                logging.info(
+                    f"Running batch of {batch_size} episodes: {env_agent_combo_batch}"
                 )
-            )
+                asyncio.run(
+                    run_async_server(
+                        model_dict=model_names,
+                        sampler=BaseSampler[Observation, AgentAction](),
+                        env_agent_combo_list=env_agent_combo_batch,
+                    )
+                )
+                env_agent_combo_batch = []
+        else:
+            if env_agent_combo_batch:
+                logging.info(
+                    f"Running batch of {batch_size} episodes: {env_agent_combo_batch}"
+                )
+                asyncio.run(
+                    run_async_server(
+                        model_dict=model_names,
+                        sampler=BaseSampler[Observation, AgentAction](),
+                        env_agent_combo_list=env_agent_combo_batch,
+                    )
+                )
+            return
+
+
+def main(_: Any) -> None:
+    parse_gin_flags(
+        # User-provided gin paths take precedence if relative paths conflict.
+        FLAGS.gin_search_paths + _DEFAULT_GIN_SEARCH_PATHS,
+        FLAGS.gin_file,
+        FLAGS.gin_bindings,
+    )
+    run_async_server_in_batch()
+
+
+if __name__ == "__main__":
+    flags.DEFINE_multi_string(
+        "gin_file",
+        default=None,
+        help="Path to gin configuration file. Multiple paths may be passed and "
+        "will be imported in the given order, with later configurations  "
+        "overriding earlier ones.",
+    )
+
+    flags.DEFINE_multi_string(
+        "gin_bindings", default=[], help="Individual gin bindings."
+    )
+
+    flags.DEFINE_list(
+        "gin_search_paths",
+        default=["."],
+        help="Comma-separated list of gin config path prefixes to be prepended "
+        "to suffixes given via `--gin_file`. If a file appears in. Only the "
+        "first prefix that produces a valid path for each suffix will be "
+        "used.",
+    )
+
+    run(main)
