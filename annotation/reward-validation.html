@@ -28,10 +28,10 @@
   };
 </script>
 <link
-  crossorigin="anonymous"
-  href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-  integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
   rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+  integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N"
+  crossorigin="anonymous"
 />
 <script
   src="https://code.jquery.com/jquery-3.5.1.js"
@@ -44,10 +44,17 @@
   crossorigin="anonymous"
 ></script>
 <script
-  src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
-  integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+  src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"
+  integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
   crossorigin="anonymous"
 ></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+  integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"
+  crossorigin="anonymous"
+></script>
+<!--For overflow box-->
+<!-- <script src="https://cdn.tailwindcss.com"></script> -->
 <!--For autocomplete-->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.devbridge-autocomplete/1.4.7/jquery.autocomplete.js"></script>
 <!--link ref="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-autocomplete/1.0.7/jquery.auto-complete.css"--><!--script src="https://homes.cs.washington.edu/~msap/debug/neural-detox/emoji.json" ></script>
@@ -76,17 +83,17 @@
         </p>
 
         <p>
-          <em>Background:</em> Here at CMU, we're really interested in figuring
-          out how well AI systems understand social situations. These AI systems
-          can talk like humans, but we're not sure how good they are at having
-          meaningful conversations with a specific purpose. With an determined
-          commitment to clarity, our study endeavors to assess the real extent
-          of social interaction skills that current AI systems possess. By
-          shedding light on this aspect, we hope to not only uncover the
-          strengths and limitations of these systems but also contribute to
-          their ongoing enhancement. Our work is dedicated to bridging the gap
-          between technology and human-like collabarotive interactions,
-          ultimately paving the way for more proficient and pro-social AI.
+          <em>Background:</em> Here at Carnegie Mellon University, we're really
+          interested in figuring out how well AI systems understand social
+          situations. These AI systems can talk like humans, but we're not sure
+          how good they are at having meaningful conversations with a specific
+          purpose. So we're trying to assess the real extent of social
+          interaction skills that current AI systems possess. By answering this
+          question, we hope to not only uncover the strengths and limitations of
+          these systems, but also further improve them. Our work is dedicated to
+          bridging the gap between technology and human-like collaborative
+          interactions, ultimately paving the way for more proficient and
+          pro-social AI.
         </p>
 
         <p>
@@ -108,19 +115,20 @@
         </p>
 
         <p>
-          <em>Contact</em>: If you have any questions about this study, you
-          should feel free to ask them by contacting us (via the MTurk interface
-          or via email at maartensap@cmu.edu). If you have questions later,
-          desire additional information, or wish to withdraw your participation
-          please contact Maarten Sap via e-mail in accordance with the contact
-          information listed above. If you have questions pertaining to your
+          <em>Contact</em>: If you have any questions about this pilot study,
+          you should feel free to ask them by contacting us (via the MTurk
+          interface or via email at maartensap@cmu.edu). If you have questions
+          or concerns later, desire additional information, or wish to withdraw
+          your participation please contact Maarten Sap via e-mail in accordance
+          with the contact information listed above.
+          <!-- If you have questions pertaining to your
           rights as a research participant; or to report concerns to this study,
           you should contact the Office of Research Integrity and Compliance at
           Carnegie Mellon University, referencing study number
           STUDY2022_00000331. Email:
           <a href="mailto:irb-review@andrew.cmu.edu"
             >irb-review@andrew.cmu.edu</a
-          >. Phone: 412-268-1901 or 412-268-5460.
+          >. Phone: 412-268-1901 or 412-268-5460. -->
         </p>
       </div>
 
@@ -134,7 +142,12 @@
           We expect you to complete the task within approximately 10 to 15
           minutes. and we will manually check the quality of your work. If we
           see evidence of not taking the task seriously, you might risk losing
-          your qualification to participate in future HITs.
+          your qualification to participate in future HITs. Furthermore,
+          <em
+            >we ask you to not use any AI tools to assist you in completing the
+            task, and if we find evidence of using such tools, you might risk
+            getting your HIT rejected.</em
+          >
         </div>
 
         <hr />
@@ -250,7 +263,7 @@
                     with their character traits (e.g., personality, values, and
                     etc.)?
                     <strong
-                      >Use the slider to assign a value between 1 to 10, with a
+                      >Use the slider to assign a value between 0 to 10, with a
                       higher score indicating more believability.</strong
                     >
                   </td>
@@ -266,7 +279,7 @@
                     their interaction impacted their social status or
                     reputation.
                     <strong
-                      >Use the slider to assign a value between -4 to 5, with a
+                      >Use the slider to assign a value between -5 to 5, with a
                       positive score indicating that their relationship has
                       improved due to the interaction.</strong
                     >
@@ -279,7 +292,7 @@
                     interaction. Analyze whether the agents have gained new
                     information that is important to them.
                     <strong
-                      >Use the slider to assign a value between 1 to 10, with a
+                      >Use the slider to assign a value between 0 to 10, with a
                       higher score indicating the agents have gained new and
                       important knowledge.</strong
                     >
@@ -292,9 +305,9 @@
                     information each agent might want to keep. Analyze whether
                     they successfully keep their secrets.
                     <strong
-                      >Use the slider to assign a value between -9 to 0, with -9
-                      indicating the participants leaked critical secrets and 0
-                      indicating no secrets were revealed.</strong
+                      >Use the slider to assign a value between -10 to 0, with
+                      -10 indicating the participants leaked critical secrets
+                      and 0 indicating no secrets were revealed.</strong
                     >
                   </td>
                 </tr>
@@ -304,7 +317,7 @@
                     Evaluate whether agents violated any moral rules or laws in
                     their interaction.
                     <strong
-                      >Use the slider to assign a value between -9 to 0, with a
+                      >Use the slider to assign a value between -10 to 0, with a
                       negative score indicating the agents have violated moral
                       rules or laws.</strong
                     >
@@ -320,7 +333,7 @@
                     long-term benefits, such as employment opportunities and
                     stock.
                     <strong
-                      >Use the slider to assign a value between -4 to 5, with
+                      >Use the slider to assign a value between -5 to 5, with
                       positive values indicating that agents gained financial
                       and material benefits.</strong
                     >
@@ -332,7 +345,7 @@
                     Re-read each agents' social goals. Analyze the extent to
                     which agents have managed to achieve these goals.
                     <strong
-                      >Use the slider to assign a value between 1 to 10, with a
+                      >Use the slider to assign a value between 0 to 10, with a
                       higher score indicating that agents are making progress
                       towards their social goals.</strong
                     >
@@ -368,296 +381,324 @@
 
           <div class="row justify-content-center" style="margin-top: 20px">
             <div class="col-11" id="table-container">
-              <h5>Example</h5>
-              <div
-                class="d-flex flex-column"
-                style="
-                  margin-top: 20px;
-                  margin-bottom: 20px;
-                  border-radius: 3px;
-                  box-shadow: 1.5px 1.5px 3px 3px rgba(0, 0, 1, 0.2);
-                "
-              >
+              <h5>
+                Example
+                <a
+                  aria-controls="instructions"
+                  aria-expanded="false"
+                  data-toggle="collapse"
+                  href="#example"
+                  role="button"
+                  style="color: #0080ff; text-decoration: underline"
+                >
+                  (Expand/Collapse)
+                </a>
+              </h5>
+              <div class="collapse show" id="example">
                 <div
-                  class="row justify-content-center"
+                  class="d-flex flex-column"
                   style="
-                    background-color: ghostwhite;
-                    border: 1px solid darkgrey;
-                    border-radius: 3px;
-                    width: 90%;
-                    margin-left: auto;
-                    margin-right: auto;
                     margin-top: 20px;
+                    margin-bottom: 20px;
+                    border-radius: 3px;
+                    box-shadow: 1.5px 1.5px 3px 3px rgba(0, 0, 1, 0.2);
                   "
                 >
-                  <div class="col-12 text-center" style="margin: 1em 0">
-                    <div class="situation">
-                      <em
-                        style="font-size: 18; color: #006cd8; font-weight: bold"
-                        >Social Interaction</em
-                      ><span id="speechContextInput"></span>
-                    </div>
-                  </div>
-                  <div class="col-12">
-                    <strong>Scenario:</strong> Two friends deciding on a movie
-                    to watch on Netflix. <br /><br />
-                    <strong>Participants:</strong> Donovan Reeves and Noah Davis
-                    <br /><br />
-                    <strong>Donovan Reeves's background:</strong> Donovan Reeves
-                    is a 27-year-old Man Software Developer. He/him pronouns.
-                    Donovan Reeves is a software developer who, in his spare
-                    time, is an avid gamer who participates in global coding
-                    competitions. Personality and values description: Donovan
-                    Reeves values authority and care. Even though he's outgoing
-                    and hardworking, he can be somewhat moody. His
-                    decision-making style varies according to the situation at
-                    hand. Donovan's secrets: Secretly releasing classified
-                    government information online <br /><br />
-                    <strong>Noah Davis's background:</strong> Noah Davis is a
-                    40-year-old Man Coach. He/him pronouns. Noah Davis has a
-                    swimming pool. Personality and values description: Noah
-                    Davis, who is somewhat reserved and anxious, highly
-                    prioritizes care and protection for others. He is cautious
-                    when making decisions. Noah's secrets: He has a secret
-                    identity as a stand-up comedian. <br /><br />
-                    <strong>Donovan Reeves's goal:</strong> Advocate for a
-                    comedy film ([hint] you could use all kinds of strategies to
-                    persuade them to watch the genre you like, e.g., offering
-                    them a boba tea) <br /><br />
-                    <strong>Noah Davis's goal:</strong> To watch a thriller
-                    ([hint] you could use all kinds of strategies to persuade
-                    them to watch the genre you like, e.g., offering them a boba
-                    tea)
-                  </div>
-                  <div class="col-12 text-center" style="margin: 1em 0">
-                    <div class="situation">
-                      <em
-                        style="font-size: 18; color: #006cd8; font-weight: bold"
-                        >Episode</em
-                      ><span id="episodeContextInput"></span>
-                    </div>
-                  </div>
-                  <div class="col-12" style="margin-top: 1em">
-                    <strong>Turn #1</strong>
-                    <br />
-                    Donovan Reeves said: "Hey Noah! How about we watch a comedy
-                    film tonight on Netflix?"
-                    <br /><br />
-                    <strong>Turn #2</strong>
-                    <br />
-                    Noah Davis said: "Hey Donovan! How about we watch a thriller
-                    film tonight on Netflix instead? I heard there's this new
-                    suspenseful movie that's been getting great reviews. It's
-                    called 'The Silent Witness'. It's about a detective trying
-                    to solve a mysterious murder case. I think it would be
-                    really exciting and keep us on the edge of our seats!"
-                    <br /><br />
-                    <strong>Turn #3</strong>
-                    <br />
-                    Donovan Reeves said: "That sounds like a really intense
-                    movie, Noah! But I was thinking we could use a good laugh
-                    tonight. Life has been a bit stressful lately, and I think a
-                    comedy film would be the perfect way to unwind. Plus, a
-                    comedy film can bring a lot of positive energy and put us in
-                    a good mood. What do you think?"
-                    <br /><br />
-                    <strong>Turn #4</strong>
-                    <br />
-                    Noah Davis said: "I understand that life has been stressful
-                    lately, Donovan, and I completely get the need for a good
-                    laugh to unwind. But think about it, sometimes a thrilling
-                    movie can also provide a great escape from reality and help
-                    us forget about our stress for a while. 'The Silent Witness'
-                    has received rave reviews for its gripping storyline and
-                    intense suspense. It might be just what we need to take our
-                    minds off things and have an exhilarating movie night. What
-                    do you say?"
-                    <br /><br />
-                    <strong>Turn #5</strong>
-                    <br />
-                    Donovan Reeves said: "I completely understand the appeal of
-                    a thrilling movie, Noah. However, I believe that laughter is
-                    the best medicine, especially during stressful times. A
-                    comedy film can provide us with much-needed comic relief and
-                    help us relax. Plus, it's always great to share some laughs
-                    with a good friend like you. How about giving the comedy
-                    genre a chance tonight?"
-                    <br /><br />
-                    <strong>Turn #6</strong>
-                    <br />
-                    Noah Davis [non-verbal communication] Noah smiles warmly and
-                    nods in agreement with Donovan's suggestion.
-                    <br /><br />
-                    <strong>Turn #7</strong>
-                    <br />
-                    Donovan Reeves said: "How about this, Noah? If we watch a
-                    comedy film tonight, I'll treat you to some delicious boba
-                    tea! We can enjoy the movie together with a refreshing and
-                    tasty beverage. What do you say?"
-                    <br /><br />
-                    <strong>Turn #8</strong>
-                    <br />
-                    Noah Davis [non-verbal communication] Noah raises his
-                    eyebrows and nods in agreement with Donovan's offer.
-                    <br /><br />
-                    <strong>Turn #9</strong>
-                    <br />
-                    Donovan Reeves said: "Great! I'm glad you're on board, Noah.
-                    Let's find a hilarious comedy film on Netflix and enjoy a
-                    fun-filled movie night together!"
-                    <br /><br />
-                    <strong>Turn #10</strong>
-                    <br />
-                    Noah Davis [non-verbal communication] Noah gives Donovan a
-                    thumbs up
-                    <br /><br />
-                    <!-- Add the table below this point -->
-                  </div>
-                  <div class="col-12 text-center" style="margin: 1em 0">
-                    <div class="situation">
-                      <em
-                        style="font-size: 18; color: #006cd8; font-weight: bold"
-                        >Example Social Interaction Ratings</em
-                      ><span id="episodeContextInput"></span>
-                    </div>
-                  </div>
                   <div
-                    class="table-responsive"
-                    style="margin-left: 20px; margin-right: 20px; width: 100%"
+                    class="row justify-content-center"
+                    style="
+                      background-color: ghostwhite;
+                      border: 1px solid darkgrey;
+                      border-radius: 3px;
+                      width: 90%;
+                      margin-left: auto;
+                      margin-right: auto;
+                      margin-top: 20px;
+                    "
                   >
-                    <table
-                      class="table table-hover"
-                      id="examples-table"
-                      style="background-color: white"
+                    <div class="col-12 text-center" style="margin: 1em 0">
+                      <div class="situation">
+                        <em
+                          style="
+                            font-size: 18;
+                            color: #006cd8;
+                            font-weight: bold;
+                          "
+                          >Social Interaction</em
+                        ><span id="speechContextInput"></span>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <strong>Scenario:</strong> Two friends deciding on a movie
+                      to watch on Netflix. <br /><br />
+                      <strong>Participants:</strong> Donovan Reeves and Noah
+                      Davis <br /><br />
+                      <strong>Donovan Reeves's background:</strong> Donovan
+                      Reeves is a 27-year-old Man Software Developer. He/him
+                      pronouns. Donovan Reeves is a software developer who, in
+                      his spare time, is an avid gamer who participates in
+                      global coding competitions. Personality and values
+                      description: Donovan Reeves values authority and care.
+                      Even though he's outgoing and hardworking, he can be
+                      somewhat moody. His decision-making style varies according
+                      to the situation at hand. Donovan's secrets: Secretly
+                      releasing classified government information online
+                      <br /><br />
+                      <strong>Noah Davis's background:</strong> Noah Davis is a
+                      40-year-old Man Coach. He/him pronouns. Noah Davis has a
+                      swimming pool. Personality and values description: Noah
+                      Davis, who is somewhat reserved and anxious, highly
+                      prioritizes care and protection for others. He is cautious
+                      when making decisions. Noah's secrets: He has a secret
+                      identity as a stand-up comedian. <br /><br />
+                      <strong>Donovan Reeves's goal:</strong> Advocate for a
+                      comedy film ([hint] could use all kinds of strategies to
+                      persuade them to watch the genre you like, e.g., offering
+                      them a boba tea) <br /><br />
+                      <strong>Noah Davis's goal:</strong> To watch a thriller
+                      ([hint] could use all kinds of strategies to persuade them
+                      to watch the genre you like, e.g., offering them a boba
+                      tea)
+                    </div>
+                    <div class="col-12 text-center" style="margin: 1em 0">
+                      <div class="situation">
+                        <em
+                          style="
+                            font-size: 18;
+                            color: #006cd8;
+                            font-weight: bold;
+                          "
+                          >Episode</em
+                        ><span id="episodeContextInput"></span>
+                      </div>
+                    </div>
+                    <div class="col-12" style="margin-top: 1em">
+                      <strong>Turn #1</strong>
+                      <br />
+                      Donovan Reeves said: "Hey Noah! How about we watch a
+                      comedy film tonight on Netflix?"
+                      <br /><br />
+                      <strong>Turn #2</strong>
+                      <br />
+                      Noah Davis said: "Hey Donovan! How about we watch a
+                      thriller film tonight on Netflix instead? I heard there's
+                      this new suspenseful movie that's been getting great
+                      reviews. It's called 'The Silent Witness'. It's about a
+                      detective trying to solve a mysterious murder case. I
+                      think it would be really exciting and keep us on the edge
+                      of our seats!"
+                      <br /><br />
+                      <strong>Turn #3</strong>
+                      <br />
+                      Donovan Reeves said: "That sounds like a really intense
+                      movie, Noah! But I was thinking we could use a good laugh
+                      tonight. Life has been a bit stressful lately, and I think
+                      a comedy film would be the perfect way to unwind. Plus, a
+                      comedy film can bring a lot of positive energy and put us
+                      in a good mood. What do you think?"
+                      <br /><br />
+                      <strong>Turn #4</strong>
+                      <br />
+                      Noah Davis said: "I understand that life has been
+                      stressful lately, Donovan, and I completely get the need
+                      for a good laugh to unwind. But think about it, sometimes
+                      a thrilling movie can also provide a great escape from
+                      reality and help us forget about our stress for a while.
+                      'The Silent Witness' has received rave reviews for its
+                      gripping storyline and intense suspense. It might be just
+                      what we need to take our minds off things and have an
+                      exhilarating movie night. What do you say?"
+                      <br /><br />
+                      <strong>Turn #5</strong>
+                      <br />
+                      Donovan Reeves said: "I completely understand the appeal
+                      of a thrilling movie, Noah. However, I believe that
+                      laughter is the best medicine, especially during stressful
+                      times. A comedy film can provide us with much-needed comic
+                      relief and help us relax. Plus, it's always great to share
+                      some laughs with a good friend like you. How about giving
+                      the comedy genre a chance tonight?"
+                      <br /><br />
+                      <strong>Turn #6</strong>
+                      <br />
+                      Noah Davis [non-verbal communication] Noah smiles warmly
+                      and nods in agreement with Donovan's suggestion.
+                      <br /><br />
+                      <strong>Turn #7</strong>
+                      <br />
+                      Donovan Reeves said: "How about this, Noah? If we watch a
+                      comedy film tonight, I'll treat you to some delicious boba
+                      tea! We can enjoy the movie together with a refreshing and
+                      tasty beverage. What do you say?"
+                      <br /><br />
+                      <strong>Turn #8</strong>
+                      <br />
+                      Noah Davis [non-verbal communication] Noah raises his
+                      eyebrows and nods in agreement with Donovan's offer.
+                      <br /><br />
+                      <strong>Turn #9</strong>
+                      <br />
+                      Donovan Reeves said: "Great! I'm glad you're on board,
+                      Noah. Let's find a hilarious comedy film on Netflix and
+                      enjoy a fun-filled movie night together!"
+                      <br /><br />
+                      <strong>Turn #10</strong>
+                      <br />
+                      Noah Davis [non-verbal communication] Noah gives Donovan a
+                      thumbs up
+                      <br /><br />
+                      <!-- Add the table below this point -->
+                    </div>
+                    <div class="col-12 text-center" style="margin: 1em 0">
+                      <div class="situation">
+                        <em
+                          style="
+                            font-size: 18;
+                            color: #006cd8;
+                            font-weight: bold;
+                          "
+                          >Example Social Interaction Ratings</em
+                        ><span id="episodeContextInput"></span>
+                      </div>
+                    </div>
+                    <div
+                      class="table-responsive"
+                      style="margin-left: 20px; margin-right: 20px; width: 100%"
                     >
-                      <thead class="thead-light">
-                        <tr>
-                          <th scope="col" style="width: 10%">Dimension</th>
-                          <th scope="col" style="width: 40%">Reasoning</th>
-                          <th scope="col" style="width: 10%">Rating</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td class="cb-teal">Believability<br />(1 to 10)</td>
-                          <td>
-                            Donovan interacts with Noah in a natural and
-                            realistic manner. Donovan does not just repeat his
-                            initial suggestion, but adapts his argument in
-                            response to Noah. Similarly, Noah interacts with
-                            Donovan in a natural and realistic manner. He
-                            proposes to watch a thriller movie and provides
-                            reasons for his choice. When Donovan suggests a
-                            comedy movie instead, Noah acknowledges Donovan's
-                            points and tries to persuade him why a thriller
-                            would also be a good choice.
-                          </td>
-                          <td>Agent 1: 9<br />Agent 2: 9</td>
-                        </tr>
-                        <tr>
-                          <td class="cb-purple">Relationship<br />(-4 to 5)</td>
-                          <td>
-                            Before the interaction, Donovan and Noah were good
-                            friends. After the interaction, their friendship
-                            seems to have strengthened, as they have resolved
-                            their differing movie preferences through respectful
-                            dialogue and compromise. Donovan's offer to buy Noah
-                            a boba tea not only convinces Noah to agree to his
-                            movie choice but also reinforces their friendship.
-                            knowledge: Donovan doesn't appear to gain new
-                            information through this interaction. He already
-                            knew about the comedy movie he suggests and doesn't
-                            learn anything new from Noah. Before the
-                            interaction, Noah and Donovan were good friends.
-                            After the interaction, their friendship seems to
-                            have strengthened, as they have resolved their
-                            differing movie preferences through respectful
-                            dialogue and compromise. Noah's agreement to watch a
-                            comedy movie despite his initial preference for a
-                            thriller demonstrates his value for their
-                            friendship.
-                          </td>
-                          <td>Agent 1: 3<br />Agent 2: 3</td>
-                        </tr>
-                        <tr>
-                          <td class="cb-gold">Knowledge<br />(1 to 10)</td>
-                          <td>
-                            Donovan doesn't appear to gain new information
-                            through this interaction. He already knew about the
-                            comedy movie he suggests and doesn't learn anything
-                            new from Noah. secret: Donovan's secret is that he's
-                            secretly releasing classified government information
-                            online. However, this secret isn't revealed or
-                            hinted at in the conversation. Noah doesn't appear
-                            to gain new information through this interaction. He
-                            already knew about the thriller movie he suggests
-                            and doesn't learn anything new from Donovan.
-                          </td>
-                          <td>Agent 1: 2<br />Agent 2: 2</td>
-                        </tr>
-                        <tr>
-                          <td class="cb-orange">Secret<br />(-9 to 0)</td>
-                          <td>
-                            Donovan's secret is that he's secretly releasing
-                            classified government information online. However,
-                            this secret isn't revealed or hinted at in the
-                            conversation. Noah's secret is that he has a secret
-                            identity as a stand-up comedian. However, this
-                            secret isn't revealed or hinted at in the
-                            conversation.
-                          </td>
-                          <td>Agent 1: 0<br />Agent 2: 0</td>
-                        </tr>
-                        <tr>
-                          <td class="cb-green">Social Rules<br />(-9 to 0)</td>
-                          <td>
-                            Donovan doesn't violate any moral rules or laws
-                            during his interaction with Noah. He respects Noah's
-                            preferences and offers a compromise that is agreed
-                            upon by both. Noah doesn't violate any moral rules
-                            or laws during his interaction with Donovan. He
-                            respects Donovan's preferences and eventually agrees
-                            to Donovan's suggestion, which demonstrates his
-                            value for care and friendship. .
-                          </td>
-                          <td>Agent 1: 0<br />Agent 2: 0</td>
-                        </tr>
-                        <tr>
-                          <td class="cb-brown">
-                            Financial and Material Benefits (-4 to 5)
-                          </td>
-                          <td>
-                            While there are no direct financial or material
-                            benefits gained from this interaction, Donovan does
-                            offer to buy Noah a boba tea. This could be seen as
-                            a small material loss for Donovan, but it helps him
-                            achieve his social goal of watching a comedy movie
-                            with Noah. There are no direct financial or material
-                            benefits gained from this interaction. However, Noah
-                            does agree to Donovan's offer of a boba tea, which
-                            can be seen as a small material gain for him.
-                          </td>
-                          <td>Agent 1: -1<br />Agent 2: 1</td>
-                        </tr>
-                        <tr>
-                          <td class="cb-pink">Goal (1 to 10)</td>
-                          <td>
-                            Donovan's goal is to persuade Noah to watch a comedy
-                            film. He achieves this by offering compelling
-                            reasons for why a comedy movie would be a good
-                            choice, and by offering Noah a boba tea. Despite
-                            Noah's initial preference for a thriller movie,
-                            Donovan successfully convinces him to agree to a
-                            comedy movie. Noah's goal is to persuade Donovan to
-                            watch a thriller film. However, he doesn't achieve
-                            this goal, as he eventually agrees to Donovan's
-                            suggestion of a comedy movie.
-                          </td>
-                          <td>Agent 1: 9<br />Agent 2: 3</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <!-- End of the table -->
+                      <table
+                        class="table table-hover"
+                        id="examples-table"
+                        style="background-color: white"
+                      >
+                        <thead class="thead-light">
+                          <tr>
+                            <th scope="col" style="width: 10%">Dimension</th>
+                            <th scope="col" style="width: 40%">Reasoning</th>
+                            <th scope="col" style="width: 10%">Rating</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td class="cb-teal">
+                              Believability<br />(0 to 10)
+                            </td>
+                            <td>
+                              Donovan interacts with Noah in a natural and
+                              realistic manner. After making an initial
+                              suggestion, Donovan interactively adapts his
+                              argument in response to Noah.
+                              <br /><br />Similarly, Noah interacts with Donovan
+                              in a natural and realistic manner. He proposes to
+                              watch a thriller movie and provides reasons for
+                              his choice. Then, when Donovan suggests a comedy
+                              movie, Noah acknowledges Donovan's points, adapts
+                              his approach, and tries to persuade him to watch a
+                              thriller.<br />
+                            </td>
+                            <td>Agent 1: 9<br />Agent 2: 9</td>
+                          </tr>
+                          <tr>
+                            <td class="cb-purple">
+                              Relationship<br />(-5 to 5)
+                            </td>
+                            <td>
+                              Before the interaction, Donovan and Noah were good
+                              friends. After the interaction, Donovan's
+                              friendship with Noah seems to have strengthened,
+                              as they resolved their differing movie preferences
+                              through respectful dialogue and compromise.
+                              Donovan's offer to buy Noah tea reinforces their
+                              friendship.<br /><br />
+                              During this interaction, Noah's friendship with
+                              Donovan also seems to have strengthened. Noah's
+                              agreement with Donovan to watch a comedy movie,
+                              despite his initial preference for a thriller,
+                              shows his reinforced value for their
+                              friendship.<br />
+                            </td>
+                            <td>Agent 1: 3<br />Agent 2: 3</td>
+                          </tr>
+                          <tr>
+                            <td class="cb-gold">Knowledge<br />(0 to 10)</td>
+                            <td>
+                              Donovan doesn't appear to gain new information
+                              through this interaction. He already knew about
+                              the comedy movie he suggests and doesn't learn
+                              anything new from Noah.<br /><br />
+
+                              Noah doesn't appear to gain new information
+                              through this interaction. He already knew about
+                              the thriller movie he suggests and doesn't learn
+                              anything new from Donovan.<br />
+                            </td>
+                            <td>Agent 1: 2<br />Agent 2: 2</td>
+                          </tr>
+                          <tr>
+                            <td class="cb-orange">Secret<br />(-10 to 0)</td>
+                            <td>
+                              Donovan did not hint or reveal his secret about
+                              releasing classified government information
+                              online. <br /><br />
+
+                              Noah did not hint or reveal his secret identity as
+                              a stand-up comedian.<br />
+                            </td>
+                            <td>Agent 1: 0<br />Agent 2: 0</td>
+                          </tr>
+                          <tr>
+                            <td class="cb-green">
+                              Social Rules<br />(-10 to 0)
+                            </td>
+                            <td>
+                              Donovan doesn't violate any moral rules or laws
+                              during his interaction with Noah. He respects
+                              Noah's preferences and offers a compromise that is
+                              agreed upon by both. <br /><br />
+                              Noah doesn't violate any moral rules or laws
+                              during his interaction with Donovan. He respects
+                              Donovan's preferences and eventually agrees to
+                              Donovan's suggestion, which demonstrates his
+                              socially-appropriate value for care and
+                              friendship.<br />
+                            </td>
+                            <td>Agent 1: 0<br />Agent 2: 0</td>
+                          </tr>
+                          <tr>
+                            <td class="cb-brown">
+                              Financial and Material Benefits (-5 to 5)
+                            </td>
+                            <td>
+                              While there are no direct financial or material
+                              benefits gained from this interaction, Donovan
+                              does offer to buy Noah a boba tea during the
+                              interaction. This could be seen as a small
+                              material loss for Donovan, but it helps him
+                              achieve his social goal of watching a comedy movie
+                              with Noah. <br /><br />
+                              Noah does agree to Donovan's offer of a boba tea,
+                              which can be seen as a small material gain for
+                              him.<br />
+                            </td>
+                            <td>Agent 1: -1<br />Agent 2: 1</td>
+                          </tr>
+                          <tr>
+                            <td class="cb-pink">Goal (0 to 10)</td>
+                            <td>
+                              Donovan's goal is to persuade Noah to watch a
+                              comedy film. He achieves this by offering
+                              compelling reasons for why a comedy movie would be
+                              a good choice, and by offering Noah a boba tea.<br /><br />
+                              Despite Noah's initial preference for a thriller
+                              movie, Donovan successfully convinces him to agree
+                              to a comedy movie. Therefore, he doesn't achieve
+                              his goal of watching a thriller movie.
+                            </td>
+                            <td>Agent 1: 9<br />Agent 2: 3</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <!-- End of the table -->
+                    </div>
                   </div>
                 </div>
               </div>
@@ -704,10 +745,10 @@
           <b>Scenario: </b> ${scenario}
           <br />
           <b>Participants: </b>${participants} <br /><br />
-          <b>Participant 1 background: </b>${p1_background} <br /><br />
-          <b>Participant 2 background: </b>${p2_background} <br /><br />
-          <b>Participant 1 goal: </b>${p1_goal} <br /><br />
-          <b>Participant 2 goal: </b>${p2_goal}
+          <b>${p1_name} background: </b>${p1_background} <br /><br />
+          <b>${p2_name} background: </b>${p2_background} <br /><br />
+          <b>${p1_name} goal: </b>${p1_goal} <br /><br />
+          <b>${p2_name} goal: </b>${p2_goal}
           <br />
         </div>
         <div class="col-12 text-center" style="margin: 1em 0">
@@ -715,459 +756,489 @@
             <em style="font-size: 18; color: #006cd8; font-weight: bold"
               >Episode</em
             ><span id="episodeContextInput"></span>
+            <a
+              aria-controls="instructions"
+              aria-expanded="false"
+              data-toggle="collapse"
+              href="#episodes"
+              role="button"
+              style="color: #0080ff; text-decoration: underline"
+            >
+              (Expand/Collapse)
+            </a>
+          </div>
+        </div>
+        <div class="collapse show" id="episodes">
+          <div
+            class="overflow-auto col-12"
+            style="margin-top: 1em; height: 600px"
+          >
+            ${episode_part1}
+            <br /><br />
+            ${episode_part2}
+            <br /><br />
+            ${episode_part3}
+            <br /><br />
+            ${episode_part4}
+            <br /><br />
+            ${episode_part5}
+            <br /><br />
+            ${episode_part6}
+            <br /><br />
+            ${episode_part7}
+            <br /><br />
+            ${episode_part8}
+            <br /><br />
+            ${episode_part9}
+            <br /><br />
+            ${episode_part10}
+            <br /><br />
+            ${episode_part11}
+            <br /><br />
+            ${episode_part12}
+            <br /><br />
+            ${episode_part13}
+            <br /><br />
+            ${episode_part14}
+            <br /><br />
+            ${episode_part15}
+            <br /><br />
+            ${episode_part16}
+            <br /><br />
+            ${episode_part17}
+            <br /><br />
+            ${episode_part18}
+            <br /><br />
+            ${episode_part19}
+            <br /><br />
+            ${episode_part20}
+            <br /><br />
+            ${episode_part21}
+          </div>
+        </div>
+        <div class="col-12 text-center" style="margin: 1em 0">
+          <div class="situation">
+            <em style="font-size: 18; color: #006cd8; font-weight: bold"
+              >Your Ratings</em
+            ><span id="episodeContextInput"></span>
+          </div>
+          <br />
+          <div class="alert alert-info" role="alert">
+            Hover the mouse over the colored dimension to see the descriptions.
           </div>
         </div>
         <div class="col-12" style="margin-top: 1em">
-          ${episode_part1}
-          <br /><br />
-          ${episode_part2}
-          <br /><br />
-          ${episode_part3}
-          <br /><br />
-          ${episode_part4}
-          <br /><br />
-          ${episode_part5}
-          <br /><br />
-          ${episode_part6}
-          <br /><br />
-          ${episode_part7}
-          <br /><br />
-          ${episode_part8}
-          <br /><br />
-          ${episode_part9}
-          <br /><br />
-          ${episode_part10}
-          <br /><br />
-          ${episode_part11}
-          <br />
-          <br /><br />
-          <div class="col-12 text-center" style="margin: 1em 0">
-            <div class="situation">
-              <em style="font-size: 18; color: #006cd8; font-weight: bold"
-                >Your Ratings</em
-              ><span id="episodeContextInput"></span>
-            </div>
+          <style>
+            table.centered {
+              border-collapse: collapse;
+              width: 100%; /* Set table width to 100% */
+            }
+            th,
+            td {
+              padding: 10px;
+              border: 1px solid black;
+            }
+          </style>
+          <form id="mturk-form">
+            <table class="centered">
+              <tr>
+                <th></th>
+                <th>${p1_name}</th>
+                <th>${p2_name}</th>
+              </tr>
+              <tr>
+                <td style="width: 20%">
+                  <p
+                    class="cb-teal"
+                    data-toggle="tooltip"
+                    data-placement="top"
+                    title="First, evaluate whether the agents interact in a natural and realistic manner. Then evaluate whether the actions of the agent align with their character traits (e.g., personality, values, and etc.)?"
+                  >
+                    Believability
+                  </p>
+                  (0 to 10, a higher score indicating more believability)
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent1_believability_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value="5"
+                    class="slider"
+                    name="agent1_believability"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span
+                    id="agent1_believability_value"
+                    >5</span
+                  >
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent2_believability_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value="5"
+                    class="slider"
+                    name="agent2_believability"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span
+                    id="agent2_believability_value"
+                    >5</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 20%">
+                  <p
+                    class="cb-purple"
+                    data-toggle="tooltip"
+                    data-placement="top"
+                    title="Analyze what relationship the agents have with each other before and after the interaction. Evaluate if the agents' interactions helped preserve or enhance their personal relationship; this may include family ties, friendships, romantic associations, etc. Evaluate whether their interaction impacted their social status or reputation."
+                  >
+                    Relationship
+                  </p>
+                  (-5 to 5, a higher score indicating their relationship has
+                  improved during the interaction)
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent1_relationship_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-5"
+                    max="5"
+                    value="0"
+                    class="slider"
+                    name="agent1_relationship"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_relationship_value"
+                    >5</span
+                  >
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent2_relationship_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-5"
+                    max="5"
+                    value="0"
+                    class="slider"
+                    name="agent2_relationship"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_relationship_value"
+                    >5</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 20%">
+                  <p
+                    class="cb-gold"
+                    data-toggle="tooltip"
+                    data-placement="top"
+                    title="Analyze what information the agents have gained through the interaction. Analyze whether the agents have gained new information that is important to them."
+                  >
+                    Knowledge
+                  </p>
+                  (0 to 10, a higher score indicating the agent has learned new,
+                  important knowledge during the interaction)
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent1_knowledge_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value="5"
+                    class="slider"
+                    name="agent1_knowledge"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_knowledge_value"
+                    >0</span
+                  >
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent2_knowledge_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value="5"
+                    class="slider"
+                    name="agent2_knowledge"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_knowledge_value"
+                    >0</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 20%">
+                  <p
+                    class="cb-orange"
+                    data-toggle="tooltip"
+                    data-placement="top"
+                    title="Analyze what secrets, secret intentions, or private information each agent might want to keep. Analyze whether they successfully keep their secrets."
+                  >
+                    Secret
+                  </p>
+                  (-10 to 0, a higher score indicating that no secrets were
+                  revealed)
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent1_secret_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-10"
+                    max="0"
+                    value="0"
+                    class="slider"
+                    name="agent1_secret"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_secret_value"
+                    >0</span
+                  >
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent2_secret_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-10"
+                    max="0"
+                    value="0"
+                    class="slider"
+                    name="agent2_secret"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_secret_value"
+                    >0</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 20%">
+                  <p
+                    class="cb-green"
+                    data-toggle="tooltip"
+                    data-placement="top"
+                    title="Evaluate whether agents violated any moral rules or laws in their interaction."
+                  >
+                    Social Rules
+                  </p>
+                  (-10 to 0, with a negative score indicating the agents have
+                  violated moral rules or laws)
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent1_socialrules_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-10"
+                    max="0"
+                    value="0"
+                    class="slider"
+                    name="agent1_socialrules"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_socialrules_value"
+                    >0</span
+                  >
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent2_socialrules_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-10"
+                    max="0"
+                    value="0"
+                    class="slider"
+                    name="agent2_socialrules"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_socialrules_value"
+                    >0</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 20%">
+                  <p
+                    class="cb-brown"
+                    data-toggle="tooltip"
+                    data-placement="top"
+                    title="Evaluate whether the agents' interaction contributed towards financial and material benefits. Analyze what the agent would gain or lose after the interactions. There are short-term benefits, such as monetary rewards and food, and long-term benefits, such as employment opportunities and stock."
+                  >
+                    Financial and Material Benefits
+                  </p>
+                  (-5 to 5, with positive values indicating that agents gained
+                  financial and material benefits)
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent1_financial_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-5"
+                    max="5"
+                    value="0"
+                    class="slider"
+                    name="agent1_financial"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_financial_value"
+                    >5</span
+                  >
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent2_financial_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="-5"
+                    max="5"
+                    value="0"
+                    class="slider"
+                    name="agent2_financial"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_financial_value"
+                    >5</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 20%">
+                  <p
+                    class="cb-pink"
+                    data-toggle="tooltip"
+                    data-placement="top"
+                    title="Re-read each agents' social goals. Analyze the extent to which agents have managed to achieve these goals."
+                  >
+                    Goal
+                  </p>
+                  (0 to 10, with positive values indicating that agents made
+                  progress towards their social goals)
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent1_goal_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value="5"
+                    class="slider"
+                    name="agent1_goal"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_goal_value"
+                    >0</span
+                  >
+                </td>
+                <td>
+                  <textarea
+                    class="form-control"
+                    name="agent2_goal_rationale"
+                    placeholder="Enter your reasoning..."
+                    required
+                  ></textarea>
+                  <br />
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value="5"
+                    class="slider"
+                    name="agent2_goal"
+                  />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_goal_value"
+                    >0</span
+                  >
+                </td>
+              </tr>
+            </table>
             <br />
-            <div class="alert alert-info" role="alert">
-              Hover the mouse over the colored dimension to see the
-              descriptions.
-            </div>
-          </div>
-          <div class="col-12" style="margin-top: 1em">
-            <style>
-              table.centered {
-                border-collapse: collapse;
-                width: 100%; /* Set table width to 100% */
-              }
-              th,
-              td {
-                padding: 10px;
-                border: 1px solid black;
-              }
-            </style>
-            <form id="mturk-form">
-              <table class="centered">
-                <tr>
-                  <th></th>
-                  <th>${p1_name}</th>
-                  <th>${p2_name}</th>
-                </tr>
-                <tr>
-                  <td style="width: 20%">
-                    <p
-                      class="cb-teal"
-                      data-toggle="tooltip"
-                      data-placement="top"
-                      title="First, evaluate whether the agents interact in a natural and realistic manner. Then evaluate whether the actions of the agent align with their character traits (e.g., personality, values, and etc.)?"
-                    >
-                      Believability
-                    </p>
-                    (1 to 10, a higher score indicating more believability)
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent1_believability_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value="5"
-                      class="slider"
-                      name="agent1_believability"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span
-                      id="agent1_believability_value"
-                      >5</span
-                    >
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent2_believability_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value="5"
-                      class="slider"
-                      name="agent2_believability"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span
-                      id="agent2_believability_value"
-                      >5</span
-                    >
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 20%">
-                    <p
-                      class="cb-purple"
-                      data-toggle="tooltip"
-                      data-placement="top"
-                      title="Analyze what relationship the agents have with each other before and after the interaction. Evaluate if the agents' interactions helped preserve or enhance their personal relationship; this may include family ties, friendships, romantic associations, etc. Evaluate whether their interaction impacted their social status or reputation."
-                    >
-                      Relationship
-                    </p>
-                    (-4 to 5, a higher score indicating their relationship has
-                    improved during the interaction)
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent1_relationship_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-4"
-                      max="5"
-                      value="0"
-                      class="slider"
-                      name="agent1_relationship"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span
-                      id="agent1_relationship_value"
-                      >5</span
-                    >
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent2_relationship_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-4"
-                      max="5"
-                      value="0"
-                      class="slider"
-                      name="agent2_relationship"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span
-                      id="agent2_relationship_value"
-                      >5</span
-                    >
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 20%">
-                    <p
-                      class="cb-gold"
-                      data-toggle="tooltip"
-                      data-placement="top"
-                      title="Analyze what information the agents have gained through the interaction. Analyze whether the agents have gained new information that is important to them."
-                    >
-                      Knowledge
-                    </p>
-                    (1 to 10, a higher score indicating the agent has learned
-                    new, important knowledge during the interaction)
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent1_knowledge_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value="5"
-                      class="slider"
-                      name="agent1_knowledge"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_knowledge_value"
-                      >0</span
-                    >
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent2_knowledge_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value="5"
-                      class="slider"
-                      name="agent2_knowledge"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_knowledge_value"
-                      >0</span
-                    >
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 20%">
-                    <p
-                      class="cb-orange"
-                      data-toggle="tooltip"
-                      data-placement="top"
-                      title="Analyze what secrets, secret intentions, or private information each agent might want to keep. Analyze whether they successfully keep their secrets."
-                    >
-                      Secret
-                    </p>
-                    (-9 to 0, a higher score indicating that no secrets were
-                    revealed)
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent1_secret_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-9"
-                      max="0"
-                      value="0"
-                      class="slider"
-                      name="agent1_secret"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_secret_value"
-                      >0</span
-                    >
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent2_secret_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-9"
-                      max="0"
-                      value="0"
-                      class="slider"
-                      name="agent2_secret"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_secret_value"
-                      >0</span
-                    >
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 20%">
-                    <p
-                      class="cb-green"
-                      data-toggle="tooltip"
-                      data-placement="top"
-                      title="Evaluate whether agents violated any moral rules or laws in their interaction."
-                    >
-                      Social Rules
-                    </p>
-                    (-9 to 0, with a negative score indicating the agents have
-                    violated moral rules or laws)
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent1_secret_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-9"
-                      max="0"
-                      value="0"
-                      class="slider"
-                      name="agent1_secret"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_secret_value"
-                      >0</span
-                    >
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent2_secret_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-9"
-                      max="0"
-                      value="0"
-                      class="slider"
-                      name="agent2_secret"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_secret_value"
-                      >0</span
-                    >
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 20%">
-                    <p
-                      class="cb-brown"
-                      data-toggle="tooltip"
-                      data-placement="top"
-                      title="Evaluate whether the agents' interaction contributed towards financial and material benefits. Analyze what the agent would gain or lose after the interactions. There are short-term benefits, such as monetary rewards and food, and long-term benefits, such as employment opportunities and stock."
-                    >
-                      Financial and Material Benefits
-                    </p>
-                    (-4 to 5, with positive values indicating that agents gained
-                    financial and material benefits)
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent1_financial_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-4"
-                      max="5"
-                      value="0"
-                      class="slider"
-                      name="agent1_financial"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_financial_value"
-                      >5</span
-                    >
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent2_financial_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="-4"
-                      max="5"
-                      value="0"
-                      class="slider"
-                      name="agent2_financial"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_financial_value"
-                      >5</span
-                    >
-                  </td>
-                </tr>
-                <tr>
-                  <td style="width: 20%">
-                    <p
-                      class="cb-pink"
-                      data-toggle="tooltip"
-                      data-placement="top"
-                      title="Re-read each agents' social goals. Analyze the extent to which agents have managed to achieve these goals."
-                    >
-                      Goal
-                    </p>
-                    (1 to 10, with positive values indicating that agents made
-                    progress towards their social goals)
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent1_goal_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value="5"
-                      class="slider"
-                      name="agent1_goal"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent1_goal_value"
-                      >0</span
-                    >
-                  </td>
-                  <td>
-                    <textarea
-                      class="form-control"
-                      name="agent2_goal_rationale"
-                      placeholder="Enter rationale..."
-                      required
-                    ></textarea>
-                    <br />
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value="5"
-                      class="slider"
-                      name="agent2_goal"
-                    />&nbsp;&nbsp;&nbsp;&nbsp;<span id="agent2_goal_value"
-                      >0</span
-                    >
-                  </td>
-                </tr>
-              </table>
-              <br />
-              <!-- <input type="submit" value="Submit"> -->
-            </form>
+            <!-- <input type="submit" value="Submit"> -->
+          </form>
 
-            <script>
-              // Function to update slider values in real-time
-              function updateSliderValue(slider, output) {
-                output.innerHTML = slider.value;
-              }
+          <script>
+            // Function to update slider values in real-time
+            function updateSliderValue(slider, output) {
+              output.innerHTML = slider.value;
+            }
 
-              // Attach event listeners to sliders
-              document.querySelectorAll(".slider").forEach(function (slider) {
-                const output = slider.nextElementSibling;
+            // Attach event listeners to sliders
+            document.querySelectorAll(".slider").forEach(function (slider) {
+              const output = slider.nextElementSibling;
+              updateSliderValue(slider, output);
+
+              slider.addEventListener("input", function () {
                 updateSliderValue(slider, output);
-
-                slider.addEventListener("input", function () {
-                  updateSliderValue(slider, output);
-                });
               });
+            });
 
-              // document.getElementById("mturk-form").addEventListener("submit", function (event) {
-              //     event.preventDefault();
-              //     // Process the form submission
-              //     console.log("Form submitted!");
-              // });
-            </script>
-            <!-- End of the table -->
-          </div>
+            // document.getElementById("mturk-form").addEventListener("submit", function (event) {
+            //     event.preventDefault();
+            //     // Process the form submission
+            //     console.log("Form submitted!");
+            // });
+          </script>
+          <!-- End of the table -->
         </div>
       </div>
     </div>
@@ -1189,8 +1260,8 @@
           name="commentbox"
           rows="2"
           style="margin-left: 10px; margin-top: 10px; width: 95%"
-        ></textarea
-        ><br />
+        ></textarea>
+        <br />
         &nbsp;
         <center>
           <div

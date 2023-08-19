@@ -133,8 +133,8 @@ def episodes_to_csv(episodes: list[EpisodeLog], output_file: str) -> None:
         for i in range(1, len(messages_and_rewards) - 2):
             episode_list.append(messages_and_rewards[i])
 
-        if len(episode_list) < 10:
-            episode_list += [""] * (10 - len(episode_list))
+        if len(episode_list) < 20:
+            episode_list += [""] * (20 - len(episode_list))
 
         new_row = {}
         new_row = {
@@ -157,8 +157,17 @@ def episodes_to_csv(episodes: list[EpisodeLog], output_file: str) -> None:
             "episode_part8": episode_list[6],
             "episode_part9": episode_list[7],
             "episode_part10": episode_list[8],
-            "episode_part11": episode_list[9]
-            # "episode": episode,
+            "episode_part11": episode_list[9],
+            "episode_part12": episode_list[10],
+            "episode_part13": episode_list[11],
+            "episode_part14": episode_list[12],
+            "episode_part15": episode_list[13],
+            "episode_part16": episode_list[14],
+            "episode_part17": episode_list[15],
+            "episode_part18": episode_list[16],
+            "episode_part19": episode_list[17],
+            "episode_part20": episode_list[18],
+            "episode_part21": episode_list[19],
         }
 
         df_dictionary = pd.DataFrame([new_row])
