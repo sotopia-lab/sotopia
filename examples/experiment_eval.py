@@ -11,6 +11,7 @@ import gin
 from absl import app, flags
 from rich import print
 from rich.logging import RichHandler
+from tqdm import tqdm
 
 from sotopia.agents import LLMAgent
 from sotopia.database import (
@@ -184,11 +185,27 @@ def run_async_server_in_batch(
         "agent1": "gpt-3.5-turbo",
         "agent2": "gpt-3.5-turbo",
     },
+    verbose: bool = False,
 ) -> None:
+    if not verbose:
+        logger = logging.getLogger()
+        logger.setLevel(logging.CRITICAL)
+        rich_handler = logger.handlers[0]
+        logger.removeHandler(rich_handler)
+
+    # we cannot get the exact length of the generator, we just give an estimate of the length
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names)
+    env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
+
     env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names)
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
+
     while True:
-        for env_agent_combo in env_agent_combo_iter:
+        for env_agent_combo in tqdm(
+            env_agent_combo_iter,
+            total=env_agent_combo_iter_length,
+            desc="Running all envs in batch",
+        ):
             env_agent_combo_batch.append(env_agent_combo)
             if len(env_agent_combo_batch) == batch_size:
                 logging.info(

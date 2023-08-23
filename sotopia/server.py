@@ -7,6 +7,7 @@ from typing import Callable, Literal, Sequence, cast
 import gin
 import rich
 from beartype import beartype
+from tqdm.asyncio import tqdm_asyncio
 
 from sotopia.agents import Agents, HumanAgent, LLMAgent, SpeakAgent
 from sotopia.agents.base_agent import BaseAgent
@@ -282,8 +283,10 @@ async def run_async_server(
         for env_agent_combo in env_agent_combo_iter
     ]
 
-    return (
-        await asyncio.gather(*episode_futures)
+    batch_results = (
+        await tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
         if using_async
         else [await i for i in episode_futures]
     )
+
+    return cast(list[list[tuple[str, str, Message]]], batch_results)
