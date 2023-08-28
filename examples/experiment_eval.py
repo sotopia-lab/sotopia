@@ -114,6 +114,7 @@ def _sample_env_agent_combo_and_push_to_db(env_id: str) -> None:
 def _iterate_env_agent_combo_not_in_db(
     model_names: dict[str, LLM_Name],
     env_ids: list[str] = [],
+    tag: str | None = None,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
     """We iterate over each environment and return the **first** env-agent combo that is not in the database."""
     if not env_ids:
@@ -141,7 +142,7 @@ def _iterate_env_agent_combo_not_in_db(
                 EnvAgentComboStorage, env_agent_combo_storage
             )
             agent_ids = env_agent_combo_storage.agent_ids
-            if check_existing_episodes(env_id, agent_ids, model_names):
+            if check_existing_episodes(env_id, agent_ids, model_names, tag):
                 logging.info(
                     f"Episode for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
                 )
@@ -185,6 +186,7 @@ def run_async_server_in_batch(
         "agent1": "gpt-3.5-turbo",
         "agent2": "gpt-3.5-turbo",
     },
+    tag: str | None = None,
     verbose: bool = False,
 ) -> None:
     if not verbose:
@@ -194,10 +196,14 @@ def run_async_server_in_batch(
         logger.removeHandler(rich_handler)
 
     # we cannot get the exact length of the generator, we just give an estimate of the length
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+        model_names=model_names
+    )
     env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
 
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+        model_names=model_names
+    )
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
 
     while True:
