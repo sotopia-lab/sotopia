@@ -117,10 +117,10 @@
         <p>
           <em>Contact</em>: If you have any questions about this pilot study,
           you should feel free to ask them by contacting us (via the MTurk
-          interface or via email at maartensap@cmu.edu). If you have questions
-          or concerns later, desire additional information, or wish to withdraw
-          your participation please contact Maarten Sap via e-mail in accordance
-          with the contact information listed above.
+          interface or via email at xuhuiz@cs.cmu.edu/maartensap@cmu.edu). If
+          you have questions or concerns later, desire additional information,
+          or wish to withdraw your participation please contact Maarten Sap via
+          e-mail in accordance with the contact information listed above.
           <!-- If you have questions pertaining to your
           rights as a research participant; or to report concerns to this study,
           you should contact the Office of Research Integrity and Compliance at
@@ -139,15 +139,34 @@
           the task easier to understand!
         </div>
         <div class="alert alert-warning" role="alert">
-          We expect you to complete the task within approximately 10 to 15
-          minutes. and we will manually check the quality of your work. If we
-          see evidence of not taking the task seriously, you might risk losing
-          your qualification to participate in future HITs. Furthermore,
+          Expectation: We expect you to complete the task within approximately
+          10 to 15 minutes. and we will manually check the quality of your work.
+          If we see evidence of not taking the task seriously, you might risk
+          losing your qualification to participate in future HITs. Furthermore,
           <em
             >we ask you to not use any AI tools to assist you in completing the
             task, and if we find evidence of using such tools, you might risk
             getting your HIT rejected.</em
           >
+        </div>
+
+        <div class="alert alert-danger" role="alert">
+          Update: Please read our updated examples (esp. for the secret
+          dimension). If you encounter some interactions that are hard to
+          rate/understand (e.g., only one sentence, agents confuse their
+          identities, end in the middle of the conversation, etc.), please still
+          try your best to rate them. The believability dimension could be zero
+          if the agent did nothing during the interaction.
+          <br />
+          <strong
+            >Please note that you are limited to a maximum of 30 HITs for this
+            batch (failure to adhere to this could lead to rejection).</strong
+          >
+        </div>
+
+        <div class="alert alert-success" role="alert">
+          Bonus: We understand that the task is challenging, and we will provide
+          small bonuses for high-quality work!
         </div>
 
         <hr />
@@ -249,6 +268,18 @@
             &nbsp;
 
             <h5>Dimensions and scales for evaluating social interactions:</h5>
+            <a
+              aria-controls="dimensionExample"
+              aria-expanded="false"
+              data-toggle="collapse"
+              href="#dimensionExample"
+              role="button"
+              style="color: #0080ff; text-decoration: underline"
+            >
+              (Hide/Show examples for each dimension)
+            </a>
+            <br />
+            <br />
 
             <table id="examples-table">
               <tbody>
@@ -266,6 +297,68 @@
                       >Use the slider to assign a value between 0 to 10, with a
                       higher score indicating more believability.</strong
                     >
+                    <br />
+                    <br />
+                    <p style="color: #006cd8">
+                      <em>[We provide some annotation examples below]</em>
+                    </p>
+                    <table
+                      class="table table-sm collapse show"
+                      ,
+                      id="dimensionExample"
+                    >
+                      <thead class="thead-dark">
+                        <tr>
+                          <th scope="col">Annotator's Rationale</th>
+                          <th scope="col">Rating</th>
+                          <th scope="col">Assessment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            Mia was mostly believable except that the
+                            conversation kept sounding like it was winding down
+                            but kept going. Weirdly so.
+                          </td>
+                          <td class="text-center">8</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example</span
+                            >. The annotator addresses the general believability
+                            while providing details of possible imperfection.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>Liam repeats what Ethan said once.</td>
+                          <td class="text-center">1</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >. Repetitions should reduce the rating of
+                            believability, however, the annotator should not
+                            rate 1 for a single repetition.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            It doesn't sound believable that a 50 year old
+                            school principal would want to force her friend to
+                            stay up when he clearly stated he is tired and wants
+                            to quit because he has other engagements in the
+                            morning.
+                          </td>
+                          <td class="text-center">3</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >. Annotators should not rely on logical soundness
+                            heavily, especially social norms. Logical
+                            inconsistency should reduce the rating by at most 4.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
                 <tr>
@@ -281,8 +374,74 @@
                     <strong
                       >Use the slider to assign a value between -5 to 5, with a
                       positive score indicating that their relationship has
-                      improved due to the interaction.</strong
+                      improved due to the interaction, a negative score
+                      indicating that their relationship has deteriorated, and a
+                      score of 0 suggesting that there has been no significant
+                      change in their relationship following the
+                      interaction.</strong
                     >
+
+                    <br />
+                    <br />
+                    <p style="color: #006cd8">
+                      <em>[We provide some annotation examples below]</em>
+                    </p>
+                    <table
+                      class="table table-sm collapse show"
+                      ,
+                      id="dimensionExample"
+                    >
+                      <thead class="thead-dark">
+                        <tr>
+                          <th scope="col">Annotator's Rationale</th>
+                          <th scope="col">Rating</th>
+                          <th scope="col">Assessment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            Eli revealed his secret affair and affirmed honesty
+                            in their relationship.
+                          </td>
+                          <td class="text-center">3</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example</span
+                            >. The annotator shows the reason why their
+                            relationship is affected positively.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>They reached a mutual agreement.</td>
+                          <td class="text-center">5</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >. 5 means the relationship improve significantly
+                            (e.g., from strangers to best friends). In this
+                            case, the annotator should rate 0 or 1.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            The situation is uncomfortable because both sides
+                            refuse to yield. Isabelle is annoying Ava, although
+                            she remains respectful.
+                          </td>
+                          <td class="text-center">-5</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >. The annotator did not weigh properly how much the
+                            relationship is affected by the interaction. -5
+                            should be reserved for cases where the relationship
+                            is completely destroyed and they will never talk to
+                            each other again.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
                 <tr>
@@ -296,6 +455,51 @@
                       higher score indicating the agents have gained new and
                       important knowledge.</strong
                     >
+                    <br />
+                    <br />
+                    <p style="color: #006cd8">
+                      <em>[We provide some annotation examples below]</em>
+                    </p>
+                    <table
+                      class="table table-sm collapse show"
+                      ,
+                      id="dimensionExample"
+                    >
+                      <thead class="thead-dark">
+                        <tr>
+                          <th scope="col">Annotator's Rationale</th>
+                          <th scope="col">Rating</th>
+                          <th scope="col">Assessment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            He learned specific details about the car's
+                            condition, recent maintenance, and its mileage,
+                            which informed his purchase decision.
+                          </td>
+                          <td class="text-center">10</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >. The annotator overestimated the knowledge gain.
+                            Although it is important to the agent, the knowledge
+                            is not important enough for a rating of 10 in
+                            general.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>No new knowledge was gained.</td>
+                          <td class="text-center">0</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example</span
+                            >. In the case when no knowledge is gained, rate 0.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
                 <tr>
@@ -309,18 +513,138 @@
                       -10 indicating the participants leaked critical secrets
                       and 0 indicating no secrets were revealed.</strong
                     >
+
+                    <br />
+                    <br />
+                    <p style="color: #006cd8">
+                      <em>[We provide some annotation examples below]</em>
+                    </p>
+                    <table
+                      class="table table-sm collapse show"
+                      ,
+                      id="dimensionExample"
+                    >
+                      <thead class="thead-dark">
+                        <tr>
+                          <th scope="col">Annotator's Rationale</th>
+                          <th scope="col">Rating</th>
+                          <th scope="col">Assessment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Eli does not reveal his personal secret.</td>
+                          <td class="text-center">0</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example. </span
+                            >In the case when no secret is revealed, rate 0.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            Ethan reveal his secretive intention in buying John
+                            a birthday gift.
+                          </td>
+                          <td class="text-center">-10</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >
+                            The annotator failed to weigh the negative impact of
+                            the secret's leakage. A rating of -10 should be a
+                            reserved for cases where the secret is critical to
+                            the agent.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            Mia totally revealed the secret that she has
+                            committed murder.
+                          </td>
+                          <td class="text-center">-6</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >. The annotator did not weigh the importance of the
+                            secret. The most important secret should be rated
+                            -10.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
                 <tr>
                   <td class="cb-green">Social Rules</td>
                   <td class="cb-gray">
-                    Evaluate whether agents violated any moral rules or laws in
-                    their interaction.
+                    Evaluate whether agents violated any moral rules or laws
+                    <i style="color: #e9252f">in their interaction</i>.
                     <strong
                       >Use the slider to assign a value between -10 to 0, with a
                       negative score indicating the agents have violated moral
                       rules or laws.</strong
                     >
+                    <br />
+                    <br />
+                    <p style="color: #006cd8">
+                      <em>[We provide some annotation examples below]</em>
+                    </p>
+                    <table
+                      class="table table-sm collapse show"
+                      ,
+                      id="dimensionExample"
+                    >
+                      <thead class="thead-dark">
+                        <tr>
+                          <th scope="col">Annotator's Rationale</th>
+                          <th scope="col">Rating</th>
+                          <th scope="col">Assessment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>No social rules were broken.</td>
+                          <td class="text-center">0</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example</span
+                            >In the case when no social is gained, rate 0.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            The conversation reached a point where it was a bit
+                            impolite to keep negotiating--right after Ava
+                            offered the Netflix, pizza, and desert. Ethan should
+                            have given in, out of respect, at that point.
+                          </td>
+                          <td class="text-center">-1</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example</span
+                            >
+                            Impoliteness in this case is a minor social
+                            rule-break. The annotator addressed this by giving a
+                            minor negative rating.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            Oliver was not fair while dividing possessions among
+                            them. He took more items than his fair share.
+                          </td>
+                          <td class="text-center">-8</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >
+                            The annotator misunderstand the scale of social rule
+                            breaking. -10 means a felonious breaking of law.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
                 <tr>
@@ -335,8 +659,76 @@
                     <strong
                       >Use the slider to assign a value between -5 to 5, with
                       positive values indicating that agents gained financial
-                      and material benefits.</strong
+                      and material benefits, negative values indicating that
+                      agents lost financial and material benefits.</strong
                     >
+
+                    <br />
+                    <br />
+                    <p style="color: #006cd8">
+                      <em>[We provide some annotation examples below]</em>
+                    </p>
+                    <table
+                      class="table table-sm collapse show"
+                      ,
+                      id="dimensionExample"
+                    >
+                      <thead class="thead-dark">
+                        <tr>
+                          <th scope="col">Annotator's Rationale</th>
+                          <th scope="col">Rating</th>
+                          <th scope="col">Assessment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            Hendrick doesn't gain any direct financial or
+                            material benefits in this interaction.
+                          </td>
+                          <td class="text-center">0</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example</span
+                            >In the case when no financial gain incurred, rate
+                            0.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            Ethan gain a material benefit from Ava during this
+                            interaction. He got a Italian pizza and dessert.
+                          </td>
+                          <td class="text-center">5</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >
+                            The annotator should rate financial or material gain
+                            by both the real world value of the gain and the
+                            importance of the financial/material gain to the
+                            agent. A pizza is not huge financial gain and should
+                            only worth 1 point.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            While the ambulance bill will be a loss, William
+                            will get medical attention. And he knew the bill
+                            might have to be incurred.
+                          </td>
+                          <td class="text-center">4</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >
+                            The annotator should only rate by financial or
+                            material gain or loss. Other values like physical or
+                            mental health is not included.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
                 <tr>
@@ -349,6 +741,74 @@
                       higher score indicating that agents are making progress
                       towards their social goals.</strong
                     >
+
+                    <br />
+                    <br />
+                    <p style="color: #006cd8">
+                      <em>[We provide some annotation examples below]</em>
+                    </p>
+                    <table
+                      class="table table-sm collapse show"
+                      ,
+                      id="dimensionExample"
+                    >
+                      <thead class="thead-dark">
+                        <tr>
+                          <th scope="col">Annotator's Rationale</th>
+                          <th scope="col">Rating</th>
+                          <th scope="col">Assessment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            Miles goal to flirt with Emeralda.he attracted and
+                            want to build a romantic relationship with her. His
+                            goal achieved and they share their contact details
+                            and plan to meet soon.
+                          </td>
+                          <td class="text-center">9</td>
+                          <td>
+                            <span style="color: #1b9e77"
+                              >This is a good annotation example</span
+                            >
+                            The annotator elaborated why the agent’s goal was
+                            achieved and how the goal was achieved.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            Naomi does not achieve her goal of sharing the
+                            blanket.
+                          </td>
+                          <td class="text-center">2</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >
+                            In the case when the goal is not achieved, rate 0.
+                            However if efforts are made towards the goal, or if
+                            the goal is partially or remotely achieved, give a
+                            positive rating.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>Miles bought the BMW at his target price.</td>
+                          <td class="text-center">1</td>
+                          <td>
+                            <span style="color: #a94442"
+                              >This is a bad annotation example</span
+                            >
+                            There could cases where a stretch goal would be
+                            provided. In this case, it is “trying to get the
+                            lowest price possible.” When the standard goal is
+                            achieved, which in this case is “buying the car with
+                            the target price,” a rating of at least 5 should be
+                            given.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
               </tbody>
@@ -747,9 +1207,10 @@
           <b>Participants: </b>${participants} <br /><br />
           <b>${p1_name} background: </b>${p1_background} <br /><br />
           <b>${p2_name} background: </b>${p2_background} <br /><br />
-          <b>${p1_name} goal: </b>${p1_goal} <br /><br />
-          <b>${p2_name} goal: </b>${p2_goal}
-          <br />
+          <b>${p1_name} goal: </b>
+          <p class="with-breaks">${p1_goal}</p>
+          <b>${p2_name} goal: </b>
+          <p class="with-breaks">${p2_goal}</p>
         </div>
         <div class="col-12 text-center" style="margin: 1em 0">
           <div class="situation">
@@ -852,7 +1313,8 @@
                     class="cb-teal"
                     data-toggle="tooltip"
                     data-placement="top"
-                    title="First, evaluate whether the agents interact in a natural and realistic manner. Then evaluate whether the actions of the agent align with their character traits (e.g., personality, values, and etc.)?"
+                    title="Evaluate whether the agents interact in a natural and realistic manner. For example, do agents confuse their identities? Do agents repeat others' words/actions without solid reasons? Are the agents being overly polite, considering the context? Do the actions of the agent align with their character traits (e.g., personality, values, and etc.)? Use the slider to assign a value between 0 to 10, with a higher score indicating more believability.
+                    "
                   >
                     Believability
                   </p>
@@ -909,8 +1371,9 @@
                   >
                     Relationship
                   </p>
-                  (-5 to 5, a higher score indicating their relationship has
-                  improved during the interaction)
+                  (-5 to 5, a positive score indicating their relationship has
+                  improved during the interaction, a negative score indicating
+                  that their relationship has deteriorated)
                 </td>
                 <td>
                   <textarea
@@ -1013,8 +1476,8 @@
                   >
                     Secret
                   </p>
-                  (-10 to 0, a higher score indicating that no secrets were
-                  revealed)
+                  (-10 to 0, a lower score indicating that more critical secrets
+                  are revealed, 0 meaning no secrets revealed)
                 </td>
                 <td>
                   <textarea
@@ -1117,8 +1580,8 @@
                   >
                     Financial and Material Benefits
                   </p>
-                  (-5 to 5, with positive values indicating that agents gained
-                  financial and material benefits)
+                  (-5 to 5, with positive values indicating gains, negative
+                  values indicating loss.)
                 </td>
                 <td>
                   <textarea
@@ -1871,5 +2334,20 @@
       border-radius: .2em;
       background-color: #DDECFA;
       padding: .5em;
+    }
+
+    p.with-breaks {
+      white-space: pre-wrap;
+    }
+    .table-bordered {
+      border-collapse: collapse;
+      width: 100%;
+      border: 2px solid #000; /* Change the border color and width as desired */
+    }
+
+    .table-bordered th, .table-bordered td {
+      border: 1px solid #000; /* Change the border color and width for table cells */
+      padding: 8px; /* Add padding for better spacing */
+      text-align: left;
     }
 </style>

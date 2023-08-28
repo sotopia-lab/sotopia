@@ -1,9 +1,48 @@
+import random
 import re
 import sys
+from collections import Counter
+from typing import cast
 
 import pandas as pd
 
-from sotopia.database.logs import EpisodeLog
+from sotopia.database import EnvironmentProfile, EpisodeLog
+from sotopia.envs.parallel import render_text_for_environment
+
+
+def check_asymetry(
+    epilogs: list[EpisodeLog],
+) -> tuple[dict[str, int], dict[str, int]]:
+    agent_1_models = []
+    agent_2_models = []
+    for ep in epilogs:
+        assert isinstance(ep.models, list)
+        agent_1_models.append(ep.models[1])
+        agent_2_models.append(ep.models[2])
+
+    agent_1_models_num = Counter(agent_1_models)
+    agent_2_models_num = Counter(agent_2_models)
+    return agent_1_models_num, agent_2_models_num
+
+
+def select_episodes(episodes: list[EpisodeLog]) -> list[EpisodeLog]:
+    selected_episodes: list[EpisodeLog] = []
+    unique_envs = set([episode.environment for episode in episodes])
+    for env in unique_envs:
+        env_episodes = [
+            episode for episode in episodes if episode.environment == env
+        ]
+        assert len(env_episodes) > 2
+        # make sure we have symetric model pairs
+        pair_one = env_episodes[0]
+        pair_two = [
+            episode
+            for episode in env_episodes
+            if episode.models != pair_one.models
+        ][0]
+        env_episodes = [pair_one, pair_two]
+        selected_episodes += [random.choice(env_episodes)]
+    return selected_episodes
 
 
 def extract_background(text: str, name: str) -> str | None:
@@ -16,19 +55,34 @@ def extract_background(text: str, name: str) -> str | None:
         if end_index != -1:
             substring = text[start_index + len(start_marker) : end_index]
             return substring.strip()
-
     return None
 
 
 def extract_goals(input: str, participants: list[str]) -> dict[str, str]:
+    # print('new:')
+    # print(input)
+    # print('end')
+    # print()
     goals = {}
-
     for participant in participants:
         pattern = f"{participant}'s goal: ([^\n]+)"
         match = re.search(pattern, input)
 
         if match:
             goals[participant] = match.group(1)
+
+            # Extract friend info if available
+        friend_match = re.search(
+            r"You know the following friends:(.*?)(?=\n\n|$)", input, re.DOTALL
+        )
+        if friend_match:
+            friend_info = friend_match.group(1).strip()
+            goals[participant] = (
+                goals[participant]
+                + " You know the following friends:\n"
+                + friend_info
+            )
+
     return goals
 
 
@@ -128,6 +182,14 @@ def episodes_to_csv(episodes: list[EpisodeLog], output_file: str) -> None:
             messages_and_rewards[0], [participant1_name, participant2_name]
         )
 
+        # special fix for mututal friends
+        episode_env = EnvironmentProfile.get(episode.environment)
+        if episode_env.source == "mutual_friends":
+            scenario = render_text_for_environment(episode_env.scenario)
+
+        # print(messages_and_rewards[0])
+        # print()
+
         # we already have episode_start (episode_part1), now get the rest of the episode part 2-11
         episode_list = []
         for i in range(1, len(messages_and_rewards) - 2):
@@ -177,6 +239,17 @@ def episodes_to_csv(episodes: list[EpisodeLog], output_file: str) -> None:
     mturk_df.to_csv(output_file, index=False)
 
 
-Episodes = EpisodeLog.find(EpisodeLog.tag == "6_initial_aug3").all()
-output_file = "annotation/mturk__6_initial_aug3_noepisodes.csv"
-episodes_to_csv(Episodes, output_file)  # type: ignore
+episodes = EpisodeLog.find(
+    EpisodeLog.tag == "aug18_gpt3.5_llama-2-70b-chat_zqi2"
+).all()
+print("Number of episodes:", len(episodes))
+episodes_list: list[EpisodeLog] = cast(list[EpisodeLog], episodes)
+selected_episodes = select_episodes(episodes_list)
+print("Number of selected episodes:", len(selected_episodes))
+
+agent1_models_count, agent2_models_count = check_asymetry(selected_episodes)
+print("agent 1 Models count:", agent1_models_count)
+print("agent 2 Models count:", agent2_models_count)
+
+output_file = "annotation/mturk_aug18_gpt3.5_llama2_zqi2.csv"
+episodes_to_csv(selected_episodes, output_file)
