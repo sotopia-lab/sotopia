@@ -3,6 +3,8 @@ import __main__ as train_script
 import sotopia.generation_utils.generate as generate
 import sotopia.envs.evaluators as evaluators
 
+MAX_RETRIES=6
+
 generate.agenerate_action:
     temperature = 1.0
 
@@ -11,3 +13,6 @@ evaluators.ReachGoalLLMEvaluator.__acall__:
 
 generate.agenerate_env_profile:
     model_name = "gpt-3.5-turbo"
+
+generate.obtain_chain:
+    max_retries = %MAX_RETRIES

@@ -199,12 +199,14 @@ def _return_fixed_model_version(
     }[model_name]
 
 
+@gin.configurable
 @beartype
 def obtain_chain(
     model_name: LLM_Name,
     template: str,
     input_variables: list[str],
     temperature: float = 0.7,
+    max_retries: int = 6,
 ) -> LLMChain:
     """
     Using langchain to sample profiles for participants
@@ -223,12 +225,17 @@ def obtain_chain(
             chat = ChatOpenAI(
                 model_name=_return_fixed_model_version(model_name),
                 temperature=temperature,
+                max_retries=max_retries,
             )
             chain = LLMChain(llm=chat, prompt=chat_prompt_template)
             return chain
         case "text-davinci-003":
             # Warning: no interactive mode for 003
-            llm = OpenAI(model_name=model_name, temperature=temperature)
+            llm = OpenAI(
+                model_name=model_name,
+                temperature=temperature,
+                max_retries=max_retries,
+            )
             prompt = PromptTemplate(
                 input_variables=input_variables,
                 template=template,
