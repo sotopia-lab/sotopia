@@ -138,3 +138,6 @@ data/*
 deprecated/*
 
 *.csv
+
+#backup
+backup/*

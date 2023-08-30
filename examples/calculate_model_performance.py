@@ -135,7 +135,9 @@ def is_symmetric_epilogs(epilogs: list[EpisodeLog]) -> bool:
         return False
 
 
-def extract_fixed_episode_set(episodes: list[EpisodeLog]) -> list[EpisodeLog]:
+def extract_fixed_episode_set(
+    episodes: list[EpisodeLog], models: list[str]
+) -> list[EpisodeLog]:
     env_ids = list(EnvironmentProfile.all_pks())
     fixed_env_agent_combo = []
     for env_id in env_ids:
@@ -149,29 +151,55 @@ def extract_fixed_episode_set(episodes: list[EpisodeLog]) -> list[EpisodeLog]:
     print("Number of fixed env_agent_combo:", len(fixed_env_agent_combo))
     # Filter out the episode logs that are not in the fixed set
     filtered_episodes = []
+    filtered_episodes_verse = []
+    fixed_env_agent_combo_pair_one = fixed_env_agent_combo.copy()
+    fixed_env_agent_combo_pair_two = fixed_env_agent_combo.copy()
     for episode in Episodes:
         assert isinstance(
             episode, EpisodeLog
         ), "episode should be a EpisodeLog"
-        for combo in fixed_env_agent_combo:
+        for combo in fixed_env_agent_combo_pair_one:
             assert isinstance(
                 combo, EnvAgentComboStorage
             ), "combo should be a EnvAgentComboStorage"
             if (
                 episode.environment == combo.env_id
                 and episode.agents == combo.agent_ids
+                and isinstance(episode.rewards[0], tuple)
             ):
-                filtered_episodes.append(episode)
+                if episode.models == models:
+                    filtered_episodes.append(episode)
+                    fixed_env_agent_combo_pair_one.remove(combo)
                 break
+
+    for episode in Episodes:
+        assert isinstance(
+            episode, EpisodeLog
+        ), "episode should be a EpisodeLog"
+        for combo in fixed_env_agent_combo_pair_two:
+            assert isinstance(
+                combo, EnvAgentComboStorage
+            ), "combo should be a EnvAgentComboStorage"
+            if (
+                episode.environment == combo.env_id
+                and episode.agents == combo.agent_ids
+                and isinstance(episode.rewards[0], tuple)
+            ):
+                if episode.models == [models[0], models[2], models[1]]:
+                    filtered_episodes_verse.append(episode)
+                    fixed_env_agent_combo_pair_two.remove(combo)
+                break
+    filtered_episodes += filtered_episodes_verse
     return filtered_episodes
 
 
+models = ["gpt-4", "togethercomputer/llama-2-70b-chat", "gpt-3.5-turbo"]
 Episodes = EpisodeLog.find(
-    EpisodeLog.tag == "aug18_gpt3.5_llama-2-70b-chat_zqi2"
+    EpisodeLog.tag == f"{models[1]}_{models[2]}_v0.0.1"
 ).all()
 # Episodes = EpisodeLog.find((EpisodeLog.tag == "gpt3.5_gpt4_v0.0.1_hzhu2") | (EpisodeLog.tag == "gpt4_gpt3.5_v0.0.1_hzhu2")).all()
 print("Number of episodes:", len(Episodes))
-filtered_episodes = extract_fixed_episode_set(Episodes)  # type: ignore
+filtered_episodes = extract_fixed_episode_set(Episodes, models=models)  # type: ignore
 print("Number of filtered episodes:", len(filtered_episodes))
 # check if the epilogs are symmetric
 if is_symmetric_epilogs(filtered_episodes):
