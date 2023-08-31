@@ -181,8 +181,16 @@ def inter_annotator_agreement(
     scores = computeAlpha(
         annotation_df, value_column, groupCol="Input.episode_id"
     )
+    randolfa_df = annotation_df.copy()
+    randolfa_df[f"{value_column}_cut"] = pd.cut(
+        x=randolfa_df[value_column], bins=11
+    )
     randolfa = computeFleissKappa(
-        annotation_df, value_column, "Input.episode_id", 2, method="fleiss"
+        randolfa_df,
+        f"{value_column}_cut",
+        "Input.episode_id",
+        2,
+        method="randolf",
     )
     scores_annotator_wise = {}
     workerIds = annotation_df["WorkerId"].unique()
@@ -342,6 +350,17 @@ if __name__ == "__main__":
     overall_scores_df = overall_scores_df.groupby(
         overall_scores_df.index.str.split("_").str[1]
     ).mean()
+    overall_scores_df = overall_scores_df.reindex(
+        [
+            "believability",
+            "relationship",
+            "knowledge",
+            "secret",
+            "socialrules",
+            "financial",
+            "goal",
+        ]
+    )
     overall_scores_avg = overall_scores_df.mean(axis=0)
     rich.print("overall_scores_df:")
     rich.print(overall_scores_df.round(3))

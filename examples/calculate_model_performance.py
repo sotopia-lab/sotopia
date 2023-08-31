@@ -200,6 +200,11 @@ assert isinstance(
 Episodes = EpisodeLog.find(EpisodeLog.tag == episodes_to_evaluate).all()
 # Episodes = EpisodeLog.find((EpisodeLog.tag == "gpt3.5_gpt4_v0.0.1_hzhu2") | (EpisodeLog.tag == "gpt4_gpt3.5_v0.0.1_hzhu2")).all()
 print("Number of episodes:", len(Episodes))
+models = [
+    "gpt-4",
+    episodes_to_evaluate.split("_")[0],
+    episodes_to_evaluate.split("_")[1],
+]
 filtered_episodes = extract_fixed_episode_set(Episodes, models=models)  # type: ignore
 print("Number of filtered episodes:", len(filtered_episodes))
 # check if the epilogs are symmetric
