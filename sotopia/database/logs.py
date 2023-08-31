@@ -87,4 +87,5 @@ class EpisodeLog(JsonModel):
 class AnnotationForEpisode(JsonModel):
     episode: str = Field(index=True, description="the pk id of episode log")
     annotator_id: str = Field(index=True, full_text_search=True)
-    scores_for_each_turn: list[list[int]]
+    rewards: list[tuple[float, dict[str, float]] | float]
+    reasoning: str

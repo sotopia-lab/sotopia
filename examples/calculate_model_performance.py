@@ -193,10 +193,11 @@ def extract_fixed_episode_set(
     return filtered_episodes
 
 
-models = ["gpt-4", "togethercomputer/llama-2-70b-chat", "gpt-3.5-turbo"]
-Episodes = EpisodeLog.find(
-    EpisodeLog.tag == f"{models[1]}_{models[2]}_v0.0.1"
-).all()
+episodes_to_evaluate = sys.argv[1]
+assert isinstance(
+    episodes_to_evaluate, str
+), "episodes_to_evaluate should be a string"
+Episodes = EpisodeLog.find(EpisodeLog.tag == episodes_to_evaluate).all()
 # Episodes = EpisodeLog.find((EpisodeLog.tag == "gpt3.5_gpt4_v0.0.1_hzhu2") | (EpisodeLog.tag == "gpt4_gpt3.5_v0.0.1_hzhu2")).all()
 print("Number of episodes:", len(Episodes))
 filtered_episodes = extract_fixed_episode_set(Episodes, models=models)  # type: ignore
@@ -204,6 +205,21 @@ print("Number of filtered episodes:", len(filtered_episodes))
 # check if the epilogs are symmetric
 if is_symmetric_epilogs(filtered_episodes):
     avg_rewards = get_avg_reward_for_models(filtered_episodes)
-    avg_successRate = get_avg_successRate_for_models(filtered_episodes)
+    avg_rewards = avg_rewards.reindex(
+        [
+            "believability",
+            "relationship",
+            "knowledge",
+            "secret",
+            "social_rules",
+            "financial_and_material_benefits",
+            "overall_score",
+        ]
+    )
     rich.print(avg_rewards)
-    rich.print(avg_successRate)
+    if (
+        episodes_to_evaluate.split("_")[0]
+        != episodes_to_evaluate.split("_")[1]
+    ):
+        avg_successRate = get_avg_successRate_for_models(filtered_episodes)
+        rich.print(avg_successRate)

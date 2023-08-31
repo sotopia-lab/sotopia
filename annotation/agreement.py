@@ -71,48 +71,56 @@ def computeRandomAgreement(
     return agree / tot
 
 
+def create_fleiss_table(
+    df: pd.DataFrame, col: str, groupCol: str
+) -> pd.DataFrame:
+    # Group the data by the group column and count ratings per category
+    fleiss_df = df.groupby([groupCol, col])[col].count().unstack(fill_value=0)
+    # Convert to a numpy array and add a row representing total ratings per group
+    fleiss_table = fleiss_df.to_numpy()
+    return pd.DataFrame(fleiss_table, columns=range(fleiss_table.shape[1]))
+
+
 def fleiss_kappa(
-    df: pd.DataFrame,
-    valCol: str,
-    groupCol: str = "HITId",
-    method: str = "fleiss",
+    df: pd.DataFrame, n_rater: int, method: str = "fleiss"
 ) -> float:
-    """
-    Computes Fleiss' kappa for group of annotators.
-    Use method="rand" for Randolph's kappa agreement.
-    See Randolph, Justus J. 2005 "Free-Marginal Multirater Kappa (multirater
-    K [free]): An Alternative to Fleiss' Fixed-Marginal Multirater Kappa."
-    Presented at the Joensuu Learning and Instruction Symposium, vol. 2005
-    https://eric.ed.gov/?id=ED490661
-    """
-    # TODO: add support for non-binary ratings
     df = df.copy()
-    df = df[[groupCol, valCol]]
-    df = df.groupby(by=[groupCol]).sum()
+    n_categories = df.shape[1]
+
     table = df.to_numpy()
-
-    table = 1.0 * np.asarray(table)  # avoid integer division
-    n_sub, n_cat = table.shape
-    n_total = table.sum()
-    n_rater = table.sum(1)
-    n_rat = n_rater.max()
-    # assume fully ranked
-    assert n_total == n_sub * n_rat
-
-    # marginal frequency  of categories
-    p_cat = table.sum(0) / n_total
-
-    table2 = table * table
-    p_rat = (table2.sum(1) - n_rat) / (n_rat * (n_rat - 1.0))
-    p_mean = p_rat.mean()
-
+    # Calculate observed agreement
+    sum_rater = table.sum(axis=1)
+    # filter out rows with not enough ratings
+    table = table[sum_rater >= n_rater]
+    n_sub = table.shape[0]
+    p_mean = ((table**2).sum(axis=1) - n_rater).sum() / (
+        n_rater * (n_rater - 1) * n_sub
+    )
     if method == "fleiss":
-        p_mean_exp = (p_cat * p_cat).sum()
+        p_mean_exp = ((table.sum(axis=0) ** 2).sum()) / (
+            n_sub**2 * n_rater**2
+        )
     elif method.startswith("rand") or method.startswith("unif"):
-        p_mean_exp = 1 / n_cat
-
+        p_mean_exp = 1 / n_categories
     kappa = (p_mean - p_mean_exp) / (1 - p_mean_exp)
     return float(kappa)
+
+
+def computeFleissKappa(
+    df: pd.DataFrame,
+    col: str,
+    groupCol: str,
+    n_rater: int,
+    method: str = "randolf",
+) -> float:
+    df = df.copy()
+    df = df[[groupCol, col]]
+    # Calculate the sum of squared ratings per category
+    fleiss_table = create_fleiss_table(df, col, groupCol)
+
+    # Calculate Fleiss' Kappa using the modified function
+    score = fleiss_kappa(fleiss_table, n_rater, method=method)
+    return score
 
 
 def computeAlpha(

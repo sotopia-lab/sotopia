@@ -6,7 +6,7 @@ import pandas as pd
 import rich
 from scipy import stats
 
-from annotation.agreement import computeAlpha
+from annotation.agreement import computeAlpha, computeFleissKappa
 from sotopia.database import EpisodeLog
 
 
@@ -172,31 +172,36 @@ def average_human_annotation(
 
 
 def inter_annotator_agreement(
-    annotation_df: pd.DataFrame, value_column: str, annotator_wise: bool = True
-) -> dict[str, float | int] | tuple[dict[str, float | int], pd.DataFrame]:
+    annotation_df: pd.DataFrame, value_column: str
+) -> tuple[dict[str, float | int], pd.DataFrame, float]:
     annotation_df = annotation_df.copy()
     annotation_df[value_column] = (
         annotation_df[value_column] / 10
     )  # normalize the scale
-    scores = computeAlpha(annotation_df, value_column, groupCol="HITId")
-    if annotator_wise:
-        scores_annotator_wise = {}
-        workerIds = annotation_df["WorkerId"].unique()
-        for workerId in workerIds:
-            worker_df = annotation_df[annotation_df["WorkerId"] == workerId]
-            worker_df = annotation_df[
-                annotation_df["HITId"].isin(worker_df["HITId"])
-            ]
-            assert isinstance(worker_df, pd.DataFrame)
-            if len(worker_df) > 1:
-                scores_annotator_wise[workerId] = computeAlpha(
-                    worker_df, value_column, groupCol="HITId"
-                )
-        scores_annotator_wise_df = pd.DataFrame.from_dict(
-            scores_annotator_wise, orient="index"
-        )
-        return scores, scores_annotator_wise_df
-    return scores
+    scores = computeAlpha(
+        annotation_df, value_column, groupCol="Input.episode_id"
+    )
+    randolfa = computeFleissKappa(
+        annotation_df, value_column, "Input.episode_id", 2, method="fleiss"
+    )
+    scores_annotator_wise = {}
+    workerIds = annotation_df["WorkerId"].unique()
+    for workerId in workerIds:
+        worker_df = annotation_df[annotation_df["WorkerId"] == workerId]
+        worker_df = annotation_df[
+            annotation_df["Input.episode_id"].isin(
+                worker_df["Input.episode_id"]
+            )
+        ]
+        assert isinstance(worker_df, pd.DataFrame)
+        if len(worker_df) > 1:
+            scores_annotator_wise[workerId] = computeAlpha(
+                worker_df, value_column, groupCol="Input.episode_id"
+            )
+    scores_annotator_wise_df = pd.DataFrame.from_dict(
+        scores_annotator_wise, orient="index"
+    )
+    return scores, scores_annotator_wise_df, randolfa
 
 
 def analyze_perHitTime(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -237,28 +242,28 @@ def filter_patch_df(
 
 
 if __name__ == "__main__":
-    # annotation_df = pd.read_csv(
-    #     "./annotation/gpt3.5_gpt4/gpt3.5_gpt4_results.csv"
-    # )
-    # # get rid of problematic data
-    # annotation_df = annotation_df[
-    #     ~annotation_df["WorkerId"].isin(
-    #         ["A1PR0PSNNM1WTX", "A1YFFKN3QVV54D", "A34ZJFQ9UCP1CR"]
-    #     )
-    # ]
-    # # get the patch data
-    # patch_df = pd.read_csv(
-    #     "./annotation/gpt3.5_gpt4/gpt3.5_gpt4_results_patch.csv"
-    # )
-    # # filter patch data
-    # patch_df = patch_df[filter_patch_df(patch_df, annotation_df)]
-    # # combine the data
-    # annotation_df = pd.concat([annotation_df, patch_df], axis=0)
-
     annotation_df = pd.read_csv(
+        "./annotation/gpt3.5_gpt4/gpt3.5_gpt4_results.csv"
+    )
+    # get rid of problematic data
+    annotation_df = annotation_df[
+        ~annotation_df["WorkerId"].isin(
+            ["A1PR0PSNNM1WTX", "A1YFFKN3QVV54D", "A34ZJFQ9UCP1CR"]
+        )
+    ]
+    # get the patch data
+    patch_df = pd.read_csv(
+        "./annotation/gpt3.5_gpt4/gpt3.5_gpt4_results_patch.csv"
+    )
+    # filter patch data
+    patch_df = patch_df[filter_patch_df(patch_df, annotation_df)]
+    # combine the data
+    annotation_df = pd.concat([annotation_df, patch_df], axis=0)
+
+    annotation_df_2 = pd.read_csv(
         "./annotation/gpt3.5_llama2/gpt3.5_llama2_results_patched.csv"
     )
-    # annotation_df = pd.concat([annotation_df, annotation_df_2], axis=0)
+    annotation_df = pd.concat([annotation_df, annotation_df_2], axis=0)
     print(len(annotation_df))
     annotation_df["Answer.agent1_overall"] = (
         annotation_df[
@@ -315,11 +320,14 @@ if __name__ == "__main__":
     for dimension in relevant_dimension:
         for index in range(1, 3):
             dimension_mturk = f"Answer.agent{index}_{dimension}"
-            scores, scores_annotator_wise = inter_annotator_agreement(
-                annotation_df, dimension_mturk
-            )
+            (
+                scores,
+                scores_annotator_wise,
+                randolph_alpha,
+            ) = inter_annotator_agreement(annotation_df, dimension_mturk)
             assert isinstance(scores, dict)
             assert isinstance(scores_annotator_wise, pd.DataFrame)
+            scores["randolph_alpha"] = randolph_alpha
             overall_scores.append(scores)
             overall_scores_annotator_wise.append(scores_annotator_wise)
     overall_scores_df = pd.DataFrame(
@@ -330,6 +338,10 @@ if __name__ == "__main__":
             for index in range(1, 3)
         ],
     )
+    # average within agent
+    overall_scores_df = overall_scores_df.groupby(
+        overall_scores_df.index.str.split("_").str[1]
+    ).mean()
     overall_scores_avg = overall_scores_df.mean(axis=0)
     rich.print("overall_scores_df:")
     rich.print(overall_scores_df.round(3))
