@@ -218,6 +218,7 @@ if is_symmetric_epilogs(filtered_episodes):
             "secret",
             "social_rules",
             "financial_and_material_benefits",
+            "goal",
             "overall_score",
         ]
     )
