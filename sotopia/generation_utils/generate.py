@@ -43,6 +43,7 @@ logging_handler = LoggingCallbackHandler("langchain")
 LLM_Name = Literal[
     "togethercomputer/llama-2-7b-chat",
     "togethercomputer/llama-2-70b-chat",
+    "togethercomputer/mpt-30b-chat",
     "gpt-3.5-turbo",
     "text-davinci-003",
     "gpt-4",
