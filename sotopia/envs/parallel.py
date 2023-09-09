@@ -18,7 +18,10 @@ from redis_om.model.model import NotFoundError
 
 from sotopia.agents.llm_agent import Agents
 from sotopia.database import EnvironmentProfile
-from sotopia.database.persistent_profile import AgentProfile
+from sotopia.database.persistent_profile import (
+    AgentProfile,
+    RelationshipType,
+)
 from sotopia.generation_utils import LLM_Name
 from sotopia.messages import (
     ActionType,
@@ -65,7 +68,7 @@ def _map_gender_to_adj(gender: str) -> str:
 def _agent_profile_to_stranger_self(
     profile: AgentProfile, agent_id: int
 ) -> str:
-    return f"<p viewer='agent_{agent_id}'>{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
+    return f"<root><p viewer='agent_{agent_id}'>{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p></root>"
 
 
 def _agent_profile_to_name_self(profile: AgentProfile, agent_id: int) -> str:
@@ -82,6 +85,26 @@ def _agent_profile_to_friendabove_self(
     profile: AgentProfile, agent_id: int
 ) -> str:
     return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} <p viewer='agent_{agent_id}'>{profile.first_name}'s secrets: {profile.secret}</p>"
+
+
+def get_bio(
+    relationship: RelationshipType, profile: AgentProfile, agent_id: int
+) -> str:
+    match relationship:
+        case RelationshipType.stranger:
+            return _agent_profile_to_stranger_self(profile, agent_id=agent_id)
+        case RelationshipType.know_by_name:
+            return _agent_profile_to_name_self(profile, agent_id=agent_id)
+        case RelationshipType.acquaintance:
+            return _agent_profile_to_aquaintance_self(
+                profile, agent_id=agent_id
+            )
+        case RelationshipType.friend | RelationshipType.romantic_relationship | RelationshipType.family_member:
+            return _agent_profile_to_friendabove_self(
+                profile, agent_id=agent_id
+            )
+        case _:
+            raise ValueError(f"Unknown relationship {relationship}")
 
 
 @configurable
@@ -175,25 +198,6 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                     f"Agent with uuid {uuid_str} not found in database"
                 )
 
-    def get_bio(
-        self, relationship: str, profile: AgentProfile, agent_id: int
-    ) -> str:
-        match relationship:
-            case "stranger":
-                return _agent_profile_to_stranger_self(
-                    profile, agent_id=agent_id
-                )
-            case "know_by_name":
-                return _agent_profile_to_name_self(profile, agent_id=agent_id)
-            case "acquaintance":
-                return _agent_profile_to_aquaintance_self(
-                    profile, agent_id=agent_id
-                )
-            case _:
-                return _agent_profile_to_friendabove_self(
-                    profile, agent_id=agent_id
-                )
-
     def reset(
         self,
         seed: int | None = None,
@@ -226,13 +230,13 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
 
             raw_background = ScriptBackground(
                 scenario=self.profile.scenario,
-                p1_background=self.get_bio(
-                    self.profile.relationship.name,
+                p1_background=get_bio(
+                    self.profile.relationship,
                     agents[agent_names[0]].profile,
                     agent_id=0,
                 ),
-                p2_background=self.get_bio(
-                    self.profile.relationship.name,
+                p2_background=get_bio(
+                    self.profile.relationship,
                     agents[agent_names[1]].profile,
                     agent_id=1,
                 ),
