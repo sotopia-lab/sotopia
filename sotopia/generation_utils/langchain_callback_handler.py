@@ -34,7 +34,7 @@ class LoggingCallbackHandler(StdOutCallbackHandler):
         pass
 
     def on_tool_error(
-        self, error: Exception | KeyboardInterrupt, **kwargs: Any
+        self, error: BaseException | KeyboardInterrupt, **kwargs: Any
     ) -> None:
         """Do nothing."""
         pass

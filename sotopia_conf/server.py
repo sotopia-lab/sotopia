@@ -18,8 +18,6 @@ FLAGS = flags.FLAGS
 
 
 def main(_: Any) -> None:
-    run_async_server_gin = gin.configurable(run_async_server)
-
     parse_gin_flags(
         # User-provided gin paths take precedence if relative paths conflict.
         FLAGS.gin_search_paths + _DEFAULT_GIN_SEARCH_PATHS,
@@ -27,7 +25,7 @@ def main(_: Any) -> None:
         FLAGS.gin_bindings,
     )
 
-    asyncio.run(run_async_server_gin())  # type: ignore[call-arg]
+    asyncio.run(run_async_server())  # type: ignore[call-arg]
 
 
 if __name__ == "__main__":

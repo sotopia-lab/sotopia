@@ -217,7 +217,7 @@ async def arun_one_episode(
 @beartype
 async def run_async_server(
     model_dict: dict[str, LLM_Name],
-    sampler: BaseSampler[Observation, AgentAction],
+    sampler: BaseSampler[Observation, AgentAction] = UniformSampler(),
     action_order: Literal[
         "simutaneous", "round-robin", "random"
     ] = "round-robin",
