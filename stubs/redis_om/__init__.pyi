@@ -14,6 +14,9 @@ class RedisModel(BaseModel, abc.ABC, metaclass=ModelMeta):
 
     @classmethod
     def delete(cls, pk: Any) -> None: ...
+    def expire(
+        self, num_seconds: int
+    ) -> None: ...  # pipeline arg can be added here
 
 class HashModel(RedisModel, abc.ABC):
     @classmethod
@@ -28,3 +31,8 @@ class JsonModel(RedisModel, abc.ABC):
     @classmethod
     def find(cls, *args: Any, **kwargs: Any) -> FindQuery: ...
     def save(self) -> None: ...
+
+class EmbeddedJsonModel(JsonModel): ...
+
+class Migrator:
+    def run(self) -> None: ...

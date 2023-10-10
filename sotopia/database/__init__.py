@@ -7,6 +7,8 @@ from .persistent_profile import (
     RelationshipProfile,
     RelationshipType,
 )
+from .session_transaction import MessageTransaction, SessionTransaction
+from .waiting_room import MatchingInWaitingRoom
 
 __all__ = [
     "AgentProfile",
@@ -17,4 +19,8 @@ __all__ = [
     "Annotator",
     "RelationshipProfile",
     "RelationshipType",
+    "RedisCommunicationMixin",
+    "SessionTransaction",
+    "MessageTransaction",
+    "MatchingInWaitingRoom",
 ]

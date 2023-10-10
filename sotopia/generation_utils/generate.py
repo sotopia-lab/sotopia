@@ -48,6 +48,7 @@ LLM_Name = Literal[
     "text-davinci-003",
     "gpt-4",
     "human",
+    "redis",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)

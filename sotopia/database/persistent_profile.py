@@ -2,7 +2,7 @@ import uuid
 from enum import IntEnum
 from typing import Any, cast
 
-from pydantic import validator
+from pydantic import root_validator, validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
@@ -81,3 +81,23 @@ class RelationshipProfile(JsonModel):
         description="0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
     )  # this could be improved by limiting str to a relationship Enum
     background_story: str | None = Field(default_factory=lambda: None)
+
+
+class EnvironmentList(JsonModel):
+    name: str = Field(index=True)
+    environments: list[str] = Field(default_factory=lambda: [])
+    agent_index: list[str] | None = Field(default_factory=lambda: None)
+
+    # validate the length of agent_index should be same as environments
+    @root_validator
+    def the_length_agent_index_matches_environments(cls, values: Any) -> Any:
+        environments, agent_index = (
+            values.get("environments"),
+            values.get("agent_index"),
+        )
+        if agent_index is None:
+            return values
+        assert len(environments) == len(
+            agent_index
+        ), f"Number of environments {len(environments)} and agent_index {len(agent_index)} do not match"
+        return values

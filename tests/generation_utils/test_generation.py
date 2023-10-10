@@ -43,6 +43,7 @@ async def test_agenerate_list_integer() -> None:
     assert all(lower <= i <= upper for i in l)
 
 
+@pytest.mark.skip(reason="togethercompute out of credit")
 @pytest.mark.asyncio
 async def test_agenerate_list_integer_together() -> None:
     """

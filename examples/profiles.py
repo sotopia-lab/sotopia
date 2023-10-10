@@ -3,7 +3,7 @@ import sys
 from typing import Any, cast
 
 import pandas as pd
-from redis_om import Migrator  # type: ignore
+from redis_om import Migrator
 
 from sotopia.database.persistent_profile import (
     AgentProfile,
