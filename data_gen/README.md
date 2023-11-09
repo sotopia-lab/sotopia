@@ -8,9 +8,6 @@ For the 2.2 step, we combine them together to be combos based on conditiona samp
 
 All the EnvProfile (new generated), AgentProfile (sotopia original), RelationshipProfile (sotopia original), and envagentcombo are on the redis database that is new created.
 
-For the third step, we need to use another version of redis and convert it into json file and save the whole data in the database on the local machine.
-
-For the final step, we convert the whole thing into Ruiyi's format.
 
 # Local Redis Setting
 Since the redis-server cannot directly input json data, it requires loading a RedisJson model into the redis-server to enable this function. Therefore, we need to load a docker based on RedisJson:

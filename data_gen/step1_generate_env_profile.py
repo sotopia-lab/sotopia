@@ -8,7 +8,7 @@ import rich
 from pydantic import BaseModel
 
 from sotopia.database import EnvironmentProfile
-from generate import agenerate_env_profile
+from sotopia.generation_utils.generate import agenerate_env_profile
 
 T = TypeVar("T", bound=BaseModel)
 
