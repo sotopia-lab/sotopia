@@ -47,6 +47,7 @@ LLM_Name = Literal[
     "gpt-3.5-turbo",
     "text-davinci-003",
     "gpt-4",
+    "gpt-4-turbo",
     "human",
     "redis",
 ]
@@ -193,11 +194,12 @@ class StrOutputParser(BaseOutputParser[str]):
 
 
 def _return_fixed_model_version(
-    model_name: Literal["gpt-3.5-turbo", "gpt-4"]
+    model_name: Literal["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"]
 ) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
         "gpt-4": "gpt-4-0613",
+        "gpt-4-turbo": "gpt-4-1106-preview"
     }[model_name]
 
 
@@ -214,7 +216,7 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     match model_name:
-        case "gpt-3.5-turbo" | "gpt-4":
+        case "gpt-3.5-turbo" | "gpt-4" | "gpt-4-turbo":
             human_message_prompt = HumanMessagePromptTemplate(
                 prompt=PromptTemplate(
                     template=template,
