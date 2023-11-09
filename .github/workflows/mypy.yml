@@ -1,5 +1,5 @@
 name: Mypy
-on: [push]
+on: [push, pull_request]
 
 jobs:
   Static-Type-Checking:
