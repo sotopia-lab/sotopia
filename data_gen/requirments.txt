@@ -1,0 +1,4 @@
+sotopia
+rejson
+redis==3.5.3 # for step3 and step4
+redis==5.0.1 # for step2

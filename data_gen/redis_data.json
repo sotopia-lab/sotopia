@@ -1,0 +1,9 @@
+{
+    ":sotopia.database.logs.EpisodeLog:index:hash": "fb5ebfd678b96f5d0de53e3ec4ee0d608e4c1f32",
+    ":sotopia.database.persistent_profile.AgentProfile:index:hash": "fe67d0aff06e59ce5e19790e7292c0038ef4d784",
+    ":sotopia.database.annotators.Annotator:index:hash": "cd3466262fbbd2f8e7a9a2632c817cfd89e67a48",
+    ":sotopia.database.persistent_profile.EnvironmentProfile:index:hash": "ca0f0fa11f3a1d0a162bfa7f618aca9eea3e3905",
+    ":sotopia.database.logs.AnnotationForEpisode:index:hash": "0ae4afaafc88b3f6fa5871067b687ec9158ac022",
+    ":sotopia.database.env_agent_combo_storage.EnvAgentComboStorage:index:hash": "9122ca62d29f50251fdc532a1ecb07a71951a8a7",
+    ":sotopia.database.persistent_profile.RelationshipProfile:index:hash": "a180a7111e347c6dd9ac4947e4c41938c0371f2b"
+}
