@@ -1,5 +1,11 @@
 name: Mypy
-on: [push]
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 
 jobs:
   Static-Type-Checking:
