@@ -414,6 +414,7 @@ async def agenerate_env_profile(
     model_name: LLM_Name,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
+    temperature: float = 0.7,
 ) -> tuple[EnvironmentProfile, str]:
     """
     Using langchain to generate the background
@@ -432,6 +433,7 @@ async def agenerate_env_profile(
             examples=examples,
         ),
         output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
+        temperature=temperature,
     )
 
 
