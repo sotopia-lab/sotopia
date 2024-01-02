@@ -1,11 +1,5 @@
 name: Pytest
-on:
-  push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
+on: [push]
 
 jobs:
   Pytest:
@@ -21,13 +15,12 @@ jobs:
         python-version: 3.11.2
     - name: Install dependencies
       run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -e .[dev]
+        curl -sSL https://install.python-poetry.org | python3
+        poetry install --all-extras
     - name: Test with pytest
       env: # Or as an environment variable
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         REDIS_OM_URL: ${{ secrets.REDIS_OM_URL }}
         TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
       run: |
-        pytest
+        poetry run pytest

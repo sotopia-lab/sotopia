@@ -2,14 +2,21 @@ import asyncio
 import functools
 import itertools
 import logging
-from typing import Callable, Literal, Sequence, cast
+from typing import Callable, Literal, Sequence, Type, cast
 
 import gin
 import rich
 from beartype import beartype
 from tqdm.asyncio import tqdm_asyncio
 
-from sotopia.agents import Agents, HumanAgent, LLMAgent, SpeakAgent
+from sotopia.agents import (
+    Agents,
+    HumanAgent,
+    LLMAgent,
+    RedisAgent,
+    ScriptWritingAgent,
+    SpeakAgent,
+)
 from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import EpisodeLog
 from sotopia.database.persistent_profile import (
@@ -20,9 +27,15 @@ from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
+    unweighted_aggregate_evaluate,
 )
-from sotopia.generation_utils.generate import LLM_Name
+from sotopia.generation_utils.generate import LLM_Name, agenerate_script
 from sotopia.messages import AgentAction, Message, Observation
+from sotopia.messages.message_classes import (
+    ScriptBackground,
+    ScriptEnvironmentResponse,
+    ScriptInteraction,
+)
 from sotopia.samplers import (
     BaseSampler,
     ConstraintBasedSampler,
@@ -107,21 +120,36 @@ def run_sync_server(
     return messages
 
 
+@gin.configurable
 async def arun_one_episode(
     env: ParallelSotopiaEnv,
     agent_list: Sequence[BaseAgent[Observation, AgentAction]],
     model_dict: dict[str, LLM_Name],
+    omniscient: bool = False,
+    script_like: bool = False,
+    json_in_script: bool = False,
     tag: str | None = None,
     push_to_db: bool = False,
 ) -> list[tuple[str, str, Message]]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
-    environment_messages = env.reset(agents=agents)
+    environment_messages = env.reset(agents=agents, omniscient=omniscient)
     agents_model_names = [model_dict["agent1"], model_dict["agent2"]]
     for agent_name, agent_model in zip(env.agents, agents_model_names):
         if agent_model == "human":
             agents[agent_name] = HumanAgent(agent_name)
+        elif agent_model == "redis":
+            agents[agent_name] = RedisAgent(agent_name)
+        elif script_like and not json_in_script:
+            agents[agent_name] = ScriptWritingAgent(
+                agent_name,
+                model_name=agent_model,
+                background=env.background,
+                agent_names=env.agents,
+            )
         else:
-            agents[agent_name] = LLMAgent(agent_name, model_name=agent_model)
+            agents[agent_name] = LLMAgent(
+                agent_name, model_name=agent_model, script_like=script_like
+            )
     agents.reset()
 
     messages: list[list[tuple[str, str, Message]]] = []
@@ -148,7 +176,18 @@ async def arun_one_episode(
                 for agent_name in env.agents
             ]
         )
-        actions = cast(list[AgentAction], actions)
+        if script_like:
+            # manually mask one message
+            agent_mask = env.action_mask
+            for idx in range(len(agent_mask)):
+                print("Current mask: ", agent_mask)
+                if agent_mask[idx] == 0:
+                    print("Action not taken: ", actions[idx])
+                    actions[idx] = AgentAction(action_type="none", argument="")
+                else:
+                    print("Current action taken: ", actions[idx])
+
+        # actions = cast(list[AgentAction], actions)
         for idx, agent_name in enumerate(env.agents):
             agent_messages[agent_name] = actions[idx]
 
@@ -170,6 +209,8 @@ async def arun_one_episode(
                 for agent_name in env.agents
             ]
         )
+        # print("Environment message: ", environment_messages)
+        # exit(0)
         rewards.append(
             [rewards_in_turn[agent_name] for agent_name in env.agents]
         )
@@ -217,11 +258,14 @@ async def arun_one_episode(
 @beartype
 async def run_async_server(
     model_dict: dict[str, LLM_Name],
-    sampler: BaseSampler[Observation, AgentAction] = UniformSampler(),
+    sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
     action_order: Literal[
         "simutaneous", "round-robin", "random"
     ] = "round-robin",
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
+    omniscient: bool = False,
+    script_like: bool = False,
+    json_in_script: bool = False,
     tag: str | None = None,
     push_to_db: bool = False,
     using_async: bool = True,
@@ -229,8 +273,13 @@ async def run_async_server(
     """
     Doc incomplete
 
+    Args:
+        omniscient (bool): Whether the agent knows the goal of the other, default to False
+        script_like (bool): Whether we generate the turn in script like manner, default to False
+        json_in_script (bool): Whether we requires the script generator to return json (Only valid when script_like is True), default to False
+
     Note: env_agent_combo_list is optional. When it defaults to [], sampler is used
-    else the sampler is not used. Please pass in BaseSampler when using this option.
+    else the sampler is not used. Please pass in BaseSampler or simply not specify it when using this option.
     """
 
     assert not (
@@ -255,13 +304,25 @@ async def run_async_server(
         "agent2": model_dict["agent2"],
     }
 
+    def get_agent_class(
+        model_name: str,
+    ) -> Type[BaseAgent[Observation, AgentAction]]:
+        if model_name == "human":
+            return HumanAgent
+        elif script_like and not json_in_script:
+            return ScriptWritingAgent
+        else:
+            return LLMAgent
+
     if env_agent_combo_list:
-        assert type(sampler) is BaseSampler
+        assert (
+            type(sampler) is BaseSampler
+        ), "No sampler should be used when `env_agent_combo_list` is empty"
         env_agent_combo_iter = iter(env_agent_combo_list)
     else:
         env_agent_combo_iter = sampler.sample(
             agent_classes=[
-                LLMAgent if model_name != "human" else HumanAgent
+                get_agent_class(model_name)
                 for model_name in agents_model_dict.values()
             ],
             n_agent=len(agents_model_dict),
@@ -271,12 +332,14 @@ async def run_async_server(
                 for model_name in agents_model_dict.values()
             ],
         )
-
     episode_futures = [
         arun_one_episode(
             env=env_agent_combo[0],
             agent_list=env_agent_combo[1],
             model_dict=model_dict,
+            omniscient=omniscient,
+            script_like=script_like,
+            json_in_script=json_in_script,
             tag=tag,
             push_to_db=push_to_db,
         )
@@ -290,3 +353,167 @@ async def run_async_server(
     )
 
     return cast(list[list[tuple[str, str, Message]]], batch_results)
+
+
+async def arun_one_script(
+    env: ParallelSotopiaEnv,
+    agent_list: Sequence[BaseAgent[Observation, AgentAction]],
+    model_dict: dict[str, LLM_Name],
+    omniscient: bool = False,
+    tag: str | None = None,
+    push_to_db: bool = False,
+) -> list[tuple[str, str, Message]]:
+    """
+    Generate script for one episode
+    Args:
+        omniscient (bool): Whether the agent knows the goal of the other
+    """
+
+    agents = Agents({agent.agent_name: agent for agent in agent_list})
+    env.reset(agents=agents, omniscient=omniscient)
+
+    agent_names = [agent.agent_name for agent in agent_list]
+    assert (
+        len(agent_names) == 2
+    ), f"only support 2 agents, current: {agent_names}"
+
+    script_background = env.inbox[0][1]
+    assert isinstance(script_background, ScriptBackground)
+    story, prompt = await agenerate_script(
+        model_name=model_dict["env"],
+        background=script_background,
+        agent_names=agent_names,
+    )
+    messages, agent_messages = story
+    env_message = [("Environment", script_background)]
+    agent_messages = env_message + agent_messages
+
+    evaluator = ReachGoalLLMEvaluator(model_name="gpt-4")
+    response = unweighted_aggregate_evaluate(
+        list(
+            itertools.chain(
+                *await asyncio.gather(
+                    *[
+                        sing_evaluator.__acall__(
+                            turn_number=-1,
+                            messages=agent_messages,
+                        )
+                        for sing_evaluator in [evaluator]
+                    ]
+                )
+            )
+        )
+    )
+    info: dict[
+        str, dict[str, str | ScriptEnvironmentResponse | float | None]
+    ] = {
+        script_background.p1_name: {
+            "comments": response.comments or "",
+            "complete_rating": response.p1_rate or 0,  # type: ignore
+        },
+        script_background.p2_name: {
+            "comments": response.comments or "",
+            "complete_rating": response.p2_rate or 0,  # type: ignore
+        },
+        "rewards_prompt": {"overall_prompt": evaluator.prompt or ""},
+    }
+    epilog = EpisodeLog(
+        environment=env.profile.pk,
+        agents=[agent.profile.pk for agent in agent_list],
+        tag=tag,
+        models=[model_dict["env"], model_dict["agent1"], model_dict["agent2"]],
+        messages=[
+            [
+                (m[0], m[1], m[2].to_natural_language())
+                for m in messages_in_turn
+            ]
+            for messages_in_turn in messages
+        ],
+        reasoning=str(info[env.agents[0]]["comments"])
+        + str(info[env.agents[1]]["comments"]),
+        rewards=[
+            info[agent_name]["complete_rating"] for agent_name in env.agents
+        ],
+        rewards_prompt=info["rewards_prompt"]["overall_prompt"],
+    )
+    print("Reward prompt: ")
+    rich.print(epilog.rewards_prompt)
+    agent_profiles, conversation = epilog.render_for_humans()
+    print("Agent profiles: ")
+    for agent_profile in agent_profiles:
+        rich.print(agent_profile)
+    for message in conversation:
+        rich.print(message)
+
+    if push_to_db:
+        try:
+            epilog.save()
+        except Exception as e:
+            logging.error(f"Failed to save episode log: {e}")
+    # flatten nested list messages
+    return list(itertools.chain(*messages))
+
+
+async def aevaluate_one_episode(
+    episode: EpisodeLog,
+    model: LLM_Name = "gpt-4",
+    tag: str | None = None,
+    push_to_db: bool = False,
+) -> None:
+    history = episode.rewards_prompt.replace(
+        "Prompt after formatting:", ""
+    ).split(",\nBased on previous interactions")[0]
+    evaluator = ReachGoalLLMEvaluator(
+        model_name=model, response_format="basic"
+    )
+    response = unweighted_aggregate_evaluate(
+        list(
+            itertools.chain(
+                *await asyncio.gather(
+                    *[
+                        sing_evaluator.__acall__(
+                            turn_number=-1,
+                            history=history,
+                            messages=None,
+                        )
+                        for sing_evaluator in [evaluator]
+                    ]
+                )
+            )
+        )
+    )
+    info: dict[
+        str, dict[str, str | ScriptEnvironmentResponse | float | None]
+    ] = {
+        episode.agents[0]: {
+            "comments": response.comments or "",
+            "complete_rating": response.p1_rate or 0,  # type: ignore
+        },
+        episode.agents[1]: {
+            "comments": response.comments or "",
+            "complete_rating": response.p2_rate or 0,  # type: ignore
+        },
+    }
+    assert isinstance(episode.models, list)
+    epilog = EpisodeLog(
+        environment=episode.environment,
+        agents=episode.agents,
+        tag=tag,
+        models=[model, episode.models[1], episode.models[2]],
+        messages=episode.messages,
+        reasoning=str(info[episode.agents[0]]["comments"])
+        + str(info[episode.agents[1]]["comments"]),
+        rewards=[
+            info[agent_name]["complete_rating"]
+            for agent_name in episode.agents
+        ],
+        rewards_prompt="TBD",
+    )
+    # rich.print(history)
+    # rich.print(epilog.rewards)
+
+    if push_to_db:
+        try:
+            epilog.save()
+        except Exception as e:
+            logging.error(f"Failed to save episode log: {e}")

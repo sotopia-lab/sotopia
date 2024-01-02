@@ -1,11 +1,5 @@
 name: Mypy
-on:
-  push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
+on: [push]
 
 jobs:
   Static-Type-Checking:
@@ -21,15 +15,10 @@ jobs:
         python-version: 3.11.2
     - name: Install dependencies
       run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -e .[dev]
+        curl -sSL https://install.python-poetry.org | python3
+        poetry install --all-extras
     - name: Type-checking package with mypy
       run: |
-        # Manually install mypy in the standard way.
-        pip --quiet install -U mypy
-        # Log this mypy version for debuggability.
-        mypy --version
         # Run this mypy instance against our main package.
-        mypy --install-types --non-interactive sotopia
-        mypy --strict .
+        poetry run mypy --install-types --non-interactive sotopia
+        poetry run mypy --strict .

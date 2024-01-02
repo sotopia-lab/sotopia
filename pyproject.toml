@@ -1,0 +1,63 @@
+[tool.poetry]
+name = "sotopia"
+version = "0.0.6"
+description = "A platform for simulating and evaluating social interaction."
+authors = ["Hao Zhu <prokilchu@gmail.com>"]
+license = "MIT License"
+readme = "README.md"
+packages = [{include = "sotopia"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11, <3.12"
+pandas = "^2.1.1"
+lxml = "^4.9.3"
+openai = "^0.28.1"
+langchain = "^0.0.311"
+tiktoken = "^0.5.1"
+rich = "^13.6.0"
+jinja2 = "^3.1.2"
+PettingZoo = "1.24.0"
+redis-om = "^0.2.1"
+pandas-stubs = "*"
+types-tqdm = "*"
+fastapi = "^0.103.2"
+uvicorn = "^0.23.2"
+gin-config = "^0.5.0"
+absl-py = "^2.0.0"
+names = "^0.3.0"
+together = "^0.2.4"
+pydantic = "1.10.12"
+mypy = "^1.6.0"
+beartype = "^0.14.0"
+torch = "^2.1"
+transformers = "^4.34.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "*"
+nbmake = "*"
+types-setuptools = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+mypy_path = "stubs"
+strict = true
+plugins = [
+    "pydantic.mypy"
+]
+
+[[tool.mypy.overrides]]
+module = "transformers.*"
+ignore_missing_imports = true
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

@@ -15,8 +15,6 @@ from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile, MessageTransaction
 from sotopia.messages import AgentAction, Observation
 
-_URL = "http://tiger.lti.cs.cmu.edu:8000"
-
 
 class RedisAgent(BaseAgent[Observation, AgentAction]):
     """An agent use redis as a message broker."""
@@ -36,8 +34,15 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         # super().__init__(agent_name=agent_name, uuid_str=uuid_str)
         self.session_id = session_id or str(uuid4())
         self.sender_id = str(uuid4())
+        print(f"session id: {self.session_id}")
+        print("step 1: connect to the server")
+        assert (
+            "FASTAPI_URL" in os.environ
+        ), "To use redis agent, you have to launch a FastAPI server and set FASTAPI_URL"
+        self._URL = os.environ["FASTAPI_URL"]
         response = requests.request(
-            "POST", f"{_URL}/connect/{self.session_id}/server/{self.sender_id}"
+            "POST",
+            f"{self._URL}/connect/{self.session_id}/server/{self.sender_id}",
         )
         assert (
             response.status_code == 200 and response.text == "[]"
@@ -60,9 +65,10 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             if obs.turn_number == 0:
                 async with aiohttp.ClientSession() as session:
+                    print("step 2: post observation to the message list")
                     response = await session.request(
                         "POST",
-                        f"{_URL}/send/{self.session_id}/{self.sender_id}",
+                        f"{self._URL}/send/{self.session_id}/{self.sender_id}",
                         data=obs.to_natural_language(),
                     )
                     assert response.status == 200, response
@@ -81,7 +87,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 # 1. post observation to the message list
                 response = await session.request(
                     "POST",
-                    f"{_URL}/send/{self.session_id}/{self.sender_id}",
+                    f"{self._URL}/send/{self.session_id}/{self.sender_id}",
                     data=obs.to_natural_language(),
                 )
                 assert response.status == 200, response
@@ -97,7 +103,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 # 2. unlock the server for the client
                 response = await session.request(
                     "PUT",
-                    f"{_URL}/lock/{self.session_id}/{self.sender_id}/action",
+                    f"{self._URL}/lock/{self.session_id}/{self.sender_id}/action",
                 )
                 assert response.status == 200, response
 
@@ -106,7 +112,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 for _ in range(300):
                     response = await session.request(
                         "GET",
-                        f"{_URL}/get/{self.session_id}",
+                        f"{self._URL}/get/{self.session_id}",
                     )
                     # print(f"get response: {response}")
                     assert response.status == 200, response
@@ -125,7 +131,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         # 3.a if the client has posted their message, lock the server for the client
                         response = await session.request(
                             "PUT",
-                            f"{_URL}/lock/{self.session_id}/{self.sender_id}/no%20action",
+                            f"{self._URL}/lock/{self.session_id}/{self.sender_id}/no%20action",
                         )
                         assert response.status == 200, response
                         break
@@ -135,7 +141,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 else:
                     response = await session.request(
                         "PUT",
-                        f"{_URL}/lock/{self.session_id}/{self.sender_id}/no%20action",
+                        f"{self._URL}/lock/{self.session_id}/{self.sender_id}/no%20action",
                     )
                     self.reset(
                         "Someone has left or the conversation is too long."
@@ -164,7 +170,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
             if reset_reason != "":
                 response = requests.request(
                     "POST",
-                    f"{_URL}/send/{self.session_id}/{self.sender_id}",
+                    f"{self._URL}/send/{self.session_id}/{self.sender_id}",
                     json=reset_reason,
                 )
                 assert response.status_code == 200

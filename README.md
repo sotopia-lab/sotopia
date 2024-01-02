@@ -10,11 +10,12 @@
 
 
 ## Installation
+This package supports Python 3.11 and above. In one line,
+`pip install sotopia`.
 
-This package supports Python 3.11 and above. We recommend using a virtual environment to install this package, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia; conda install -c conda-forge pip`. Then, install the requirements and this package.
+Or from scratch, use a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia; curl -sSL https://install.python-poetry.org | python3`. Then, install the requirements and this package.
 ```bash
-python -m pip install -r requirements.txt # make sure the packages are installed in the specific conda environment
-python -m pip install -e .
+poetry install
 ```
 
 OpenAI key is required to run the code. Please set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:
