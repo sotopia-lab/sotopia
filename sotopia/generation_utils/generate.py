@@ -32,6 +32,11 @@ from sotopia.messages import (
     ScriptBackground,
     ScriptEnvironmentResponse,
 )
+from sotopia.messages.message_classes import (
+    ScriptInteraction,
+    ScriptInteractionReturnType,
+    SimpleMessage,
+)
 from sotopia.utils import format_docstring
 
 from .langchain_callback_handler import LoggingCallbackHandler
@@ -47,6 +52,7 @@ LLM_Name = Literal[
     "gpt-3.5-turbo",
     "text-davinci-003",
     "gpt-4",
+    "gpt-4-turbo",
     "human",
     "redis",
 ]
@@ -192,12 +198,104 @@ class StrOutputParser(BaseOutputParser[str]):
         return "str"
 
 
+class ScriptOutputParser(BaseOutputParser[ScriptInteractionReturnType]):
+    agent_names: list[str] = Field(
+        description="The names of the two agents in the conversation"
+    )
+    background: str = Field(description="The background of the conversation")
+    single_turn: bool = Field(
+        description="Whether the output is a single turn"
+    )
+
+    def get_format_instructions(self) -> str:
+        if self.single_turn:
+            return r"""For one turn, only write the next step of this agent. You should follow the structure. The format looks like this: Turn #0 \n[participant's name] [action].
+This means you can only generate two lines in one turn.
+
+You can use different types of actions in the [action] part, but PLEASE follows the rule STRICTLY. Remember to include the square brackets when doing an action as stated in the instructions.
+1. Use "did nothing" if the agent did nothing.
+2. Use "said: "{self.argument}" if the agent want to say, ask or inquire something.
+3. Use "[non-verbal communication] {self.argument}" if the agent did non-verbal communication.
+4. Use "[action] {self.argument}" if the agent did an action.
+5. Use "left the conversation" if the agent left the conversation. And you should stop generation
+Other than that, no other format are allowed.
+
+For example, the following outputs are valid:
+Turn #1
+Oliver Thompson said: "Hey Esmeralda, what's wrong? You seem upset."
+Turn #2
+Esmeralda Solis [action] moved closer
+Turn #3
+Oliver Thompson [non-verbal communication] smiled
+Turn #4
+Esmeralda Solis did nothing
+Turn #5
+Oliver Thompson left the conversation
+Remember to make it short and compact, as it should be less than 20 turns"""
+
+        else:
+            return r"""You should separate each turn by a newline. Each turn is separated by a newline, and should only describe one agent. Following the structure: Turn #x \n[participant's name] [action]
+
+You can use different types of actions in the [action] part, but PLEASE follows the rule STRICTLY. Remember to include the square brackets when doing an action as stated in the instructions.
+1. Use "did nothing" if the agent did nothing.
+2. Use "said: "{self.argument}" if the agent want to say, ask or inquire something.
+3. Use "[non-verbal communication] {self.argument}" if the agent did non-verbal communication.
+4. Use "[action] {self.argument}" if the agent did an action.
+5. Use "left the conversation" if the agent left the conversation. And you should stop generation
+
+For example, the following outputs are valid:
+a. Oliver Thompson said: "What's wrong? You seem upset."
+b. Esmeralda Solis [action] moved closer
+c. Oliver Thompson [non-verbal communication] smiled
+e. Esmeralda Solis did nothing
+f. Oliver Thompson left the conversation"""
+
+    def parse(self, output: str) -> ScriptInteractionReturnType:
+        """
+        Parse the loosely formatted output to AgentAction
+        We make the reformat in this function
+        """
+        print("Original output: ", output)
+        interaction = ScriptInteraction(interactions=output)
+        agent_names = self.agent_names
+        assert len(agent_names) == 2, "agent_names must have length 2"
+        try:
+            # try to parse the output
+            parsed_interaction = interaction.parse(
+                agent_names=agent_names, background=self.background
+            )
+            return parsed_interaction
+        except Exception as e:
+            print(
+                f"Exception {e}: the output format is not correct. Reformatting "
+            )
+            reformat_parsed_result = format_bad_output_for_script(
+                ill_formed_output=output,
+                format_instructions=self.get_format_instructions(),
+                agents=agent_names,
+            )
+            print("Reformatted output: ", reformat_parsed_result)
+            interaction = ScriptInteraction(
+                interactions=reformat_parsed_result
+            )
+            parsed_interaction = interaction.parse(
+                agent_names=agent_names, background=self.background
+            )
+            return parsed_interaction
+
+    @property
+    def _type(self) -> str:
+        """Return the type key."""
+        return "str"
+
+
 def _return_fixed_model_version(
-    model_name: Literal["gpt-3.5-turbo", "gpt-4"]
+    model_name: Literal["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"]
 ) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
         "gpt-4": "gpt-4-0613",
+        "gpt-4-turbo": "gpt-4-1106-preview",
     }[model_name]
 
 
@@ -214,7 +312,7 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     match model_name:
-        case "gpt-3.5-turbo" | "gpt-4":
+        case "gpt-3.5-turbo" | "gpt-4" | "gpt-4-turbo":
             human_message_prompt = HumanMessagePromptTemplate(
                 prompt=PromptTemplate(
                     template=template,
@@ -244,7 +342,7 @@ def obtain_chain(
             )
             chain = LLMChain(llm=llm, prompt=prompt)
             return chain
-        case "togethercomputer/llama-2-7b-chat" | "togethercomputer/llama-2-70b-chat":
+        case "togethercomputer/llama-2-7b-chat" | "togethercomputer/llama-2-70b-chat" | "togethercomputer/mpt-30b-chat":
             human_message_prompt = HumanMessagePromptTemplate(
                 prompt=PromptTemplate(
                     template=template,
@@ -261,6 +359,41 @@ def obtain_chain(
             return chain
         case _:
             raise ValueError(f"Invalid model name: {model_name}")
+
+
+@beartype
+def format_bad_output_for_script(
+    ill_formed_output: str,
+    format_instructions: str,
+    agents: list[str],
+    model_name: LLM_Name = "gpt-3.5-turbo",
+) -> str:
+    template = """
+    Given the string that can not be parsed by a parser, reformat it to a string that can be parsed by the parser which uses the following format instructions. Do not add or delete any information.
+    Small tip: for every round of conversation, first determine the name and the case, and whether this line contains errors. Correct it if necessary.
+
+    Format instructions: {format_instructions}
+
+    String to be corrected: {ill_formed_output}
+
+    The two agents are: {agents}
+
+    Please only generate the rewritten string:
+    """
+    print("ill_formed_output: ", ill_formed_output)
+    chain = obtain_chain(
+        model_name=model_name,
+        template=template,
+        input_variables=re.findall(r"{(.*?)}", template),
+    )
+    input_values = {
+        "ill_formed_output": ill_formed_output,
+        "format_instructions": format_instructions,
+        "agents": agents,
+    }
+    reformat = chain.predict([logging_handler], **input_values)
+    log.info(f"Reformated output: {reformat}")
+    return reformat
 
 
 @beartype
@@ -367,6 +500,8 @@ async def agenerate(
     try:
         parsed_result = output_parser.parse(result)
     except Exception as e:
+        if isinstance(output_parser, ScriptOutputParser):
+            raise e  # the problem has been handled in the parser
         log.debug(
             f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
             extra={"markup": True},
@@ -414,6 +549,7 @@ async def agenerate_env_profile(
     model_name: LLM_Name,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
+    temperature: float = 0.7,
 ) -> tuple[EnvironmentProfile, str]:
     """
     Using langchain to generate the background
@@ -432,6 +568,7 @@ async def agenerate_env_profile(
             examples=examples,
         ),
         output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
+        temperature=temperature,
     )
 
 
@@ -604,17 +741,34 @@ async def agenerate_action(
     agent: str,
     goal: str,
     temperature: float = 0.7,
+    script_like: bool = False,
 ) -> tuple[AgentAction, str]:
     """
     Using langchain to generate an example episode
     """
     try:
-        return await agenerate(
-            model_name=model_name,
-            template="""
-                Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
+        if script_like:
+            # model as playwright
+            template = """
+                Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
                 You can find {agent}'s background and goal in the 'Here is the context of the interaction' field.
-                Note that {agent}'s secret and goal is only visible to you.
+                You should try your best to achieve {agent}'s goal in a way that align with their character traits.
+                Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
+                {history}.
+                The script has proceeded to Turn #{turn_number}. Current available action types are
+                {action_list}.
+                Note: The script can be ended if 1. one agent have achieved social goals, 2. this conversation makes the agent uncomfortable, 3. the agent find it uninteresting/you lose your patience, 4. or for other reasons you think it should stop.
+
+                Please only generate a JSON string including the action type and the argument.
+                Your action should follow the given format:
+                {format_instructions}
+            """
+        else:
+            # Normal case, model as agent
+            template = """
+                Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
+                You can find {agent}'s goal (or background) in the 'Here is the context of the interaction' field.
+                Note that {agent}'s goal is only visible to you.
                 You should try your best to achieve {agent}'s goal in a way that align with their character traits.
                 Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
                 {history}.
@@ -625,7 +779,11 @@ async def agenerate_action(
                 Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:
                 {format_instructions}
-            """,
+            """
+
+        return await agenerate(
+            model_name=model_name,
+            template=template,
             input_values=dict(
                 agent=agent,
                 turn_number=str(turn_number),
@@ -637,6 +795,81 @@ async def agenerate_action(
         )
     except:
         return AgentAction(action_type="none", argument=""), ""
+
+
+@gin.configurable
+@beartype
+async def agenerate_script(
+    model_name: LLM_Name,
+    background: ScriptBackground,
+    temperature: float = 0.7,
+    agent_names: list[str] = [],
+    agent_name: str = "",
+    history: str = "",
+    single_step: bool = False,
+) -> tuple[ScriptInteractionReturnType, str]:
+    """
+    Using langchain to generate an the script interactions between two agent
+    The script interaction is generated in a single generation process.
+    Note that in this case we do not require a json format response,
+    so the failure rate will be higher, and it is recommended to use at least llama-2-70b.
+    """
+    try:
+        if single_step:
+            return await agenerate(
+                model_name=model_name,
+                template="""Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
+
+                Here are the conversation background and history:
+                {background}
+                {history}
+
+                Remember that you are an independent scriptwriter and should finish the script by yourself.
+                The output should only contain the script following the format instructions, with no additional comments or text.
+
+                Here are the format instructions:
+                {format_instructions}""",
+                input_values=dict(
+                    background=background.to_natural_language(),
+                    history=history,
+                    agent=agent_name,
+                ),
+                output_parser=ScriptOutputParser(
+                    agent_names=agent_names,
+                    background=background.to_natural_language(),
+                    single_turn=True,
+                ),
+                temperature=temperature,
+            )
+
+        else:
+            return await agenerate(
+                model_name=model_name,
+                template="""
+                Please write the script between two characters based on their social goals with a maximum of 20 turns.
+
+                {background}
+                Your action should follow the given format:
+                {format_instructions}
+                Remember that you are an independent scriptwriter and should finish the script by yourself.
+                The output should only contain the script following the format instructions, with no additional comments or text.""",
+                input_values=dict(
+                    background=background.to_natural_language(),
+                ),
+                output_parser=ScriptOutputParser(
+                    agent_names=agent_names,
+                    background=background.to_natural_language(),
+                    single_turn=False,
+                ),
+                temperature=temperature,
+            )
+    except Exception as e:
+        # TODO raise(e) # Maybe we do not want to return anything?
+        print(f"Exception in agenerate {e}")
+        return_default_value: ScriptInteractionReturnType = (
+            ScriptInteraction.default_value_for_return_type()
+        )
+        return (return_default_value, "")
 
 
 @beartype

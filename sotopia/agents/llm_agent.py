@@ -7,11 +7,13 @@ from sotopia.database import AgentProfile
 from sotopia.generation_utils.generate import (
     LLM_Name,
     agenerate_action,
+    agenerate_script,
     generate_action,
     generate_action_speak,
     generate_goal,
 )
 from sotopia.messages import AgentAction, Message, Observation
+from sotopia.messages.message_classes import ScriptBackground
 
 
 async def ainput(prompt: str = "") -> str:
@@ -30,6 +32,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         uuid_str: str | None = None,
         agent_profile: AgentProfile | None = None,
         model_name: LLM_Name = "gpt-3.5-turbo",
+        script_like: bool = False,
     ) -> None:
         super().__init__(
             agent_name=agent_name,
@@ -37,6 +40,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             agent_profile=agent_profile,
         )
         self.model_name = model_name
+        self.script_like = script_like
 
     @property
     def goal(self) -> str:
@@ -94,8 +98,63 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 action_types=obs.available_actions,
                 agent=self.agent_name,
                 goal=self.goal,
+                script_like=self.script_like,
             )
             return action
+
+
+from typing import cast
+
+
+class ScriptWritingAgent(LLMAgent):
+    def __init__(
+        self,
+        agent_name: str | None = None,
+        uuid_str: str | None = None,
+        agent_profile: AgentProfile | None = None,
+        model_name: LLM_Name = "gpt-3.5-turbo",
+        agent_names: list[str] = [],
+        background: ScriptBackground | None = None,
+    ) -> None:
+        super().__init__(
+            agent_name=agent_name,
+            uuid_str=uuid_str,
+            agent_profile=agent_profile,
+        )
+        self.model_name = model_name
+        self.agent_names = agent_names
+        assert background is not None, "background cannot be None"
+        self.background = background
+
+    async def aact(self, obs: Observation) -> AgentAction:
+        self.recv_message("Environment", obs)
+        message_to_compose = [
+            y for idx, (x, y) in enumerate(self.inbox) if idx != 0
+        ]
+
+        history = "\n".join(
+            f"{y.to_natural_language()}" for y in message_to_compose
+        )
+        print("Current agent: ", self.agent_name)
+        print("Composed history: ", history)
+
+        action, prompt = await agenerate_script(
+            model_name=self.model_name,
+            background=self.background,
+            agent_names=self.agent_names,
+            history=history,
+            agent_name=self.agent_name,
+            single_step=True,
+        )
+        # action: tuple[
+        #     list[list[tuple[str, str, Message]]], list[tuple[str, Message]]
+        # ]
+        returned_action = cast(AgentAction, action[1][0][1])
+        print("Action: ", returned_action, type(returned_action))
+        # print("Action: ", action)
+        # exit(0)
+
+        return returned_action
 
 
 class SpeakAgent(LLMAgent):
