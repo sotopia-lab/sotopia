@@ -3,9 +3,10 @@ import logging
 import subprocess
 from datetime import datetime
 from logging import FileHandler
-
+from tqdm.asyncio import tqdm_asyncio
 import gin
 import typer
+import typing
 from experiment_eval import _iterate_env_agent_combo_not_in_db
 from rich import print
 from rich.logging import RichHandler
@@ -76,49 +77,50 @@ def run_async_server_in_batch_aevaluate(
                 logging.info(
                     f"Running batch of {batch_size} episodes: {episode_batch}"
                 )
-                for episode in episode_batch:
-                    asyncio.run(
-                        aevaluate_one_episode(
-                            episode=episode,
-                            model=model,
-                            tag=tag,
-                            push_to_db=push_to_db,
-                        )
-                    )
-                episode_batch = []
-        else:
-            if episode_batch:
-                logging.info(
-                    f"Running batch of {batch_size} episodes: {episode_batch}"
-                )
-            for episode in episode_batch:
-                asyncio.run(
+                episode_futures = [
                     aevaluate_one_episode(
                         episode=episode,
                         model=model,
                         tag=tag,
                         push_to_db=push_to_db,
                     )
+                    for episode in episode_batch
+                ]
+                asyncio.run(tqdm_asyncio.gather(*episode_futures, desc="Running one batch"))
+        
+                episode_batch = []
+        else:
+            if episode_batch:
+                logging.info(
+                    f"Running batch of {batch_size} episodes: {episode_batch}"
                 )
+                episode_futures = [
+                    aevaluate_one_episode(
+                        episode=episode,
+                        model=model,
+                        tag=tag,
+                        push_to_db=push_to_db,
+                    )
+                    for episode in episode_batch
+                ]
+                asyncio.run(tqdm_asyncio.gather(*episode_futures, desc="Running one batch"))
             return
-
-
-annotated_episodes_pks = [
-    AnnotationForEpisode.get(anno).episode
-    for anno in AnnotationForEpisode.all_pks()
-]
-annotated_episodes_pks = list(set(annotated_episodes_pks))
 
 
 @app.command()
 def run_server(
-    tag: str = typer.Option("reeval_llama2"),
-    model: LLM_Name = typer.Option("togethercomputer/llama-2-70b-chat"),
-    batch_size: int = typer.Option(5),
-    push_to_db: bool = typer.Option(True),
-    verbose: bool = typer.Option(False),
+    tag: str ="reeval_llama2",
+    model: str = "togethercomputer/llama-2-70b-chat", # Why typer does not accept LLM_Name?
+    batch_size: int = 10,
+    push_to_db: bool = True,
+    verbose: bool = False,
 ) -> None:
-
+    annotated_episodes_pks = [
+        AnnotationForEpisode.get(anno).episode
+        for anno in AnnotationForEpisode.all_pks()
+    ]
+    annotated_episodes_pks = list(set(annotated_episodes_pks))
+    model = typing.cast(LLM_Name, model)
     # Call the function with the specified parameters
     run_async_server_in_batch_aevaluate(
         tag=tag,

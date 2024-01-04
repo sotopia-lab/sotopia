@@ -33,6 +33,11 @@ A redis-stack server is required to run the code. Please follow the [instruction
 conda env config vars set REDIS_OM_URL="redis://user:password@host:port"
 ```
 
+Make a folder to store the logs:
+```bash
+mkdir logs
+```
+
 ## Easy Sample Server
 You can view an episode demo with default parameters using the following command:
 ```python
