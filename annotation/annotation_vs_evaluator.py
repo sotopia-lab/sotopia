@@ -111,8 +111,8 @@ def get_dimension_correlation(dimension: str) -> dict[str, float]:
         human_rewards = average_human_rewards(annotation_list)
         human_rewards_list.append(
             (
-                float(human_rewards[0][1][dimension]), # type: ignore
-                float(human_rewards[1][1][dimension]), # type: ignore
+                float(human_rewards[0][1][dimension]), 
+                float(human_rewards[1][1][dimension]),
             )
         )
     dimension_scores_agent1 = [human_rewards[0] for human_rewards in human_rewards_list]
