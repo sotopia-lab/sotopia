@@ -147,5 +147,6 @@ correlation_dict = {}
 for dimension in SOCIAL_DIMENSIONS:
     correlation_dict[dimension] = get_dimension_correlation(dimension)
 df = pd.DataFrame.from_dict(correlation_dict, orient="index")
+df.to_csv("./logs/correlation.csv")
 print(df) 
 
