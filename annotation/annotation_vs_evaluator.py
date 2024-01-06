@@ -7,11 +7,65 @@ import rich
 from scipy import stats
 
 from sotopia.database import EpisodeLog, AnnotationForEpisode
+from sotopia.envs.evaluators import EvaluationBySocialDimensions
+
+
+def average_human_rewards(
+        annotation_list: list[AnnotationForEpisode]
+) -> list[tuple[float, dict[str, float]]]:
+    # average human rewards
+    if len(annotation_list) == 1:
+        return annotation_list[0].rewards # type: ignore
+    elif len(annotation_list) == 2:
+        assert isinstance(annotation_list[0].rewards[0], tuple)
+        assert isinstance(annotation_list[0].rewards[1], tuple)
+        assert isinstance(annotation_list[1].rewards[0], tuple)
+        assert isinstance(annotation_list[1].rewards[1], tuple)
+        return [
+            (
+                (annotation_list[0].rewards[0][0] + annotation_list[1].rewards[0][0]) / 2,
+                {
+                    dimension: (
+                        annotation_list[0].rewards[0][1][dimension]
+                        + annotation_list[1].rewards[0][1][dimension]
+                    ) / 2
+                    for dimension in annotation_list[0].rewards[0][1]
+                },
+            ),
+            (
+                (annotation_list[0].rewards[1][0] + annotation_list[1].rewards[1][0]) / 2,
+                {
+                    dimension: (
+                        annotation_list[0].rewards[1][1][dimension]
+                        + annotation_list[1].rewards[1][1][dimension]
+                    ) / 2
+                    for dimension in annotation_list[0].rewards[1][1]
+                },
+            ),
+        ] 
+    else:
+        raise NotImplementedError
+
+                                                                               
+def group_annotated_episodes(
+    annotated_episodes: list[AnnotationForEpisode],
+) -> dict[str, list[AnnotationForEpisode]]:
+    # only keep eval for machine interactions
+    grouped_episodes: dict[str, list[AnnotationForEpisode]] = defaultdict(list)
+    for annotation in annotated_episodes:
+        episode = EpisodeLog.get(annotation.episode)
+        assert episode.models
+        if 'human' in episode.models or 'redis' in episode.models:
+            continue
+        grouped_episodes[annotation.episode].append(annotation)
+    return grouped_episodes
 
 
 def get_dimension_correlation(dimension: str) -> dict[str, float]:
     annotated_episodes = [AnnotationForEpisode.get(annotation_pk) for annotation_pk in AnnotationForEpisode.all_pks()]
-    relevant_episode_ids = [annotation.episode for annotation in annotated_episodes]
+
+    grouped_episodes = group_annotated_episodes(annotated_episodes)
+    relevant_episode_ids = grouped_episodes.keys()
 
     # get relevant episodes
     relevant_episodes = [
@@ -20,7 +74,7 @@ def get_dimension_correlation(dimension: str) -> dict[str, float]:
     ]
 
     # search for the corresponding episode in tag "reeval_gpt4_improved_prompts"
-    tagged_episodes = EpisodeLog.find(EpisodeLog.tag == "reeval_llama2").all()
+    tagged_episodes = EpisodeLog.find(EpisodeLog.tag == "reeval_gpt4_turbo").all()
     ordered_tagged_episodes = []
     for relevant_episode in relevant_episodes:
         for tagged_episode in tagged_episodes:
@@ -28,8 +82,10 @@ def get_dimension_correlation(dimension: str) -> dict[str, float]:
             if (
                 relevant_episode.environment == tagged_episode.environment
                 and relevant_episode.agents == tagged_episode.agents
-                and relevant_episode.models == tagged_episode.models
+                and relevant_episode.models[1:] == tagged_episode.models[1:] # type: ignore
             ):
+                assert isinstance(tagged_episode, EpisodeLog)
+                tagged_episode.pk = relevant_episode.pk
                 ordered_tagged_episodes.append(tagged_episode)
                 break
     relevant_episodes = ordered_tagged_episodes
@@ -49,10 +105,10 @@ def get_dimension_correlation(dimension: str) -> dict[str, float]:
         if with_dimension
     ]
 
-    for annotation in annotated_episodes:
-        human_rewards = annotation.rewards
-        human_rewards_list: list[tuple[float, float]] = []
-        
+    human_rewards_list: list[tuple[float, float]] = []
+    for episode in relevant_episodes_with_dimension:
+        annotation_list = grouped_episodes[episode.pk] # type: ignore
+        human_rewards = average_human_rewards(annotation_list)
         human_rewards_list.append(
             (
                 float(human_rewards[0][1][dimension]), # type: ignore
@@ -62,19 +118,13 @@ def get_dimension_correlation(dimension: str) -> dict[str, float]:
     dimension_scores_agent1 = [human_rewards[0] for human_rewards in human_rewards_list]
     dimension_scores_agent2 = [human_rewards[1] for human_rewards in human_rewards_list]
        
-    dimension_machine = dimension
-    if dimension == "financial":
-        dimension_machine = "financial_and_material_benefits"
-    elif dimension == "socialrules":
-        dimension_machine = "social_rules"
-
     if dimension == "overall":
         dimension_scores_agent1_machine = [relevant_episode.rewards[0][0] for relevant_episode in relevant_episodes_with_dimension]  # type: ignore
         dimension_scores_agent2_machine = [relevant_episode.rewards[1][0] for relevant_episode in relevant_episodes_with_dimension]  # type: ignore
     else:
-        dimension_scores_agent1_machine = [relevant_episode.rewards[0][1][dimension_machine] for relevant_episode in relevant_episodes_with_dimension]  # type: ignore
-        dimension_scores_agent2_machine = [relevant_episode.rewards[1][1][dimension_machine] for relevant_episode in relevant_episodes_with_dimension]  # type: ignore
-    x = dimension_scores_agent2 + dimension_scores_agent1
+        dimension_scores_agent1_machine = [relevant_episode.rewards[0][1][dimension] for relevant_episode in relevant_episodes_with_dimension]  # type: ignore
+        dimension_scores_agent2_machine = [relevant_episode.rewards[1][1][dimension] for relevant_episode in relevant_episodes_with_dimension]  # type: ignore
+    x = dimension_scores_agent2[:179] + dimension_scores_agent1[:179]
     y = dimension_scores_agent2_machine + dimension_scores_agent1_machine
     # average
     # x = [agent1 + agent2 for agent1, agent2 in zip(dimension_scores_agent1, dimension_scores_agent2)]
@@ -91,17 +141,11 @@ def get_dimension_correlation(dimension: str) -> dict[str, float]:
         "mse": mse,
     }
 
-relevant_dimension = [
-        "believability",
-        "relationship",
-        "knowledge",
-        "secret",
-        "socialrules",
-        "financial",
-        "goal",
-    ]
+SOCIAL_DIMENSIONS: list[str] = list(EvaluationBySocialDimensions.__fields__.keys()) 
 
 correlation_dict = {}
-for dimension in relevant_dimension:
+for dimension in SOCIAL_DIMENSIONS:
     correlation_dict[dimension] = get_dimension_correlation(dimension)
+df = pd.DataFrame.from_dict(correlation_dict, orient="index")
+print(df) 
 
