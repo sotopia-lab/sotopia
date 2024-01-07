@@ -112,7 +112,7 @@ class Llama2(BaseChatModel):
     """Model name to use."""
     # default Together params
     temperature: float = 0.7
-    max_tokens: int = 128
+    max_tokens: int = 1024
     top_p: float = 0.7
     top_k: int = 50
     repetition_penalty: float = 1.0
@@ -156,9 +156,6 @@ class Llama2(BaseChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> ChatResult:
-        if not self.start:
-            together.Models.start(self.model_name)
-            self.start = True
         prompt, params = self._create_message_dicts(messages, stop)
         response = self.client.create(prompt=prompt, **params)
         chat_result = self._create_chat_result(response)

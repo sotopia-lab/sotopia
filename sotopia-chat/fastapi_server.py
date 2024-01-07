@@ -44,7 +44,7 @@ app.add_middleware(
 
 conn = Redis.from_url(os.environ["REDIS_OM_URL"])
 
-WAITING_ROOM_TIMEOUT = 60  # 60 secs
+WAITING_ROOM_TIMEOUT = float(os.environ.get("WAITING_ROOM_TIMEOUT", 1.0))
 
 
 @app.post("/connect/{session_id}/{role}/{id}")

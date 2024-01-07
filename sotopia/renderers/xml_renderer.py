@@ -50,6 +50,8 @@ class XMLRenderer(BaseRenderer):
     def __call__(
         self, xml_string: str, context: RenderContext = RenderContext()
     ) -> str:
+        if not xml_string:
+            return ""
         try:
             root = etree.fromstring(xml_string)
         except etree.XMLSyntaxError:

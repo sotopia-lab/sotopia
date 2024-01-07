@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import itertools
 import json
 import logging
@@ -140,7 +141,9 @@ def render_text_for_environment(
     )
 
 
-class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
+class ParallelSotopiaEnv(
+    ParallelEnv[str, Observation, AgentAction], MessengerMixin
+):
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
@@ -198,11 +201,14 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                     f"Agent with uuid {uuid_str} not found in database"
                 )
 
+    @configurable
     def reset(
         self,
         seed: int | None = None,
         options: dict[str, str] | None = None,
         agents: Agents | None = None,
+        omniscient: bool = False,
+        lite: bool = False,
     ) -> dict[str, Observation]:
         """Starting a new episode. Must be called before step().
 
@@ -211,6 +217,7 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
             options (dict, optional): Options for the environment. Defaults to None.
                 "partial_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound can be incompleted ("unknown" for missing parts), and the missing parts will be filled in by the environment.
                 "full_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound must be completed (no "unknown" for missing parts).
+            omniscient (bool, optional): Whether the agents know the other agent's goal. Defaults to False.
         """
         super().__init__()
         MessengerMixin.reset_inbox(self)
@@ -245,6 +252,11 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
                 p1_name=agent_names[0],
                 p2_name=agent_names[1],
             )
+
+            if lite:
+                raw_background.p1_background = ""
+                raw_background.p2_background = ""
+
             self.background = ScriptBackground(
                 scenario=render_text_for_environment(raw_background.scenario),
                 p1_background=render_text_for_environment(
@@ -263,26 +275,39 @@ class ParallelSotopiaEnv(ParallelEnv, MessengerMixin):
 
         self.agents = [self.background.p1_name, self.background.p2_name]
         agent_backgrounds: list[ScriptBackground] = []
-        for i in range(self.num_agents):
-            agent_backgrounds.append(
-                ScriptBackground(
-                    scenario=render_text_for_agent(raw_background.scenario, i),
-                    p1_background=render_text_for_agent(
-                        raw_background.p1_background, i
-                    ),
-                    p2_background=render_text_for_agent(
-                        raw_background.p2_background, i
-                    ),
-                    p1_goal=render_text_for_agent(raw_background.p1_goal, i),
-                    p2_goal=render_text_for_agent(raw_background.p2_goal, i),
-                    p1_name=raw_background.p1_name,
-                    p2_name=raw_background.p2_name,
+        if omniscient:
+            for i in range(self.num_agents):
+                agent_backgrounds.append(copy.deepcopy(self.background))
+        else:
+            for i in range(self.num_agents):
+                agent_backgrounds.append(
+                    ScriptBackground(
+                        scenario=render_text_for_agent(
+                            raw_background.scenario, i
+                        ),
+                        p1_background=render_text_for_agent(
+                            raw_background.p1_background, i
+                        ),
+                        p2_background=render_text_for_agent(
+                            raw_background.p2_background, i
+                        ),
+                        p1_goal=render_text_for_agent(
+                            raw_background.p1_goal, i
+                        ),
+                        p2_goal=render_text_for_agent(
+                            raw_background.p2_goal, i
+                        ),
+                        p1_name=raw_background.p1_name,
+                        p2_name=raw_background.p2_name,
+                    )
                 )
-            )
         background_for_a = agent_backgrounds[0]
         background_for_b = agent_backgrounds[1]
-        background_for_a.p2_goal = "Unknown"
-        background_for_b.p1_goal = "Unknown"
+
+        print("Is the agent omniscient?", omniscient)
+        if not omniscient:
+            background_for_a.p2_goal = "Unknown"
+            background_for_b.p1_goal = "Unknown"
 
         self.action_spaces = {
             agent: Dict(
