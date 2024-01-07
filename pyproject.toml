@@ -11,6 +11,7 @@ packages = [{include = "sotopia"}]
 python = ">=3.11, <3.12"
 pandas = "^2.1.1"
 lxml = "^4.9.3"
+scipy = "^1.11.3"
 openai = "^0.28.1"
 langchain = "^0.0.311"
 tiktoken = "^0.5.1"

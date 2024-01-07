@@ -1,16 +1,17 @@
 import asyncio
 import logging
 import subprocess
+import typing
 from datetime import datetime
 from logging import FileHandler
-from tqdm.asyncio import tqdm_asyncio
+
 import gin
 import typer
-import typing
 from experiment_eval import _iterate_env_agent_combo_not_in_db
 from rich import print
 from rich.logging import RichHandler
 from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio
 
 from sotopia.agents.llm_agent import Agents
 from sotopia.database.logs import AnnotationForEpisode, EpisodeLog
@@ -86,8 +87,12 @@ def run_async_server_in_batch_aevaluate(
                     )
                     for episode in episode_batch
                 ]
-                asyncio.run(tqdm_asyncio.gather(*episode_futures, desc="Running one batch"))
-        
+                asyncio.run(
+                    tqdm_asyncio.gather(
+                        *episode_futures, desc="Running one batch"
+                    )
+                )
+
                 episode_batch = []
         else:
             if episode_batch:
@@ -103,14 +108,18 @@ def run_async_server_in_batch_aevaluate(
                     )
                     for episode in episode_batch
                 ]
-                asyncio.run(tqdm_asyncio.gather(*episode_futures, desc="Running one batch"))
+                asyncio.run(
+                    tqdm_asyncio.gather(
+                        *episode_futures, desc="Running one batch"
+                    )
+                )
             return
 
 
 @app.command()
 def run_server(
-    tag: str ="reeval_llama2",
-    model: str = "togethercomputer/llama-2-70b-chat", # Why typer does not accept LLM_Name?
+    tag: str = "reeval_llama2",
+    model: str = "togethercomputer/llama-2-70b-chat",  # Why typer does not accept LLM_Name?
     batch_size: int = 10,
     push_to_db: bool = True,
     verbose: bool = False,
