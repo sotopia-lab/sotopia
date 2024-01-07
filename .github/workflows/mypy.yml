@@ -20,5 +20,6 @@ jobs:
     - name: Type-checking package with mypy
       run: |
         # Run this mypy instance against our main package.
+        poetry run pip install types-protobuf==4.24.0.4
         poetry run mypy --install-types --non-interactive sotopia
         poetry run mypy --strict .
