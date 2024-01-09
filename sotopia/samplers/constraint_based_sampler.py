@@ -63,7 +63,7 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
         | list[Type[BaseAgent[ObsType, ActType]]],
         n_agent: int = 2,
         replacement: bool = True,
-        size: int = 10,
+        size: int = 5,
         env_params: dict[str, Any] = {},
         agents_params: list[dict[str, Any]] = [{}, {}],
     ) -> Generator[EnvAgentCombo[ObsType, ActType], None, None]:

@@ -1,6 +1,7 @@
 import typer
 from sotopia.database import EnvironmentProfile
 from typing import Any, cast
+from sotopia.database.persistent_profile import RelationshipType
 from sotopia.generation_utils import LLM_Name, generate_mutual_friend_envs, generate_craigslist_bargains_envs
 from experiment_eval import _sample_env_agent_combo_and_push_to_db
 from redis_om import Migrator
@@ -24,26 +25,25 @@ def add_env_profiles(env_profiles: list[dict[str, Any]]) -> list[EnvironmentProf
     return env_list
 
 
-def check_existing_envs(env_profile: dict[str, Any], existing_envs: list[EnvironmentProfile]) -> bool:
-    for env in existing_envs:
-        if env_profile["scenario"] == env.scenario and env_profile["agent_goals"] == env.agent_goals:
-            return False
+def check_existing_envs(env_profile: dict[str, Any], existing_envs: pd.DataFrame) -> bool:
+    if env_profile["scenario"] in existing_envs['scenario'].to_list() and str(env_profile["agent_goals"]) in existing_envs["agent_goals"].to_list():
+        return False
     return True
 
 def generate_newenv_profile(num: int, gen_model: LLM_Name="gpt-4-turbo", temperature: float=0.5, type: str='mutual_friend') -> pd.DataFrame:
     env_profile_list = [] # type: ignore
-    existing_envs = [EnvironmentProfile.get(pk) for pk in EnvironmentProfile.all_pks()]
+    existing_envs = pd.read_csv("./data/env_profiles_v1.csv") # TODO: find a better way to deal with this
     if type == "mutual_friend":
         while len(env_profile_list) < num:
             scenario, social_goals = asyncio.run(generate_mutual_friend_envs())
             env_profile = {
-                "codename": "mutual_friend",
+                "codename": f"mutual_friend_{len(env_profile_list)+10}",
                 "scenario": scenario,
                 "agent_goals": social_goals,
-                "relationship": 0,
-                "age_constraint": 0,
-                "occupation_constraint": 0,
-                "source": "generated",
+                "relationship": RelationshipType.stranger,
+                "age_constraint": "[(18, 80), (18, 80)]",
+                "occupation_constraint": None,
+                "source": "mutual_friend",
             }
             if check_existing_envs(env_profile, existing_envs):
                 env_profile_list.append(env_profile)
@@ -52,13 +52,13 @@ def generate_newenv_profile(num: int, gen_model: LLM_Name="gpt-4-turbo", tempera
     return pd.DataFrame(env_profile_list)
 
 @app.command()
-def auto_generate_scenarios(num: int, gen_model: LLM_Name="gpt-4-turbo", temperature: float=0.5) -> None:
+def auto_generate_scenarios(num: int, gen_model: str="gpt-4-turbo", temperature: float=0.5) -> None:
     """
     Function to generate new environment scenarios based on target number of generation
     """
+    gen_model = cast(LLM_Name, gen_model)
     all_background_df = generate_newenv_profile(num, gen_model, temperature)
-    columns = [ "pk",
-                "codename",
+    columns = [ "codename",
                 "scenario",
                 "agent_goals",
                 "relationship",
@@ -68,17 +68,13 @@ def auto_generate_scenarios(num: int, gen_model: LLM_Name="gpt-4-turbo", tempera
     background_df = all_background_df[columns]
     envs = cast(list[dict[str, Any]], background_df.to_dict(orient="records"))
     filtered_envs = []
-    filtered_envs_pks = []
     for env in envs:
         # in case the env["agent_goals"] is string, convert into list
         if isinstance(env["agent_goals"], str):
             env["agent_goals"] = ast.literal_eval(env["agent_goals"])
         assert isinstance(env["relationship"], int)
         if len(env["agent_goals"]) == 2:
-            env_pk = env["pk"]
-            env.pop("pk")
             filtered_envs.append(env)
-            filtered_envs_pks.append(env_pk)
     # add to database
     env_profiles = add_env_profiles(filtered_envs)
 
