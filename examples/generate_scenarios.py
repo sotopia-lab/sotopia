@@ -1,15 +1,22 @@
-import typer
-from sotopia.database import EnvironmentProfile
+import ast
+import asyncio
 from typing import Any, cast
-from sotopia.database.persistent_profile import RelationshipType
-from sotopia.generation_utils import LLM_Name, generate_mutual_friend_envs, generate_craigslist_bargains_envs
+
+import pandas as pd
+import typer
 from experiment_eval import _sample_env_agent_combo_and_push_to_db
 from redis_om import Migrator
-import asyncio
-import ast
-import pandas as pd
+
+from sotopia.database import EnvironmentProfile
+from sotopia.database.persistent_profile import RelationshipType
+from sotopia.generation_utils import (
+    LLM_Name,
+    generate_craigslist_bargains_envs,
+    generate_mutual_friend_envs,
+)
 
 app = typer.Typer()
+
 
 def add_env_profile(**kwargs: dict[str, Any]) -> EnvironmentProfile:
     env_profile = EnvironmentProfile(**kwargs)
@@ -17,7 +24,9 @@ def add_env_profile(**kwargs: dict[str, Any]) -> EnvironmentProfile:
     return env_profile
 
 
-def add_env_profiles(env_profiles: list[dict[str, Any]]) -> list[EnvironmentProfile]:
+def add_env_profiles(
+    env_profiles: list[dict[str, Any]]
+) -> list[EnvironmentProfile]:
     env_list = []
     for env_profile in env_profiles:
         profile = add_env_profile(**env_profile)
@@ -25,14 +34,28 @@ def add_env_profiles(env_profiles: list[dict[str, Any]]) -> list[EnvironmentProf
     return env_list
 
 
-def check_existing_envs(env_profile: dict[str, Any], existing_envs: pd.DataFrame) -> bool:
-    if env_profile["scenario"] in existing_envs['scenario'].to_list() and str(env_profile["agent_goals"]) in existing_envs["agent_goals"].to_list():
+def check_existing_envs(
+    env_profile: dict[str, Any], existing_envs: pd.DataFrame
+) -> bool:
+    if (
+        env_profile["scenario"] in existing_envs["scenario"].to_list()
+        and str(env_profile["agent_goals"])
+        in existing_envs["agent_goals"].to_list()
+    ):
         return False
     return True
 
-def generate_newenv_profile(num: int, gen_model: LLM_Name="gpt-4-turbo", temperature: float=0.5, type: str='mutual_friend') -> pd.DataFrame:
-    env_profile_list = [] # type: ignore
-    existing_envs = pd.read_csv("./data/env_profiles_v1.csv") # TODO: find a better way to deal with this
+
+def generate_newenv_profile(
+    num: int,
+    gen_model: LLM_Name = "gpt-4-turbo",
+    temperature: float = 0.5,
+    type: str = "mutual_friend",
+) -> pd.DataFrame:
+    env_profile_list = []  # type: ignore
+    existing_envs = pd.read_csv(
+        "./data/env_profiles_v1.csv"
+    )  # TODO: find a better way to deal with this
     if type == "mutual_friend":
         while len(env_profile_list) < num:
             scenario, social_goals = asyncio.run(generate_mutual_friend_envs())
@@ -51,20 +74,25 @@ def generate_newenv_profile(num: int, gen_model: LLM_Name="gpt-4-turbo", tempera
         raise NotImplementedError("Only mutual_friend is supported for now")
     return pd.DataFrame(env_profile_list)
 
+
 @app.command()
-def auto_generate_scenarios(num: int, gen_model: str="gpt-4-turbo", temperature: float=0.5) -> None:
+def auto_generate_scenarios(
+    num: int, gen_model: str = "gpt-4-turbo", temperature: float = 0.5
+) -> None:
     """
     Function to generate new environment scenarios based on target number of generation
     """
     gen_model = cast(LLM_Name, gen_model)
     all_background_df = generate_newenv_profile(num, gen_model, temperature)
-    columns = [ "codename",
-                "scenario",
-                "agent_goals",
-                "relationship",
-                "age_constraint",
-                "occupation_constraint",
-                "source"]
+    columns = [
+        "codename",
+        "scenario",
+        "agent_goals",
+        "relationship",
+        "age_constraint",
+        "occupation_constraint",
+        "source",
+    ]
     background_df = all_background_df[columns]
     envs = cast(list[dict[str, Any]], background_df.to_dict(orient="records"))
     filtered_envs = []
@@ -85,6 +113,7 @@ def auto_generate_scenarios(num: int, gen_model: str="gpt-4-turbo", temperature:
         _sample_env_agent_combo_and_push_to_db(env_profile.pk)
 
     Migrator().run()
+
 
 if __name__ == "__main__":
     app()

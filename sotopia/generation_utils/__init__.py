@@ -5,10 +5,9 @@ from .generate import (
     fill_in_background,
     generate_goal,
 )
-
 from .generate_specific_envs import (
-    generate_mutual_friend_envs,
     generate_craigslist_bargains_envs,
+    generate_mutual_friend_envs,
 )
 
 __all__ = [
