@@ -141,3 +141,5 @@ deprecated/*
 
 #backup
 backup/*
+
+scripts/*
