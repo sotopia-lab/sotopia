@@ -135,9 +135,6 @@ class ScriptWritingAgent(LLMAgent):
         history = "\n".join(
             f"{y.to_natural_language()}" for y in message_to_compose
         )
-        # The print behavior is weird in async mode
-        print("Current agent: ", self.agent_name)
-        print("Composed history: ", history)
 
         action, prompt = await agenerate_script(
             model_name=self.model_name,
