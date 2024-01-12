@@ -105,12 +105,13 @@ def auto_generate_scenarios(
             filtered_envs.append(env)
     # add to database
     env_profiles = add_env_profiles(filtered_envs)
-
+    print("New env profiles added to database:")
     # print(env_profiles)
     # also save new combo to database
     for env_profile in env_profiles:
         assert env_profile.pk is not None
         _sample_env_agent_combo_and_push_to_db(env_profile.pk)
+    print("New env-agent combo added to database")
 
     Migrator().run()
 

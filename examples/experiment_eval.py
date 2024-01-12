@@ -180,7 +180,7 @@ def _iterate_env_agent_combo_not_in_db(
 @gin.configurable
 def run_async_server_in_batch(
     *,
-    batch_size: int = 10,
+    batch_size: int = 1,
     model_names: dict[str, LLM_Name] = {
         "env": "gpt-4",
         "agent1": "gpt-3.5-turbo",
