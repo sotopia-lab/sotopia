@@ -135,8 +135,6 @@ class ScriptWritingAgent(LLMAgent):
         history = "\n".join(
             f"{y.to_natural_language()}" for y in message_to_compose
         )
-        print("Current agent: ", self.agent_name)
-        print("Composed history: ", history)
 
         action, prompt = await agenerate_script(
             model_name=self.model_name,
@@ -146,14 +144,7 @@ class ScriptWritingAgent(LLMAgent):
             agent_name=self.agent_name,
             single_step=True,
         )
-        # action: tuple[
-        #     list[list[tuple[str, str, Message]]], list[tuple[str, Message]]
-        # ]
         returned_action = cast(AgentAction, action[1][0][1])
-        print("Action: ", returned_action, type(returned_action))
-        # print("Action: ", action)
-        # exit(0)
-
         return returned_action
 
 

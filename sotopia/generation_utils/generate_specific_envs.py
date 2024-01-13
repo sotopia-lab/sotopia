@@ -3,6 +3,7 @@ datasets. The generation functions below should call agenerate_env_profile
 in `sotopia/generation_utils/generate.py` with the appropriate parameters.
 Here are the datasets we have so far:
 1. Mutual-Friend (https://huggingface.co/datasets/mutual_friends)
+2. Craigslist-Bargains (https://huggingface.co/datasets/craigslist_bargains)
 """
 import asyncio
 from typing import Hashable
