@@ -327,7 +327,7 @@ class ScriptInteraction(Message):
         dialogues[-1] = "\n".join(
             dialogues[-1].split("\n")[:2]
         )  # Discard further input in the last turn
-        
+
         for dialogue in dialogues:
             # TODO this is current workaround for the issue of multiple agents in one turn
             if len(dialogue.split("\n")) >= 3:
