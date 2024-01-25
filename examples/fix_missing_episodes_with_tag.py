@@ -76,9 +76,8 @@ def get_all_episodes(tags: List[str] = []) -> List[Tuple[EpisodeLog, str]]:
         print("Using tag list: ", tags)
         episode_pks: List[Tuple[(str, str)]] = []
         for tag in tags:
-            ep_list = list(EpisodeLog.find(EpisodeLog.tag == tag).all())
-            ep_list = cast(list[EpisodeLog], ep_list)
-            episode_pks += [(ep.pk, ep.tag) for ep in ep_list]
+            ep_list = list(EpisodeLog.find(EpisodeLog.tag == tag).all())  # type: ignore
+            episode_pks += [(ep.pk, ep.tag) for ep in ep_list]  # type: ignore
 
     all_episodes = []
     for pk, tag in tqdm(episode_pks):
