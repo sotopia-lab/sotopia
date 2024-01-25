@@ -74,10 +74,10 @@ def get_all_episodes(tags: List[str] = []) -> List[Tuple[EpisodeLog, str]]:
     assert len(tags) != 0, "No episodes found"
     if len(tags) != 0:
         print("Using tag list: ", tags)
-        episode_pks: Tuple[(str, str)] = []
+        episode_pks: List[Tuple[(str, str)]] = []
         for tag in tags:
             ep_list = list(EpisodeLog.find(EpisodeLog.tag == tag).all())
-            ep_list = cast(List[EpisodeLog], ep_list)
+            ep_list = cast(list[EpisodeLog], ep_list)
             episode_pks += [(ep.pk, ep.tag) for ep in ep_list]
 
     all_episodes = []
