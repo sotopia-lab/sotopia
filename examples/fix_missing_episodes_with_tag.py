@@ -74,12 +74,11 @@ def get_all_episodes(tags: List[str] = []) -> List[Tuple[EpisodeLog, str]]:
     assert len(tags) != 0, "No episodes found"
     if len(tags) != 0:
         print("Using tag list: ", tags)
-        episode_pks = []
+        episode_pks: Tuple[(str, str)] = []
         for tag in tags:
-            episode_pks += [
-                (ep.pk, ep.tag)
-                for ep in EpisodeLog.find(EpisodeLog.tag == tag).all()
-            ]
+            ep_list = list(EpisodeLog.find(EpisodeLog.tag == tag).all())
+            ep_list = cast(List[EpisodeLog], ep_list)
+            episode_pks += [(ep.pk, ep.tag) for ep in ep_list]
 
     all_episodes = []
     for pk, tag in tqdm(episode_pks):
@@ -135,7 +134,7 @@ def find_combo_pk(
 def get_combo_model_map(
     all_episodes: List[Tuple[EpisodeLog, str]],
     all_combos_map: Dict[str, EnvAgentComboStorage],
-):
+) -> Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]]:
     combo_model_map: Dict[
         str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
     ] = defaultdict(Counter)
