@@ -1,4 +1,4 @@
-cd ../sotopia
+cd ..
 python examples/generate_script.py \
  --gin_file sotopia_conf/generation_utils_conf/generate.gin \
  --gin_file sotopia_conf/server_conf/server.gin \
