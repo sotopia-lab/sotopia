@@ -144,6 +144,7 @@ def get_combo_model_map(
     bad_rewards_count = 0
     bad_gpt4_rewards_count = 0
     bad_combo_count = 0
+    bad_lite_mode_count = 0
     episodes_to_delete = []
 
     # iterate through episodes
@@ -169,8 +170,17 @@ def get_combo_model_map(
                 bad_gpt4_rewards_count += 1
             continue
 
-        # check if
-        interaction_list = curr_ep.render_for_humans()[1][1:-2]
+        # check if the length is too short
+        rendered_ep = curr_ep.render_for_humans()[1]
+        interaction_list = rendered_ep[1:-2]
+
+        # check if the lite mode is erroneously used
+        if "background" in rendered_ep[0] and "lite" in curr_ep.tag:
+            episodes_to_delete.append(curr_ep.pk)
+            # print(f"{curr_ep.pk} has background!")
+            bad_lite_mode_count += 1
+            continue
+
         if len(interaction_list) <= 5:
             # bad_rewards_count += 1
             episodes_to_delete.append(curr_ep.pk)
@@ -201,7 +211,8 @@ def get_combo_model_map(
             # episodes_to_delete.append(curr_ep.pk)
 
             bad_combo_count += 1
-
+    print("Bad lite mode count: ", bad_lite_mode_count)
+    # exit(0)
     print("-" * 20 + "Deleting Bad Combos" + "-" * 20)
     for ep_pk in episodes_to_delete:
         # TODO Do we actually need to delete these bad episodes? (I think yes, as this can help us to get the correct number of episodes)
@@ -241,11 +252,24 @@ def get_all_missing_model_pairs(
     ],
     all_model_pairs: Set[tuple[LLM_Name, LLM_Name, LLM_Name, str]],
     num_required: int,
-    tags_to_fix: List[str],
+    all_combos_map: Dict[str, EnvAgentComboStorage] = {},
+    add_missing_env: bool = False,
 ) -> Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]]:
+    """
+    all_combos_map: if add_missing_env is True, then we need to provide all combos map
+    add_missing_env: if True, add missing env to the map, else just match the model pairs among selected tags
+    """
     combo_missing_model_map: Dict[
         str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
     ] = defaultdict(Counter)
+
+    if add_missing_env:
+        for combo_key in all_combos_map:
+            if combo_key not in combo_model_map:
+                combo_missing_model_map[combo_key] = Counter()
+                for model_pair in all_model_pairs:
+                    combo_missing_model_map[combo_key][model_pair] = 0
+                print("Missing combo: ", combo_key)
 
     missing_count = 0
     for key in combo_model_map:
@@ -409,10 +433,10 @@ def re_run_missing_episodes(
 
     script_mode = "script" in rerun_tag
     omniscient_mode = "omni" in rerun_tag
-    lite_mode = "lite" in rerun_tag
 
     run_func = run_script if script_mode else run_interaction
     print("Current mode: ", "script" if script_mode else "interaction")
+    print("Current omniscient mode: ", omniscient_mode)
 
     while True:
         for env_agent_combo in tqdm(
@@ -438,10 +462,7 @@ def re_run_missing_episodes(
 
 @gin.configurable
 def rerun_missing_episodes(tags: List[str] = []) -> None:
-    # assert pivot_tag in tags, "pivot_tag not in tags, please check"
-    # print("current tag to fix: ", tags_to_fix)
-    tags_to_fix = tags
-    print("All tags: ", tags)
+    print("All tags to fix: ", tags)
     all_episodes = get_all_episodes(tags=tags)
     all_combos_map = get_all_env_agent_combos(tags, 0, 5)
     combo_model_map = get_combo_model_map(all_episodes, all_combos_map)
@@ -451,14 +472,13 @@ def rerun_missing_episodes(tags: List[str] = []) -> None:
         combo_model_map,
         all_model_pairs,
         1,
-        tags_to_fix=tags_to_fix,
+        all_combos_map=all_combos_map,
+        add_missing_env=True,
     )
 
     missing_model_combo_map = get_missing_model_combo_map(
         combo_missing_model_map, all_combos_map
     )
-    # print("Missing model combo map: ", missing_model_combo_map)
-    # exit(0)
 
     for model_tag, episode_env_id in missing_model_combo_map.items():
         rerun_model_names = {
@@ -482,12 +502,7 @@ def main(_: Any) -> None:
         FLAGS.gin_bindings,
     )
 
-    rerun_missing_episodes(
-        tags=[
-            "interact_gpt-3.5_lite",
-            "script_full_gpt3.5_gpt3.5_rewrite_lite",
-        ]
-    )
+    rerun_missing_episodes()
 
 
 if __name__ == "__main__":
