@@ -175,11 +175,11 @@ def get_combo_model_map(
         interaction_list = rendered_ep[1:-2]
 
         # check if the lite mode is erroneously used
-        if "background" in rendered_ep[0] and "lite" in curr_ep.tag:
-            episodes_to_delete.append(curr_ep.pk)
-            # print(f"{curr_ep.pk} has background!")
-            bad_lite_mode_count += 1
-            continue
+        # if "background" in rendered_ep[0] and "lite" in curr_ep.tag:
+        #     episodes_to_delete.append(curr_ep.pk)
+        #     # print(f"{curr_ep.pk} has background!")
+        #     bad_lite_mode_count += 1
+        #     continue
 
         if len(interaction_list) <= 5:
             # bad_rewards_count += 1
