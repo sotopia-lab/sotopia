@@ -295,7 +295,7 @@ def _return_fixed_model_version(
 ) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
-        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8hK7f26o",
+        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8mbqt3SF",
         "gpt-4": "gpt-4-0613",
         "gpt-4-turbo": "gpt-4-1106-preview",
     }[model_name]
