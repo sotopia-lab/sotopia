@@ -55,6 +55,7 @@ LLM_Name = Literal[
     "gpt-4-turbo",
     "human",
     "redis",
+    "mistralai/Mixtral-8x7B-Instruct-v0.1",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
@@ -342,7 +343,7 @@ def obtain_chain(
             )
             chain = LLMChain(llm=llm, prompt=prompt)
             return chain
-        case "togethercomputer/llama-2-7b-chat" | "togethercomputer/llama-2-70b-chat" | "togethercomputer/mpt-30b-chat":
+        case "togethercomputer/llama-2-7b-chat" | "togethercomputer/llama-2-70b-chat" | "togethercomputer/mpt-30b-chat" | "mistralai/Mixtral-8x7B-Instruct-v0.1":
             human_message_prompt = HumanMessagePromptTemplate(
                 prompt=PromptTemplate(
                     template=template,
