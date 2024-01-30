@@ -9,7 +9,7 @@ import typer
 from experiment_eval import _sample_env_agent_combo_and_push_to_db
 from redis_om import Migrator
 
-from sotopia.database import EnvironmentProfile, EnvAgentComboStorage
+from sotopia.database import EnvAgentComboStorage, EnvironmentProfile
 from sotopia.database.persistent_profile import RelationshipType
 from sotopia.generation_utils import (
     LLM_Name,
@@ -144,12 +144,18 @@ def clean_env_wo_combos() -> None:
     Function to clean up env-agent combos in the database
     """
     env_agent_combos = list(EnvAgentComboStorage.all_pks())
-    envs_id_in_combos = set([EnvAgentComboStorage.get(env_agent_combo).env_id for env_agent_combo in env_agent_combos])
+    envs_id_in_combos = set(
+        [
+            EnvAgentComboStorage.get(env_agent_combo).env_id
+            for env_agent_combo in env_agent_combos
+        ]
+    )
     envs = list(EnvironmentProfile.all_pks())
     for env in envs:
         if env not in envs_id_in_combos:
             EnvironmentProfile.delete(env)
-        
+
+
 @app.command()
 def upload_env_profiles(
     filepath: str = "./data/all_environment_profile.json",
