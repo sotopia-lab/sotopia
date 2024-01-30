@@ -163,7 +163,7 @@ def upload_env_profiles(
     """
     Function to upload environment profiles from csv file
     """
-    env_profile_list = []  # type: ignore
+    env_profile_list = []
     existing_envs = pd.read_csv(
         "./data/env_profiles_v1.csv"
     )  # TODO: find a better way to deal with this
