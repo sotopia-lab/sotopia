@@ -10,5 +10,3 @@ Current `fix_missing_episodes_with_tag.py` first detects erroneous episodes, del
 ### Fine-tuning
 
 * `evaluate_finetuned_full.sh`: evaluate the fine-tuned model (gpt-3.5 finetuned on the full dataset) on the sotopia lite setting.
-
-
