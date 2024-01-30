@@ -100,6 +100,20 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 goal=self.goal,
                 script_like=self.script_like,
             )
+            # Temporary fix for mixtral-moe model for incorrect generation format
+            if "Mixtral-8x7B-Instruct-v0.1" in self.model_name:
+                current_agent = self.agent_name
+                if f"{current_agent}:" in action.argument:
+                    print("Fixing Mixtral's generation format")
+                    action.argument = action.argument.replace(
+                        f"{current_agent}: ", ""
+                    )
+                elif f"{current_agent} said:" in action.argument:
+                    print("Fixing Mixtral's generation format")
+                    action.argument = action.argument.replace(
+                        f"{current_agent} said: ", ""
+                    )
+
             return action
 
 
