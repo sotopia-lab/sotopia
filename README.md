@@ -95,6 +95,6 @@ For the complete set of parameters, please check the `sotopia_conf` folder.
 To run a large batch of environments, you can change the `ENV_IDS` parameter in `sotopia_conf/run_async_server_in_batch.gin` to a list of environment ids. When `gin.ENV_IDS==[]`, all environments on the DB will be used.
 
 ## Getting access to the data
-You can find how to get the data in the [Q&A](/docs/all_the_issues.md) section in the `.\docs` folder. 
+You can find how to get the data in the [Q&A](/docs/all_the_issues.md) section in the `.\docs` folder.
 
 After that, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
