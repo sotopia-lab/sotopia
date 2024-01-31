@@ -8,6 +8,22 @@
 [![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/tests.yml/badge.svg?branch=main)]()
 [![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/pre-commit.yml/badge.svg?branch=main)]()
 
+## Introduction
+
+Sotopia is an open-ended social learning environment that allows agents to interact with each other and the environment. The environment is designed to be a platform for evaluating and faciliating social intelligence in language agents. The environment is designed to be open-ended, meaning that the environment can be easily extended to include new environments and new agents. The environment is also designed to be scalable, meaning that the environment can be easily scaled to include a large number of agents and environments.
+
+*Sotopia is accepted to ICLR 2024 as a spotlight ⭐!*
+
+```bibtex
+@inproceedings{zhou2024sotopia,
+  title = {SOTOPIA: Interactive Evaluation for Social Intelligence in Language Agents},
+  author = {Zhou*, Xuhui and Zhu*, Hao and Mathur, Leena and Zhang, Ruohong and Qi, Zhengyang and Yu, Haofei and Morency, Louis-Philippe and Bisk, Yonatan and Fried, Daniel and Neubig, Graham and Sap, Maarten},
+  journal = {ICLR},
+  year = {2024},
+  url = {https://openreview.net/forum?id=mM7VurbA4r},
+}
+```
+
 
 ## Installation
 This package supports Python 3.11 and above. In one line,
@@ -45,7 +61,7 @@ python -m sotopia_conf.server --gin_file="sotopia_conf/server_conf/server.gin" -
 ```
 
 ## Contribution
-### Install dev options
+#### Install dev options
 Follow the installation instruction above and then, instead of running `python -m pip install -e .`, run the following commands:
 
 ```bash
@@ -54,12 +70,12 @@ mypy --install-types --non-interactive sotopia
 python -m pip install pre-commit
 pre-commit install
 ```
-### New branch for each feature
+#### New branch for each feature
 `git checkout -b feature/feature-name` and PR to `main` branch.
-### Before committing
+#### Before committing
 Run `pytest` to make sure all tests pass (this will ensure dynamic typing passed with beartype) and `mypy --strict .` to check static typing.
 (You can also run `pre-commit run --all-files` to run all checks)
-### Check github action result
+#### Check github action result
 Check the github action result to make sure all tests pass. If not, fix the errors and push again.
 
 ## Running Experiments
@@ -78,5 +94,7 @@ For the complete set of parameters, please check the `sotopia_conf` folder.
 
 To run a large batch of environments, you can change the `ENV_IDS` parameter in `sotopia_conf/run_async_server_in_batch.gin` to a list of environment ids. When `gin.ENV_IDS==[]`, all environments on the DB will be used.
 
-### Check the generated episodes
-Go to the `examples/redis_stats.ipynb` notebook to check the generated episodes (Episode Log section). As well as calculate the performance.
+## Getting access to the data
+You can find how to get the data in the [Q&A](/docs/all_the_issues.md) section in the `.\docs` folder.
+
+After that, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
