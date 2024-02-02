@@ -161,7 +161,8 @@ def upload_env_profiles(
     filepath: str = "./data/all_environment_profile.json",
 ) -> None:
     """
-    Function to upload environment profiles from csv file
+    Function to upload environment profiles from json file
+    The json file format is a direct dump from the database
     """
     env_profile_list = []
     existing_envs = pd.read_csv(
@@ -173,8 +174,6 @@ def upload_env_profiles(
         if env_profile and check_existing_envs(env_profile, existing_envs):
             del env_profile["pk"]
             env_profile_list.append(env_profile)
-    # randomly sample 210 envs
-    env_profile_list = random.sample(env_profile_list, 240)
     env_profiles = add_env_profiles(env_profile_list)
     print("New env profiles added to database:")
     print(len(env_profiles))
