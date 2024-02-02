@@ -292,11 +292,11 @@ f. Oliver Thompson left the conversation"""
 
 
 def _return_fixed_model_version(
-    model_name: Literal["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"]
+    model_name: Literal["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo-finetuned"]
 ) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
-        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8mbqt3SF",
+        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
         "gpt-4": "gpt-4-0613",
         "gpt-4-turbo": "gpt-4-1106-preview",
     }[model_name]
@@ -315,7 +315,7 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     match model_name:
-        case "gpt-3.5-turbo" | "gpt-4" | "gpt-4-turbo":
+        case "gpt-3.5-turbo" | "gpt-4" | "gpt-4-turbo" | "gpt-3.5-turbo-finetuned":
             human_message_prompt = HumanMessagePromptTemplate(
                 prompt=PromptTemplate(
                     template=template,
@@ -783,7 +783,6 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
-
         return await agenerate(
             model_name=model_name,
             template=template,
