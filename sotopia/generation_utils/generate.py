@@ -292,7 +292,9 @@ f. Oliver Thompson left the conversation"""
 
 
 def _return_fixed_model_version(
-    model_name: Literal["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo-finetuned"]
+    model_name: Literal[
+        "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo-finetuned"
+    ]
 ) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
