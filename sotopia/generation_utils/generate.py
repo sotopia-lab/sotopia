@@ -7,7 +7,6 @@ from beartype import beartype
 from beartype.typing import Type
 from langchain.callbacks import StdOutCallbackHandler
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
@@ -20,6 +19,7 @@ from langchain.schema import (
     HumanMessage,
     OutputParserException,
 )
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, validator
 from rich import print
 from rich.logging import RichHandler

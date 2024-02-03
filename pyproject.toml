@@ -33,6 +33,7 @@ mypy = "^1.8.0"
 beartype = "^0.14.0"
 torch = "^2.1"
 transformers = "^4.34.0"
+langchain-openai = "^0.0.5"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
