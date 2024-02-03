@@ -9,6 +9,7 @@ packages = [{include = "sotopia"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11, <3.12"
+datasets = "^2.16.1"
 pandas = "^2.1.1"
 lxml = "^4.9.3"
 scipy = "^1.11.3"

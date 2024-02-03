@@ -100,6 +100,20 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 goal=self.goal,
                 script_like=self.script_like,
             )
+            # Temporary fix for mixtral-moe model for incorrect generation format
+            if "Mixtral-8x7B-Instruct-v0.1" in self.model_name:
+                current_agent = self.agent_name
+                if f"{current_agent}:" in action.argument:
+                    print("Fixing Mixtral's generation format")
+                    action.argument = action.argument.replace(
+                        f"{current_agent}: ", ""
+                    )
+                elif f"{current_agent} said:" in action.argument:
+                    print("Fixing Mixtral's generation format")
+                    action.argument = action.argument.replace(
+                        f"{current_agent} said: ", ""
+                    )
+
             return action
 
 
@@ -135,8 +149,6 @@ class ScriptWritingAgent(LLMAgent):
         history = "\n".join(
             f"{y.to_natural_language()}" for y in message_to_compose
         )
-        print("Current agent: ", self.agent_name)
-        print("Composed history: ", history)
 
         action, prompt = await agenerate_script(
             model_name=self.model_name,
@@ -146,14 +158,7 @@ class ScriptWritingAgent(LLMAgent):
             agent_name=self.agent_name,
             single_step=True,
         )
-        # action: tuple[
-        #     list[list[tuple[str, str, Message]]], list[tuple[str, Message]]
-        # ]
         returned_action = cast(AgentAction, action[1][0][1])
-        print("Action: ", returned_action, type(returned_action))
-        # print("Action: ", action)
-        # exit(0)
-
         return returned_action
 
 
