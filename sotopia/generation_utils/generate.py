@@ -50,6 +50,8 @@ LLM_Name = Literal[
     "togethercomputer/llama-2-70b-chat",
     "togethercomputer/mpt-30b-chat",
     "gpt-3.5-turbo",
+    "gpt-3.5-turbo-finetuned",
+    "gpt-3.5-turbo-ft-MF",
     "text-davinci-003",
     "gpt-4",
     "gpt-4-turbo",
@@ -290,11 +292,11 @@ f. Oliver Thompson left the conversation"""
         return "str"
 
 
-def _return_fixed_model_version(
-    model_name: Literal["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"]
-) -> str:
+def _return_fixed_model_version(model_name: LLM_Name) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
+        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
+        "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
         "gpt-4": "gpt-4-0613",
         "gpt-4-turbo": "gpt-4-1106-preview",
     }[model_name]
@@ -313,7 +315,7 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     match model_name:
-        case "gpt-3.5-turbo" | "gpt-4" | "gpt-4-turbo":
+        case "gpt-3.5-turbo" | "gpt-4" | "gpt-4-turbo" | "gpt-3.5-turbo-finetuned" | "gpt-3.5-turbo-ft-MF":
             human_message_prompt = HumanMessagePromptTemplate(
                 prompt=PromptTemplate(
                     template=template,
@@ -781,7 +783,6 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
-
         return await agenerate(
             model_name=model_name,
             template=template,

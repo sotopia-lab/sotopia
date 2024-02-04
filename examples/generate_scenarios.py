@@ -1,5 +1,7 @@
 import ast
 import asyncio
+import json
+import random
 from typing import Any, cast
 
 import pandas as pd
@@ -7,7 +9,7 @@ import typer
 from experiment_eval import _sample_env_agent_combo_and_push_to_db
 from redis_om import Migrator
 
-from sotopia.database import EnvironmentProfile
+from sotopia.database import EnvAgentComboStorage, EnvironmentProfile
 from sotopia.database.persistent_profile import RelationshipType
 from sotopia.generation_utils import (
     LLM_Name,
@@ -37,11 +39,15 @@ def add_env_profiles(
 def check_existing_envs(
     env_profile: dict[str, Any], existing_envs: pd.DataFrame
 ) -> bool:
-    if (
-        env_profile["scenario"] in existing_envs["scenario"].to_list()
-        and str(env_profile["agent_goals"])
-        in existing_envs["agent_goals"].to_list()
-    ):
+    try:
+        if (
+            env_profile["scenario"] in existing_envs["scenario"].to_list()
+            and str(env_profile["agent_goals"])
+            in existing_envs["agent_goals"].to_list()
+        ):
+            return False
+    except KeyError:
+        print(env_profile)
         return False
     return True
 
@@ -50,7 +56,7 @@ def generate_newenv_profile(
     num: int,
     gen_model: LLM_Name = "gpt-4-turbo",
     temperature: float = 0.5,
-    type: str = "mutual_friend",
+    type: str = "craigslist_bargains",
 ) -> pd.DataFrame:
     env_profile_list = []  # type: ignore
     existing_envs = pd.read_csv(
@@ -67,6 +73,22 @@ def generate_newenv_profile(
                 "age_constraint": "[(18, 80), (18, 80)]",
                 "occupation_constraint": None,
                 "source": "mutual_friend",
+            }
+            if check_existing_envs(env_profile, existing_envs):
+                env_profile_list.append(env_profile)
+    elif type == "craigslist_bargains":
+        while len(env_profile_list) < num:
+            scenario, social_goals = asyncio.run(
+                generate_craigslist_bargains_envs()
+            )
+            env_profile = {
+                "codename": f"craigslist_bargains_{len(env_profile_list)+10}",
+                "scenario": scenario,
+                "agent_goals": social_goals,
+                "relationship": RelationshipType.stranger,
+                "age_constraint": "[(18, 80), (18, 80)]",
+                "occupation_constraint": None,
+                "source": "craigslist_bargains",
             }
             if check_existing_envs(env_profile, existing_envs):
                 env_profile_list.append(env_profile)
@@ -112,6 +134,60 @@ def auto_generate_scenarios(
         assert env_profile.pk is not None
         _sample_env_agent_combo_and_push_to_db(env_profile.pk)
     print("New env-agent combo added to database")
+
+    Migrator().run()
+
+
+@app.command()
+def clean_env_wo_combos() -> None:
+    """
+    Function to clean up env-agent combos in the database
+    """
+    env_agent_combos = list(EnvAgentComboStorage.all_pks())
+    envs_id_in_combos = set(
+        [
+            EnvAgentComboStorage.get(env_agent_combo).env_id
+            for env_agent_combo in env_agent_combos
+        ]
+    )
+    envs = list(EnvironmentProfile.all_pks())
+    for env in envs:
+        if env not in envs_id_in_combos:
+            EnvironmentProfile.delete(env)
+
+
+@app.command()
+def upload_env_profiles(
+    filepath: str = "./data/all_environment_profile.json",
+) -> None:
+    """
+    Function to upload environment profiles from json file
+    The json file format is a direct dump from the database
+    """
+    env_profile_list = []
+    existing_envs = pd.read_csv(
+        "./data/env_profiles_v1.csv"
+    )  # TODO: find a better way to deal with this
+    current_envs = json.load(open(filepath, "r"))
+    for key in current_envs:
+        env_profile = current_envs[key]
+        if env_profile and check_existing_envs(env_profile, existing_envs):
+            del env_profile["pk"]
+            env_profile_list.append(env_profile)
+    env_profiles = add_env_profiles(env_profile_list)
+    print("New env profiles added to database:")
+    print(len(env_profiles))
+
+    count = 0
+    for env_profile in env_profiles:
+        assert env_profile.pk is not None
+        try:
+            _sample_env_agent_combo_and_push_to_db(env_profile.pk)
+            count += 1
+        except:
+            EnvironmentProfile.delete(env_profile.pk)
+            pass
+    print(f"New env-agent combo added to database: {count}")
 
     Migrator().run()
 
