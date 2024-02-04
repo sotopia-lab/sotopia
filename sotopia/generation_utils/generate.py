@@ -292,9 +292,7 @@ f. Oliver Thompson left the conversation"""
         return "str"
 
 
-def _return_fixed_model_version(
-    model_name: LLM_Name
-) -> str:
+def _return_fixed_model_version(model_name: LLM_Name) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
         "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
