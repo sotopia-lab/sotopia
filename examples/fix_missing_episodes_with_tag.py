@@ -145,6 +145,7 @@ def get_combo_model_map(
     bad_gpt4_rewards_count = 0
     bad_combo_count = 0
     bad_lite_mode_count = 0
+    bad_background_count = 0
     episodes_to_delete = []
 
     # iterate through episodes
@@ -181,6 +182,15 @@ def get_combo_model_map(
         #     bad_lite_mode_count += 1
         #     continue
 
+        # check if the background is present
+        # if not "lite" in curr_ep.tag:
+        #     concat_text = "\n".join(rendered_ep[:-2])
+        #     if "'s background" not in concat_text:
+        #         print("Background not found in: ", curr_ep.pk)
+        #         episodes_to_delete.append(curr_ep.pk)
+        #         bad_background_count += 1
+        #         continue
+
         if len(interaction_list) <= 5:
             # bad_rewards_count += 1
             episodes_to_delete.append(curr_ep.pk)
@@ -211,7 +221,8 @@ def get_combo_model_map(
             # episodes_to_delete.append(curr_ep.pk)
 
             bad_combo_count += 1
-    print("Bad lite mode count: ", bad_lite_mode_count)
+    # print("Bad lite mode count: ", bad_lite_mode_count)
+    # print("Bad background count: ", bad_background_count)
     # exit(0)
     print("-" * 20 + "Deleting Bad Combos" + "-" * 20)
     for ep_pk in episodes_to_delete:
