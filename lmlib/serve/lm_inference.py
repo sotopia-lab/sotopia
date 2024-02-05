@@ -56,7 +56,7 @@ def get_gpu_memory(max_gpus: Union[int, None] = None) -> list[float]:
         with torch.cuda.device(gpu_id):
             device = torch.cuda.current_device()
             gpu_properties = torch.cuda.get_device_properties(device)
-            total_memory = gpu_properties.total_memory / (1024**3)  # type: ignore
+            total_memory = gpu_properties.total_memory / (1024**3)
             allocated_memory = torch.cuda.memory_allocated() / (1024**3)
             available_memory = total_memory - allocated_memory
             gpu_memory.append(available_memory)
