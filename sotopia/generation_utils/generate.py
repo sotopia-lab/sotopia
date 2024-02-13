@@ -7,7 +7,6 @@ from beartype import beartype
 from beartype.typing import Type
 from langchain.callbacks import StdOutCallbackHandler
 from langchain.chains import LLMChain
-from langchain.llms import OpenAI
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -19,6 +18,8 @@ from langchain.schema import (
     HumanMessage,
     OutputParserException,
 )
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_community.llms import OpenAI
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, validator
 from rich import print
@@ -58,6 +59,8 @@ LLM_Name = Literal[
     "human",
     "redis",
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "together_ai/togethercomputer/llama-2-7b-chat",
+    "together_ai/togethercomputer/falcon-7b-instruct",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
@@ -314,54 +317,32 @@ def obtain_chain(
     """
     Using langchain to sample profiles for participants
     """
-    match model_name:
-        case "gpt-3.5-turbo" | "gpt-4" | "gpt-4-turbo" | "gpt-3.5-turbo-finetuned" | "gpt-3.5-turbo-ft-MF":
-            human_message_prompt = HumanMessagePromptTemplate(
-                prompt=PromptTemplate(
-                    template=template,
-                    input_variables=input_variables,
-                )
-            )
-            chat_prompt_template = ChatPromptTemplate.from_messages(
-                [human_message_prompt]
-            )
-            chat = ChatOpenAI(
-                model_name=_return_fixed_model_version(model_name),
-                temperature=temperature,
-                max_retries=max_retries,
-            )
-            chain = LLMChain(llm=chat, prompt=chat_prompt_template)
-            return chain
-        case "text-davinci-003":
-            # Warning: no interactive mode for 003
-            llm = OpenAI(
-                model_name=model_name,
-                temperature=temperature,
-                max_retries=max_retries,
-            )
-            prompt = PromptTemplate(
-                input_variables=input_variables,
-                template=template,
-            )
-            chain = LLMChain(llm=llm, prompt=prompt)
-            return chain
-        case "togethercomputer/llama-2-7b-chat" | "togethercomputer/llama-2-70b-chat" | "togethercomputer/mpt-30b-chat" | "mistralai/Mixtral-8x7B-Instruct-v0.1":
-            human_message_prompt = HumanMessagePromptTemplate(
-                prompt=PromptTemplate(
-                    template=template,
-                    input_variables=input_variables,
-                )
-            )
-            chat_prompt_template = ChatPromptTemplate.from_messages(
-                [human_message_prompt]
-            )
-            together_llm = Llama2(
-                model_name=model_name, temperature=temperature
-            )
-            chain = LLMChain(llm=together_llm, prompt=chat_prompt_template)
-            return chain
-        case _:
-            raise ValueError(f"Invalid model name: {model_name}")
+    human_message_prompt = HumanMessagePromptTemplate(
+        prompt=PromptTemplate(
+            template=template,
+            input_variables=input_variables,
+        )
+    )
+    chat_prompt_template = ChatPromptTemplate.from_messages(
+        [human_message_prompt]
+    )
+    chat = ChatLiteLLM(
+        model=model_name, temperature=temperature, max_retries=max_retries
+    )
+    chain = LLMChain(llm=chat, prompt=chat_prompt_template)
+    return chain
+    # case "text-davinci-003":
+    #     # Warning: no interactive mode for 003
+    #     llm = OpenAI(
+    #         model_name=model_name,
+    #         temperature=temperature,
+    #         max_retries=max_retries,
+    #     )
+    #     prompt = PromptTemplate(
+    #         input_variables=input_variables,
+    #         template=template,
+    #     )
+    #     chain = LLMChain(llm=llm, prompt=prompt)
 
 
 @beartype
