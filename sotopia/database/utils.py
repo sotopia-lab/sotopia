@@ -1,7 +1,10 @@
 import json
+
 import pandas as pd
+
 from .logs import EpisodeLog
 from .persistent_profile import AgentProfile, EnvironmentProfile
+
 
 def _map_gender_to_adj(gender: str) -> str:
     gender_to_adj = {
@@ -14,9 +17,15 @@ def _map_gender_to_adj(gender: str) -> str:
     else:
         return ""
 
+
 def get_rewards_from_episode(episode: EpisodeLog) -> list[dict[str, float]]:
-    assert len(episode.rewards)==2 and (not isinstance(episode.rewards[0], float)) and (not isinstance(episode.rewards[1], float))
+    assert (
+        len(episode.rewards) == 2
+        and (not isinstance(episode.rewards[0], float))
+        and (not isinstance(episode.rewards[1], float))
+    )
     return [episode.rewards[0][1], episode.rewards[1][1]]
+
 
 def get_scenario_from_episode(episode: EpisodeLog) -> str:
     """Get the scenario from the episode.
@@ -58,7 +67,10 @@ def get_agents_background_from_episode(episode: EpisodeLog) -> dict[str, str]:
         for profile in agents
     }
 
-def get_social_goals_from_episode(epsidoes: list[EpisodeLog]) -> list[dict[str, str]]:
+
+def get_social_goals_from_episode(
+    epsidoes: list[EpisodeLog],
+) -> list[dict[str, str]]:
     """Obtain social goals from episodes.
 
     Args:
@@ -81,7 +93,10 @@ def get_social_goals_from_episode(epsidoes: list[EpisodeLog]) -> list[dict[str, 
         social_goals.append(agent_goals)
     return social_goals
 
-def get_social_interactions_from_episode(epsidoes: list[EpisodeLog]) -> list[str]:
+
+def get_social_interactions_from_episode(
+    epsidoes: list[EpisodeLog],
+) -> list[str]:
     """Obtain pure social interactions from episodes.
     Args:
         epsidoes (list[EpisodeLog]): List of episodes.
@@ -123,8 +138,12 @@ def episodes_to_csv(
     """
     data = {
         "episode_id": [episode.pk for episode in episodes],
-        "scenario": [get_scenario_from_episode(episode) for episode in episodes],
-        "codename": [get_codename_from_episode(episode) for episode in episodes],
+        "scenario": [
+            get_scenario_from_episode(episode) for episode in episodes
+        ],
+        "codename": [
+            get_codename_from_episode(episode) for episode in episodes
+        ],
         "agents_background": [
             get_agents_background_from_episode(episode) for episode in episodes
         ],
@@ -150,7 +169,9 @@ def episodes_to_json(
                 "episode_id": episode.pk,
                 "scenario": get_scenario_from_episode(episode),
                 "codename": get_codename_from_episode(episode),
-                "agents_background": get_agents_background_from_episode(episode),
+                "agents_background": get_agents_background_from_episode(
+                    episode
+                ),
                 "social_goals": get_social_goals_from_episode([episode]),
                 "social_interactions": get_social_interactions_from_episode(
                     [episode]

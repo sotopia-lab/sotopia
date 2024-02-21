@@ -7,8 +7,12 @@ from .persistent_profile import (
     RelationshipProfile,
     RelationshipType,
 )
-from .utils import episodes_to_csv, episodes_to_json, get_rewards_from_episode
 from .session_transaction import MessageTransaction, SessionTransaction
+from .utils import (
+    episodes_to_csv,
+    episodes_to_json,
+    get_rewards_from_episode,
+)
 from .waiting_room import MatchingInWaitingRoom
 
 __all__ = [
@@ -26,5 +30,5 @@ __all__ = [
     "MatchingInWaitingRoom",
     "episodes_to_csv",
     "episodes_to_json",
-    "get_rewards_from_episodes"
+    "get_rewards_from_episodes",
 ]
