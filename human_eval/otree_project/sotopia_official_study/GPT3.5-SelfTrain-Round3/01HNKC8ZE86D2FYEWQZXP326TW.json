@@ -1,0 +1,11 @@
+{
+    "pk": "01HNKC8ZE86D2FYEWQZXP326TW",
+    "environment": "01H7VFHN5WVC5HKKVBHZBA553R",
+    "tag": "init-selftrain-round-3-filtered-5e_checkpoint_improve-0_epoch-18_gpt-3.5-turbo_test",
+    "models": [
+        "gpt-4",
+        "custom_model",
+        "gpt-3.5-turbo"
+    ],
+    "rewards_prompt": "Prompt after formatting:\nHere is the context of this interaction:\nScenario: Two friends are playing a video game together\nParticipants: Samuel Anderson and Ethan Johnson\nSamuel Anderson's background: Samuel Anderson is a 29-year-old male software developer. He/him pronouns. Samuel Anderson can cook very well. Personality and values description: Samuel Anderson, though somewhat impulsive and free-spirited, values enjoyment. His decision-making is often spontaneous, staying within familiar boundaries. Samuel's secrets: He was once a competitive figure skater.\nEthan Johnson's background: Ethan Johnson is a 34-year-old male chef. He/him pronouns. Ethan Johnson is famous for cooking Italian food. Personality and values description: Ethan Johnson, a creative yet somewhat reserved individual, values power and fairness. He likes to analyse situations before deciding. Ethan's secrets: He is a closeted romance novel author.\nSamuel Anderson's goal: Win the game (Extra information: you just need five more minutes to accomplish your goal in the game)\nEthan Johnson's goal: Stop the game because it's too late (Extra information: you feel tired and need to go to bed early but don't want to upset your friend)\nTurn #1\nSamuel Anderson said: \"let's do this for five more minutes, Ethan!\"\nTurn #2\nEthan Johnson said: \"Alright, just five more minutes, Samuel. But after that, I really need to call it a night. I'm feeling exhausted.\"\nTurn #3\nSamuel Anderson said: \"let's keep playing for five more minutes, Ethan! This is getting interesting!\"\nTurn #4\nEthan Johnson [non-verbal communication] yawn and stretch\nTurn #5\nSamuel Anderson said: \"let's keep this going for five more minutes, Ethan! It's so engaging!\"\nTurn #6\nEthan Johnson [non-verbal communication] yawn and stretch\nTurn #7\nSamuel Anderson said: \"let's do this for five more minutes, Ethan!\"\nTurn #8\nEthan Johnson left the conversation,"
+}

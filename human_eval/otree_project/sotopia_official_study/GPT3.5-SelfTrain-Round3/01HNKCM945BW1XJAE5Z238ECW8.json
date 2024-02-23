@@ -1,0 +1,11 @@
+{
+    "pk": "01HNKCM945BW1XJAE5Z238ECW8",
+    "environment": "01H7VFHN7WJK7VWVRZZTQ6DX9T",
+    "tag": "init-selftrain-round-3-filtered-5e_checkpoint_improve-0_epoch-18_gpt-3.5-turbo_test",
+    "models": [
+        "gpt-4",
+        "custom_model",
+        "gpt-3.5-turbo"
+    ],
+    "rewards_prompt": "Prompt after formatting:\nHere is the context of this interaction:\nScenario: Two friends are discussing their plans to go on a weekend trip\nParticipants: Samuel Anderson and Noah Davis\nSamuel Anderson's background: Samuel Anderson is a 29-year-old male software developer. He/him pronouns. Samuel Anderson can cook very well. Personality and values description: Samuel Anderson, though somewhat impulsive and free-spirited, values enjoyment. His decision-making is often spontaneous, staying within familiar boundaries. Samuel's secrets: He was once a competitive figure skater.\nNoah Davis's background: Noah Davis is a 40-year-old male coach. He/him pronouns. Noah Davis has a swimming pool. Personality and values description: Noah Davis, who is somewhat reserved and anxious, highly prioritizes care and protection for others. He is cautious when making decisions. Noah's secrets: He has a secret identity as a stand-up comedian.\nSamuel Anderson's goal: Convince the friend to join the trip (Extra information: the trip will be more fun with more people, and you can share the expenses. Hint: you can provide some material benefits to persuade your friend to join.)\nNoah Davis's goal: Decline the invitation to join the trip without upsetting the friend (Extra information: you had other plans for the weekend.)\nTurn #1\nSamuel Anderson said: \"Let's make it even more fun with more people! And we can share the expenses. What do you think?\"\nTurn #2\nNoah Davis said: \"Hey Samuel, I appreciate the invitation to join the trip, but I actually have some other plans for the weekend. I'm sorry I won't be able to make it. I'm sure you'll have a great time though!\"\nTurn #3\nSamuel Anderson said: \"I understand, Noah. It'd still be great if you could make it next time though! More people = more fun. Think about it!!\"\nTurn #4,"
+}
