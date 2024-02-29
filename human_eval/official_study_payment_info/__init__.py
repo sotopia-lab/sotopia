@@ -1,4 +1,5 @@
-from otree.api import *
+from otree.api import BaseConstants, BaseSubsession, BaseGroup, BasePlayer, Page
+from typing import Dict
 
 
 
@@ -30,7 +31,7 @@ class Player(BasePlayer):
 # PAGES
 class PaymentInfo(Page):
     @staticmethod
-    def vars_for_template(player: Player):
+    def vars_for_template(player: Player) -> Dict[str, str]:
         participant = player.participant
         return dict(redemption_code=participant.label or participant.code)
 

@@ -1,50 +1,44 @@
-from otree.api import *
+from otree.api import BaseConstants, BaseSubsession, BaseGroup, BasePlayer, Page, models, widgets, BaseConstants # type: ignore
 import os
 import json
 import re
-import random
-from collections import defaultdict
+from typing import List, Tuple, Dict, Optional, Any
 
-def read_json_files():
-    directory = './sotopia_pilot_study/pilot_study'
 
-    json_files = [f for f in os.listdir(directory) if f.endswith('.json')]
-    all_json_data = []
+def read_json_files() -> List[Tuple[str, str]]:
+    directory: str = './sotopia_pilot_study/pilot_study'
+    json_files: List[str] = [f for f in os.listdir(directory) if f.endswith('.json')]
+    all_json_data: List[Tuple[str, str]] = []
 
     for file in json_files:
-        file_path = os.path.join(directory, file)
+        file_path: str = os.path.join(directory, file)
         with open(file_path, 'r') as json_file:
-            data = json.load(json_file)
+            data: Dict[str, Any] = json.load(json_file)
             all_json_data.append((data['pk'], data['rewards_prompt']))
     return all_json_data
 
-
-def find_names(convo_text):
-    match = re.search(r'Participants: ([A-Z][a-z]+ [A-Z][a-z]+) and ([A-Z][a-z]+ [A-Z][a-z]+)', convo_text)
+def find_names(convo_text: str) -> Tuple[Optional[str], Optional[str]]:
+    pattern = r'Participants: ([A-Z][a-z]+(?:[ \'\-][A-Z][a-z]*)*) and ([A-Z][a-z]+(?:[ \'\-][A-Z][a-z]*)*)'
+    match = re.search(pattern, convo_text)
     return (match.group(1), match.group(2)) if match else (None, None)
 
 
-def parse_scenario(text):
+def parse_scenario(text: str) -> Optional[str]:
     pattern = r"Scenario: (.*?)\n"
     scenario_match = re.search(pattern, text, re.DOTALL)
-    scenario = scenario_match.group(1).strip() if scenario_match else "No scenario found."
-    return scenario
+    return scenario_match.group(1).strip() if scenario_match else "No scenario found."
 
 
-def parse_social_goal(text, name):
+def parse_social_goal(text: str, name: Optional[str]) -> str:
     goal_pattern = rf"{name}'s goal: (.*?)\n"
     goal_match = re.search(goal_pattern, text, re.DOTALL)
-    goal = goal_match.group(1).strip() if goal_match else f"No goal found for {name}."
-    return goal
+    return goal_match.group(1).strip() if goal_match else f"No goal found for {name}."
 
 
-def parse_personal_info(text, name):
+def parse_personal_info(text: str, name: Optional[str]) -> Dict[str, str]:
     if not name:
         raise Exception("name field is None")
     
-    # TODO very important
-    # before the secret of the first person
-    # it would have two whitespace
     text = text.replace('  ', ' ')
     pattern = (
         rf"{name}'s background: {name} is a (\d+)-year-old (.*?)\. (.*?) pronouns\."
@@ -65,25 +59,22 @@ def parse_personal_info(text, name):
     raise Exception(f"No information found for {name}.")
 
 
-def parse_conversation(convo_text, names):
-    # Split the conversation into turns
+def parse_conversation(convo_text: str, names: Tuple[Optional[str], Optional[str]]) -> List[Dict[str, str]]:
     convo_text = convo_text.replace('left the conversation,', 'left the conversation.')
-    turns = re.split(r'Turn #\d+\n', convo_text)
-    parsed_conversation = []
+    turns = re.split(r'Turn #\d+[:\n]', convo_text)
+    parsed_conversation: List[Dict[str, str]] = []
 
     for turn in turns:
-        # Extract speaker and their dialogue
         for name in names:
-            if name in turn:
+            if name and name in turn:
                 dialogue = turn.split(':', 1)[1].strip() if ':' in turn else turn
                 parsed_conversation.append({"speaker": name, "dialogue": dialogue})
                 break
-    return parsed_conversation[1:]
+    return parsed_conversation[1:]  # Skip the first empty string from split
 
-
-raw_dataset = read_json_files()
-processed_dataset = []
-pks = []
+raw_dataset: List[Tuple[str, str]] = read_json_files()
+processed_dataset: List[Dict[str, Any]] = []
+pks: List[str] = []
 
 for data in raw_dataset:
     try:
@@ -107,16 +98,6 @@ for data in raw_dataset:
     except Exception as e:
         print(e, f"; pk: {data[0]}")
 
-'''
-import pandas as pd
-pd_data = {
-    'pk': pks,
-    'processed_data': processed_dataset
-}
-df = pd.DataFrame(pd_data)
-df.to_csv('../pilot_study_data.csv')
-import pdb; pdb.set_trace()
-'''
 
 class C(BaseConstants):
     NAME_IN_URL = 'sotopia_pilot_study'
@@ -125,7 +106,7 @@ class C(BaseConstants):
 
 
 class Subsession(BaseSubsession):
-    def creating_session(self):
+    def creating_session(self) -> None:
         self.session.vars['conversation'] = ['hello', 'world', 'darling']
 
 class Group(BaseGroup):
@@ -133,10 +114,6 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-
-    def add_queue(self):
-        data = json.loads(self.data)
-        processed_dataset.insert(0, data)
 
     pk = models.StringField(
         label='pk',
@@ -291,12 +268,9 @@ class Player(BasePlayer):
 # FUNCTIONS
 # PAGES
 class SotopiaEval(Page):
-    @staticmethod
-    def is_displayed(player):
-        return player.id_in_group == 1
 
     @staticmethod
-    def vars_for_template(player):
+    def vars_for_template(player: Player) -> Dict[str, Any]:
         assert len(processed_dataset) == len(pks)
         player_data = processed_dataset[player.id % len(processed_dataset)]
         player_pk = pks[player.id % len(pks)]
@@ -329,9 +303,10 @@ class SotopiaEval(Page):
             'social_goal_2': social_goal_2,
         }
 
-    def is_displayed(self):
+    @staticmethod
+    def is_displayed(player: Player) -> Any:
         import time
-        participant = self.participant
+        participant = player.participant
         current_time = time.time()
         return current_time < participant.expiry
 
@@ -374,7 +349,7 @@ class SotopiaEvalInstruction(Page):
     form_fields = ['prolific_id']
 
     @staticmethod
-    def before_next_page(player, timeout_happened):
+    def before_next_page(player: Player, timeout_happened: bool) -> None:
         import time
         player.participant.expiry = time.time() + 10
 

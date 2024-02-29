@@ -1,63 +1,55 @@
-from otree.api import *
+from otree.api import BaseConstants, BaseSubsession, BaseGroup, BasePlayer, Page, models, widgets, BaseConstants # type: ignore
 import os
 import json
 import re
 from collections import defaultdict
+from typing import List, Tuple, Dict, Any, Optional, Union, DefaultDict
 import time
 
-avoid_pk_list = []
+avoid_pk_list: List[str] = []
 
-double_pk_list = [
-]
-
-double_pk_list = []
+double_pk_list: List[str] = []
 
 
-def read_json_files():
-    # Initialize a list to store all JSON data
-    all_json_data = []
-    directories = [
+def read_json_files() -> List[Tuple[str, str]]:
+    all_json_data: List[Tuple[str, str]] = []
+    directories: List[str] = [
         './sotopia_official_study/GPT3.5-GPT4'
     ]
 
     for directory in directories:
-        # List all JSON files in the directory
         json_files = [f for f in os.listdir(directory) if f.endswith('.json')]
-        # Loop through the JSON files and read their contents
         for file in json_files:
             file_path = os.path.join(directory, file)
             with open(file_path, 'r') as json_file:
-                data = json.load(json_file)
+                data: Dict[str, Any] = json.load(json_file)
                 if data['pk'] not in avoid_pk_list:
                     all_json_data.append((data['pk'], data['rewards_prompt']))
     return all_json_data
 
 
-def find_names(convo_text):
+def find_names(convo_text: str) -> Tuple[Optional[str], Optional[str]]:
     pattern = r'Participants: ([A-Z][a-z]+(?:[ \'\-][A-Z][a-z]*)*) and ([A-Z][a-z]+(?:[ \'\-][A-Z][a-z]*)*)'
     match = re.search(pattern, convo_text)
     return (match.group(1), match.group(2)) if match else (None, None)
 
 
-def parse_scenario(text):
+def parse_scenario(text: str) -> Optional[str]:
     pattern = r"Scenario: (.*?)\n"
     scenario_match = re.search(pattern, text, re.DOTALL)
-    scenario = scenario_match.group(1).strip() if scenario_match else "No scenario found."
-    return scenario
+    return scenario_match.group(1).strip() if scenario_match else "No scenario found."
 
 
-def parse_social_goal(text, name):
+def parse_social_goal(text: str, name: Optional[str]) -> str:
     goal_pattern = rf"{name}'s goal: (.*?)\n"
     goal_match = re.search(goal_pattern, text, re.DOTALL)
-    goal = goal_match.group(1).strip() if goal_match else f"No goal found for {name}."
-    return goal
+    return goal_match.group(1).strip() if goal_match else f"No goal found for {name}."
 
 
-def parse_personal_info(text, name):
+def parse_personal_info(text: str, name: Optional[str]) -> Dict[str, str]:
     if not name:
         raise Exception("name field is None")
     
-    # TODO very important, before the secret of the first person, it would have two whitespace
     text = text.replace('  ', ' ')
     pattern = (
         rf"{name}'s background: {name} is a (\d+)-year-old (.*?)\. (.*?) pronouns\."
@@ -78,26 +70,24 @@ def parse_personal_info(text, name):
     raise Exception(f"No information found for {name}.")
 
 
-def parse_conversation(convo_text, names):
+def parse_conversation(convo_text: str, names: Tuple[Optional[str], Optional[str]]) -> List[Dict[str, str]]:
     convo_text = convo_text.replace('left the conversation,', 'left the conversation.')
-    # Split the conversation into turns
     turns = re.split(r'Turn #\d+[:\n]', convo_text)
-    parsed_conversation = []
+    parsed_conversation: List[Dict[str, str]] = []
 
     for turn in turns:
-        # Extract speaker and their dialogue
         for name in names:
-            if name in turn:
+            if name and name in turn:
                 dialogue = turn.split(':', 1)[1].strip() if ':' in turn else turn
                 parsed_conversation.append({"speaker": name, "dialogue": dialogue})
                 break
-    return parsed_conversation[1:]
+    return parsed_conversation[1:]  # Skip the first empty string from split
 
 
-raw_dataset = read_json_files()
-processed_dataset = []
-player_annotated_data = defaultdict(list)
-pks = []
+raw_dataset: List[Tuple[str, str]] = read_json_files()
+processed_dataset: List[Dict[str, Any]] = []
+player_annotated_data: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
+pks: List[str] = []
 
 
 for data in raw_dataset:
@@ -122,27 +112,29 @@ for data in raw_dataset:
         print(e, f"; pk: {data[0]}")
 
 class C(BaseConstants):
-    NAME_IN_URL = 'sotopia_official_study'
-    PLAYERS_PER_GROUP = None
-    NUM_ROUNDS = 1
+    NAME_IN_URL: str = 'sotopia_official_study'
+    PLAYERS_PER_GROUP: None = None
+    NUM_ROUNDS: int = 1
 
 
 class Subsession(BaseSubsession):
-    def creating_session(self):
+    def creating_session(self) -> None:
         self.session.vars['conversation'] = ['hello', 'world', 'darling']
+
 
 class Group(BaseGroup):
     pass
 
-skip_flag = False
-data_queue = defaultdict(list)
+
+data_queue: Dict[str, List[str]] = defaultdict(list)
+
 class Player(BasePlayer):
 
-    def pop_queue(self):
+    def pop_queue(self) -> None:
         assert self.prolific_id in data_queue[self.pk]
         data_queue[self.pk].remove(self.prolific_id)
 
-    def push_queue(self):
+    def push_queue(self) -> Tuple[str, str, str]:
         for pk in pks:
             #if self.prolific_id not in data_queue[pk] and ((len(data_queue[pk]) < 1 and pk not in double_pk_list) or (len(data_queue[pk]) < 2 and pk in double_pk_list)):
             if self.prolific_id not in data_queue[pk] and len(data_queue[pk]) < 2:
@@ -313,7 +305,7 @@ class Player(BasePlayer):
 class SotopiaEval(Page):
 
     @staticmethod
-    def vars_for_template(player):
+    def vars_for_template(player: Player) -> Dict[str, Any]:
         assert len(processed_dataset) == len(pks)
         data = json.loads(player.data)
         for d in data['parsed_conversation']:
@@ -342,14 +334,15 @@ class SotopiaEval(Page):
         }
 
     @staticmethod
-    def is_displayed(player):
+    def is_displayed(player: Player) -> Any:
         if player.skip_eval == 'yes':
             return False
         participant = player.participant
         current_time = time.time()
         return current_time < participant.expiry
-    
-    def before_next_page(player, timeout_happened):
+
+    @staticmethod
+    def before_next_page(player: Player, timeout_happened: bool) -> None:
         if timeout_happened:
             print('timeout before next page')
             print('length for current data: {}'.format(len(processed_dataset)))
@@ -397,7 +390,7 @@ class SotopiaEvalInstruction(Page):
     form_fields = ['prolific_id']
 
     @staticmethod
-    def before_next_page(player, timeout_happened):
+    def before_next_page(player: Player, timeout_happened: bool) -> None:
         player.data, player.pk, player.skip_eval = player.push_queue()
         print(data_queue)
         player.participant.expiry = time.time() + 10

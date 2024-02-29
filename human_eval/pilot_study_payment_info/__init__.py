@@ -1,6 +1,5 @@
-from otree.api import *
-
-
+from otree.api import BaseConstants, BaseSubsession, BaseGroup, BasePlayer, Page
+from typing import Dict
 
 doc = """
 This application provides a webpage instructing participants how to get paid.
@@ -9,9 +8,9 @@ Examples are given for the lab and Amazon Mechanical Turk (AMT).
 
 
 class C(BaseConstants):
-    NAME_IN_URL = 'pilot_study_payment_info'
-    PLAYERS_PER_GROUP = None
-    NUM_ROUNDS = 1
+    NAME_IN_URL: str = 'pilot_study_payment_info'
+    PLAYERS_PER_GROUP: None = None
+    NUM_ROUNDS: int = 1
 
 
 class Subsession(BaseSubsession):
@@ -26,13 +25,13 @@ class Player(BasePlayer):
     pass
 
 
-# FUNCTIONS
 # PAGES
 class PaymentInfo(Page):
     @staticmethod
-    def vars_for_template(player: Player):
+    def vars_for_template(player: Player) -> Dict[str, str]:
         participant = player.participant
-        return dict(redemption_code=participant.label or participant.code)
+        redemption_code: str = participant.label or participant.code  # Assuming both label and code are strings.
+        return dict(redemption_code=redemption_code)
 
 
 page_sequence = [PaymentInfo]
