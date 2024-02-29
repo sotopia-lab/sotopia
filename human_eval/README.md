@@ -1,4 +1,4 @@
-# Human Evaluation for Sotopia-$\pi$
+# Human Evaluation for Sotopia Social Conversation
 
 To conduct highly customized human evaluation experiments for Sotopia-$\pi$, we utilize **Prolific** platform to get high-quality annotators and utilize **oTree** to build the full-stack evaluation system.
 
@@ -91,4 +91,3 @@ To release on Prolific, we need to get a release link that annotators can direct
 Secondly, we just put the release link into the Prolific project setting.
 
 ![prolific_release](figs/prolific_release.png)
-
