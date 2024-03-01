@@ -295,7 +295,7 @@ f. Oliver Thompson left the conversation"""
         return "str"
 
 
-def _return_fixed_model_version(model_name: LLM_Name) -> str:
+def _return_fixed_model_version(model_name: str) -> str:
     return {
         "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
         "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
@@ -308,7 +308,7 @@ def _return_fixed_model_version(model_name: LLM_Name) -> str:
 @gin.configurable
 @beartype
 def obtain_chain(
-    model_name: LLM_Name,
+    model_name: str,
     template: str,
     input_variables: list[str],
     temperature: float = 0.7,
@@ -317,32 +317,23 @@ def obtain_chain(
     """
     Using langchain to sample profiles for participants
     """
+    model_name = _return_fixed_model_version(model_name)
+    chat = ChatLiteLLM(
+        model=model_name,
+        temperature=temperature,
+        max_tokens=3072,  # tweak as needed
+        max_retries=max_retries,
+    )
     human_message_prompt = HumanMessagePromptTemplate(
         prompt=PromptTemplate(
-            template=template,
-            input_variables=input_variables,
+            template=template, input_variables=input_variables
         )
     )
     chat_prompt_template = ChatPromptTemplate.from_messages(
         [human_message_prompt]
     )
-    chat = ChatLiteLLM(
-        model=model_name, temperature=temperature, max_retries=max_retries
-    )
     chain = LLMChain(llm=chat, prompt=chat_prompt_template)
     return chain
-    # case "text-davinci-003":
-    #     # Warning: no interactive mode for 003
-    #     llm = OpenAI(
-    #         model_name=model_name,
-    #         temperature=temperature,
-    #         max_retries=max_retries,
-    #     )
-    #     prompt = PromptTemplate(
-    #         input_variables=input_variables,
-    #         template=template,
-    #     )
-    #     chain = LLMChain(llm=llm, prompt=prompt)
 
 
 @beartype
@@ -350,7 +341,7 @@ def format_bad_output_for_script(
     ill_formed_output: str,
     format_instructions: str,
     agents: list[str],
-    model_name: LLM_Name = "gpt-3.5-turbo",
+    model_name: str = "gpt-3.5-turbo",
 ) -> str:
     template = """
     Given the string that can not be parsed by a parser, reformat it to a string that can be parsed by the parser which uses the following format instructions. Do not add or delete any information.
@@ -384,7 +375,7 @@ def format_bad_output_for_script(
 def format_bad_output(
     ill_formed_output: str,
     format_instructions: str,
-    model_name: LLM_Name = "gpt-3.5-turbo",
+    model_name: str = "gpt-3.5-turbo",
 ) -> str:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
@@ -410,7 +401,7 @@ def format_bad_output(
 
 @beartype
 def generate(
-    model_name: LLM_Name,
+    model_name: str,
     template: str,
     input_values: dict[str, str],
     output_parser: BaseOutputParser[OutputType],
@@ -455,7 +446,7 @@ def generate(
 @gin.configurable
 @beartype
 async def agenerate(
-    model_name: LLM_Name,
+    model_name: str,
     template: str,
     input_values: dict[str, str],
     output_parser: BaseOutputParser[OutputType],
@@ -501,7 +492,7 @@ async def agenerate(
 # deprecated function
 @beartype
 def generate_episode(
-    model_name: LLM_Name,
+    model_name: str,
     participants: str = "Jack (a greedy person), Rose",
     topic: str = "lawsuit",
     extra_info: str = "",
@@ -530,7 +521,7 @@ def generate_episode(
 @gin.configurable
 @beartype
 async def agenerate_env_profile(
-    model_name: LLM_Name,
+    model_name: str,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
     temperature: float = 0.7,
@@ -558,7 +549,7 @@ async def agenerate_env_profile(
 
 @beartype
 async def agenerate_relationship_profile(
-    model_name: LLM_Name,
+    model_name: str,
     agents_profiles: list[str],
 ) -> tuple[RelationshipProfile, str]:
     """
@@ -583,7 +574,7 @@ async def agenerate_relationship_profile(
 
 @beartype
 async def agenerate_enviroment_profile(
-    model_name: LLM_Name,
+    model_name: str,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
 ) -> tuple[EnvironmentProfile, str]:
@@ -609,7 +600,7 @@ async def agenerate_enviroment_profile(
 
 @beartype
 def fill_in_background(
-    model_name: LLM_Name,
+    model_name: str,
     partial_background: ScriptBackground,
 ) -> ScriptBackground:
     """
@@ -631,7 +622,7 @@ def fill_in_background(
 
 @beartype
 def generate_action(
-    model_name: LLM_Name,
+    model_name: str,
     history: str,
     turn_number: int,
     action_types: list[ActionType],
@@ -672,7 +663,7 @@ def generate_action(
 
 @beartype
 def generate_action_speak(
-    model_name: LLM_Name,
+    model_name: str,
     history: str,
     turn_number: int,
     action_types: list[ActionType],
@@ -718,7 +709,7 @@ def generate_action_speak(
 @gin.configurable
 @beartype
 async def agenerate_action(
-    model_name: LLM_Name,
+    model_name: str,
     history: str,
     turn_number: int,
     action_types: list[ActionType],
@@ -783,7 +774,7 @@ async def agenerate_action(
 @gin.configurable
 @beartype
 async def agenerate_script(
-    model_name: LLM_Name,
+    model_name: str,
     background: ScriptBackground,
     temperature: float = 0.7,
     agent_names: list[str] = [],
@@ -873,9 +864,7 @@ def process_history(
 
 
 @beartype
-def generate_init_profile(
-    model_name: LLM_Name, basic_info: dict[str, str]
-) -> str:
+def generate_init_profile(model_name: str, basic_info: dict[str, str]) -> str:
     """
     Using langchain to generate the background
     """
@@ -913,7 +902,7 @@ def generate_init_profile(
 
 
 @beartype
-def convert_narratives(model_name: LLM_Name, narrative: str, text: str) -> str:
+def convert_narratives(model_name: str, narrative: str, text: str) -> str:
     if narrative == "first":
         return generate(
             model_name=model_name,
@@ -937,7 +926,7 @@ def convert_narratives(model_name: LLM_Name, narrative: str, text: str) -> str:
 
 
 @beartype
-def generate_goal(model_name: LLM_Name, background: str) -> str:
+def generate_goal(model_name: str, background: str) -> str:
     """
     Using langchain to generate the background
     """

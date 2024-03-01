@@ -3,7 +3,6 @@ import os
 from typing import Callable
 
 from sotopia.generation_utils.generate import (
-    LLM_Name,
     convert_narratives,
     generate_init_profile,
 )
@@ -70,7 +69,7 @@ def generate_background_conversation(
         background_dict = json.loads(background.json())
         json.dump(background_dict, f, indent=4)
 
-    model_names: dict[str, LLM_Name] = {
+    model_names: dict[str, str] = {
         "env": "gpt-3.5-turbo",
         "agent2": "gpt-3.5-turbo",
         "agent1": "gpt-4",
