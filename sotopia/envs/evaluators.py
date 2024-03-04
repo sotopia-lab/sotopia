@@ -427,34 +427,24 @@ def unweighted_aggregate_evaluate(
     ):
         log.debug(f"[green] The conversation is terminated. {response}")
     return ScriptEnvironmentResponse(
-        terminated=(
-            environment_responses[0]["terminated"]
-            if "terminated" in environment_responses[0]
-            else False
-        ),
+        terminated=environment_responses[0]["terminated"]
+        if "terminated" in environment_responses[0]
+        else False,
         p1_rate=(
-            (
-                (
-                    agent_1_responses[0]["overall_score"]
-                    if "overall_score" in agent_1_responses[0]
-                    else 0
-                ),
-                agent_1_responses[0],
-            )
-            if agent_1_responses != ({}, "")
-            else None
-        ),
+            agent_1_responses[0]["overall_score"]
+            if "overall_score" in agent_1_responses[0]
+            else 0,
+            agent_1_responses[0],
+        )
+        if agent_1_responses != ({}, "")
+        else None,
         p2_rate=(
-            (
-                (
-                    agent_2_responses[0]["overall_score"]
-                    if "overall_score" in agent_2_responses[0]
-                    else 0
-                ),
-                agent_2_responses[0],
-            )
-            if agent_2_responses != ({}, "")
-            else None
-        ),
+            agent_2_responses[0]["overall_score"]
+            if "overall_score" in agent_2_responses[0]
+            else 0,
+            agent_2_responses[0],
+        )
+        if agent_2_responses != ({}, "")
+        else None,
         comments=comments,
     )
