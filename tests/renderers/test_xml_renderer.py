@@ -92,6 +92,8 @@ def test_renderer_in_env() -> None:
         obs["John"].last_turn == "Here is the context of this interaction:\n"
         "Scenario: test\n"
         "Participants: John and Jane\n"
+        "John's background: John Doe is a 0-year-old  .  pronouns.  Personality and values description:  John's secrets: \n"
+        "Jane's background: Unknown\n"
         "John's goal: agent_1's goal\n"
         "Jane's goal: Unknown"
     )
