@@ -22,7 +22,7 @@ double_pk_list: List[str] = []
 
 def read_json_files() -> List[Tuple[str, str]]:
     all_json_data: List[Tuple[str, str]] = []
-    directories: List[str] = ["./sotopia_official_study/GPT3.5-GPT4"]
+    directories: List[str] = ["./sotopia_official_study/example_data_directory"]
 
     for directory in directories:
         json_files = [f for f in os.listdir(directory) if f.endswith(".json")]
