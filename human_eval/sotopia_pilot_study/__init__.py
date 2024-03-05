@@ -15,7 +15,7 @@ from otree.api import (  # type: ignore
 
 
 def read_json_files() -> List[Tuple[str, str]]:
-    directory: str = "./sotopia_pilot_study/pilot_study"
+    directory: str = "./sotopia_pilot_study/pilot_study_data"
     json_files: List[str] = [
         f for f in os.listdir(directory) if f.endswith(".json")
     ]
