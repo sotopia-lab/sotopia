@@ -11,20 +11,20 @@ The important files for the otree project is described as:
 ```
 human_eval/
 ├─ official_study_payment_info/ # for annotator payment checking page
-│  ├─ __init__.py # payment information
-│  ├─ PaymentInfo.html # payment HTML page
+│   ─ __init__.py # payment information
+│   ─ PaymentInfo.html # payment HTML page
 ├─ pilot_study_payment_info/ # for annotator payment checking page
-│  ├─ __init__.py # payment information
-│  ├─ PaymentInfo.html # payment HTML page
+│   ─ __init__.py # payment information
+│   ─ PaymentInfo.html # payment HTML page
 ├─ sotopia_official_study/ # for annotator instruction and answering pages
-│  ├─ __init__.py # data point distribution logic and data processing logic
-│  ├─ SotopiaEval.html # annotator filling answer page
-│  ├─ SotopiaEvalInstruction.html # annotator task instruction page
+│   ─ __init__.py # data point distribution logic and data processing logic
+│   ─ SotopiaEval.html # annotator filling answer page
+│   ─ SotopiaEvalInstruction.html # annotator task instruction page
 ├─ sotopia_pilot_study/ # for annotator instruction and answering pages
-│  ├─ __init__.py # data point distribution logic and data processing logic
-│  ├─ SotopiaEval.html # annotator filling answer page
-│  ├─ SotopiaEvalInstruction.html # annotator task instruction page
-
+    ─ __init__.py # data point distribution logic and data processing logic
+    ─ SotopiaEval.html # annotator filling answer page
+    ─ SotopiaEvalInstruction.html # annotator task instruction page
+...
 ```
 
 ## Local Machine Development
