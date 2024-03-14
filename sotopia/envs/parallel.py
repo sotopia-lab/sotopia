@@ -23,7 +23,6 @@ from sotopia.database.persistent_profile import (
     AgentProfile,
     RelationshipType,
 )
-from sotopia.generation_utils import LLM_Name
 from sotopia.messages import (
     ActionType,
     AgentAction,
@@ -152,7 +151,7 @@ class ParallelSotopiaEnv(
         action_order: Literal[
             "simutaneous", "round-robin", "random"
         ] = "simutaneous",
-        model_name: LLM_Name = "gpt-3.5-turbo",
+        model_name: str = "gpt-3.5-turbo",
         evaluators: list[Evaluator] = [],
         terminal_evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,
@@ -163,7 +162,7 @@ class ParallelSotopiaEnv(
         Args:
             available_action_types (set[ActionType], optional): The action types that are available to the agents. Defaults to set(["none", "speak", "non-verbal communication", "action"]).
             action_order (Literal["simutaneous", "round-robin", "random"], optional): The order in which the agents take actions. Defaults to "simutaneous".
-            model_name (LLM_Name, optional): The name of the language model to use. Defaults to "gpt-3.5-turbo".
+            model_name (str, optional): The name of the language model to use. Defaults to "gpt-3.5-turbo".
         """
         super().__init__()
         self.model_name = model_name

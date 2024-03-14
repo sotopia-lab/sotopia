@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field, validator
 from sotopia.generation_utils.generate import (
     EnvResponsePydanticOutputParser,
     ListOfIntOutputParser,
-    LLM_Name,
     agenerate,
     generate,
 )
@@ -248,7 +247,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
 class ReachGoalLLMEvaluator(Evaluator):
     @beartype
     def __init__(
-        self, model_name: LLM_Name, response_format: str = "basic"
+        self, model_name: str, response_format: str = "basic"
     ) -> None:
         self.model_name = model_name
         self.prompt = ""
@@ -279,9 +278,11 @@ class ReachGoalLLMEvaluator(Evaluator):
             ]
             history = "\n".join(
                 [
-                    f"{x} {y.to_natural_language()}"
-                    if x != "Environment"
-                    else y.to_natural_language()
+                    (
+                        f"{x} {y.to_natural_language()}"
+                        if x != "Environment"
+                        else y.to_natural_language()
+                    )
                     for x, y in messages_filtered
                 ]
             )
@@ -290,7 +291,9 @@ class ReachGoalLLMEvaluator(Evaluator):
         )
 
         try:
-            response: EnvResponsePlus | EnvResponse  # fix type error from langchain 0.0.264. we don't need this line for langchain 0.0.263
+            response: (
+                EnvResponsePlus | EnvResponse
+            )  # fix type error from langchain 0.0.264. we don't need this line for langchain 0.0.263
             response, prompt = await agenerate(
                 model_name=self.model_name,
                 template="""{history},
