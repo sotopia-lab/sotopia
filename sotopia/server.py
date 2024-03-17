@@ -317,7 +317,7 @@ async def run_async_server(
     if env_agent_combo_list:
         assert (
             type(sampler) is BaseSampler
-        ), "No sampler should be used when `env_agent_combo_list` is empty"
+        ), "No sampler should be used when `env_agent_combo_list` is not empty"
         env_agent_combo_iter = iter(env_agent_combo_list)
     else:
         env_agent_combo_iter = sampler.sample(
