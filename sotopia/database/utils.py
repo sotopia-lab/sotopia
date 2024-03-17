@@ -4,7 +4,17 @@ import pandas as pd
 
 from .logs import EpisodeLog
 from .persistent_profile import AgentProfile, EnvironmentProfile
+from pydantic import ConstrainedList, conlist, root_validator
+from redis_om import HashModel, JsonModel
+from redis_om.model.model import Field
 
+class TwoAgentEpisodeWithScenarioBackgroundGoals(JsonModel):
+    episode_id: str = Field(index=True)
+    scenario: str = Field(index=True)
+    codename: str = Field(index=True)
+    agents_background: dict[str, str] = Field(index=True)
+    social_goals: dict[str, str] = Field(index=True)
+    social_interactions: str = Field(index=True)
 
 def _map_gender_to_adj(gender: str) -> str:
     gender_to_adj = {
@@ -68,63 +78,42 @@ def get_agents_background_from_episode(episode: EpisodeLog) -> dict[str, str]:
     }
 
 
-def get_social_goals_from_episode(
-    epsidoes: list[EpisodeLog],
-) -> list[dict[str, str]]:
-    """Obtain social goals from episodes.
-
-    Args:
-        epsidoes (list[EpisodeLog]): List of episodes.
-
-    Returns:
-        list[dict[str, str]]: List of social goals with agent names as the index.
-    """
-    social_goals = []
-    for episode in epsidoes:
-        agents = [AgentProfile.get(agent) for agent in episode.agents]
-        agent_names = [
-            agent.first_name + " " + agent.last_name for agent in agents
-        ]
-        environment = EnvironmentProfile.get(episode.environment)
-        agent_goals = {
-            agent_names[0]: environment.agent_goals[0],
-            agent_names[1]: environment.agent_goals[1],
-        }
-        social_goals.append(agent_goals)
-    return social_goals
+def get_agent_name_to_social_goal_from_episode(
+    episode: EpisodeLog,
+) -> dict[str, str]:
+    agents = [AgentProfile.get(agent) for agent in episode.agents]
+    agent_names = [
+        agent.first_name + " " + agent.last_name for agent in agents
+    ]
+    environment = EnvironmentProfile.get(episode.environment)
+    agent_goals = {
+        agent_names[0]: environment.agent_goals[0],
+        agent_names[1]: environment.agent_goals[1],
+    }
+    return agent_goals
 
 
 def get_social_interactions_from_episode(
-    epsidoes: list[EpisodeLog],
-) -> list[str]:
-    """Obtain pure social interactions from episodes.
-    Args:
-        epsidoes (list[EpisodeLog]): List of episodes.
-    Returns:
-        list[str]: List of social interactions.
-    """
-    social_interactions = []
-    for episode in epsidoes:
-        assert isinstance(episode.tag, str)
-        list_of_social_interactions = episode.render_for_humans()[1]
-        if len(list_of_social_interactions) < 3:
-            continue
-        if "script" in episode.tag.split("_"):
+    episode: EpisodeLog,
+) -> str:
+    assert isinstance(episode.tag, str)
+    list_of_social_interactions = episode.render_for_humans()[1]
+    if len(list_of_social_interactions) < 3:
+        return ""
+    if "script" in episode.tag.split("_"):
+        overall_social_interaction = list_of_social_interactions[1:-3]
+    else:
+        overall_social_interaction = list_of_social_interactions[0:-3]
+        # only get the sentence after "Conversation Starts:\n\n"
+        starter_msg_list = overall_social_interaction[0].split(
+            "Conversation Starts:\n\n"
+        )
+        if len(starter_msg_list) < 3:
             overall_social_interaction = list_of_social_interactions[1:-3]
+            # raise ValueError("The starter message is not in the expected format")
         else:
-            overall_social_interaction = list_of_social_interactions[0:-3]
-            # only get the sentence after "Conversation Starts:\n\n"
-            starter_msg_list = overall_social_interaction[0].split(
-                "Conversation Starts:\n\n"
-            )
-            if len(starter_msg_list) < 3:
-                overall_social_interaction = list_of_social_interactions[1:-3]
-                # raise ValueError("The starter message is not in the expected format")
-            else:
-                overall_social_interaction[0] = starter_msg_list[-1]
-
-        social_interactions.append("\n\n".join(overall_social_interaction))
-    return social_interactions
+            overall_social_interaction[0] = starter_msg_list[-1]
+    return  "\n\n".join(overall_social_interaction)
 
 
 def episodes_to_csv(
@@ -147,8 +136,12 @@ def episodes_to_csv(
         "agents_background": [
             get_agents_background_from_episode(episode) for episode in episodes
         ],
-        "social_goals": get_social_goals_from_episode(episodes),
-        "social_interactions": get_social_interactions_from_episode(episodes),
+        "social_goals": [
+            get_agent_name_to_social_goal_from_episode(episode) for episode in episodes
+        ],
+        "social_interactions": [
+            get_social_interactions_from_episode(episode) for episode in episodes
+        ]
     }
     df = pd.DataFrame(data)
     df.to_csv(filepath, index=False)
@@ -165,17 +158,13 @@ def episodes_to_json(
     """
     with open(filepath, "w") as f:
         for episode in episodes:
-            data = {
-                "episode_id": episode.pk,
-                "scenario": get_scenario_from_episode(episode),
-                "codename": get_codename_from_episode(episode),
-                "agents_background": get_agents_background_from_episode(
-                    episode
-                ),
-                "social_goals": get_social_goals_from_episode([episode]),
-                "social_interactions": get_social_interactions_from_episode(
-                    [episode]
-                ),
-            }
-            json.dump(data, f)
+            data = TwoAgentEpisodeWithScenarioBackgroundGoals(
+                episode_id=episode.pk,
+                scenario=get_scenario_from_episode(episode),
+                codename=get_codename_from_episode(episode),
+                agents_background=get_agents_background_from_episode(episode),
+                social_goals=get_agent_name_to_social_goal_from_episode(episode),
+                social_interactions=get_social_interactions_from_episode(episode),
+            )
+            json.dump(dict(data), f)
             f.write("\n")
