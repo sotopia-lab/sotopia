@@ -1,12 +1,13 @@
 import json
 
 import pandas as pd
-
-from .logs import EpisodeLog
-from .persistent_profile import AgentProfile, EnvironmentProfile
 from pydantic import ConstrainedList, conlist, root_validator
 from redis_om import HashModel, JsonModel
 from redis_om.model.model import Field
+
+from .logs import EpisodeLog
+from .persistent_profile import AgentProfile, EnvironmentProfile
+
 
 class TwoAgentEpisodeWithScenarioBackgroundGoals(JsonModel):
     episode_id: str = Field(index=True)
@@ -15,6 +16,7 @@ class TwoAgentEpisodeWithScenarioBackgroundGoals(JsonModel):
     agents_background: dict[str, str] = Field(index=True)
     social_goals: dict[str, str] = Field(index=True)
     social_interactions: str = Field(index=True)
+
 
 def _map_gender_to_adj(gender: str) -> str:
     gender_to_adj = {
@@ -113,7 +115,7 @@ def get_social_interactions_from_episode(
             # raise ValueError("The starter message is not in the expected format")
         else:
             overall_social_interaction[0] = starter_msg_list[-1]
-    return  "\n\n".join(overall_social_interaction)
+    return "\n\n".join(overall_social_interaction)
 
 
 def episodes_to_csv(
@@ -137,11 +139,13 @@ def episodes_to_csv(
             get_agents_background_from_episode(episode) for episode in episodes
         ],
         "social_goals": [
-            get_agent_name_to_social_goal_from_episode(episode) for episode in episodes
+            get_agent_name_to_social_goal_from_episode(episode)
+            for episode in episodes
         ],
         "social_interactions": [
-            get_social_interactions_from_episode(episode) for episode in episodes
-        ]
+            get_social_interactions_from_episode(episode)
+            for episode in episodes
+        ],
     }
     df = pd.DataFrame(data)
     df.to_csv(filepath, index=False)
@@ -163,8 +167,12 @@ def episodes_to_json(
                 scenario=get_scenario_from_episode(episode),
                 codename=get_codename_from_episode(episode),
                 agents_background=get_agents_background_from_episode(episode),
-                social_goals=get_agent_name_to_social_goal_from_episode(episode),
-                social_interactions=get_social_interactions_from_episode(episode),
+                social_goals=get_agent_name_to_social_goal_from_episode(
+                    episode
+                ),
+                social_interactions=get_social_interactions_from_episode(
+                    episode
+                ),
             )
             json.dump(dict(data), f)
             f.write("\n")

@@ -53,6 +53,7 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[
     AgentProfile.delete("tmppk_agent2")
     EpisodeLog.delete("tmppk_episode_log")
 
+
 def create_dummy_episode_log() -> EpisodeLog:
     episode = EpisodeLog(
         environment="env",
@@ -102,7 +103,7 @@ def create_dummy_episode_log() -> EpisodeLog:
         reasoning="",
         pk="tmppk_episode_log",
         rewards_prompt="",
-    ) 
+    )
     return episode
 
 
@@ -141,4 +142,3 @@ def test_create_episode_log(
     agent_profiles, messages_and_rewards = episode_log.render_for_humans()
     assert len(agent_profiles) == 2
     assert len(messages_and_rewards) == 4
-
