@@ -11,11 +11,11 @@ from .persistent_profile import AgentProfile, EnvironmentProfile
 
 class TwoAgentEpisodeWithScenarioBackgroundGoals(JsonModel):
     episode_id: str = Field(index=True)
-    scenario: str = Field(index=True)
+    scenario: str = Field(index=False)
     codename: str = Field(index=True)
-    agents_background: dict[str, str] = Field(index=True)
-    social_goals: dict[str, str] = Field(index=True)
-    social_interactions: str = Field(index=True)
+    agents_background: dict[str, str] = Field(index=False)
+    social_goals: dict[str, str] = Field(index=False)
+    social_interactions: str = Field(index=False)
 
 
 def _map_gender_to_adj(gender: str) -> str:
