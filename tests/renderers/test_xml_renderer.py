@@ -7,18 +7,14 @@ from sotopia.renderers import RenderContext, XMLRenderer
 
 def test_render_non_escaped_str() -> None:
     assert (
-        XMLRenderer()(
-            "<root>'a&b'</root>", RenderContext(viewer="environment")
-        )
+        XMLRenderer()("<root>'a&b'</root>", RenderContext(viewer="environment"))
         == "'a&b'"
     )
 
 
 def test_hanging_tag() -> None:
     assert (
-        XMLRenderer()(
-            "<root><human>ABCD</root>", RenderContext(viewer="environment")
-        )
+        XMLRenderer()("<root><human>ABCD</root>", RenderContext(viewer="environment"))
         == "ABCD"
     )
 

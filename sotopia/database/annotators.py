@@ -1,5 +1,3 @@
-from typing import cast
-
 from pydantic import Field
 from redis_om import JsonModel
 

@@ -1,11 +1,10 @@
 import logging
 import re
-from typing import TypeVar, cast
+from typing import TypeVar
 
 import gin
 from beartype import beartype
 from beartype.typing import Type
-from langchain.callbacks import StdOutCallbackHandler
 from langchain.chains import LLMChain
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
@@ -13,35 +12,21 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
     PromptTemplate,
 )
-from langchain.schema import (
-    BaseOutputParser,
-    HumanMessage,
-    OutputParserException,
-)
+from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_community.llms import OpenAI
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from rich import print
-from rich.logging import RichHandler
 from typing_extensions import Literal
 
 from sotopia.database import EnvironmentProfile, RelationshipProfile
-from sotopia.messages import (
-    ActionType,
-    AgentAction,
-    ScriptBackground,
-    ScriptEnvironmentResponse,
-)
+from sotopia.messages import ActionType, AgentAction, ScriptBackground
 from sotopia.messages.message_classes import (
     ScriptInteraction,
     ScriptInteractionReturnType,
-    SimpleMessage,
 )
 from sotopia.utils import format_docstring
 
 from .langchain_callback_handler import LoggingCallbackHandler
-from .llama2 import Llama2
 
 log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
@@ -70,12 +55,8 @@ class EnvResponse(BaseModel):
     reasoning: str = Field(
         description="first reiterate agents' social goals and then reason about what agents say/do and whether that aligns with their goals."
     )
-    p1_rate: int = Field(
-        description="rating of participant 1, on the scale of 0 to 9"
-    )
-    p2_rate: int = Field(
-        description="rating of participant 2, on the scale of 0 to 9"
-    )
+    p1_rate: int = Field(description="rating of participant 1, on the scale of 0 to 9")
+    p2_rate: int = Field(description="rating of participant 2, on the scale of 0 to 9")
 
 
 class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
@@ -125,9 +106,7 @@ class ListOfIntOutputParser(BaseOutputParser[list[int]]):
                 output = output.split(":")[1]
             result = [int(x) for x in output.split(" ") if x]
             if self.number_of_int and len(result) != self.number_of_int:
-                msg = (
-                    f"Expect {self.number_of_int} integers, got {len(result)}"
-                )
+                msg = f"Expect {self.number_of_int} integers, got {len(result)}"
                 raise OutputParserException(msg)
             if self.range_of_int:
                 for x in result:
@@ -209,9 +188,7 @@ class ScriptOutputParser(BaseOutputParser[ScriptInteractionReturnType]):
         description="The names of the two agents in the conversation"
     )
     background: str = Field(description="The background of the conversation")
-    single_turn: bool = Field(
-        description="Whether the output is a single turn"
-    )
+    single_turn: bool = Field(description="Whether the output is a single turn")
 
     def get_format_instructions(self) -> str:
         if self.single_turn:
@@ -272,18 +249,14 @@ f. Oliver Thompson left the conversation"""
             )
             return parsed_interaction
         except Exception as e:
-            print(
-                f"Exception {e}: the output format is not correct. Reformatting "
-            )
+            print(f"Exception {e}: the output format is not correct. Reformatting ")
             reformat_parsed_result = format_bad_output_for_script(
                 ill_formed_output=output,
                 format_instructions=self.get_format_instructions(),
                 agents=agent_names,
             )
             print("Reformatted output: ", reformat_parsed_result)
-            interaction = ScriptInteraction(
-                interactions=reformat_parsed_result
-            )
+            interaction = ScriptInteraction(interactions=reformat_parsed_result)
             parsed_interaction = interaction.parse(
                 agent_names=agent_names, background=self.background
             )
@@ -325,13 +298,9 @@ def obtain_chain(
         max_retries=max_retries,
     )
     human_message_prompt = HumanMessagePromptTemplate(
-        prompt=PromptTemplate(
-            template=template, input_variables=input_variables
-        )
+        prompt=PromptTemplate(template=template, input_variables=input_variables)
     )
-    chat_prompt_template = ChatPromptTemplate.from_messages(
-        [human_message_prompt]
-    )
+    chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
     chain = LLMChain(llm=chat, prompt=chat_prompt_template)
     return chain
 
@@ -408,10 +377,9 @@ def generate(
     temperature: float = 0.7,
 ) -> OutputType:
     input_variables = re.findall(r"{(.*?)}", template)
-    assert set(input_variables) == set(
-        list(input_values.keys()) + ["format_instructions"]
-    ) or set(input_variables) == set(
-        list(input_values.keys())
+    assert (
+        set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
+        or set(input_variables) == set(list(input_values.keys()))
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
     # process template
     template = format_docstring(template)
@@ -422,9 +390,7 @@ def generate(
         temperature=temperature,
     )
     if "format_instructions" not in input_values:
-        input_values[
-            "format_instructions"
-        ] = output_parser.get_format_instructions()
+        input_values["format_instructions"] = output_parser.get_format_instructions()
     result = chain.predict([logging_handler], **input_values)
     try:
         parsed_result = output_parser.parse(result)
@@ -453,10 +419,9 @@ async def agenerate(
     temperature: float = 0.7,
 ) -> tuple[OutputType, str]:
     input_variables = re.findall(r"{(.*?)}", template)
-    assert set(input_variables) == set(
-        list(input_values.keys()) + ["format_instructions"]
-    ) or set(input_variables) == set(
-        list(input_values.keys())
+    assert (
+        set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
+        or set(input_variables) == set(list(input_values.keys()))
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
     # process template
     template = format_docstring(template)
@@ -467,9 +432,7 @@ async def agenerate(
         temperature=temperature,
     )
     if "format_instructions" not in input_values:
-        input_values[
-            "format_instructions"
-        ] = output_parser.get_format_instructions()
+        input_values["format_instructions"] = output_parser.get_format_instructions()
     result = await chain.apredict([logging_handler], **input_values)
     prompt = logging_handler.retrive_prompt()
     try:
@@ -566,9 +529,7 @@ async def agenerate_relationship_profile(
         input_values=dict(
             agent_profile=agent_profile,
         ),
-        output_parser=PydanticOutputParser(
-            pydantic_object=RelationshipProfile
-        ),
+        output_parser=PydanticOutputParser(pydantic_object=RelationshipProfile),
     )
 
 
@@ -657,7 +618,7 @@ def generate_action(
         )
     except KeyboardInterrupt:
         raise KeyboardInterrupt
-    except:
+    except Exception:
         return AgentAction(action_type="none", argument="")
 
 
@@ -702,7 +663,7 @@ def generate_action_speak(
         return AgentAction(action_type="speak", argument=utterance)
     except KeyboardInterrupt:
         raise KeyboardInterrupt
-    except:
+    except Exception:
         return AgentAction(action_type="none", argument="")
 
 
@@ -767,7 +728,7 @@ async def agenerate_action(
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
         )
-    except:
+    except Exception:
         return AgentAction(action_type="none", argument=""), ""
 
 
@@ -848,7 +809,7 @@ async def agenerate_script(
 
 @beartype
 def process_history(
-    script: ScriptBackground | EnvResponse | dict[str, AgentAction]
+    script: ScriptBackground | EnvResponse | dict[str, AgentAction],
 ) -> str:
     """
     Format the script background

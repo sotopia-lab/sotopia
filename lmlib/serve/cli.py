@@ -1,11 +1,11 @@
 """
 Chat with a model with command line interface.
 """
-import argparse
+
 import os
 import re
 from argparse import Namespace
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List
 
 import transformers
 from prompt_toolkit import PromptSession
@@ -27,9 +27,7 @@ class SimpleChatIO(ChatIO):
     def prompt_for_output(self, role: str) -> None:
         print(f"{role}: ", end="", flush=True)
 
-    def stream_output(
-        self, output_stream: List[Any], skip_echo_len: int
-    ) -> str:
+    def stream_output(self, output_stream: List[Any], skip_echo_len: int) -> str:
         pre = 0
         for outputs in output_stream:
             outputs = outputs[skip_echo_len:].strip()
@@ -67,9 +65,7 @@ class RichChatIO(ChatIO):
     def prompt_for_output(self, role: str) -> None:
         self._console.print(f"[bold]{role}:")
 
-    def stream_output(
-        self, output_stream: List[Any], skip_echo_len: int
-    ) -> Any:
+    def stream_output(self, output_stream: List[Any], skip_echo_len: int) -> Any:
         """Stream output from a role."""
         # TODO(suquark): the console flickers when there is a code block
         #  above it. We need to cut off "live" when a code block is done.

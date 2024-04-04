@@ -16,9 +16,7 @@ from otree.api import (  # type: ignore
 
 def read_json_files() -> List[Tuple[str, str]]:
     directory: str = "./sotopia_pilot_study/pilot_study_data"
-    json_files: List[str] = [
-        f for f in os.listdir(directory) if f.endswith(".json")
-    ]
+    json_files: List[str] = [f for f in os.listdir(directory) if f.endswith(".json")]
     all_json_data: List[Tuple[str, str]] = []
 
     for file in json_files:
@@ -38,21 +36,13 @@ def find_names(convo_text: str) -> Tuple[Optional[str], Optional[str]]:
 def parse_scenario(text: str) -> Optional[str]:
     pattern = r"Scenario: (.*?)\n"
     scenario_match = re.search(pattern, text, re.DOTALL)
-    return (
-        scenario_match.group(1).strip()
-        if scenario_match
-        else "No scenario found."
-    )
+    return scenario_match.group(1).strip() if scenario_match else "No scenario found."
 
 
 def parse_social_goal(text: str, name: Optional[str]) -> str:
     goal_pattern = rf"{name}'s goal: (.*?)\n"
     goal_match = re.search(goal_pattern, text, re.DOTALL)
-    return (
-        goal_match.group(1).strip()
-        if goal_match
-        else f"No goal found for {name}."
-    )
+    return goal_match.group(1).strip() if goal_match else f"No goal found for {name}."
 
 
 def parse_personal_info(text: str, name: Optional[str]) -> Dict[str, str]:
@@ -89,21 +79,15 @@ def parse_personal_info(text: str, name: Optional[str]) -> Dict[str, str]:
 def parse_conversation(
     convo_text: str, names: Tuple[Optional[str], Optional[str]]
 ) -> List[Dict[str, str]]:
-    convo_text = convo_text.replace(
-        "left the conversation,", "left the conversation."
-    )
+    convo_text = convo_text.replace("left the conversation,", "left the conversation.")
     turns = re.split(r"Turn #\d+[:\n]", convo_text)
     parsed_conversation: List[Dict[str, str]] = []
 
     for turn in turns:
         for name in names:
             if name and name in turn:
-                dialogue = (
-                    turn.split(":", 1)[1].strip() if ":" in turn else turn
-                )
-                parsed_conversation.append(
-                    {"speaker": name, "dialogue": dialogue}
-                )
+                dialogue = turn.split(":", 1)[1].strip() if ":" in turn else turn
+                parsed_conversation.append({"speaker": name, "dialogue": dialogue})
                 break
     return parsed_conversation[1:]  # Skip the first empty string from split
 
@@ -120,9 +104,7 @@ for data in raw_dataset:
         personal_info = {
             name: parse_personal_info(rewards_prompt, name) for name in names
         }
-        social_goal = {
-            name: parse_social_goal(rewards_prompt, name) for name in names
-        }
+        social_goal = {name: parse_social_goal(rewards_prompt, name) for name in names}
         parsed_conversation = parse_conversation(rewards_prompt, names)
         scenario = parse_scenario(rewards_prompt)
         processed_data = {
@@ -155,7 +137,6 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-
     pk = models.StringField(
         label="pk",
     )

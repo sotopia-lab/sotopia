@@ -1,13 +1,8 @@
 import asyncio
 import copy
 import itertools
-import json
-import logging
 import random
-import uuid
-from copy import deepcopy
-from pathlib import Path
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal
 
 from beartype import beartype
 from gin import configurable
@@ -26,7 +21,6 @@ from sotopia.database.persistent_profile import (
 from sotopia.messages import (
     ActionType,
     AgentAction,
-    Message,
     MessengerMixin,
     Observation,
     ScriptBackground,
@@ -34,12 +28,7 @@ from sotopia.messages import (
 )
 from sotopia.renderers import RenderContext, XMLRenderer
 
-from .evaluators import (
-    Evaluator,
-    ReachGoalLLMEvaluator,
-    RuleBasedTerminatedEvaluator,
-    unweighted_aggregate_evaluate,
-)
+from .evaluators import Evaluator, unweighted_aggregate_evaluate
 
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
@@ -65,9 +54,7 @@ def _map_gender_to_adj(gender: str) -> str:
         return ""
 
 
-def _agent_profile_to_stranger_self(
-    profile: AgentProfile, agent_id: int
-) -> str:
+def _agent_profile_to_stranger_self(profile: AgentProfile, agent_id: int) -> str:
     return f"<root><p viewer='agent_{agent_id}'>{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p></root>"
 
 
@@ -75,15 +62,11 @@ def _agent_profile_to_name_self(profile: AgentProfile, agent_id: int) -> str:
     return f"{profile.first_name} {profile.last_name} <p viewer='agent_{agent_id}'>is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
 
 
-def _agent_profile_to_aquaintance_self(
-    profile: AgentProfile, agent_id: int
-) -> str:
+def _agent_profile_to_aquaintance_self(profile: AgentProfile, agent_id: int) -> str:
     return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} <p viewer='agent_{agent_id}'>Personality and values description: {profile.personality_and_values} {profile.first_name}'s secrets: {profile.secret}</p>"
 
 
-def _agent_profile_to_friendabove_self(
-    profile: AgentProfile, agent_id: int
-) -> str:
+def _agent_profile_to_friendabove_self(profile: AgentProfile, agent_id: int) -> str:
     return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} <p viewer='agent_{agent_id}'>{profile.first_name}'s secrets: {profile.secret}</p>"
 
 
@@ -96,13 +79,13 @@ def get_bio(
         case RelationshipType.know_by_name:
             return _agent_profile_to_name_self(profile, agent_id=agent_id)
         case RelationshipType.acquaintance:
-            return _agent_profile_to_aquaintance_self(
-                profile, agent_id=agent_id
-            )
-        case RelationshipType.friend | RelationshipType.romantic_relationship | RelationshipType.family_member:
-            return _agent_profile_to_friendabove_self(
-                profile, agent_id=agent_id
-            )
+            return _agent_profile_to_aquaintance_self(profile, agent_id=agent_id)
+        case (
+            RelationshipType.friend
+            | RelationshipType.romantic_relationship
+            | RelationshipType.family_member
+        ):
+            return _agent_profile_to_friendabove_self(profile, agent_id=agent_id)
         case _:
             raise ValueError(f"Unknown relationship {relationship}")
 
@@ -119,9 +102,7 @@ def render_text_for_agent(
 ) -> str:
     return XMLRenderer()(
         raw_text,
-        RenderContext(
-            viewer=f"agent_{agent_id}", tags_to_render=tags_to_render
-        ),
+        RenderContext(viewer=f"agent_{agent_id}", tags_to_render=tags_to_render),
     )
 
 
@@ -140,17 +121,13 @@ def render_text_for_environment(
     )
 
 
-class ParallelSotopiaEnv(
-    ParallelEnv[str, Observation, AgentAction], MessengerMixin
-):
+class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMixin):
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
             ["none", "speak", "non-verbal communication", "action", "leave"]
         ),
-        action_order: Literal[
-            "simutaneous", "round-robin", "random"
-        ] = "simutaneous",
+        action_order: Literal["simutaneous", "round-robin", "random"] = "simutaneous",
         model_name: str = "gpt-3.5-turbo",
         evaluators: list[Evaluator] = [],
         terminal_evaluators: list[Evaluator] = [],
@@ -196,9 +173,7 @@ class ParallelSotopiaEnv(
             try:
                 self.profile = EnvironmentProfile.get(pk=uuid_str)
             except NotFoundError:
-                raise ValueError(
-                    f"Agent with uuid {uuid_str} not found in database"
-                )
+                raise ValueError(f"Agent with uuid {uuid_str} not found in database")
 
     @configurable
     def reset(
@@ -222,17 +197,15 @@ class ParallelSotopiaEnv(
         MessengerMixin.reset_inbox(self)
         assert (
             not options
-            or not ("partial_background_file" in options)
-            and not ("full_background_file" in options)
+            or "partial_background_file" not in options
+            and "full_background_file" not in options
         ), "partial_background_file and full_background_file are not supported anymore"
         if agents is not None:
             assert agents, "agents must be provided"
             assert len(agents) == 2, "Only supporting two agents right now"
             agent_names = list(agents.keys())
             agent_goals = self.profile.agent_goals
-            assert (
-                len(agent_goals) == 2
-            ), "Only supporting two agents right now"
+            assert len(agent_goals) == 2, "Only supporting two agents right now"
 
             raw_background = ScriptBackground(
                 scenario=self.profile.scenario,
@@ -258,12 +231,8 @@ class ParallelSotopiaEnv(
 
             self.background = ScriptBackground(
                 scenario=render_text_for_environment(raw_background.scenario),
-                p1_background=render_text_for_environment(
-                    raw_background.p1_background
-                ),
-                p2_background=render_text_for_environment(
-                    raw_background.p2_background
-                ),
+                p1_background=render_text_for_environment(raw_background.p1_background),
+                p2_background=render_text_for_environment(raw_background.p2_background),
                 p1_goal=render_text_for_environment(raw_background.p1_goal),
                 p2_goal=render_text_for_environment(raw_background.p2_goal),
                 p1_name=raw_background.p1_name,
@@ -281,21 +250,15 @@ class ParallelSotopiaEnv(
             for i in range(self.num_agents):
                 agent_backgrounds.append(
                     ScriptBackground(
-                        scenario=render_text_for_agent(
-                            raw_background.scenario, i
-                        ),
+                        scenario=render_text_for_agent(raw_background.scenario, i),
                         p1_background=render_text_for_agent(
                             raw_background.p1_background, i
                         ),
                         p2_background=render_text_for_agent(
                             raw_background.p2_background, i
                         ),
-                        p1_goal=render_text_for_agent(
-                            raw_background.p1_goal, i
-                        ),
-                        p2_goal=render_text_for_agent(
-                            raw_background.p2_goal, i
-                        ),
+                        p1_goal=render_text_for_agent(raw_background.p1_goal, i),
+                        p2_goal=render_text_for_agent(raw_background.p2_goal, i),
                         p1_name=raw_background.p1_name,
                         p2_name=raw_background.p2_name,
                     )
@@ -322,9 +285,7 @@ class ParallelSotopiaEnv(
         if self.action_order == "round-robin":
             self.action_mask[0] = True
         elif self.action_order == "random":
-            self.action_mask[
-                random.randint(0, len(self.action_mask) - 1)
-            ] = True
+            self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
 
@@ -375,9 +336,7 @@ class ParallelSotopiaEnv(
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(
-                    action_type="none", argument=""
-                )
+                complied_actions[agent] = AgentAction(action_type="none", argument="")
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
@@ -389,9 +348,7 @@ class ParallelSotopiaEnv(
             list(
                 itertools.chain(
                     *(
-                        evaluator(
-                            turn_number=self.turn_number, messages=self.inbox
-                        )
+                        evaluator(turn_number=self.turn_number, messages=self.inbox)
                         for evaluator in self.evaluators
                     )
                 )
@@ -402,9 +359,7 @@ class ParallelSotopiaEnv(
         if self.action_order == "round-robin":
             self.action_mask[self.turn_number % len(self.action_mask)] = True
         elif self.action_order == "random":
-            self.action_mask[
-                random.randint(0, len(self.action_mask) - 1)
-            ] = True
+            self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
@@ -489,9 +444,7 @@ class ParallelSotopiaEnv(
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(
-                    action_type="none", argument=""
-                )
+                complied_actions[agent] = AgentAction(action_type="none", argument="")
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
@@ -543,9 +496,7 @@ class ParallelSotopiaEnv(
         if self.action_order == "round-robin":
             self.action_mask[self.turn_number % len(self.action_mask)] = True
         elif self.action_order == "random":
-            self.action_mask[
-                random.randint(0, len(self.action_mask) - 1)
-            ] = True
+            self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
@@ -560,7 +511,9 @@ class ParallelSotopiaEnv(
             },
         }
         if response.terminated:
-            info["rewards_prompt"] = {"overall_prompt": self.terminal_evaluators[0].prompt}  # type: ignore
+            info["rewards_prompt"] = {
+                "overall_prompt": self.terminal_evaluators[0].prompt
+            }  # type: ignore
 
         return (
             {

@@ -1,14 +1,11 @@
 import pytest
 
-from sotopia.agents import Agents, LLMAgent, ScriptWritingAgent
+from sotopia.agents import Agents, LLMAgent
 from sotopia.database.persistent_profile import (
     AgentProfile,
     EnvironmentProfile,
 )
 from sotopia.envs import ParallelSotopiaEnv
-from sotopia.envs.evaluators import RuleBasedTerminatedEvaluator
-from sotopia.messages import AgentAction, Observation, ScriptBackground
-from sotopia.samplers import UniformSampler
 
 
 @pytest.mark.asyncio

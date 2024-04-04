@@ -7,11 +7,7 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
 )
-from sotopia.messages import (
-    AgentAction,
-    Observation,
-    ScriptEnvironmentResponse,
-)
+from sotopia.messages import AgentAction, Observation
 
 
 def test_rule_based_teminated_evaluator() -> None:
@@ -79,7 +75,7 @@ def test_unweighted_aggregate_evaluate() -> None:
     result = unweighted_aggregate_evaluate([response1, response2, response3])
 
     # Check that the result is correct
-    assert result.terminated == True
+    assert result.terminated is True
     assert isinstance(result.p1_rate, tuple)
     assert isinstance(result.p2_rate, tuple)
     assert result.p1_rate[0] == pytest.approx(0)
@@ -160,9 +156,7 @@ async def test_reach_goal_llm_evaluator_async() -> None:
                 ),
                 (
                     "Alice",
-                    AgentAction(
-                        action_type="speak", argument="Thank you so much!"
-                    ),
+                    AgentAction(action_type="speak", argument="Thank you so much!"),
                 ),
                 (
                     "Bob",

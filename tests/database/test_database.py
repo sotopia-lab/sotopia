@@ -1,4 +1,4 @@
-from typing import Any, Generator, cast
+from typing import Any, Generator
 
 import pytest
 from pydantic.error_wrappers import ValidationError
@@ -43,9 +43,7 @@ def test_create_agent_profile() -> None:
 
 
 @pytest.fixture
-def _test_create_episode_log_setup_and_tear_down() -> Generator[
-    None, None, None
-]:
+def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None]:
     AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
     AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
     yield

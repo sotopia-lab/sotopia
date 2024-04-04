@@ -1,11 +1,10 @@
-from typing import Any, cast
+from typing import Any
 
-from pydantic import ConstrainedList, conlist, root_validator
-from redis_om import HashModel, JsonModel
+from pydantic import root_validator
+from redis_om import JsonModel
 from redis_om.model.model import Field
 
 from sotopia.database.persistent_profile import AgentProfile
-from sotopia.messages import Message
 
 
 class EpisodeLog(JsonModel):
@@ -19,16 +18,14 @@ class EpisodeLog(JsonModel):
     models: list[str] | None = Field(index=True)
     messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
     reasoning: str
-    rewards: list[
-        tuple[float, dict[str, float]] | float
-    ]  # Rewards arranged by turn
+    rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
     rewards_prompt: str
 
     @root_validator
     def agent_number_message_number_reward_number_turn_number_match(
         cls, values: Any
     ) -> Any:
-        agents, _, reasoning, rewards = (
+        agents, _, _reasoning, rewards = (
             values.get("agents"),
             values.get("messages"),
             values.get("reasoning"),
@@ -48,9 +45,7 @@ class EpisodeLog(JsonModel):
             A tuple of (a list of agent_profiles, a list of str): The agent profiles, and the messages and rewards in each turn.
         """
 
-        agent_profiles = [
-            AgentProfile.get(pk=uuid_str) for uuid_str in self.agents
-        ]
+        agent_profiles = [AgentProfile.get(pk=uuid_str) for uuid_str in self.agents]
         messages_and_rewards = []
         for idx, turn in enumerate(self.messages):
             messages_in_this_turn = []
@@ -67,13 +62,9 @@ class EpisodeLog(JsonModel):
                             continue
                         else:
                             if "said:" in message:
-                                messages_in_this_turn.append(
-                                    f"{sender} {message}"
-                                )
+                                messages_in_this_turn.append(f"{sender} {message}")
                             else:
-                                messages_in_this_turn.append(
-                                    f"{sender}: {message}"
-                                )
+                                messages_in_this_turn.append(f"{sender}: {message}")
                     else:
                         messages_in_this_turn.append(message)
             messages_and_rewards.append("\n".join(messages_in_this_turn))
