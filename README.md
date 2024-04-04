@@ -55,9 +55,26 @@ mkdir logs
 ```
 
 ## Easy Sample Server
-You can view an episode demo with default parameters using the following command:
+You can view an episode demo with default parameters with the following:
 ```python
-python -m sotopia_conf.server --gin_file="sotopia_conf/server_conf/server.gin" --gin_file="sotopia_conf/generation_utils_conf/generate.gin"
+import asyncio
+from sotopia.samplers import UniformSampler
+from sotopia.server import run_async_server
+
+asyncio.run(
+    run_async_server(
+        model_dict={
+            "env": "gpt-4",
+            "agent1": "gpt-3.5-turbo",
+            "agent2": "gpt-3.5-turbo",
+        },
+        sampler=UniformSampler(),
+    )
+)
+```
+or run
+```bash
+python examples/minimalist_demo.py
 ```
 
 ## Contribution
