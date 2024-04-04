@@ -5,7 +5,6 @@ from typing import Callable
 from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile
 from sotopia.generation_utils.generate import (
-    LLM_Name,
     agenerate_action,
     agenerate_script,
     generate_action,
@@ -31,7 +30,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         agent_name: str | None = None,
         uuid_str: str | None = None,
         agent_profile: AgentProfile | None = None,
-        model_name: LLM_Name = "gpt-3.5-turbo",
+        model_name: str = "gpt-3.5-turbo",
         script_like: bool = False,
     ) -> None:
         super().__init__(
@@ -126,7 +125,7 @@ class ScriptWritingAgent(LLMAgent):
         agent_name: str | None = None,
         uuid_str: str | None = None,
         agent_profile: AgentProfile | None = None,
-        model_name: LLM_Name = "gpt-3.5-turbo",
+        model_name: str = "gpt-3.5-turbo",
         agent_names: list[str] = [],
         background: ScriptBackground | None = None,
     ) -> None:

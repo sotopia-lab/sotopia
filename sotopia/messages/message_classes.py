@@ -55,13 +55,20 @@ class ScriptBackground(Message):
     p2_goal: str = Field(description="goal of participant 2")
 
     def to_natural_language(self) -> str:
-        if self.p1_background and self.p2_background:
+        if self.p1_background or self.p2_background:
+            p1_background = (
+                self.p1_background if self.p1_background else "Unknown"
+            )
+            p2_background = (
+                self.p2_background if self.p2_background else "Unknown"
+            )
+            # Not using AND, since in stranger relation the background is not visible
             return format_docstring(
                 f"""Here is the context of this interaction:
             Scenario: {self.scenario}
             Participants: {self.p1_name} and {self.p2_name}
-            {self.p1_name}'s background: {self.p1_background}
-            {self.p2_name}'s background: {self.p2_background}
+            {self.p1_name}'s background: {p1_background}
+            {self.p2_name}'s background: {p2_background}
             {self.p1_name}'s goal: {self.p1_goal}
             {self.p2_name}'s goal: {self.p2_goal}
             """
