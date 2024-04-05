@@ -456,7 +456,7 @@ async def arun_one_script(
 
 async def aevaluate_one_episode(
     episode: EpisodeLog,
-    model: LLM_Name = "gpt-4",
+    model: str = "gpt-4",
     tag: str | None = None,
     push_to_db: bool = False,
 ) -> None:
