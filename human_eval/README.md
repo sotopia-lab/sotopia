@@ -7,8 +7,7 @@ To conduct highly customized human evaluation experiments for Sotopia and Sotopi
 - [File Structure](#file-structure)
 - [Local Development](#local-development)
 - [Project Deployment](#project-deployment)
-
-* [Annotator Agreement](#annotator-agreement)
+- [Annotator Agreement](#annotator-agreement)
 
 ## File Structure
 
