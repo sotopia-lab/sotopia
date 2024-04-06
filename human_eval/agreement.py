@@ -172,7 +172,7 @@ if __name__ == "__main__":
 
     # rater2 agrees with rater1 most of the time
     rater2 = np.random.uniform(size=rater1.shape)
-    rater2 = pd.Series((rater2 > 0.1).astype(int) * rater1)
+    rater2 = (rater2 > 0.1).astype(int) * rater1.values
 
     # rater3 should be random
     rater3 = pd.Series(np.random.randint(0, 5, 100))
