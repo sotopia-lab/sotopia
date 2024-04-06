@@ -3,6 +3,10 @@
 
 Large batch size may cause some episodes to be skipped. This is due to the fact that the server may not be able to handle the load. Try reducing the batch size. But you can also use the script in `examples/fix_missing_episodes.py` to fix the missing episodes.
 
+## How to serialize the data saved in the database?
+
+Check out `Episodes_to_CSV/JSON` in the `notebooks/redis_stats.ipynb` notebook.
+
 ## Where I can find the data?
 
 For the full data:

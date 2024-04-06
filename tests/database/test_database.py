@@ -54,30 +54,8 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[
     EpisodeLog.delete("tmppk_episode_log")
 
 
-def test_get_agent_by_name(
-    _test_create_episode_log_setup_and_tear_down: Any,
-) -> None:
-    agent_profile = AgentProfile.find(AgentProfile.first_name == "John").all()
-    assert agent_profile[0].pk == "tmppk_agent1"
-
-
-def test_create_episode_log(
-    _test_create_episode_log_setup_and_tear_down: Any,
-) -> None:
-    try:
-        _ = EpisodeLog(
-            environment="",
-            agents=["", ""],
-            messages=[],
-            rewards=[[0, 0, 0]],
-            reasoning=[""],
-            rewards_prompt="",
-        )
-        assert False
-    except Exception as e:
-        assert isinstance(e, ValidationError)
-
-    episode_log = EpisodeLog(
+def create_dummy_episode_log() -> EpisodeLog:
+    episode = EpisodeLog(
         environment="env",
         agents=["tmppk_agent1", "tmppk_agent2"],
         messages=[
@@ -126,6 +104,33 @@ def test_create_episode_log(
         pk="tmppk_episode_log",
         rewards_prompt="",
     )
+    return episode
+
+
+def test_get_agent_by_name(
+    _test_create_episode_log_setup_and_tear_down: Any,
+) -> None:
+    agent_profile = AgentProfile.find(AgentProfile.first_name == "John").all()
+    assert agent_profile[0].pk == "tmppk_agent1"
+
+
+def test_create_episode_log(
+    _test_create_episode_log_setup_and_tear_down: Any,
+) -> None:
+    try:
+        _ = EpisodeLog(
+            environment="",
+            agents=["", ""],
+            messages=[],
+            rewards=[[0, 0, 0]],
+            reasoning=[""],
+            rewards_prompt="",
+        )
+        assert False
+    except Exception as e:
+        assert isinstance(e, ValidationError)
+
+    episode_log = create_dummy_episode_log()
     episode_log.save()
     assert episode_log.pk == "tmppk_episode_log"
     retrieved_episode_log: EpisodeLog = EpisodeLog.get(episode_log.pk)
