@@ -17,21 +17,27 @@ The important files for the otree project is described as:
 
 ```
 human_eval/
-├─ official_study_payment_info/ # for annotator payment checking page
-│   ─ __init__.py # payment information
-│   ─ PaymentInfo.html # payment HTML page
-├─ pilot_study_payment_info/ # for annotator payment checking page
-│   ─ __init__.py # payment information
-│   ─ PaymentInfo.html # payment HTML page
-├─ sotopia_official_study/ # for annotator instruction and answering pages
-│   ─ __init__.py # data point distribution logic and data processing logic
-│   ─ SotopiaEval.html # annotator filling answer page
-│   ─ SotopiaEvalInstruction.html # annotator task instruction page
-├─ sotopia_pilot_study/ # for annotator instruction and answering pages
-    ─ __init__.py # data point distribution logic and data processing logic
-    ─ SotopiaEval.html # annotator filling answer page
-    ─ SotopiaEvalInstruction.html # annotator task instruction page
-...
+├─ official_study/ # Consolidates all related official study materials
+│  ├─ payment_info/ # Dedicated sub-directory for payment information
+│  │  ├─ __init__.py # Contains payment information logic
+│  │  └─ PaymentInfo.html # HTML page for payment information
+│  ├─ annotator_instructions/ # Contains instructions for annotators
+│  │  └─ SotopiaEvalInstruction.html # Instruction page for the Sotopia evaluation
+│  └─ annotator_interface/ # Contains the interface for annotator tasks
+│     ├─ __init__.py # Data point distribution and processing logic
+│     └─ SotopiaEval.html # Page for annotators to fill in answers
+│
+├─ pilot_study/ # Similar structure with the official study
+│  ├─ payment_info/
+│  │  ├─ __init__.py
+│  │  └─ PaymentInfo.html
+│  ├─ annotator_instructions/
+│  │  └─ SotopiaEvalInstruction.html
+│  └─ annotator_interface/
+│     ├─ __init__.py
+│     └─ SotopiaEval.html
+│
+└─ other
 ```
 
 ## Local Development
