@@ -1,6 +1,14 @@
-# Human Evaluation for Sotopia Social Conversation
+# Human Evaluation for Sotopia
 
-To conduct highly customized human evaluation experiments for Sotopia-$\pi$, we utilize **Prolific** platform to get high-quality annotators and utilize **oTree** to build the full-stack evaluation system.
+To conduct highly customized human evaluation experiments for Sotopia and Sotopia-$\pi$ multi-turn social conversation, we utilize **Prolific** platform to get high-quality annotators and utilize **oTree** to build the full-stack evaluation system.
+
+## Table of Content
+
+- [File Structure](#file-structure)
+- [Local Development](#local-development)
+- [Project Deployment](#project-deployment)
+
+* [Annotator Agreement](#annotator-agreement)
 
 ## File Structure
 
@@ -27,7 +35,7 @@ human_eval/
 ...
 ```
 
-## Local Machine Development
+## Local Development
 
 We can locally launch our otree project based on the following command:
 
@@ -58,7 +66,7 @@ Thirdly, we need to change the environment config var under setting to support r
 
 ![heruko_env_config](figs/heruko_env_config.png)
 
-### Step2. Deploy oTree project via oTree Hub
+#### Step2. Deploy oTree project via oTree Hub
 
 **Step2.1**
 
@@ -78,7 +86,7 @@ Thirdly, after deploying on oTree Hub, we need to reset our database to make sur
 
 Finally, we can get a deployment link similar with https://sotopia-eval-8cd8c447c673.herokuapp.com/demo that is deployed on Heruko server.
 
-### Step3. Release on Prolific
+#### Step3. Release on Prolific
 
 **Step3.1**
 
@@ -91,3 +99,35 @@ To release on Prolific, we need to get a release link that annotators can direct
 Secondly, we just put the release link into the Prolific project setting.
 
 ![prolific_release](figs/prolific_release.png)
+
+## Annotator Agreement
+
+Based on the annotation results, we support scripts in `agreement.py` to calculate inter-annotator agreement for unpaired multi-annotator annotation. This script supports agreement computation based on artifical data for unpaired data annotation with multiple annotator.
+
+In our data annotation case, the annotation are:
+
+```
+data1 annotated by A,B
+data2 annotated by C,D
+data3 annotated by A,D
+data4 annotated by B,E
+```
+
+We support three agreement metrics for such unpaired multi-annotator annotation: 
+
+1. Pairwise agreement
+
+   Pairwise agreement is a straightforward method used to evaluate the level of agreement or consensus among two or more raters (or systems, observers, etc.) when they classify, rate, or make decisions about the same set of items. It is often used in contexts where inter-rater reliability or consensus is important, such as content analysis, medical diagnosis, or any field requiring subjective judgments.
+
+2. Krippendorf's alpha
+
+   Krippendorff's Alpha is a statistical measure designed to assess the reliability of data when multiple raters evaluate a set of items. It is applicable across different levels of measurement scales (nominal, ordinal, interval, and ratio) and can handle missing data, making it versatile across various research contexts. Krippendorff's Alpha can evaluate the agreement among any number of raters and is not limited to two.
+
+3. Randolph's kappa
+
+   Randolph's Kappa, also known as free-marginal kappa, is a statistical measure used to assess the agreement between raters when categorizing items into mutually exclusive categories. It is a variant of Cohen's Kappa, which is another measure of inter-rater reliability. The key difference between Randolph's Kappa and traditional kappa measures is that Randolph's Kappa does not assume a fixed distribution of ratings across categories (i.e., the marginals are free or not predetermined).
+
+4. Fleiss's kappa
+
+   Fleiss' Kappa is an extension of Cohen's Kappa for situations involving three or more raters. It assesses the reliability of agreement among a fixed number of raters when assigning categorical ratings to a number of items. Like Cohen's Kappa, it also accounts for agreement occurring by chance.
+

@@ -192,12 +192,14 @@ if __name__ == "__main__":
     ).round(0)
 
     scores = computeAlpha(longDf, "ratingBinary", groupCol="id")
-    kappa = computeFleissKappa(longDf, "ratingBinary", "id", 2, "randolf")
+    rkappa = computeFleissKappa(longDf, "ratingBinary", "id", 2, "randolf")
+    #fkappa = computeFleissKappa(longDf, "ratingBinary", "id", 2, "fleiss")
     ppa = scores["ppa"]
     alpha = scores["alpha"]
     results = {
         "Pairwise Agreement": round(ppa, 4),
         "Krippendorf's Alpha": round(alpha, 4),
-        "Randolph's Kappa": round(kappa, 4),
+        "Randolph's Kappa": round(rkappa, 4),
+        #"Fleiss' Kappa": round(fkappa, 4),
     }
     print(results)
