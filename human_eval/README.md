@@ -113,7 +113,7 @@ data3 annotated by A,D
 data4 annotated by B,E
 ```
 
-We support three agreement metrics for such unpaired multi-annotator annotation: 
+We support three agreement metrics for such unpaired multi-annotator annotation:
 
 1. Pairwise agreement
 
@@ -130,4 +130,3 @@ We support three agreement metrics for such unpaired multi-annotator annotation:
 4. Fleiss's kappa
 
    Fleiss' Kappa is an extension of Cohen's Kappa for situations involving three or more raters. It assesses the reliability of agreement among a fixed number of raters when assigning categorical ratings to a number of items. Like Cohen's Kappa, it also accounts for agreement occurring by chance.
-
