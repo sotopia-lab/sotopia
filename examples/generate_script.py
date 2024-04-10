@@ -1,8 +1,6 @@
 import asyncio
 import logging
 import os
-import subprocess
-from datetime import datetime
 from logging import FileHandler
 from typing import Any
 
@@ -14,14 +12,8 @@ from rich.logging import RichHandler
 from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 
-from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name, agenerate_script
-from sotopia.messages.message_classes import (
-    AgentAction,
-    Observation,
-    ScriptBackground,
-)
-from sotopia.samplers import EnvAgentCombo, UniformSampler
+from sotopia.messages.message_classes import AgentAction, Observation
+from sotopia.samplers import EnvAgentCombo
 from sotopia.server import arun_one_script, run_async_server
 from sotopia_conf.gin_utils import parse_gin_flags, run
 
@@ -45,7 +37,7 @@ logging.basicConfig(
 
 @gin.configurable
 def single_step(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     tag: str | None = None,
     batch_size: int = 5,
     push_to_db: bool = True,
@@ -111,7 +103,7 @@ def single_step(
 
 @gin.configurable
 def full_freeform(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     tag: str | None = None,
     batch_size: int = 5,
     push_to_db: bool = True,
@@ -186,14 +178,14 @@ def full_freeform(
 def run_async_server_in_batch_script(
     *,
     batch_size: int = 10,
-    model: LLM_Name = "gpt-3.5-turbo",
+    model: str = "gpt-3.5-turbo",
     tag: str | None = None,
     push_to_db: bool = True,
     json_in_script: bool = False,
     generate_in_full: bool = False,
     verbose: bool = False,
 ) -> None:
-    model_names: dict[str, LLM_Name] = {
+    model_names: dict[str, str] = {
         "env": model,
         "agent1": model,
         "agent2": model,

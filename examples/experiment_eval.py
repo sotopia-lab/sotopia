@@ -2,14 +2,12 @@ import asyncio
 import logging
 import os
 import subprocess
-import sys
 from datetime import datetime
 from logging import FileHandler
-from typing import Any, Callable, Generator, Literal, Sequence, cast
+from typing import Any, Generator, cast
 
 import gin
-from absl import app, flags
-from rich import print
+from absl import flags
 from rich.logging import RichHandler
 from tqdm import tqdm
 
@@ -25,8 +23,7 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name
-from sotopia.messages import AgentAction, Message, Observation
+from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import (
     BaseSampler,
     ConstraintBasedSampler,
@@ -71,7 +68,7 @@ assert all(
 def check_existing_episodes(
     env_id: str,
     agent_ids: list[str],
-    models: dict[str, LLM_Name],
+    models: dict[str, str],
     tag: str | None = None,
 ) -> bool:
     if tag:
@@ -112,7 +109,7 @@ def _sample_env_agent_combo_and_push_to_db(env_id: str) -> None:
 
 @gin.configurable
 def _iterate_env_agent_combo_not_in_db(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     env_ids: list[str] = [],
     tag: str | None = None,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
@@ -181,7 +178,7 @@ def _iterate_env_agent_combo_not_in_db(
 def run_async_server_in_batch(
     *,
     batch_size: int = 1,
-    model_names: dict[str, LLM_Name] = {
+    model_names: dict[str, str] = {
         "env": "gpt-4",
         "agent1": "gpt-3.5-turbo",
         "agent2": "gpt-3.5-turbo",
