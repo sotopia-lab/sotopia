@@ -26,7 +26,7 @@ Then you can start your database with:
 sudo docker run -d -e REDIS_ARGS="--requirepass QzmCUD3C3RdsR" --name redis-stack -p 6379:6379 -p 8001:8001 -v /home/ubuntu/redis-data/:/data/ redis/redis-stack:latest
 ```
 
-Redis saves snapshots of the database every few minutes. You can find them in the corresponding folder (for example, `\data\dump.rdb`). Use the `sudo docker cp <container_id>:/data/dump.rdb /tmp` to obtain the snapshot from the container (in this case, the copied data is stored in `/tmp/snap-private-tmp/snap.docker/tmp`).
+Redis saves snapshots of the database every few minutes. You can find them in the corresponding folder (for example, `./data/dump.rdb`). Use the `sudo docker cp <container_id>:/data/dump.rdb /tmp` to obtain the snapshot from the container (in this case, the copied data is stored in `/tmp/snap-private-tmp/snap.docker/tmp`).
 
 When utilizing the database in python code (as introduced in [here](https://github.com/sotopia-lab/sotopia/blob/main/notebooks/redis_stats.ipynb)), make sure you use in the command line:
 
