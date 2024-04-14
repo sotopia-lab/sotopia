@@ -28,12 +28,16 @@ sudo docker run -d -e REDIS_ARGS="--requirepass QzmCUD3C3RdsR" --name redis-stac
 
 Redis saves snapshots of the database every few minutes. You can find them in the corresponding folder (for example, `\data\dump.rdb`). Use the `sudo docker cp <container_id>:/data/dump.rdb /tmp` to obtain the snapshot from the container (in this case, the copied data is stored in `/tmp/snap-private-tmp/snap.docker/tmp`).
 
-When utilizing the database in python (as introduced in [here](https://github.com/sotopia-lab/sotopia/blob/main/notebooks/redis_stats.ipynb)), make sure you use:
-```export REDIS_OM_URL="redis://:QzmCUD3C3RdsR@localhost:6379"``` 
+When utilizing the database in python code (as introduced in [here](https://github.com/sotopia-lab/sotopia/blob/main/notebooks/redis_stats.ipynb)), make sure you use:
+
+```sh
+export REDIS_OM_URL="redis://:QzmCUD3C3RdsR@localhost:6379"
+``` 
 
 instead of 
 
-```os.environ['REDIS_OM_URL'] = "redis://:QzmCUD3C3RdsR@localhost:6379"
+```sh
+os.environ['REDIS_OM_URL'] = "redis://:QzmCUD3C3RdsR@localhost:6379"
 ```
 
 in the file since we need to set a global environment variable that works in `redis_om`.
