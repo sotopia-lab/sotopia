@@ -44,7 +44,7 @@ For some experiments, TogetherAI key is required to run the code. Please set the
 conda env config vars set TOGETHER_API_KEY=your_key
 ```
 
-A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. The `REDIS_OM_URL` need to be set before loading and saving agents:
+A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/docker/) to start a redis-stack server or use an existing server. The `REDIS_OM_URL` need to be set before loading and saving agents:
 ```bash
 conda env config vars set REDIS_OM_URL="redis://user:password@host:port"
 ```
