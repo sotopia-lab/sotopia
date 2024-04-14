@@ -32,7 +32,7 @@ When utilizing the database in python code (as introduced in [here](https://gith
 
 ```sh
 export REDIS_OM_URL="redis://:QzmCUD3C3RdsR@localhost:6379"
-``` 
+```
 
 instead of adding variables in the python code
 
