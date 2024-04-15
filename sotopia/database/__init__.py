@@ -8,9 +8,16 @@ from .persistent_profile import (
     RelationshipType,
 )
 from .serialization import (
+    agentprofiles_to_csv,
+    agentprofiles_to_json,
+    environmentprofiles_to_csv,
+    environmentprofiles_to_json,
     episodes_to_csv,
     episodes_to_json,
     get_rewards_from_episode,
+    jsonl_to_agentprofiles,
+    jsonl_to_environmentprofiles,
+    jsonl_to_episodes,
 )
 from .session_transaction import MessageTransaction, SessionTransaction
 from .waiting_room import MatchingInWaitingRoom
@@ -28,7 +35,14 @@ __all__ = [
     "SessionTransaction",
     "MessageTransaction",
     "MatchingInWaitingRoom",
+    "agentprofiles_to_csv",
+    "agentprofiles_to_json",
+    "environmentprofiles_to_csv",
+    "environmentprofiles_to_json",
     "episodes_to_csv",
     "episodes_to_json",
-    "get_rewards_from_episodes",
+    "jsonl_to_agentprofiles",
+    "jsonl_to_environmentprofiles",
+    "jsonl_to_episodes",
+    "get_rewards_from_episode",
 ]
