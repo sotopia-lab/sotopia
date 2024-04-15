@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from .logs import EpisodeLog
 from .persistent_profile import AgentProfile, EnvironmentProfile
 
+
 class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
     episode_id: str = Field(required=True)
     scenario: str = Field(required=True)
@@ -15,6 +16,7 @@ class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
     social_interactions: str = Field(required=True)
     reasoning: str = Field(required=False)
     rewards: list[dict[str, float]] = Field(required=False)
+
 
 class AgentProfileWithPersonalInformation(BaseModel):
     agent_id: str = Field(required=True)
@@ -32,6 +34,7 @@ class AgentProfileWithPersonalInformation(BaseModel):
     decision_making_style: str = Field(required=True)
     secret: str = Field(required=True)
     mbti: str = Field(required=True)
+
 
 class EnvironmentProfileWithTwoAgentRequirements(BaseModel):
     scenario_id: str = Field(required=True)
@@ -206,8 +209,10 @@ def episodes_to_jsonl(
             json.dump(dict(data), f)
             f.write("\n")
 
+
 def agentprofiles_to_csv(
-    agent_profiles: list[AgentProfile], csv_file_path: str = "agent_profiles.csv"
+    agent_profiles: list[AgentProfile],
+    csv_file_path: str = "agent_profiles.csv",
 ) -> None:
     """Save agent profiles to a csv file.
 
@@ -227,7 +232,8 @@ def agentprofiles_to_csv(
 
 
 def agentprofiles_to_jsonl(
-    agent_profiles: list[AgentProfile], jsonl_file_path: str = "agent_profiles.jsonl"
+    agent_profiles: list[AgentProfile],
+    jsonl_file_path: str = "agent_profiles.jsonl",
 ) -> None:
     """Save agent profiles to a json file.
 
@@ -252,14 +258,15 @@ def agentprofiles_to_jsonl(
                 personality_and_values=profile.personality_and_values,
                 decision_making_style=profile.decision_making_style,
                 secret=profile.secret,
-                mbti=profile.mbti
+                mbti=profile.mbti,
             )
             json.dump(dict(data), f)
             f.write("\n")
-    
+
 
 def environmentprofiles_to_csv(
-    environment_profiles: list[EnvironmentProfile], csv_file_path: str = "environment_profiles.csv"
+    environment_profiles: list[EnvironmentProfile],
+    csv_file_path: str = "environment_profiles.csv",
 ) -> None:
     """Save environment profiles to a csv file.
 
@@ -272,18 +279,29 @@ def environmentprofiles_to_csv(
         "codename": [profile.codename for profile in environment_profiles],
         "source": [profile.source for profile in environment_profiles],
         "scenario": [profile.scenario for profile in environment_profiles],
-        "agent_goals": [profile.agent_goals for profile in environment_profiles],
-        "relationship": [profile.relationship for profile in environment_profiles],
-        "age_constraint": [profile.age_constraint for profile in environment_profiles],
-        "occupation_constraint": [profile.occupation_constraint for profile in environment_profiles],
-        "agent_constraint": [profile.agent_constraint for profile in environment_profiles],
+        "agent_goals": [
+            profile.agent_goals for profile in environment_profiles
+        ],
+        "relationship": [
+            profile.relationship for profile in environment_profiles
+        ],
+        "age_constraint": [
+            profile.age_constraint for profile in environment_profiles
+        ],
+        "occupation_constraint": [
+            profile.occupation_constraint for profile in environment_profiles
+        ],
+        "agent_constraint": [
+            profile.agent_constraint for profile in environment_profiles
+        ],
     }
     df = pd.DataFrame(data)
     df.to_csv(csv_file_path, index=False)
 
 
 def environmentprofiles_to_jsonl(
-    environment_profiles: list[EnvironmentProfile], jsonl_file_path: str = "environment_profiles.jsonl"
+    environment_profiles: list[EnvironmentProfile],
+    jsonl_file_path: str = "environment_profiles.jsonl",
 ) -> None:
     """Save environment profiles to a json file.
 
@@ -302,7 +320,9 @@ def environmentprofiles_to_jsonl(
                 relationship=profile.relationship,
                 age_constraint=profile.age_constraint,
                 occupation_constraint=profile.occupation_constraint,
-                agent_constraint=profile.agent_constraint if profile.agent_constraint else "nan"
+                agent_constraint=profile.agent_constraint
+                if profile.agent_constraint
+                else "nan",
             )
             json.dump(dict(data), f)
             f.write("\n")
@@ -363,6 +383,8 @@ def jsonl_to_environmentprofiles(
     with open(jsonl_file_path, "r") as f:
         for line in f:
             data = json.loads(line)
-            environment_profile = EnvironmentProfileWithTwoAgentRequirements(**data)
+            environment_profile = EnvironmentProfileWithTwoAgentRequirements(
+                **data
+            )
             environment_profiles.append(environment_profile)
     return environment_profiles
