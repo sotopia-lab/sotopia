@@ -4,7 +4,8 @@ import pandas as pd
 from pydantic import BaseModel, Field
 
 from .logs import EpisodeLog
-from .persistent_profile import AgentProfile, EnvironmentProfile
+from .persistent_profile import AgentProfile, EnvironmentProfile, RelationshipProfile
+from .env_agent_combo_storage import EnvAgentComboStorage
 
 
 class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
@@ -37,7 +38,7 @@ class AgentProfileWithPersonalInformation(BaseModel):
 
 
 class EnvironmentProfileWithTwoAgentRequirements(BaseModel):
-    scenario_id: str = Field(required=True)
+    env_id: str = Field(required=True)
     codename: str = Field(required=True)
     source: str = Field(required=True)
     scenario: str = Field(required=True)
@@ -46,6 +47,20 @@ class EnvironmentProfileWithTwoAgentRequirements(BaseModel):
     age_constraint: str = Field(required=True)
     occupation_constraint: str = Field(required=True)
     agent_constraint: str = Field(required=True)
+
+
+class RelationshipProfileBetweenTwoAgents(BaseModel):
+    relationship_id: str = Field(required=True)
+    agent1_id: str = Field(required=True)
+    agent2_id: str = Field(required=True)
+    relationship: str = Field(required=True)
+    background_story: str = Field(required=True)
+
+
+class EnvAgentComboStorageWithID(BaseModel):
+    combo_id: str = Field(default_factory=lambda: "", index=True)
+    env_id: str = Field(default_factory=lambda: "", index=True)
+    agent_ids: list[str] = Field(default_factory=lambda: [], index=True)
 
 
 def _map_gender_to_adj(gender: str) -> str:
@@ -275,7 +290,7 @@ def environmentprofiles_to_csv(
         filepath (str, optional): The file path. Defaults to "environment_profiles.csv".
     """
     data = {
-        "scenario_id": [profile.pk for profile in environment_profiles],
+        "env_id": [profile.pk for profile in environment_profiles],
         "codename": [profile.codename for profile in environment_profiles],
         "source": [profile.source for profile in environment_profiles],
         "scenario": [profile.scenario for profile in environment_profiles],
@@ -312,7 +327,7 @@ def environmentprofiles_to_jsonl(
     with open(jsonl_file_path, "w") as f:
         for profile in environment_profiles:
             data = EnvironmentProfileWithTwoAgentRequirements(
-                scenario_id=profile.pk,
+                env_id=profile.pk,
                 codename=profile.codename,
                 source=profile.source,
                 scenario=profile.scenario,
@@ -322,7 +337,92 @@ def environmentprofiles_to_jsonl(
                 occupation_constraint=profile.occupation_constraint,
                 agent_constraint=profile.agent_constraint
                 if profile.agent_constraint
-                else "nan",
+                else "none",
+            )
+            json.dump(dict(data), f)
+            f.write("\n")
+
+
+def relationshipprofiles_to_csv(
+    relationship_profiles: list[RelationshipProfile],
+    csv_file_path: str = "relationship_profiles.csv",
+) -> None:
+    """Save relationship profiles to a csv file.
+
+    Args:
+        relationship_profiles (list[RelationshipProfile]): List of relationship profiles.
+        filepath (str, optional): The file path. Defaults to "relationship_profiles.csv".
+    """
+    data = {
+        "relationship_id": [profile.pk for profile in relationship_profiles],
+        "agent1_id": [profile.agent_1_id for profile in relationship_profiles],
+        "agent2_id": [profile.agent_2_id for profile in relationship_profiles],
+        "relationship": [profile.relationship for profile in relationship_profiles],
+        "background_story": [
+            profile.background_story for profile in relationship_profiles
+        ],
+    }
+    df = pd.DataFrame(data)
+    df.to_csv(csv_file_path, index=False)
+
+
+def envagnetcombostorage_to_csv(
+    env_agent_combo_storages: list[EnvAgentComboStorage],
+    csv_file_path: str = "env_agent_combo_storages.csv",
+) -> None:
+    """Save environment-agent combo storages to a csv file.
+
+    Args:
+        env_agent_combo_storages (list[EnvAgentComboStorage]): List of environment-agent combo storages.
+        filepath (str, optional): The file path. Defaults to "env_agent_combo_storages.csv".
+    """
+    data = {
+        "combo_id": [storage.pk for storage in env_agent_combo_storages],
+        "env_id": [storage.env_id for storage in env_agent_combo_storages],
+        "agent_ids": [storage.agent_ids for storage in env_agent_combo_storages],
+    }
+    df = pd.DataFrame(data)
+    df.to_csv(csv_file_path, index=False)
+
+
+def relationshipprofiles_to_jsonl(
+    relationship_profiles: list[RelationshipProfile],
+    jsonl_file_path: str = "relationship_profiles.jsonl",
+) -> None:
+    """Save relationship profiles to a json file.
+
+    Args:
+        relationship_profiles (list[RelationshipProfile]): List of relationship profiles.
+        filepath (str, optional): The file path. Defaults to "relationship_profiles.json".
+    """
+    with open(jsonl_file_path, "w") as f:
+        for profile in relationship_profiles:
+            data = RelationshipProfileBetweenTwoAgents(
+                relationship_id=profile.pk,
+                agent1_id=profile.agent_1_id,
+                agent2_id=profile.agent_2_id,
+                relationship=profile.relationship,
+                background_story=profile.background_story,
+            )
+            json.dump(dict(data), f)
+            f.write("\n")
+
+def envagnetcombostorage_to_jsonl(
+    env_agent_combo_storages: list[EnvAgentComboStorage],
+    jsonl_file_path: str = "env_agent_combo_storages.jsonl",
+) -> None:
+    """Save environment-agent combo storages to a json file.
+
+    Args:
+        env_agent_combo_storages (list[EnvAgentComboStorage]): List of environment-agent combo storages.
+        filepath (str, optional): The file path. Defaults to "env_agent_combo_storages.json".
+    """
+    with open(jsonl_file_path, "w") as f:
+        for storage in env_agent_combo_storages:
+            data = EnvAgentComboStorageWithID(
+                combo_id=storage.pk,
+                env_id=storage.env_id,
+                agent_ids=storage.agent_ids,
             )
             json.dump(dict(data), f)
             f.write("\n")
@@ -388,3 +488,41 @@ def jsonl_to_environmentprofiles(
             )
             environment_profiles.append(environment_profile)
     return environment_profiles
+
+def jsonl_to_relationshipprofiles(
+    jsonl_file_path: str,
+) -> list[RelationshipProfileBetweenTwoAgents]:
+    """Load relationship profiles from a jsonl file.
+
+    Args:
+        jsonl_file_path (str): The file path.
+
+    Returns:
+        list[RelationshipProfileBetweenTwoAgents]: List of relationship profiles.
+    """
+    relationship_profiles = []
+    with open(jsonl_file_path, "r") as f:
+        for line in f:
+            data = json.loads(line)
+            relationship_profile = RelationshipProfileBetweenTwoAgents(**data)
+            relationship_profiles.append(relationship_profile)
+    return relationship_profiles
+
+def jsonl_to_envagnetcombostorage(
+    jsonl_file_path: str,
+) -> list[EnvAgentComboStorageWithID]:
+    """Load environment-agent combo storages from a jsonl file.
+
+    Args:
+        jsonl_file_path (str): The file path.
+
+    Returns:
+        list[EnvAgentComboStorageWithID]: List of environment-agent combo storages.
+    """
+    env_agent_combo_storages = []
+    with open(jsonl_file_path, "r") as f:
+        for line in f:
+            data = json.loads(line)
+            env_agent_combo_storage = EnvAgentComboStorageWithID(**data)
+            env_agent_combo_storages.append(env_agent_combo_storage)
+    return env_agent_combo_storages

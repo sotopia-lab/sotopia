@@ -14,10 +14,16 @@ from .serialization import (
     environmentprofiles_to_jsonl,
     episodes_to_csv,
     episodes_to_jsonl,
+    relationshipprofiles_to_csv,
+    relationshipprofiles_to_jsonl,
+    envagnetcombostorage_to_csv,
+    envagnetcombostorage_to_jsonl,
     get_rewards_from_episode,
     jsonl_to_agentprofiles,
     jsonl_to_environmentprofiles,
     jsonl_to_episodes,
+    jsonl_to_relationshipprofiles,
+    jsonl_to_envagnetcombostorage
 )
 from .session_transaction import MessageTransaction, SessionTransaction
 from .waiting_room import MatchingInWaitingRoom
@@ -39,10 +45,16 @@ __all__ = [
     "agentprofiles_to_jsonl",
     "environmentprofiles_to_csv",
     "environmentprofiles_to_jsonl",
+    "relationshipprofiles_to_csv",
+    "relationshipprofiles_to_jsonl",
+    "envagnetcombostorage_to_csv",
+    "envagnetcombostorage_to_jsonl",
     "episodes_to_csv",
     "episodes_to_jsonl",
     "jsonl_to_agentprofiles",
     "jsonl_to_environmentprofiles",
     "jsonl_to_episodes",
+    "jsonl_to_relationshipprofiles",
+    "jsonl_to_envagnetcombostorage",
     "get_rewards_from_episode",
 ]
