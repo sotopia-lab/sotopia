@@ -178,7 +178,7 @@ def episodes_to_csv(
     df.to_csv(csv_file_path, index=False)
 
 
-def episodes_to_json(
+def episodes_to_jsonl(
     episodes: list[EpisodeLog], jsonl_file_path: str = "episodes.jsonl"
 ) -> None:
     """Save episodes to a json file.
