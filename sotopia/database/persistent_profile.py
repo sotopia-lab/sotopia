@@ -33,6 +33,7 @@ class AgentProfile(JsonModel):
     decision_making_style: str = Field(index=True, default_factory=lambda: "")
     secret: str = Field(default_factory=lambda: "")
     model_id: str = Field(default_factory=lambda: "")
+    mbti: str = Field(default_factory=lambda: "")
 
 
 class EnvironmentProfile(JsonModel):
