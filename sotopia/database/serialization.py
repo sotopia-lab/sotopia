@@ -3,9 +3,13 @@ import json
 import pandas as pd
 from pydantic import BaseModel, Field
 
-from .logs import EpisodeLog
-from .persistent_profile import AgentProfile, EnvironmentProfile, RelationshipProfile
 from .env_agent_combo_storage import EnvAgentComboStorage
+from .logs import EpisodeLog
+from .persistent_profile import (
+    AgentProfile,
+    EnvironmentProfile,
+    RelationshipProfile,
+)
 
 
 class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
@@ -357,7 +361,9 @@ def relationshipprofiles_to_csv(
         "relationship_id": [profile.pk for profile in relationship_profiles],
         "agent1_id": [profile.agent_1_id for profile in relationship_profiles],
         "agent2_id": [profile.agent_2_id for profile in relationship_profiles],
-        "relationship": [profile.relationship for profile in relationship_profiles],
+        "relationship": [
+            profile.relationship for profile in relationship_profiles
+        ],
         "background_story": [
             profile.background_story for profile in relationship_profiles
         ],
@@ -379,7 +385,9 @@ def envagnetcombostorage_to_csv(
     data = {
         "combo_id": [storage.pk for storage in env_agent_combo_storages],
         "env_id": [storage.env_id for storage in env_agent_combo_storages],
-        "agent_ids": [storage.agent_ids for storage in env_agent_combo_storages],
+        "agent_ids": [
+            storage.agent_ids for storage in env_agent_combo_storages
+        ],
     }
     df = pd.DataFrame(data)
     df.to_csv(csv_file_path, index=False)
@@ -406,6 +414,7 @@ def relationshipprofiles_to_jsonl(
             )
             json.dump(dict(data), f)
             f.write("\n")
+
 
 def envagnetcombostorage_to_jsonl(
     env_agent_combo_storages: list[EnvAgentComboStorage],
@@ -489,6 +498,7 @@ def jsonl_to_environmentprofiles(
             environment_profiles.append(environment_profile)
     return environment_profiles
 
+
 def jsonl_to_relationshipprofiles(
     jsonl_file_path: str,
 ) -> list[RelationshipProfileBetweenTwoAgents]:
@@ -507,6 +517,7 @@ def jsonl_to_relationshipprofiles(
             relationship_profile = RelationshipProfileBetweenTwoAgents(**data)
             relationship_profiles.append(relationship_profile)
     return relationship_profiles
+
 
 def jsonl_to_envagnetcombostorage(
     jsonl_file_path: str,
