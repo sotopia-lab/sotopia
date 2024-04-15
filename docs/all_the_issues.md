@@ -28,16 +28,18 @@ sudo docker run -d -e REDIS_ARGS="--requirepass QzmCUD3C3RdsR" --name redis-stac
 
 Redis saves snapshots of the database every few minutes. You can find them in the corresponding folder (for example, `\data\dump.rdb`). Use the `sudo docker cp <container_id>:/data/dump.rdb /tmp` to obtain the snapshot from the container (in this case, the copied data is stored in `/tmp/snap-private-tmp/snap.docker/tmp`).
 
+## Why I am facing authorization error when fetching data from hosted redis server?
+
 When utilizing the database in python code (as introduced in [here](https://github.com/sotopia-lab/sotopia/blob/main/notebooks/redis_stats.ipynb)), make sure you use in the command line:
 
 ```sh
 export REDIS_OM_URL="redis://:QzmCUD3C3RdsR@localhost:6379"
 ```
 
-instead of adding variables in the python code
+If you plan to add environmental variables in the python code like this:
 
 ```sh
 os.environ['REDIS_OM_URL'] = "redis://:QzmCUD3C3RdsR@localhost:6379"
 ```
 
-since we need to set a global environment variable that works for `redis_om`.
+We need to make sure this line of code is put before `import redis` to make sure that you will not face additional authorization error.
