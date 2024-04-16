@@ -116,12 +116,37 @@ To run a large batch of environments, you can change the `ENV_IDS` parameter in 
 ## Getting access to your simulation
 After running experiments, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
 
-For the original Sotopia simulation in our paper's experiments, you can find how to get them in the [Q&A](/docs/all_the_issues.md) section in the `.\docs` folder.
+For the original Sotopia simulation in our paper's experiments, you can find how to get them in the [Q&A](/docs/all_the_issues.md) section in the `./docs` folder.
 
 ## Adding new characters and environments
 You can use the following function with the `**kwargs` being the properties of the `AgentProfile` class. This is the same for the scenarios/environments.
+```python
+class AgentProfile(JsonModel):
+    first_name: str = Field(index=True)
+    last_name: str = Field(index=True)
+    age: int = Field(index=True, default_factory=lambda: 0)
+    occupation: str = Field(index=True, default_factory=lambda: "")
+    gender: str = Field(index=True, default_factory=lambda: "")
+    gender_pronoun: str = Field(index=True, default_factory=lambda: "")
+    public_info: str = Field(index=True, default_factory=lambda: "")
+    big_five: str = Field(index=True, default_factory=lambda: "")
+    moral_values: list[str] = Field(index=False, default_factory=lambda: [])
+    schwartz_personal_values: list[str] = Field(index=False, default_factory=lambda: [])
+    personality_and_values: str = Field(index=True, default_factory=lambda: "")
+    decision_making_style: str = Field(index=True, default_factory=lambda: "")
+    secret: str = Field(default_factory=lambda: "")
+    model_id: str = Field(default_factory=lambda: "")
+
+class EnvironmentProfile(JsonModel):
+    codename: str = Field(...)
+    source: str = Field(...)
+    scenario: str = Field(...)
+    agent_goals: list[str] = Field(...)
+    ...
+```
 
 ```python
+
 from sotopia.database.persistent_profile import AgentProfile, EnvironmentProfile
 
 def add_agent_to_database(**kwargs: dict[str, Any]) -> None:
