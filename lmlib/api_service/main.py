@@ -1,9 +1,3 @@
-import argparse
-import os
-import re
-from argparse import Namespace
-from typing import Any, Dict, List, Optional, Tuple
-
 import transformers
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse

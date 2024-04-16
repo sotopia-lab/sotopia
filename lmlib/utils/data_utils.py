@@ -1,23 +1,14 @@
 import json
 import os
-import os.path as osp
-import pickle
 import random
-import re
-import sys
-import time
-from collections import defaultdict
 from typing import Any, Dict, List
 
 import numpy as np
-import pandas as pd
 import torch
 
 
 # IO
-def load_data(
-    text_path: str | os.PathLike[str], encoding: str = "utf-8"
-) -> list[str]:
+def load_data(text_path: str | os.PathLike[str], encoding: str = "utf-8") -> list[str]:
     """
     load textual data from file
     """

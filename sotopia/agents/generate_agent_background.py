@@ -49,7 +49,7 @@ def generate_background_conversation(
     background_json_file: str,
     run_sync_server: Callable[..., list[tuple[str, str, Message]]],
 ) -> tuple[list[tuple[str, str, Message]], ScriptBackground]:
-    scenario, topic, role, q_goal, a_goal = (
+    scenario, _topic, role, q_goal, a_goal = (
         seed["scenario"],
         seed["topic"],
         seed["role"],

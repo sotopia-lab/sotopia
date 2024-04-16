@@ -1,5 +1,5 @@
 import random
-from typing import Any, Generator, Type, TypeVar, cast
+from typing import Any, Generator, Type, TypeVar
 
 from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import AgentProfile, EnvironmentProfile
@@ -35,8 +35,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
         Please open an issue if you need this feature.
         """
         assert (
-            not isinstance(agent_classes, list)
-            or len(agent_classes) == n_agent
+            not isinstance(agent_classes, list) or len(agent_classes) == n_agent
         ), f"agent_classes should be a list of length {n_agent} or a single agent class"
 
         if not isinstance(agent_classes, list):
@@ -45,9 +44,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
             len(agents_params) == n_agent
         ), f"agents_params should be a list of length {n_agent}"
 
-        assert (
-            replacement
-        ), "Uniform sampling without replacement is not supported yet"
+        assert replacement, "Uniform sampling without replacement is not supported yet"
 
         for _ in range(size):
             if self.env_candidates:
@@ -55,9 +52,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
                 if isinstance(env_profile, str):
                     env_profile = EnvironmentProfile.get(env_profile)
             else:
-                env_profile_id = random.choice(
-                    list(EnvironmentProfile.all_pks())
-                )
+                env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
                 env_profile = EnvironmentProfile.get(env_profile_id)
             env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
@@ -74,8 +69,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
                         f"Number of agent profile candidates ({len(agent_profile_candidates_keys)}) in database is less than number of agents ({n_agent})"
                     )
                 agent_profile_candidates = [
-                    AgentProfile.get(pk=pk)
-                    for pk in agent_profile_candidates_keys
+                    AgentProfile.get(pk=pk) for pk in agent_profile_candidates_keys
                 ]
 
             if len(agent_profile_candidates) == n_agent:

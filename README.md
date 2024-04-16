@@ -27,7 +27,7 @@ Sotopia is an open-ended social learning environment that allows agents to inter
 
 ## Installation
 This package supports Python 3.11 and above. In one line,
-`pip install sotopia`.
+`pip install sotopia` or `pip install uv; uv pip install sotopia`.
 
 Or from scratch, use a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia; curl -sSL https://install.python-poetry.org | python3`. Then, install the requirements and this package.
 ```bash

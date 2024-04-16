@@ -1,6 +1,5 @@
 import enum
 from dataclasses import dataclass
-from functools import total_ordering
 from typing import (
     Any,
     Dict,
@@ -12,25 +11,20 @@ from typing import (
 )
 
 
-class Split(enum.Enum):
-    ...
+class Split(enum.Enum): ...
 
 
-class DownloadMode(enum.Enum):
-    ...
+class DownloadMode(enum.Enum): ...
 
 
-class VerificationMode(enum.Enum):
-    ...
+class VerificationMode(enum.Enum): ...
 
 
 @dataclass
-class Version:
-    ...
+class Version: ...
 
 
-class DatasetDict(dict[Any, Any]):
-    ...
+class DatasetDict(dict[Any, Any]): ...
 
 
 Features = TypeVar("Features", bound=dict[str, Any])

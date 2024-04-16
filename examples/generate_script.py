@@ -1,8 +1,6 @@
 import asyncio
 import logging
 import os
-import subprocess
-from datetime import datetime
 from logging import FileHandler
 from typing import Any
 
@@ -14,14 +12,9 @@ from rich.logging import RichHandler
 from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 
-from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name, agenerate_script
-from sotopia.messages.message_classes import (
-    AgentAction,
-    Observation,
-    ScriptBackground,
-)
-from sotopia.samplers import EnvAgentCombo, UniformSampler
+from sotopia.generation_utils.generate import LLM_Name
+from sotopia.messages.message_classes import AgentAction, Observation
+from sotopia.samplers import EnvAgentCombo
 from sotopia.server import arun_one_script, run_async_server
 from sotopia_conf.gin_utils import parse_gin_flags, run
 
@@ -152,9 +145,7 @@ def full_freeform(
                     for env_agent_combo in env_agent_combo_batch
                 ]
                 _ = asyncio.run(
-                    tqdm_asyncio.gather(
-                        *episode_futures, desc="Running one batch"
-                    )
+                    tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
 
                 env_agent_combo_batch = []
@@ -175,9 +166,7 @@ def full_freeform(
                     for env_agent_combo in env_agent_combo_batch
                 ]
                 _ = asyncio.run(
-                    tqdm_asyncio.gather(
-                        *episode_futures, desc="Running one batch"
-                    )
+                    tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
             return
 

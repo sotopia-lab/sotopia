@@ -10,7 +10,6 @@ from .persistent_profile import (
 from .serialization import (
     episodes_to_csv,
     episodes_to_json,
-    get_rewards_from_episode,
 )
 from .session_transaction import MessageTransaction, SessionTransaction
 from .waiting_room import MatchingInWaitingRoom

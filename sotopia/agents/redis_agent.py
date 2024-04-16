@@ -1,14 +1,10 @@
 import asyncio
 import logging
 import os
-import time
-from datetime import datetime
 from uuid import uuid4
 
 import aiohttp
 import pydantic
-import redis
-import redis.asyncio as aredis
 import requests
 
 from sotopia.agents import BaseAgent
@@ -74,9 +70,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     assert response.status == 200, response
                     sorted_message_list: list[tuple[float, str, str]] = list(
                         map(
-                            lambda x: MessageTransaction.parse_obj(
-                                x
-                            ).to_tuple(),
+                            lambda x: MessageTransaction.parse_obj(x).to_tuple(),
                             await response.json(),
                         )
                     )
@@ -118,9 +112,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     assert response.status == 200, response
                     sorted_message_list = list(
                         map(
-                            lambda x: MessageTransaction.parse_obj(
-                                x
-                            ).to_tuple(),
+                            lambda x: MessageTransaction.parse_obj(x).to_tuple(),
                             await response.json(),
                         )
                     )
@@ -143,9 +135,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         "PUT",
                         f"{self._URL}/lock/{self.session_id}/{self.sender_id}/no%20action",
                     )
-                    self.reset(
-                        "Someone has left or the conversation is too long."
-                    )
+                    self.reset("Someone has left or the conversation is too long.")
                     return AgentAction(action_type="leave", argument="")
             action_string = sorted_message_list[-1][2]
             try:

@@ -1,7 +1,5 @@
-import os
-import typing
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from transformers.training_args import TrainingArguments
 
@@ -50,9 +48,7 @@ class ModelArguments:
     pooling: Optional[str] = field(
         default="pooler", metadata={"help": "Pooling method"}
     )
-    device: Optional[str] = field(
-        default="cuda:1", metadata={"help": "Device to use"}
-    )
+    device: Optional[str] = field(default="cuda:1", metadata={"help": "Device to use"})
     gen_device: Optional[str] = field(
         default="cuda:0", metadata={"help": "Device to use"}
     )

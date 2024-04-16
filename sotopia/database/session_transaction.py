@@ -1,9 +1,6 @@
-from pydantic import Field as PydanticField
 from pydantic import validator
 from redis_om import EmbeddedJsonModel, JsonModel
 from redis_om.model.model import Field
-
-from sotopia.messages import AgentAction, Observation, SimpleMessage
 
 from .auto_expires_mixin import AutoExpireMixin
 
