@@ -10,9 +10,7 @@ from sotopia.envs.parallel import ParallelSotopiaEnv
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 
-EnvAgentCombo = tuple[
-    ParallelSotopiaEnv, Sequence[BaseAgent[ObsType, ActType]]
-]
+EnvAgentCombo = tuple[ParallelSotopiaEnv, Sequence[BaseAgent[ObsType, ActType]]]
 
 
 class BaseSampler(Generic[ObsType, ActType]):

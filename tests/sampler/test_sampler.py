@@ -72,9 +72,7 @@ def test_uniform_sampler() -> None:
             for _ in range(100)
         ],
         agent_candidates=[
-            AgentProfile(
-                first_name=_generate_name(), last_name=_generate_name()
-            )
+            AgentProfile(first_name=_generate_name(), last_name=_generate_name())
             for _ in range(100)
         ],
     )

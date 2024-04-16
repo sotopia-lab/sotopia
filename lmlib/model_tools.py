@@ -1,25 +1,16 @@
-import glob
-import json
-import logging
 import os
 import os.path as osp
-import pickle
 from argparse import Namespace
-from contextlib import nullcontext
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Tuple
 
-import numpy as np
 import torch
 
 # from transformers.trainer_pt_utils import IterableDatasetShard
 from logzero import logger
-from torch.cuda import amp
-from torch.utils.data import DataLoader, IterableDataset
 from transformers import (  # type: ignore[attr-defined]
     AutoModel,
     AutoModelForCausalLM,
     AutoTokenizer,
-    HfArgumentParser,
 )
 
 default_args = Namespace(max_len=256)
@@ -41,7 +32,7 @@ def load_and_cache_model(
         margs = {"torch_dtype": torch.float16}
 
     margs["cache_dir"] = model_cache_dir
-    logger.info(f"load and cache model")
+    logger.info("load and cache model")
     model = MODEL_CLASS.from_pretrained(model_name, **margs)
     torch.save(model, model_path)
     return model
@@ -55,9 +46,7 @@ def load_ret_model(
     ret_model_name = model_args.model_name_or_path
     ret_model_name_short = os.path.basename(ret_model_name)
     ret_model_cache_dir = osp.join(cache_dir, ret_model_name_short)
-    ret_model = AutoModel.from_pretrained(
-        ret_model_name, cache_dir=ret_model_cache_dir
-    )
+    ret_model = AutoModel.from_pretrained(ret_model_name, cache_dir=ret_model_cache_dir)
     ret_model = ret_model.to(device=device, dtype=dtype)
     ret_tokenizer = AutoTokenizer.from_pretrained(
         ret_model_name, cache_dir=ret_model_cache_dir
@@ -65,9 +54,7 @@ def load_ret_model(
     return ret_model, ret_tokenizer
 
 
-def load_and_cache_large_model(
-    model_name: str, cache_dir: str, device: str
-) -> Any:
+def load_and_cache_large_model(model_name: str, cache_dir: str, device: str) -> Any:
     MODEL_CLASS = AutoModelForCausalLM
     save_name = osp.basename(model_name)
     model_cache_dir = osp.join(cache_dir, save_name)
@@ -136,9 +123,7 @@ def load_model(
     gen_device: str = "cuda",
     dtype: Any = torch.float32,
 ) -> Dict[str, Tuple[Any, Any]]:
-    ret_model, ret_tokenizer = load_ret_model(
-        model_args, device=device, dtype=dtype
-    )
+    ret_model, ret_tokenizer = load_ret_model(model_args, device=device, dtype=dtype)
     gen_model, gen_tokenizer = load_gen_model(
         model_args, large_model=large_model, device=gen_device
     )

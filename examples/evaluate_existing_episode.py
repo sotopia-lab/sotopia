@@ -5,29 +5,14 @@ import typing
 from datetime import datetime
 from logging import FileHandler
 
-import gin
 import typer
-from experiment_eval import _iterate_env_agent_combo_not_in_db
-from rich import print
 from rich.logging import RichHandler
 from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 
-from sotopia.agents.llm_agent import Agents
 from sotopia.database.logs import AnnotationForEpisode, EpisodeLog
-from sotopia.database.persistent_profile import EnvironmentProfile
-from sotopia.generation_utils.generate import LLM_Name, agenerate_script
-from sotopia.messages.message_classes import (
-    AgentAction,
-    Observation,
-    ScriptBackground,
-)
-from sotopia.samplers import (
-    BaseSampler,
-    ConstraintBasedSampler,
-    EnvAgentCombo,
-)
-from sotopia.server import aevaluate_one_episode, arun_one_script
+from sotopia.generation_utils.generate import LLM_Name
+from sotopia.server import aevaluate_one_episode
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -61,7 +46,6 @@ def run_async_server_in_batch_aevaluate(
     push_to_db: bool = False,
     verbose: bool = False,
 ) -> None:
-
     if not verbose:
         logger = logging.getLogger()
         logger.setLevel(logging.CRITICAL)
@@ -75,9 +59,7 @@ def run_async_server_in_batch_aevaluate(
             episode = EpisodeLog.get(env_pk)
             episode_batch.append(episode)
             if len(episode_batch) == batch_size:
-                logging.info(
-                    f"Running batch of {batch_size} episodes: {episode_batch}"
-                )
+                logging.info(f"Running batch of {batch_size} episodes: {episode_batch}")
                 episode_futures = [
                     aevaluate_one_episode(
                         episode=episode,
@@ -88,17 +70,13 @@ def run_async_server_in_batch_aevaluate(
                     for episode in episode_batch
                 ]
                 asyncio.run(
-                    tqdm_asyncio.gather(
-                        *episode_futures, desc="Running one batch"
-                    )
+                    tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
 
                 episode_batch = []
         else:
             if episode_batch:
-                logging.info(
-                    f"Running batch of {batch_size} episodes: {episode_batch}"
-                )
+                logging.info(f"Running batch of {batch_size} episodes: {episode_batch}")
                 episode_futures = [
                     aevaluate_one_episode(
                         episode=episode,
@@ -109,9 +87,7 @@ def run_async_server_in_batch_aevaluate(
                     for episode in episode_batch
                 ]
                 asyncio.run(
-                    tqdm_asyncio.gather(
-                        *episode_futures, desc="Running one batch"
-                    )
+                    tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
             return
 

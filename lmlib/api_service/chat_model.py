@@ -1,28 +1,19 @@
-import abc
-import json
-import os
-import os.path as osp
-import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List
 
 import torch
 from pydantic import BaseModel
 
-from lmlib.utils.conversation import Conversation
+from lmlib.utils.conversation import (
+    Conversation,
+    SeparatorStyle,
+    compute_skip_echo_len,
+)
 
 
 class ChatMessage(BaseModel):
     system: str
     messages: List[List[str]]  # list of [role, message]
     input: str
-
-
-from lmlib.utils.conversation import (
-    SeparatorStyle,
-    compute_skip_echo_len,
-    conv_templates,
-    get_default_conv_template,
-)
 
 
 def get_conv_from_json(message: ChatMessage) -> Conversation:
@@ -108,9 +99,7 @@ class ChatModel:
                         input_ids=torch.as_tensor([input_ids], device=device),
                         use_cache=True,
                         encoder_outputs=encoder_outputs,
-                        decoder_input_ids=torch.as_tensor(
-                            [[token]], device=device
-                        ),
+                        decoder_input_ids=torch.as_tensor([[token]], device=device),
                         past_key_values=past_key_values,
                     )
                     logits = out.logits
@@ -157,9 +146,7 @@ class ChatModel:
 
         del past_key_values
 
-    def stream_output(
-        self, output_stream: List[Any], skip_echo_len: int
-    ) -> Any:
+    def stream_output(self, output_stream: List[Any], skip_echo_len: int) -> Any:
         pre = 0
         for outputs in output_stream:
             outputs = outputs[skip_echo_len:].strip()

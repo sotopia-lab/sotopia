@@ -1,20 +1,7 @@
 from __future__ import annotations
 
 import logging
-import os
-import sys
-from typing import (
-    Any,
-    Callable,
-    Coroutine,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
 
 import together
 from langchain.callbacks.manager import (
@@ -32,14 +19,7 @@ from langchain.schema import (
     SystemMessage,
 )
 from langchain.utils import get_from_dict_or_env
-from pydantic import Extra, Field, root_validator
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from pydantic import Extra, root_validator
 
 
 def _convert_message_to_dict(message: BaseMessage) -> dict[str, Any]:
@@ -80,9 +60,7 @@ def _make_prompt_from_dict(dialog: List[dict[str, str]]) -> str:
         dialog = [
             {
                 "role": dialog[1]["role"],
-                "content": dialog[0]["content"]
-                + conv_sep
-                + dialog[1]["content"],
+                "content": dialog[0]["content"] + conv_sep + dialog[1]["content"],
             }
         ] + dialog[2:]
     assert all([msg["role"] == "user" for msg in dialog[::2]]) and all(
@@ -127,9 +105,7 @@ class Llama2(BaseChatModel):
     @root_validator(pre=True)
     def build_extra(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Build extra kwargs from additional params that were passed in."""
-        all_required_field_names = {
-            field.alias for field in cls.__fields__.values()
-        }
+        all_required_field_names = {field.alias for field in cls.__fields__.values()}
 
         extra = values.get("model_kwargs", {})
         for field_name in list(values):
@@ -182,9 +158,7 @@ class Llama2(BaseChatModel):
         }
         if stop is not None:
             if "stop" in params:
-                raise ValueError(
-                    "`stop` found in both the input and default params."
-                )
+                raise ValueError("`stop` found in both the input and default params.")
             params["stop"] = stop
         message_dicts = [_convert_message_to_dict(m) for m in messages]
         message_prompt = _make_prompt_from_dict(message_dicts)

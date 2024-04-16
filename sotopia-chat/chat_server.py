@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import random
@@ -69,9 +68,7 @@ async def _start_server_with_two_session_ids_and_agent_env_combo(
     random.shuffle(session_ids)
     agents = [
         redis_agent.RedisAgent(
-            agent_profile=AgentProfile.get(
-                env_agent_combo_storage.agent_ids[idx]
-            ),
+            agent_profile=AgentProfile.get(env_agent_combo_storage.agent_ids[idx]),
             session_id=session_id,
         )
         for idx, session_id in enumerate(session_ids)
@@ -106,30 +103,22 @@ async def _start_server_with_one_session_id_and_agent_env_combo(
     agents = (
         [
             redis_agent.RedisAgent(
-                agent_profile=AgentProfile.get(
-                    env_agent_combo_storage.agent_ids[0]
-                ),
+                agent_profile=AgentProfile.get(env_agent_combo_storage.agent_ids[0]),
                 session_id=session_id,
             ),
             LLMAgent(
                 model_name="gpt-4",
-                agent_profile=AgentProfile.get(
-                    env_agent_combo_storage.agent_ids[1]
-                ),
+                agent_profile=AgentProfile.get(env_agent_combo_storage.agent_ids[1]),
             ),
         ]
         if left_or_right == "left"
         else [
             LLMAgent(
                 model_name="gpt-4",
-                agent_profile=AgentProfile.get(
-                    env_agent_combo_storage.agent_ids[0]
-                ),
+                agent_profile=AgentProfile.get(env_agent_combo_storage.agent_ids[0]),
             ),
             redis_agent.RedisAgent(
-                agent_profile=AgentProfile.get(
-                    env_agent_combo_storage.agent_ids[1]
-                ),
+                agent_profile=AgentProfile.get(env_agent_combo_storage.agent_ids[1]),
                 session_id=session_id,
             ),
         ]
@@ -161,9 +150,7 @@ async def async_add_env_agent_combo_to_redis_queue(
         env_agent_combo_storage_pks: list[str] = []
         for env in envs:
             env_agent_combo_storage = list(
-                EnvAgentComboStorage.find(
-                    EnvAgentComboStorage.env_id == env
-                ).all()
+                EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env).all()
             )[0]
             assert env_agent_combo_storage.pk
             env_agent_combo_storage_pks.append(env_agent_combo_storage.pk)
@@ -191,20 +178,12 @@ async def async_add_env_agent_combo_to_redis_queue(
         random.shuffle(envs)
         for env in envs:
             env_agent_combo_storage = list(
-                EnvAgentComboStorage.find(
-                    EnvAgentComboStorage.env_id == env
-                ).all()
+                EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env).all()
             )[0]
             assert env_agent_combo_storage.pk
-            await r.rpush(
-                "chat_server_combos_double", env_agent_combo_storage.pk
-            )
-            await r.rpush(
-                "chat_server_combos_single_left", env_agent_combo_storage.pk
-            )
-            await r.rpush(
-                "chat_server_combos_single_right", env_agent_combo_storage.pk
-            )
+            await r.rpush("chat_server_combos_double", env_agent_combo_storage.pk)
+            await r.rpush("chat_server_combos_single_left", env_agent_combo_storage.pk)
+            await r.rpush("chat_server_combos_single_right", env_agent_combo_storage.pk)
     await r.close()
 
 
@@ -241,7 +220,7 @@ async def async_start_server_with_session_ids(session_ids: list[str]) -> None:
                 session_id, agent_env_combo_pk, "right"
             )
 
-    match (len(session_ids)):
+    match len(session_ids):
         case 1:
             await _assign_left_or_right_and_run(session_ids[0])
         case 2:

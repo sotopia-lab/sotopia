@@ -133,9 +133,7 @@ def get_agent_name_to_social_goal_from_episode(
     episode: EpisodeLog,
 ) -> dict[str, str]:
     agents = [AgentProfile.get(agent) for agent in episode.agents]
-    agent_names = [
-        agent.first_name + " " + agent.last_name for agent in agents
-    ]
+    agent_names = [agent.first_name + " " + agent.last_name for agent in agents]
     environment = EnvironmentProfile.get(episode.environment)
     agent_goals = {
         agent_names[0]: environment.agent_goals[0],
@@ -178,22 +176,16 @@ def episodes_to_csv(
     """
     data = {
         "episode_id": [episode.pk for episode in episodes],
-        "scenario": [
-            get_scenario_from_episode(episode) for episode in episodes
-        ],
-        "codename": [
-            get_codename_from_episode(episode) for episode in episodes
-        ],
+        "scenario": [get_scenario_from_episode(episode) for episode in episodes],
+        "codename": [get_codename_from_episode(episode) for episode in episodes],
         "agents_background": [
             get_agents_background_from_episode(episode) for episode in episodes
         ],
         "social_goals": [
-            get_agent_name_to_social_goal_from_episode(episode)
-            for episode in episodes
+            get_agent_name_to_social_goal_from_episode(episode) for episode in episodes
         ],
         "social_interactions": [
-            get_social_interactions_from_episode(episode)
-            for episode in episodes
+            get_social_interactions_from_episode(episode) for episode in episodes
         ],
     }
     df = pd.DataFrame(data)
@@ -216,12 +208,8 @@ def episodes_to_jsonl(
                 scenario=get_scenario_from_episode(episode),
                 codename=get_codename_from_episode(episode),
                 agents_background=get_agents_background_from_episode(episode),
-                social_goals=get_agent_name_to_social_goal_from_episode(
-                    episode
-                ),
-                social_interactions=get_social_interactions_from_episode(
-                    episode
-                ),
+                social_goals=get_agent_name_to_social_goal_from_episode(episode),
+                social_interactions=get_social_interactions_from_episode(episode),
                 reasoning=episode.reasoning,
                 rewards=get_rewards_from_episode(episode),
             )

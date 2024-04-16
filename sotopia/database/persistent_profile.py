@@ -1,8 +1,7 @@
-import uuid
 from enum import IntEnum
-from typing import Any, cast
+from typing import Any
 
-from pydantic import root_validator, validator
+from pydantic import root_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
@@ -26,9 +25,7 @@ class AgentProfile(JsonModel):
     public_info: str = Field(index=True, default_factory=lambda: "")
     big_five: str = Field(index=True, default_factory=lambda: "")
     moral_values: list[str] = Field(index=False, default_factory=lambda: [])
-    schwartz_personal_values: list[str] = Field(
-        index=False, default_factory=lambda: []
-    )
+    schwartz_personal_values: list[str] = Field(index=False, default_factory=lambda: [])
     personality_and_values: str = Field(index=True, default_factory=lambda: "")
     decision_making_style: str = Field(index=True, default_factory=lambda: "")
     secret: str = Field(default_factory=lambda: "")
@@ -98,7 +95,7 @@ class EnvironmentList(JsonModel):
         )
         if agent_index is None:
             return values
-        assert len(environments) == len(
-            agent_index
+        assert (
+            len(environments) == len(agent_index)
         ), f"Number of environments {len(environments)} and agent_index {len(agent_index)} do not match"
         return values
