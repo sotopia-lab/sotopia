@@ -175,11 +175,11 @@ def test_episode_log_serialization() -> None:
         rewards_prompt='Prompt after formatting:\n\n    Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.\n    Original string: \n\n Turn #9: You decide to speak.\n\n "I understand your concerns, Noah, but I believe that supporting children in conflict zones is a cause worth investing in. While we may not be able to solve the problem on our own, every little bit helps. I plan to donate, and I hope you will consider doing the same."\n\n You wait for Noah Davis\'s response.\n\n Turn #10: Noah Davis said: "I understand your perspective, Finnegan. However, I still have my own financial commitments to consider. Is there a way we can support\n\n    Format instructions: The output should be formatted as a JSON instance that conforms to the JSON schema below.\n\nAs an example, for the schema {"properties": {"foo": {"title": "Foo", "description": "a list of strings", "type": "array", "items": {"type": "string"}}}, "required": ["foo"]}}\nthe object {"foo": ["bar", "baz"]} is a well-formatted instance of the schema. The object {"properties": {"foo": ["bar", "baz"]}} is not well-formatted.\n\nHere is the output schema:\n```\n{"description": "An interface for messages.\\nThere is only one required method: to_natural_language", "properties": {"action_type": {"title": "Action Type", "description": "whether to speak at this turn or choose to not do anything", "enum": ["none", "speak", "non-verbal communication", "action", "leave"], "type": "string"}, "argument": {"title": "Argument", "description": "the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action", "type": "string"}}, "required": ["action_type", "argument"]}\n```\n\n    Please only generate the JSON:\n    \x1b[0m',
     )
 
-    episodes_to_jsonl([episode_log], "./data/test_episode_log.jsonl")
-    rebuild_episode_log = jsonl_to_episodes("./data/test_episode_log.jsonl")[0]
+    episodes_to_jsonl([episode_log], "./test_episode_log.jsonl")
+    rebuild_episode_log = jsonl_to_episodes("./test_episode_log.jsonl")[0]
     assert episode_log.dict() == rebuild_episode_log.dict()
 
-    episodes_to_csv([episode_log], "./data/test_episode_log.csv")
+    episodes_to_csv([episode_log], "./test_episode_log.csv")
 
 
 def test_relationship_profile_serialization() -> None:
@@ -192,15 +192,15 @@ def test_relationship_profile_serialization() -> None:
     )
 
     relationshipprofiles_to_jsonl(
-        [relationship_profile], "./data/test_relationship_profile.jsonl"
+        [relationship_profile], "./test_relationship_profile.jsonl"
     )
     rebuild_relationship_profile = jsonl_to_relationshipprofiles(
-        "./data/test_relationship_profile.jsonl"
+        "./test_relationship_profile.jsonl"
     )[0]
     assert relationship_profile.dict() == rebuild_relationship_profile.dict()
 
     relationshipprofiles_to_csv(
-        [relationship_profile], "./data/test_relationship_profile.csv"
+        [relationship_profile], "./test_relationship_profile.csv"
     )
 
 
@@ -221,15 +221,15 @@ def test_environment_profile_serialization() -> None:
     )
 
     environmentprofiles_to_jsonl(
-        [environment_profile], "./data/test_environment_profile.jsonl"
+        [environment_profile], "./test_environment_profile.jsonl"
     )
     rebuild_environment_profile = jsonl_to_environmentprofiles(
-        "./data/test_environment_profile.jsonl"
+        "./test_environment_profile.jsonl"
     )[0]
     assert environment_profile.dict() == rebuild_environment_profile.dict()
 
     environmentprofiles_to_csv(
-        [environment_profile], "./data/test_environment_profile.csv"
+        [environment_profile], "./test_environment_profile.csv"
     )
 
 
@@ -241,15 +241,15 @@ def test_envagentcombostorage_serialization() -> None:
     )
 
     envagnetcombostorage_to_jsonl(
-        [envagentcombo_storage], "./data/test_envagentcombo_storage.jsonl"
+        [envagentcombo_storage], "./test_envagentcombo_storage.jsonl"
     )
     rebuild_envagentcombo_storage = jsonl_to_envagnetcombostorage(
-        "./data/test_envagentcombo_storage.jsonl"
+        "./test_envagentcombo_storage.jsonl"
     )[0]
     assert envagentcombo_storage.dict() == rebuild_envagentcombo_storage.dict()
 
     envagnetcombostorage_to_csv(
-        [envagentcombo_storage], "./data/test_envagentcombo_storage.csv"
+        [envagentcombo_storage], "./test_envagentcombo_storage.csv"
     )
 
 
@@ -273,8 +273,8 @@ def test_agentprofile_serialization() -> None:
         mbti="ENTP",
     )
 
-    agentprofiles_to_jsonl([agent_profile], "./data/test_agent_profile.jsonl")
-    rebuild_agent_profile = jsonl_to_agentprofiles("./data/test_agent_profile.jsonl")[0]
+    agentprofiles_to_jsonl([agent_profile], "./test_agent_profile.jsonl")
+    rebuild_agent_profile = jsonl_to_agentprofiles("./test_agent_profile.jsonl")[0]
     assert agent_profile.dict() == rebuild_agent_profile.dict()
 
-    agentprofiles_to_csv([agent_profile], "./data/test_agent_profile.csv")
+    agentprofiles_to_csv([agent_profile], "./test_agent_profile.csv")
