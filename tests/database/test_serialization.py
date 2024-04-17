@@ -228,9 +228,7 @@ def test_environment_profile_serialization() -> None:
     )[0]
     assert environment_profile.dict() == rebuild_environment_profile.dict()
 
-    environmentprofiles_to_csv(
-        [environment_profile], "./test_environment_profile.csv"
-    )
+    environmentprofiles_to_csv([environment_profile], "./test_environment_profile.csv")
 
 
 def test_envagentcombostorage_serialization() -> None:
