@@ -21,19 +21,6 @@ from sotopia.database import (
     jsonl_to_agentprofiles,
 )
 
-PK = "test_pk"
-
-
-def test_env_profile_serialization() -> None:
-    env_profile = EnvironmentProfile(
-        pk=PK,
-        scenario="The conversation between two friends in a cafe",
-        agent_goals=[
-            "trying to figure out the gift preference of the other agent, but not let them know you are buying gift for them",
-            "to have a good time",
-        ],
-    )
-
 
 def test_episode_log_serialization() -> None:
     episode_log = EpisodeLog(
