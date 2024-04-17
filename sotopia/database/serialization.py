@@ -14,6 +14,13 @@ from .persistent_profile import (
 
 class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
     episode_id: str = Field(required=True)
+    environment_id: str = Field(required=True)
+    agent_ids: list[str] = Field(required=True)
+    experiment_tag: str = Field(required=True)
+    experiment_model_name_pairs: list[str] = Field(required=True)
+    raw_messages: list[list[tuple[str, str, str]]] = Field(required=True)
+    raw_rewards: list[tuple[float, dict[str, float]] | float] = Field(required=True)
+    raw_rewards_prompt: str = Field(required=True)
     scenario: str = Field(required=True)
     codename: str = Field(required=True)
     agents_background: dict[str, str] = Field(required=True)
@@ -21,6 +28,7 @@ class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
     social_interactions: str = Field(required=True)
     reasoning: str = Field(required=False)
     rewards: list[dict[str, float]] = Field(required=False)
+
 
 
 class AgentProfileWithPersonalInformation(BaseModel):
@@ -39,6 +47,7 @@ class AgentProfileWithPersonalInformation(BaseModel):
     decision_making_style: str = Field(required=True)
     secret: str = Field(required=True)
     mbti: str = Field(required=True)
+    model_id: str = Field(required=True)
 
 
 class EnvironmentProfileWithTwoAgentRequirements(BaseModel):
@@ -50,7 +59,7 @@ class EnvironmentProfileWithTwoAgentRequirements(BaseModel):
     relationship: str = Field(required=True)
     age_constraint: str = Field(required=True)
     occupation_constraint: str = Field(required=True)
-    agent_constraint: str = Field(required=True)
+    agent_constraint: str | None = Field(required=False)
 
 
 class RelationshipProfileBetweenTwoAgents(BaseModel):
@@ -176,17 +185,27 @@ def episodes_to_csv(
     """
     data = {
         "episode_id": [episode.pk for episode in episodes],
+        "environment_id": [episode.environment for episode in episodes],
+        "agent_ids": [episode.agents for episode in episodes],
+        "experiment_tag": [episode.tag for episode in episodes],
+        "experiment_model_name_pairs": [episode.models for episode in episodes],
+        "raw_messages": [episode.messages for episode in episodes],
+        "raw_rewards_prompt": [episode.rewards_prompt for episode in episodes],
+        "raw_rewards": [episode.rewards for episode in episodes],
         "scenario": [get_scenario_from_episode(episode) for episode in episodes],
         "codename": [get_codename_from_episode(episode) for episode in episodes],
         "agents_background": [
             get_agents_background_from_episode(episode) for episode in episodes
         ],
         "social_goals": [
-            get_agent_name_to_social_goal_from_episode(episode) for episode in episodes
+            get_agent_name_to_social_goal_from_episode(episode)
+            for episode in episodes
         ],
         "social_interactions": [
             get_social_interactions_from_episode(episode) for episode in episodes
         ],
+        "reasoning": [episode.reasoning for episode in episodes],
+        "rewards": [get_rewards_from_episode(episode) for episode in episodes],
     }
     df = pd.DataFrame(data)
     df.to_csv(csv_file_path, index=False)
@@ -205,6 +224,13 @@ def episodes_to_jsonl(
         for episode in episodes:
             data = TwoAgentEpisodeWithScenarioBackgroundGoals(
                 episode_id=episode.pk,
+                environment_id=episode.environment,
+                agent_ids=episode.agents,
+                experiment_tag=episode.tag,
+                experiment_model_name_pairs=episode.models,
+                raw_messages=episode.messages,
+                raw_rewards_prompt=episode.rewards_prompt,
+                raw_rewards=episode.rewards,
                 scenario=get_scenario_from_episode(episode),
                 codename=get_codename_from_episode(episode),
                 agents_background=get_agents_background_from_episode(episode),
@@ -266,6 +292,7 @@ def agentprofiles_to_jsonl(
                 decision_making_style=profile.decision_making_style,
                 secret=profile.secret,
                 mbti=profile.mbti,
+                model_id=profile.model_id,
             )
             json.dump(dict(data), f)
             f.write("\n")
@@ -427,69 +454,107 @@ def envagnetcombostorage_to_jsonl(
 
 def jsonl_to_episodes(
     jsonl_file_path: str,
-) -> list[TwoAgentEpisodeWithScenarioBackgroundGoals]:
+) -> list[EpisodeLog]:
     """Load episodes from a jsonl file.
 
     Args:
         jsonl_file_path (str): The file path.
 
     Returns:
-        list[TwoAgentEpisodeWithScenarioBackgroundGoals]: List of episodes.
+        list[EpisodeLog]: List of episodes.
     """
     episodes = []
     with open(jsonl_file_path, "r") as f:
         for line in f:
             data = json.loads(line)
-            episode = TwoAgentEpisodeWithScenarioBackgroundGoals(**data)
+            episode = EpisodeLog(
+                pk=data["episode_id"],
+                environment=data["environment_id"],
+                agents=data["agent_ids"],
+                tag=data["experiment_tag"],
+                models=data["experiment_model_name_pairs"],
+                messages=data["raw_messages"],
+                reasoning=data["reasoning"],
+                rewards=data["raw_rewards"],
+                rewards_prompt=data["raw_rewards_prompt"],
+            )
             episodes.append(episode)
     return episodes
 
 
+
 def jsonl_to_agentprofiles(
     jsonl_file_path: str,
-) -> list[AgentProfileWithPersonalInformation]:
+) -> list[AgentProfile]:
     """Load agent profiles from a jsonl file.
 
     Args:
         jsonl_file_path (str): The file path.
 
     Returns:
-        list[AgentProfileWithPersonalInformation]: List of agent profiles.
+        list[AgentProfile]: List of agent profiles.
     """
     agent_profiles = []
     with open(jsonl_file_path, "r") as f:
         for line in f:
             data = json.loads(line)
-            agent_profile = AgentProfileWithPersonalInformation(**data)
+            agent_profile = AgentProfile(
+                pk=data["agent_id"],
+                first_name=data["first_name"],
+                last_name=data["last_name"],
+                age=data["age"],
+                occupation=data["occupation"],
+                gender=data["gender"],
+                gender_pronoun=data["gender_pronoun"],
+                public_info=data["public_info"],
+                big_five=data["big_five"],
+                moral_values=data["moral_values"],
+                schwartz_personal_values=data["schwartz_personal_values"],
+                personality_and_values=data["personality_and_values"],
+                decision_making_style=data["decision_making_style"],
+                secret=data["secret"],
+                model_id=data["model_id"],
+                mbti=data["mbti"],
+            )
             agent_profiles.append(agent_profile)
     return agent_profiles
 
 
+
 def jsonl_to_environmentprofiles(
     jsonl_file_path: str,
-) -> list[EnvironmentProfileWithTwoAgentRequirements]:
+) -> list[EnvironmentProfile]:
     """Load environment profiles from a jsonl file.
 
     Args:
         jsonl_file_path (str): The file path.
 
     Returns:
-        list[EnvironmentProfileWithTwoAgentSettings]: List of environment profiles.
+        list[EnvironmentProfile]: List of environment profiles.
     """
     environment_profiles = []
     with open(jsonl_file_path, "r") as f:
         for line in f:
             data = json.loads(line)
-            environment_profile = EnvironmentProfileWithTwoAgentRequirements(
-                **data
+            environment_profile = EnvironmentProfile(
+                pk=data["env_id"],
+                codename=data["codename"],
+                source=data["source"],
+                scenario=data["scenario"],
+                agent_goals=data["agent_goals"],
+                relationship=data["relationship"],
+                age_constraint=data["age_constraint"],
+                occupation_constraint=data["occupation_constraint"],
+                agent_constraint=data["agent_constraint"] if data["agent_constraint"] != "none" else None,
             )
             environment_profiles.append(environment_profile)
     return environment_profiles
 
 
+
 def jsonl_to_relationshipprofiles(
     jsonl_file_path: str,
-) -> list[RelationshipProfileBetweenTwoAgents]:
+) -> list[RelationshipProfile]:
     """Load relationship profiles from a jsonl file.
 
     Args:
@@ -502,14 +567,20 @@ def jsonl_to_relationshipprofiles(
     with open(jsonl_file_path, "r") as f:
         for line in f:
             data = json.loads(line)
-            relationship_profile = RelationshipProfileBetweenTwoAgents(**data)
+            relationship_profile = RelationshipProfile(
+                pk=data["relationship_id"],
+                agent_1_id=data["agent1_id"],
+                agent_2_id=data["agent2_id"],
+                relationship=data["relationship"],
+                background_story=data["background_story"],
+            )
             relationship_profiles.append(relationship_profile)
     return relationship_profiles
 
 
 def jsonl_to_envagnetcombostorage(
     jsonl_file_path: str,
-) -> list[EnvAgentComboStorageWithID]:
+) -> list[EnvAgentComboStorage]:
     """Load environment-agent combo storages from a jsonl file.
 
     Args:
@@ -522,6 +593,10 @@ def jsonl_to_envagnetcombostorage(
     with open(jsonl_file_path, "r") as f:
         for line in f:
             data = json.loads(line)
-            env_agent_combo_storage = EnvAgentComboStorageWithID(**data)
+            env_agent_combo_storage = EnvAgentComboStorage(
+                pk=data["combo_id"],
+                env_id=data["env_id"],
+                agent_ids=data["agent_ids"],
+            )
             env_agent_combo_storages.append(env_agent_combo_storage)
     return env_agent_combo_storages
