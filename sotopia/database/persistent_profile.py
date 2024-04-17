@@ -71,7 +71,6 @@ class EnvironmentProfile(JsonModel):
     agent_constraint: list[list[str]] | None = Field(
         default_factory=lambda: None,
     )
-    
 
 
 class RelationshipProfile(JsonModel):
