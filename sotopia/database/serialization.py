@@ -30,7 +30,6 @@ class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
     rewards: list[dict[str, float]] = Field(required=False)
 
 
-
 class AgentProfileWithPersonalInformation(BaseModel):
     agent_id: str = Field(required=True)
     first_name: str = Field(required=True)
@@ -198,8 +197,7 @@ def episodes_to_csv(
             get_agents_background_from_episode(episode) for episode in episodes
         ],
         "social_goals": [
-            get_agent_name_to_social_goal_from_episode(episode)
-            for episode in episodes
+            get_agent_name_to_social_goal_from_episode(episode) for episode in episodes
         ],
         "social_interactions": [
             get_social_interactions_from_episode(episode) for episode in episodes
@@ -313,15 +311,9 @@ def environmentprofiles_to_csv(
         "codename": [profile.codename for profile in environment_profiles],
         "source": [profile.source for profile in environment_profiles],
         "scenario": [profile.scenario for profile in environment_profiles],
-        "agent_goals": [
-            profile.agent_goals for profile in environment_profiles
-        ],
-        "relationship": [
-            profile.relationship for profile in environment_profiles
-        ],
-        "age_constraint": [
-            profile.age_constraint for profile in environment_profiles
-        ],
+        "agent_goals": [profile.agent_goals for profile in environment_profiles],
+        "relationship": [profile.relationship for profile in environment_profiles],
+        "age_constraint": [profile.age_constraint for profile in environment_profiles],
         "occupation_constraint": [
             profile.occupation_constraint for profile in environment_profiles
         ],
@@ -376,9 +368,7 @@ def relationshipprofiles_to_csv(
         "relationship_id": [profile.pk for profile in relationship_profiles],
         "agent1_id": [profile.agent_1_id for profile in relationship_profiles],
         "agent2_id": [profile.agent_2_id for profile in relationship_profiles],
-        "relationship": [
-            profile.relationship for profile in relationship_profiles
-        ],
+        "relationship": [profile.relationship for profile in relationship_profiles],
         "background_story": [
             profile.background_story for profile in relationship_profiles
         ],
@@ -400,9 +390,7 @@ def envagnetcombostorage_to_csv(
     data = {
         "combo_id": [storage.pk for storage in env_agent_combo_storages],
         "env_id": [storage.env_id for storage in env_agent_combo_storages],
-        "agent_ids": [
-            storage.agent_ids for storage in env_agent_combo_storages
-        ],
+        "agent_ids": [storage.agent_ids for storage in env_agent_combo_storages],
     }
     df = pd.DataFrame(data)
     df.to_csv(csv_file_path, index=False)
@@ -482,7 +470,6 @@ def jsonl_to_episodes(
     return episodes
 
 
-
 def jsonl_to_agentprofiles(
     jsonl_file_path: str,
 ) -> list[AgentProfile]:
@@ -520,7 +507,6 @@ def jsonl_to_agentprofiles(
     return agent_profiles
 
 
-
 def jsonl_to_environmentprofiles(
     jsonl_file_path: str,
 ) -> list[EnvironmentProfile]:
@@ -545,11 +531,12 @@ def jsonl_to_environmentprofiles(
                 relationship=data["relationship"],
                 age_constraint=data["age_constraint"],
                 occupation_constraint=data["occupation_constraint"],
-                agent_constraint=data["agent_constraint"] if data["agent_constraint"] != "none" else None,
+                agent_constraint=data["agent_constraint"]
+                if data["agent_constraint"] != "none"
+                else None,
             )
             environment_profiles.append(environment_profile)
     return environment_profiles
-
 
 
 def jsonl_to_relationshipprofiles(
