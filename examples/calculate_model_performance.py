@@ -1,4 +1,3 @@
-import logging
 import sys
 from collections import defaultdict
 from typing import List
@@ -92,52 +91,6 @@ def get_avg_success_rate_for_models(
             model_list[1]: model_two_success_rate.mean(axis=0).to_dict(),
         }
     )
-
-
-def is_symmetric_epilogs(epilogs: List[EpisodeLog]) -> bool:
-    """
-    Check if the given episode logs are symmetric.
-
-    Args:
-        epilogs (List[EpisodeLog]): A list of episode logs.
-
-    Returns:
-        bool: True if the episode logs are symmetric, False otherwise.
-    """
-    asymmetric_epilogs = []
-    gpt35_llama2_epilogs_dict = {}
-
-    for ep in epilogs:
-        assert isinstance(ep.models, list), "models should be a list"
-        hash_key = (
-            ep.environment,
-            ep.agents[0],
-            ep.agents[1],
-            ep.models[0],
-            ep.models[1],
-            ep.models[2],
-        )
-        gpt35_llama2_epilogs_dict[hash_key] = ep.pk
-
-    for hash_key in gpt35_llama2_epilogs_dict:
-        reverse_key = (
-            hash_key[0],
-            hash_key[1],
-            hash_key[2],
-            hash_key[3],
-            hash_key[5],
-            hash_key[4],
-        )
-        if reverse_key not in gpt35_llama2_epilogs_dict:
-            asymmetric_epilogs.append(gpt35_llama2_epilogs_dict[hash_key])
-
-    if not asymmetric_epilogs:
-        return True
-    else:
-        logging.warning(
-            f"Found {len(asymmetric_epilogs)} asymmetric epilogs: {asymmetric_epilogs}"
-        )
-        return False
 
 
 def extract_fixed_episode_set(
