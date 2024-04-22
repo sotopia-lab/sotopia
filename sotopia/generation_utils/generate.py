@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import TypeVar
+from typing import Any, Dict, Optional, TypeVar
 
 import gin
 from beartype import beartype
@@ -50,6 +50,29 @@ LLM_Name = Literal[
 
 OutputType = TypeVar("OutputType", bound=object)
 
+class PatchedChatLiteLLM(ChatLiteLLM):
+    max_tokens: Optional[int] = None # type: ignore
+
+    @property
+    def _default_params(self) -> Dict[str, Any]:
+        """Get the default parameters for calling OpenAI API."""
+        set_model_value = self.model
+        if self.model_name is not None:
+            set_model_value = self.model_name
+        
+        params = {
+            "model": set_model_value,
+            "force_timeout": self.request_timeout,
+            "stream": self.streaming,
+            "n": self.n,
+            "temperature": self.temperature,
+            "custom_llm_provider": self.custom_llm_provider,
+            **self.model_kwargs,
+        }
+        if self.max_tokens is not None:
+            params["max_tokens"] = self.max_tokens
+        
+        return params
 
 class EnvResponse(BaseModel):
     reasoning: str = Field(
@@ -291,10 +314,10 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    chat = ChatLiteLLM(
+    chat = PatchedChatLiteLLM(
         model=model_name,
         temperature=temperature,
-        max_tokens=2700,  # tweak as needed
+        # max_tokens=2700,  # tweak as needed
         max_retries=max_retries,
     )
     human_message_prompt = HumanMessagePromptTemplate(
