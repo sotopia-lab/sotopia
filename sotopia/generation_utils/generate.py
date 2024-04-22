@@ -329,7 +329,6 @@ def obtain_chain(
     chat = PatchedChatLiteLLM(
         model=model_name,
         temperature=temperature,
-        # max_tokens=2700,  # tweak as needed
         max_retries=max_retries,
     )
     human_message_prompt = HumanMessagePromptTemplate(
