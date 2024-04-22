@@ -53,7 +53,7 @@ def get_avg_success_rate_for_models(
         episodes (List[EpisodeLog]): A list of episodes.
 
     Returns:
-        pd.DataFrame: A DataFrame mapping model names to average success rates.
+        pd.DataFrame: A DataFrame with model names and their corresponding average success rates.
     """
     model_rewards = defaultdict(list)
     model_success_rate_avg = {}
@@ -76,16 +76,13 @@ def get_avg_success_rate_for_models(
 
     model_list = list(model_success_rate_avg.keys())
     model_one_success_rate = (
-        model_success_rate_avg[model_list[0]]
-        > model_success_rate_avg[model_list[1]]
+        model_success_rate_avg[model_list[0]] > model_success_rate_avg[model_list[1]]
     )
     model_two_success_rate = (
-        model_success_rate_avg[model_list[0]]
-        < model_success_rate_avg[model_list[1]]
+        model_success_rate_avg[model_list[0]] < model_success_rate_avg[model_list[1]]
     )
     model_on_par_success_rate = (
-        model_success_rate_avg[model_list[0]]
-        == model_success_rate_avg[model_list[1]]
+        model_success_rate_avg[model_list[0]] == model_success_rate_avg[model_list[1]]
     )
 
     return pd.DataFrame.from_dict(
@@ -162,9 +159,7 @@ def extract_fixed_episode_set(
     for env_id in env_ids:
         assert env_id is not None, "env_id should not be None"
         env_agent_combo_storage_list = list(
-            EnvAgentComboStorage.find(
-                EnvAgentComboStorage.env_id == env_id
-            ).all()
+            EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_id).all()
         )
         fixed_env_agent_combo += env_agent_combo_storage_list[:5]
 
@@ -176,10 +171,7 @@ def extract_fixed_episode_set(
     fixed_env_agent_combo_pair_two = fixed_env_agent_combo.copy()
 
     for episode in episodes:
-        assert isinstance(
-            episode, EpisodeLog
-        ), "episode should be an EpisodeLog"
-        print(episode.models)
+        assert isinstance(episode, EpisodeLog), "episode should be an EpisodeLog"
         for combo in fixed_env_agent_combo_pair_one:
             assert isinstance(
                 combo, EnvAgentComboStorage
@@ -195,10 +187,7 @@ def extract_fixed_episode_set(
                 break
 
     for episode in episodes:
-        assert isinstance(
-            episode, EpisodeLog
-        ), "episode should be an EpisodeLog"
-        print(episode.models)
+        assert isinstance(episode, EpisodeLog), "episode should be an EpisodeLog"
         for combo in fixed_env_agent_combo_pair_two:
             assert isinstance(
                 combo, EnvAgentComboStorage
@@ -217,20 +206,24 @@ def extract_fixed_episode_set(
     return filtered_episodes
 
 
-def main(episodes_to_evaluate: str) -> None:
+def main(episodes_to_evaluate: str, model_1: str, model_2: str) -> None:
     """
     Main function to evaluate the episodes.
 
     Args:
-        episodes_to_evaluate (str): The tag of the episodes to evaluate.
+        episodes_to_evaluate (str): Tag for the episodes to evaluate.
+        model_1 (str): First model identifier.
+        model_2 (str): Second model identifier.
+
+    Outputs analysis results to the console using rich formatting.
     """
     Episodes = EpisodeLog.find(EpisodeLog.tag == episodes_to_evaluate).all()
     print("Number of episodes:", len(Episodes))
 
     models = [
         "gpt-4",
-        episodes_to_evaluate.split("_")[0],
-        episodes_to_evaluate.split("_")[1],
+        model_1,
+        model_2,
     ]
 
     print(f"Evaluating model 1: {models[1]}, model 2: {models[2]}")
@@ -238,40 +231,36 @@ def main(episodes_to_evaluate: str) -> None:
     filtered_episodes = extract_fixed_episode_set(Episodes, models=models)
     print("Number of filtered episodes:", len(filtered_episodes))
 
-    if is_symmetric_epilogs(filtered_episodes):
-        avg_rewards = get_avg_reward_for_models(filtered_episodes)
-        avg_rewards = avg_rewards.reindex(
-            [
-                "believability",
-                "relationship",
-                "knowledge",
-                "secret",
-                "social_rules",
-                "financial_and_material_benefits",
-                "goal",
-                "overall_score",
-            ]
-        )
-        rich.print(avg_rewards)
+    avg_rewards = get_avg_reward_for_models(filtered_episodes)
+    avg_rewards = avg_rewards.reindex(
+        [
+            "believability",
+            "relationship",
+            "knowledge",
+            "secret",
+            "social_rules",
+            "financial_and_material_benefits",
+            "goal",
+            "overall_score",
+        ]
+    )
+    rich.print(avg_rewards)
 
-        if (
-            episodes_to_evaluate.split("_")[0]
-            != episodes_to_evaluate.split("_")[1]
-        ):
-            avg_success_rate = get_avg_success_rate_for_models(
-                filtered_episodes
-            )
-            rich.print(avg_success_rate)
+    if models[1] != models[2]:
+        avg_success_rate = get_avg_success_rate_for_models(filtered_episodes)
+        rich.print(avg_success_rate)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <episodes_to_evaluate>")
+    if len(sys.argv) != 4:
+        print("Usage: python script.py <episodes_to_evaluate> <model_1> <model_2>")
         sys.exit(1)
 
     episodes_to_evaluate = sys.argv[1]
+    model_1 = sys.argv[2]
+    model_2 = sys.argv[3]
     assert isinstance(
         episodes_to_evaluate, str
     ), "episodes_to_evaluate should be a string"
 
-    main(episodes_to_evaluate)
+    main(episodes_to_evaluate, model_1, model_2)
