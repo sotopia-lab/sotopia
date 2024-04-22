@@ -46,6 +46,7 @@ LLM_Name = Literal[
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "together_ai/togethercomputer/llama-2-7b-chat",
     "together_ai/togethercomputer/falcon-7b-instruct",
+    "groq/llama3-70b-8192",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
@@ -294,13 +295,22 @@ f. Oliver Thompson left the conversation"""
 
 
 def _return_fixed_model_version(model_name: str) -> str:
-    return {
-        "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
-        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
-        "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
-        "gpt-4": "gpt-4-0613",
-        "gpt-4-turbo": "gpt-4-1106-preview",
-    }[model_name]
+    if model_name in [
+        "gpt-3.5-turbo",
+        "gpt-3.5-turbo-finetuned",
+        "gpt-3.5-turbo-ft-MF",
+        "gpt-4",
+        "gpt-4-turbo",
+    ]:
+        return {
+            "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
+            "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
+            "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
+            "gpt-4": "gpt-4-0613",
+            "gpt-4-turbo": "gpt-4-1106-preview",
+        }[model_name]
+    else:
+        return model_name
 
 
 @gin.configurable
