@@ -50,8 +50,9 @@ LLM_Name = Literal[
 
 OutputType = TypeVar("OutputType", bound=object)
 
+
 class PatchedChatLiteLLM(ChatLiteLLM):
-    max_tokens: Optional[int] = None # type: ignore
+    max_tokens: Optional[int] = None  # type: ignore
 
     @property
     def _default_params(self) -> Dict[str, Any]:
@@ -59,7 +60,7 @@ class PatchedChatLiteLLM(ChatLiteLLM):
         set_model_value = self.model
         if self.model_name is not None:
             set_model_value = self.model_name
-        
+
         params = {
             "model": set_model_value,
             "force_timeout": self.request_timeout,
@@ -71,8 +72,9 @@ class PatchedChatLiteLLM(ChatLiteLLM):
         }
         if self.max_tokens is not None:
             params["max_tokens"] = self.max_tokens
-        
+
         return params
+
 
 class EnvResponse(BaseModel):
     reasoning: str = Field(
