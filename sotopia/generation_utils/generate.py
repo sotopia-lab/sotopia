@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Dict, Optional, TypeVar
+from typing import TypeVar
 
 import gin
 from beartype import beartype
@@ -52,10 +52,10 @@ OutputType = TypeVar("OutputType", bound=object)
 
 
 class PatchedChatLiteLLM(ChatLiteLLM):
-    max_tokens: Optional[int] = None  # type: ignore
+    max_tokens: int | None = None  # type: ignore
 
     @property
-    def _default_params(self) -> Dict[str, Any]:
+    def _default_params(self) -> dict[str, any]:
         """Get the default parameters for calling OpenAI API."""
         set_model_value = self.model
         if self.model_name is not None:
