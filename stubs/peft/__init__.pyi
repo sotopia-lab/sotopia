@@ -6,9 +6,7 @@ Model = TypeVar("Model", bound=PushToHubMixin)
 
 class PushToHubMixin:
     @classmethod
-    def from_pretrained(
-        cls: type[Model], *args: Any, **kwargs: Any
-    ) -> Model: ...
+    def from_pretrained(cls: type[Model], *args: Any, **kwargs: Any) -> Model: ...
 
 class PeftModel(PushToHubMixin, torch.nn.Module): ...
 

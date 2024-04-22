@@ -144,9 +144,7 @@ def full_freeform(
                     for env_agent_combo in env_agent_combo_batch
                 ]
                 _ = asyncio.run(
-                    tqdm_asyncio.gather(
-                        *episode_futures, desc="Running one batch"
-                    )
+                    tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
 
                 env_agent_combo_batch = []
@@ -167,9 +165,7 @@ def full_freeform(
                     for env_agent_combo in env_agent_combo_batch
                 ]
                 _ = asyncio.run(
-                    tqdm_asyncio.gather(
-                        *episode_futures, desc="Running one batch"
-                    )
+                    tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
             return
 

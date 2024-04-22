@@ -76,17 +76,11 @@ def check_existing_episodes(
             (EpisodeLog.environment == env_id) & (EpisodeLog.tag == tag)
         ).all()
     else:
-        existing_episode = EpisodeLog.find(
-            EpisodeLog.environment == env_id
-        ).all()
+        existing_episode = EpisodeLog.find(EpisodeLog.environment == env_id).all()
     if existing_episode:
         for episode in existing_episode:
-            assert isinstance(
-                episode, EpisodeLog
-            ), "episode should be an EpisodeLog"
-            if episode.agents == agent_ids and episode.models == list(
-                models.values()
-            ):
+            assert isinstance(episode, EpisodeLog), "episode should be an EpisodeLog"
+            if episode.agents == agent_ids and episode.models == list(models.values()):
                 return True
         return False
     else:
@@ -94,9 +88,7 @@ def check_existing_episodes(
 
 
 def _sample_env_agent_combo_and_push_to_db(env_id: str) -> None:
-    sampler = ConstraintBasedSampler[Observation, AgentAction](
-        env_candidates=[env_id]
-    )
+    sampler = ConstraintBasedSampler[Observation, AgentAction](env_candidates=[env_id])
     env_agent_combo_list = list(
         sampler.sample(agent_classes=[LLMAgent] * 2, replacement=False)
     )
@@ -119,21 +111,15 @@ def _iterate_env_agent_combo_not_in_db(
     for env_id in env_ids:
         assert env_id is not None, "env_id should not be None"
         env_agent_combo_storage_list = list(
-            EnvAgentComboStorage.find(
-                EnvAgentComboStorage.env_id == env_id
-            ).all()
+            EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_id).all()
         )
         if not env_agent_combo_storage_list:
             _sample_env_agent_combo_and_push_to_db(env_id)
             env_agent_combo_storage_list = list(
-                EnvAgentComboStorage.find(
-                    EnvAgentComboStorage.env_id == env_id
-                ).all()
+                EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_id).all()
             )
             assert env_agent_combo_storage_list
-        first_env_agent_combo_storage_to_run: EnvAgentComboStorage | None = (
-            None
-        )
+        first_env_agent_combo_storage_to_run: EnvAgentComboStorage | None = None
         for env_agent_combo_storage in env_agent_combo_storage_list:
             env_agent_combo_storage = cast(
                 EnvAgentComboStorage, env_agent_combo_storage
@@ -153,9 +139,7 @@ def _iterate_env_agent_combo_not_in_db(
                 model_name=model_names["env"],
                 action_order="round-robin",
                 evaluators=[
-                    RuleBasedTerminatedEvaluator(
-                        max_turn_number=20, max_stale_turn=2
-                    ),
+                    RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
                 ],
                 terminal_evaluators=[
                     ReachGoalLLMEvaluator(model_names["env"]),
@@ -193,14 +177,10 @@ def run_async_server_in_batch(
         logger.removeHandler(rich_handler)
 
     # we cannot get the exact length of the generator, we just give an estimate of the length
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
-        model_names=model_names
-    )
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names)
     env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
 
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
-        model_names=model_names
-    )
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names)
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
 
     while True:

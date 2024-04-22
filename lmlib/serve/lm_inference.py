@@ -1,14 +1,13 @@
 """Inference for FastChat models."""
+
 import abc
 import os
 import os.path as osp
-import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Union
 
 import torch
 from logzero import logger
 from peft import PeftModel, set_peft_model_state_dict
-from transformers import LlamaForCausalLM  # type: ignore[attr-defined]
 from transformers import LlamaTokenizer  # type: ignore[attr-defined]
 
 from lmlib.utils.conversation import (
@@ -93,9 +92,7 @@ def load_gen_model(
         from peft import get_peft_model
         from transformers.trainer_utils import get_last_checkpoint
 
-        lora_config_json = load_json(
-            osp.join(lora_path, "adapter_config.json")
-        )
+        lora_config_json = load_json(osp.join(lora_path, "adapter_config.json"))
         lora_config = Namespace(**lora_config_json)
         gen_model = get_peft_model(gen_model, lora_config)
 
@@ -111,9 +108,7 @@ def load_gen_model(
             adapter_weigths = torch.load(checkpoint_name)
             set_peft_model_state_dict(gen_model, adapter_weigths)
 
-    gen_tokenizer = LlamaTokenizer.from_pretrained(
-        gen_model_name, cache_dir=cache_dir
-    )
+    gen_tokenizer = LlamaTokenizer.from_pretrained(gen_model_name, cache_dir=cache_dir)
     # use the vicuna version of special tokens
     gen_tokenizer.add_special_tokens(
         {
@@ -167,9 +162,7 @@ def generate_stream(
                 logits = out.logits
                 past_key_values = out.past_key_values
             else:
-                out = model(
-                    torch.as_tensor([input_ids], device=device), use_cache=True
-                )
+                out = model(torch.as_tensor([input_ids], device=device), use_cache=True)
                 logits = out.logits
                 past_key_values = out.past_key_values
         else:
@@ -178,9 +171,7 @@ def generate_stream(
                     input_ids=torch.as_tensor([input_ids], device=device),
                     use_cache=True,
                     encoder_outputs=encoder_outputs,
-                    decoder_input_ids=torch.as_tensor(
-                        [[token]], device=device
-                    ),
+                    decoder_input_ids=torch.as_tensor([[token]], device=device),
                     past_key_values=past_key_values,
                 )
                 logits = out.logits
@@ -266,13 +257,13 @@ def chat_loop(
         device="cuda:0",
         lora_path=lora_path,
     )
-    is_chatglm = False  # "chatglm" in str(type(model)).lower()
 
     # Chat
     if conv_template:
         conv = conv_templates[conv_template].copy()
     else:
         conv = get_default_conv_template("vicuna_character").copy()
+
     # import pdb; pdb.set_trace()
     def chat() -> None:
         while True:
@@ -297,8 +288,7 @@ def chat_loop(
             skip_echo_len = compute_skip_echo_len(conv, prompt)
             stop_str = (
                 conv.sep
-                if conv.sep_style
-                in [SeparatorStyle.SINGLE, SeparatorStyle.BAIZE]
+                if conv.sep_style in [SeparatorStyle.SINGLE, SeparatorStyle.BAIZE]
                 else None
             )
 
@@ -311,9 +301,7 @@ def chat_loop(
             }
 
             chatio.prompt_for_output(conv.roles[1])
-            output_stream = generate_stream_func(
-                model, tokenizer, params, device
-            )
+            output_stream = generate_stream_func(model, tokenizer, params, device)
             outputs = chatio.stream_output(output_stream, skip_echo_len)
             # NOTE: strip is important to align with the training data.
             conv.messages[-1][-1] = outputs.strip()

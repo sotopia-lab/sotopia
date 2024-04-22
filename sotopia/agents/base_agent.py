@@ -1,10 +1,9 @@
-import uuid
-from typing import Generic, TypeVar, cast
+from typing import Generic, TypeVar
 
 from redis_om.model.model import NotFoundError
 
 from sotopia.database import AgentProfile
-from sotopia.messages import Message, MessengerMixin
+from sotopia.messages import MessengerMixin
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
@@ -20,20 +19,14 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
         MessengerMixin.__init__(self)
         if agent_profile is not None:
             self.profile = agent_profile
-            self.agent_name = (
-                self.profile.first_name + " " + self.profile.last_name
-            )
+            self.agent_name = self.profile.first_name + " " + self.profile.last_name
         elif uuid_str is not None:
             # try retrieving profile from database
             try:
                 self.profile = AgentProfile.get(pk=uuid_str)
             except NotFoundError:
-                raise ValueError(
-                    f"Agent with uuid {uuid_str} not found in database"
-                )
-            self.agent_name = (
-                self.profile.first_name + " " + self.profile.last_name
-            )
+                raise ValueError(f"Agent with uuid {uuid_str} not found in database")
+            self.agent_name = self.profile.first_name + " " + self.profile.last_name
         else:
             assert (
                 agent_name is not None
@@ -44,9 +37,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
 
     @property
     def goal(self) -> str:
-        assert (
-            self._goal is not None
-        ), "attribute goal has to be set before use"
+        assert self._goal is not None, "attribute goal has to be set before use"
         return self._goal
 
     @goal.setter

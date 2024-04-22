@@ -27,7 +27,7 @@ Sotopia is an open-ended social learning environment that allows agents to inter
 
 ## Installation
 This package supports Python 3.11 and above. In one line,
-`pip install sotopia`.
+`pip install sotopia` or `pip install uv; uv pip install sotopia`.
 
 Or from scratch, use a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia; curl -sSL https://install.python-poetry.org | python3`. Then, install the requirements and this package.
 ```bash
@@ -44,7 +44,7 @@ For some experiments, TogetherAI key is required to run the code. Please set the
 conda env config vars set TOGETHER_API_KEY=your_key
 ```
 
-A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. The `REDIS_OM_URL` need to be set before loading and saving agents:
+A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/docker/) to start a redis-stack server or use an existing server. The `REDIS_OM_URL` need to be set before loading and saving agents:
 ```bash
 conda env config vars set REDIS_OM_URL="redis://user:password@host:port"
 ```
@@ -55,9 +55,26 @@ mkdir logs
 ```
 
 ## Easy Sample Server
-You can view an episode demo with default parameters using the following command:
+You can view an episode demo with default parameters with the following:
 ```python
-python -m sotopia_conf.server --gin_file="sotopia_conf/server_conf/server.gin" --gin_file="sotopia_conf/generation_utils_conf/generate.gin"
+import asyncio
+from sotopia.samplers import UniformSampler
+from sotopia.server import run_async_server
+
+asyncio.run(
+    run_async_server(
+        model_dict={
+            "env": "gpt-4",
+            "agent1": "gpt-3.5-turbo",
+            "agent2": "gpt-3.5-turbo",
+        },
+        sampler=UniformSampler(),
+    )
+)
+```
+or run
+```bash
+python examples/minimalist_demo.py
 ```
 
 ## Contribution

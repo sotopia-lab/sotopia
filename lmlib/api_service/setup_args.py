@@ -1,8 +1,6 @@
-import os
 import os.path as osp
-import sys
 from argparse import Namespace
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Tuple
 
 from transformers import HfArgumentParser  # type: ignore
 
@@ -22,7 +20,7 @@ data_dir = f"{base_dir}/data"
 exp_dict_default = Namespace(
     data_name="info_eli_dawson.json",
     model_name="decapoda-research/llama-13b-hf",
-    lora_model_name=osp.join(f"eli-lora-llama-13b-v1"),
+    lora_model_name=osp.join("eli-lora-llama-13b-v1"),
 )
 
 
@@ -112,7 +110,5 @@ def setup_inf_args(
     paths = set_path(exp_dict)
     args = get_inf_args(paths)
     parser = HfArgumentParser((InferenceArguments, LoraArguments))
-    inf_args, lora_args = parser.parse_args_into_dataclasses(
-        args + additional_args
-    )
+    inf_args, lora_args = parser.parse_args_into_dataclasses(args + additional_args)
     return inf_args, lora_args

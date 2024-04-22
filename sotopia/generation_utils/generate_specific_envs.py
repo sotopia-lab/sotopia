@@ -5,20 +5,12 @@ Here are the datasets we have so far:
 1. Mutual-Friend (https://huggingface.co/datasets/mutual_friends)
 2. Craigslist-Bargains (https://huggingface.co/datasets/craigslist_bargains)
 """
-import asyncio
-from typing import Hashable
 
-import datasets
 import names
 import numpy as np
 from datasets import DatasetDict, load_dataset
 
-from .generate import (
-    ListOfStrOutputParser,
-    StrOutputParser,
-    agenerate,
-    generate,
-)
+from .generate import StrOutputParser, generate
 
 
 async def generate_mutual_friend_envs() -> tuple[str, list[str]]:
@@ -39,14 +31,14 @@ async def generate_mutual_friend_envs() -> tuple[str, list[str]]:
     list_of_names = list(set_of_names)
     friend_map: dict[tuple[str, ...], str] = {}
     friend_list_map: list[list[str]] = [[] for _ in range(len(friends))]
-    friend_description_keys: list[str] = datum["scenario_attributes"]["name"]
+    datum["scenario_attributes"]["name"]
     name_pointer = 0
     for i, friends_array in enumerate(friends):
         for friend in friends_array:
             assert (
                 len(friend) == 2
             )  # in [[key1, key2, ...], [value1, value2, ...]] format
-            if not tuple(friend[1]) in friend_map:
+            if tuple(friend[1]) not in friend_map:
                 friend_map[tuple(friend[1])] = list_of_names[name_pointer]
                 name_pointer += 1
             friend_list_map[i].append(friend_map[tuple(friend[1])])
@@ -66,13 +58,13 @@ async def generate_mutual_friend_envs() -> tuple[str, list[str]]:
     )
     goals: list[str] = []
     for friends_array in friends:
-        template = f"You are trying to figure out whether you have a mutual friend with the other person. \n"
-        template += f"<extra_info> You know the following friends"
+        template = "You are trying to figure out whether you have a mutual friend with the other person. \n"
+        template += "<extra_info> You know the following friends"
         for friend in friends_array:
             friend_name = friend_map[tuple(friend[1])]
             friend_description = friend[1]
             template += f" {friend_name}: {' '.join([(i + ': ' + j + ' ') if i != 'Name' else '' for i, j in zip(friend[0], friend_description)])}\n"
-        template += f"</extra_info>"
+        template += "</extra_info>"
         goals.append(template)
 
     return scenario, goals
@@ -80,9 +72,7 @@ async def generate_mutual_friend_envs() -> tuple[str, list[str]]:
 
 async def generate_craigslist_bargains_envs() -> tuple[str, list[str]]:
     """Generate environments based on the craigslist_bargains dataset."""
-    craigslist_bargains_dataset: DatasetDict = load_dataset(
-        "craigslist_bargains"
-    )
+    craigslist_bargains_dataset: DatasetDict = load_dataset("craigslist_bargains")
     all_data = craigslist_bargains_dataset["train"]
     # sample one datum from all data
     datum = np.random.choice(all_data)

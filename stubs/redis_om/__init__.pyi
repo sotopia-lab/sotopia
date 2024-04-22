@@ -14,9 +14,7 @@ class RedisModel(BaseModel, abc.ABC, metaclass=ModelMeta):
 
     @classmethod
     def delete(cls, pk: Any) -> None: ...
-    def expire(
-        self, num_seconds: int
-    ) -> None: ...  # pipeline arg can be added here
+    def expire(self, num_seconds: int) -> None: ...  # pipeline arg can be added here
 
 class HashModel(RedisModel, abc.ABC):
     @classmethod

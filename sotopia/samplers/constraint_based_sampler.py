@@ -7,7 +7,6 @@ from sotopia.database import (
     AgentProfile,
     EnvironmentProfile,
     RelationshipProfile,
-    RelationshipType,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 
@@ -75,8 +74,7 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
         Please sample for each env separately if you want to sample without replacement.
         """
         assert (
-            not isinstance(agent_classes, list)
-            or len(agent_classes) == n_agent
+            not isinstance(agent_classes, list) or len(agent_classes) == n_agent
         ), f"agent_classes should be a list of length {n_agent} or a single agent class"
 
         if not isinstance(agent_classes, list):
@@ -127,22 +125,18 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
                     if isinstance(env_profile, str):
                         env_profile = EnvironmentProfile.get(env_profile)
                 else:
-                    env_profile_id = random.choice(
-                        list(EnvironmentProfile.all_pks())
-                    )
+                    env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
                     env_profile = EnvironmentProfile.get(env_profile_id)
                 env_profiles.append(env_profile)
                 env_profile_id = env_profile.pk
                 assert env_profile_id, "Env candidate must have an id"
                 agents_which_fit_scenario.append(
-                    _get_fit_agents_for_one_env(
-                        env_profile_id, agent_candidate_ids, 1
-                    )[0]
+                    _get_fit_agents_for_one_env(env_profile_id, agent_candidate_ids, 1)[
+                        0
+                    ]
                 )
 
-        assert (
-            len(env_profiles) == size
-        ), "Number of env_profiles is not equal to size"
+        assert len(env_profiles) == size, "Number of env_profiles is not equal to size"
         assert (
             len(agents_which_fit_scenario) == size
         ), "Number of agents_which_fit_scenario is not equal to size"
@@ -151,9 +145,7 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
             env_profiles, agents_which_fit_scenario
         ):
             env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
-            agent_profiles = [
-                AgentProfile.get(id) for id in agent_profile_id_list
-            ]
+            agent_profiles = [AgentProfile.get(id) for id in agent_profile_id_list]
 
             agents = [
                 agent_class(agent_profile=agent_profile, **agent_params)

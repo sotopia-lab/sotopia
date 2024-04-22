@@ -58,10 +58,10 @@ def test_render_background_for_strangers(_get_john_profile: Any) -> None:
         john_profile,
         agent_id=0,
     )
-    assert not "John" in render_text_for_agent(background, 1)
-    assert not "public info" in render_text_for_agent(background, 1)
-    assert not "big five" in render_text_for_agent(background, 1)
-    assert not "secret" in render_text_for_agent(background, 1)
+    assert "John" not in render_text_for_agent(background, 1)
+    assert "public info" not in render_text_for_agent(background, 1)
+    assert "big five" not in render_text_for_agent(background, 1)
+    assert "secret" not in render_text_for_agent(background, 1)
 
 
 def test_render_background_for_know_by_name(_get_john_profile: Any) -> None:
@@ -72,9 +72,9 @@ def test_render_background_for_know_by_name(_get_john_profile: Any) -> None:
         agent_id=0,
     )
     assert "John" in render_text_for_agent(background, 1)
-    assert not "public info" in render_text_for_agent(background, 1)
-    assert not "big five" in render_text_for_agent(background, 1)
-    assert not "secret" in render_text_for_agent(background, 1)
+    assert "public info" not in render_text_for_agent(background, 1)
+    assert "big five" not in render_text_for_agent(background, 1)
+    assert "secret" not in render_text_for_agent(background, 1)
 
 
 def test_render_background_for_acquaintance(_get_john_profile: Any) -> None:
@@ -86,8 +86,8 @@ def test_render_background_for_acquaintance(_get_john_profile: Any) -> None:
     )
     assert "John" in render_text_for_agent(background, 1)
     assert "public info" in render_text_for_agent(background, 1)
-    assert not "big five" in render_text_for_agent(background, 1)
-    assert not "secret" in render_text_for_agent(background, 1)
+    assert "big five" not in render_text_for_agent(background, 1)
+    assert "secret" not in render_text_for_agent(background, 1)
 
 
 def test_render_background_for_friend(_get_john_profile: Any) -> None:
@@ -100,4 +100,4 @@ def test_render_background_for_friend(_get_john_profile: Any) -> None:
     assert "John" in render_text_for_agent(background, 1)
     assert "public info" in render_text_for_agent(background, 1)
     assert "big five" in render_text_for_agent(background, 1)
-    assert not "secret" in render_text_for_agent(background, 1)
+    assert "secret" not in render_text_for_agent(background, 1)
