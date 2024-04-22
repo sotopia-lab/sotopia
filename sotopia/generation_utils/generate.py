@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import gin
 from beartype import beartype
@@ -46,9 +46,35 @@ LLM_Name = Literal[
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "together_ai/togethercomputer/llama-2-7b-chat",
     "together_ai/togethercomputer/falcon-7b-instruct",
+    "groq/llama3-70b-8192",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
+
+
+class PatchedChatLiteLLM(ChatLiteLLM):
+    max_tokens: int | None = None  # type: ignore
+
+    @property
+    def _default_params(self) -> dict[str, Any]:
+        """Get the default parameters for calling OpenAI API."""
+        set_model_value = self.model
+        if self.model_name is not None:
+            set_model_value = self.model_name
+
+        params = {
+            "model": set_model_value,
+            "force_timeout": self.request_timeout,
+            "stream": self.streaming,
+            "n": self.n,
+            "temperature": self.temperature,
+            "custom_llm_provider": self.custom_llm_provider,
+            **self.model_kwargs,
+        }
+        if self.max_tokens is not None:
+            params["max_tokens"] = self.max_tokens
+
+        return params
 
 
 class EnvResponse(BaseModel):
@@ -269,13 +295,22 @@ f. Oliver Thompson left the conversation"""
 
 
 def _return_fixed_model_version(model_name: str) -> str:
-    return {
-        "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
-        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
-        "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
-        "gpt-4": "gpt-4-0613",
-        "gpt-4-turbo": "gpt-4-1106-preview",
-    }[model_name]
+    if model_name in [
+        "gpt-3.5-turbo",
+        "gpt-3.5-turbo-finetuned",
+        "gpt-3.5-turbo-ft-MF",
+        "gpt-4",
+        "gpt-4-turbo",
+    ]:
+        return {
+            "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
+            "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
+            "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
+            "gpt-4": "gpt-4-0613",
+            "gpt-4-turbo": "gpt-4-1106-preview",
+        }[model_name]
+    else:
+        return model_name
 
 
 @gin.configurable
@@ -291,10 +326,9 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    chat = ChatLiteLLM(
+    chat = PatchedChatLiteLLM(
         model=model_name,
         temperature=temperature,
-        max_tokens=2700,  # tweak as needed
         max_retries=max_retries,
     )
     human_message_prompt = HumanMessagePromptTemplate(
