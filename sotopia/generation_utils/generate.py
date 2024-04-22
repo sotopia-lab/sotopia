@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import gin
 from beartype import beartype
@@ -55,7 +55,7 @@ class PatchedChatLiteLLM(ChatLiteLLM):
     max_tokens: int | None = None  # type: ignore
 
     @property
-    def _default_params(self) -> dict[str, any]:
+    def _default_params(self) -> dict[str, Any]:
         """Get the default parameters for calling OpenAI API."""
         set_model_value = self.model
         if self.model_name is not None:
