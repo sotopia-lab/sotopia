@@ -1,5 +1,5 @@
-"""XML Renderer for background, goal, observation, etc.
-"""
+"""XML Renderer for background, goal, observation, etc."""
+
 from io import StringIO
 from typing import cast
 
@@ -13,27 +13,21 @@ def _render_xml(xml_node: etree._Element | str, context: RenderContext) -> str:
     if isinstance(xml_node, str):
         return xml_node
     else:
-        if (
-            xml_node.tag in ["root", "p"]
-            or xml_node.tag in context.tags_to_render
-        ):
+        if xml_node.tag in ["root", "p"] or xml_node.tag in context.tags_to_render:
             if context.viewer.startswith("agent_"):
                 # For each agent, we only render the messages viewable by that agent
                 all_visible_children = xml_node.xpath(
                     f"./node()[@viewer='{context.viewer}'] | ./node()[not(@viewer)]"
                 )
-                assert is_bearable(
-                    all_visible_children, list[etree._Element | str]
-                )
+                assert is_bearable(all_visible_children, list[etree._Element | str])
                 cast(list[etree._Element | str], all_visible_children)
                 return "".join(
-                    _render_xml(child, context) for child in all_visible_children  # type: ignore[attr-defined]
+                    _render_xml(child, context)
+                    for child in all_visible_children  # type: ignore[attr-defined]
                 )
             elif context.viewer == "human":
                 # For human, we render the raw xml
-                return etree.tostring(xml_node, pretty_print=True).decode(
-                    "utf-8"
-                )
+                return etree.tostring(xml_node, pretty_print=True).decode("utf-8")
             elif context.viewer == "environment":
                 # For environment, we render all text
                 all_text = xml_node.xpath("//text()")
@@ -67,9 +61,7 @@ class XMLRenderer(BaseRenderer):
                 )
                 try:
                     root = etree.parse(
-                        StringIO(
-                            f"<root>{xml_string.translate(table)}</root>"
-                        ),
+                        StringIO(f"<root>{xml_string.translate(table)}</root>"),
                         self.parser,
                     ).getroot()
                 except etree.XMLSyntaxError as e:

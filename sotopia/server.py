@@ -1,8 +1,7 @@
 import asyncio
-import functools
 import itertools
 import logging
-from typing import Callable, Literal, Sequence, Type, cast
+from typing import Literal, Sequence, Type, cast
 
 import gin
 import rich
@@ -19,10 +18,6 @@ from sotopia.agents import (
 )
 from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import EpisodeLog
-from sotopia.database.persistent_profile import (
-    AgentProfile,
-    EnvironmentProfile,
-)
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
@@ -34,14 +29,8 @@ from sotopia.messages import AgentAction, Message, Observation
 from sotopia.messages.message_classes import (
     ScriptBackground,
     ScriptEnvironmentResponse,
-    ScriptInteraction,
 )
-from sotopia.samplers import (
-    BaseSampler,
-    ConstraintBasedSampler,
-    EnvAgentCombo,
-    UniformSampler,
-)
+from sotopia.samplers import BaseSampler, EnvAgentCombo
 
 
 @beartype
@@ -53,7 +42,6 @@ def run_sync_server(
     full_background_file: str | None = None,
     mode: str | None = None,
 ) -> list[tuple[str, str, Message]]:
-
     # Create Environment and agents
     # This step will be moved to outside this function
 
@@ -90,9 +78,7 @@ def run_sync_server(
     # Main Event Loop
     done = False
     for agent_name in env.agents:
-        messages.append(
-            ("Environment", agent_name, environment_messages[agent_name])
-        )
+        messages.append(("Environment", agent_name, environment_messages[agent_name]))
 
     while not done:
         # gather agent messages
@@ -103,14 +89,10 @@ def run_sync_server(
             agent_messages[agent_name] = agents[agent_name].act(
                 environment_messages[agent_name]
             )
-            messages.append(
-                (agent_name, "Environment", agent_messages[agent_name])
-            )
+            messages.append((agent_name, "Environment", agent_messages[agent_name]))
 
         # send agent messages to environment
-        environment_messages, _, terminated, ___, ____ = env.step(
-            agent_messages
-        )
+        environment_messages, _, terminated, ___, ____ = env.step(agent_messages)
         for agent_name in env.agents:
             messages.append(
                 ("Environment", agent_name, environment_messages[agent_name])
@@ -191,9 +173,7 @@ async def arun_one_episode(
         for idx, agent_name in enumerate(env.agents):
             agent_messages[agent_name] = actions[idx]
 
-            messages[-1].append(
-                (agent_name, "Environment", agent_messages[agent_name])
-            )
+            messages[-1].append((agent_name, "Environment", agent_messages[agent_name]))
 
         # send agent messages to environment
         (
@@ -211,9 +191,7 @@ async def arun_one_episode(
         )
         # print("Environment message: ", environment_messages)
         # exit(0)
-        rewards.append(
-            [rewards_in_turn[agent_name] for agent_name in env.agents]
-        )
+        rewards.append([rewards_in_turn[agent_name] for agent_name in env.agents])
         reasons.append(
             " ".join(info[agent_name]["comments"] for agent_name in env.agents)
         )
@@ -226,16 +204,11 @@ async def arun_one_episode(
         tag=tag,
         models=[model_dict["env"], model_dict["agent1"], model_dict["agent2"]],
         messages=[
-            [
-                (m[0], m[1], m[2].to_natural_language())
-                for m in messages_in_turn
-            ]
+            [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
             for messages_in_turn in messages
         ],
         reasoning=info[env.agents[0]]["comments"],
-        rewards=[
-            info[agent_name]["complete_rating"] for agent_name in env.agents
-        ],
+        rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
         rewards_prompt=info["rewards_prompt"]["overall_prompt"],
     )
     rich.print(epilog.rewards_prompt)
@@ -259,9 +232,7 @@ async def arun_one_episode(
 async def run_async_server(
     model_dict: dict[str, LLM_Name],
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
-    action_order: Literal[
-        "simutaneous", "round-robin", "random"
-    ] = "round-robin",
+    action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
     omniscient: bool = False,
     script_like: bool = False,
@@ -282,9 +253,7 @@ async def run_async_server(
     else the sampler is not used. Please pass in BaseSampler or simply not specify it when using this option.
     """
 
-    assert not (
-        push_to_db and tag is None
-    ), "please provide a tag when push to db"
+    assert not (push_to_db and tag is None), "please provide a tag when push to db"
 
     # Create Environment and agents
     # This step will be moved to outside this function
@@ -322,8 +291,7 @@ async def run_async_server(
     else:
         env_agent_combo_iter = sampler.sample(
             agent_classes=[
-                get_agent_class(model_name)
-                for model_name in agents_model_dict.values()
+                get_agent_class(model_name) for model_name in agents_model_dict.values()
             ],
             n_agent=len(agents_model_dict),
             env_params=env_params,
@@ -373,9 +341,7 @@ async def arun_one_script(
     env.reset(agents=agents, omniscient=omniscient)
 
     agent_names = [agent.agent_name for agent in agent_list]
-    assert (
-        len(agent_names) == 2
-    ), f"only support 2 agents, current: {agent_names}"
+    assert len(agent_names) == 2, f"only support 2 agents, current: {agent_names}"
 
     script_background = env.inbox[0][1]
     assert isinstance(script_background, ScriptBackground)
@@ -404,9 +370,7 @@ async def arun_one_script(
             )
         )
     )
-    info: dict[
-        str, dict[str, str | ScriptEnvironmentResponse | float | None]
-    ] = {
+    info: dict[str, dict[str, str | ScriptEnvironmentResponse | float | None]] = {
         script_background.p1_name: {
             "comments": response.comments or "",
             "complete_rating": response.p1_rate or 0,  # type: ignore
@@ -423,17 +387,12 @@ async def arun_one_script(
         tag=tag,
         models=[model_dict["env"], model_dict["agent1"], model_dict["agent2"]],
         messages=[
-            [
-                (m[0], m[1], m[2].to_natural_language())
-                for m in messages_in_turn
-            ]
+            [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
             for messages_in_turn in messages
         ],
         reasoning=str(info[env.agents[0]]["comments"])
         + str(info[env.agents[1]]["comments"]),
-        rewards=[
-            info[agent_name]["complete_rating"] for agent_name in env.agents
-        ],
+        rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
         rewards_prompt=info["rewards_prompt"]["overall_prompt"],
     )
     print("Reward prompt: ")
@@ -460,12 +419,10 @@ async def aevaluate_one_episode(
     tag: str | None = None,
     push_to_db: bool = False,
 ) -> None:
-    history = episode.rewards_prompt.replace(
-        "Prompt after formatting:", ""
-    ).split(",\nBased on previous interactions")[0]
-    evaluator = ReachGoalLLMEvaluator(
-        model_name=model, response_format="basic"
-    )
+    history = episode.rewards_prompt.replace("Prompt after formatting:", "").split(
+        ",\nBased on previous interactions"
+    )[0]
+    evaluator = ReachGoalLLMEvaluator(model_name=model, response_format="basic")
     response = unweighted_aggregate_evaluate(
         list(
             itertools.chain(
@@ -482,9 +439,7 @@ async def aevaluate_one_episode(
             )
         )
     )
-    info: dict[
-        str, dict[str, str | ScriptEnvironmentResponse | float | None]
-    ] = {
+    info: dict[str, dict[str, str | ScriptEnvironmentResponse | float | None]] = {
         episode.agents[0]: {
             "comments": response.comments or "",
             "complete_rating": response.p1_rate or 0,  # type: ignore
@@ -503,10 +458,7 @@ async def aevaluate_one_episode(
         messages=episode.messages,
         reasoning=str(info[episode.agents[0]]["comments"])
         + str(info[episode.agents[1]]["comments"]),
-        rewards=[
-            info[agent_name]["complete_rating"]
-            for agent_name in episode.agents
-        ],
+        rewards=[info[agent_name]["complete_rating"] for agent_name in episode.agents],
         rewards_prompt="TBD",
     )
     # rich.print(history)

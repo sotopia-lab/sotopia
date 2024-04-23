@@ -4,9 +4,7 @@ class FLAGS(object):
     gin_bindings: list[str]
 
 
-def DEFINE_multi_string(
-    name: str, default: list[str] | None, help: str
-) -> None:
+def DEFINE_multi_string(name: str, default: list[str] | None, help: str) -> None:
     pass
 
 

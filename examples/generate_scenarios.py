@@ -1,7 +1,6 @@
 import ast
 import asyncio
 import json
-import random
 from typing import Any, cast
 
 import pandas as pd
@@ -26,9 +25,7 @@ def add_env_profile(**kwargs: dict[str, Any]) -> EnvironmentProfile:
     return env_profile
 
 
-def add_env_profiles(
-    env_profiles: list[dict[str, Any]]
-) -> list[EnvironmentProfile]:
+def add_env_profiles(env_profiles: list[dict[str, Any]]) -> list[EnvironmentProfile]:
     env_list = []
     for env_profile in env_profiles:
         profile = add_env_profile(**env_profile)
@@ -78,9 +75,7 @@ def generate_newenv_profile(
                 env_profile_list.append(env_profile)
     elif type == "craigslist_bargains":
         while len(env_profile_list) < num:
-            scenario, social_goals = asyncio.run(
-                generate_craigslist_bargains_envs()
-            )
+            scenario, social_goals = asyncio.run(generate_craigslist_bargains_envs())
             env_profile = {
                 "codename": f"craigslist_bargains_{len(env_profile_list)+10}",
                 "scenario": scenario,
@@ -184,7 +179,7 @@ def upload_env_profiles(
         try:
             _sample_env_agent_combo_and_push_to_db(env_profile.pk)
             count += 1
-        except:
+        except Exception as _:
             EnvironmentProfile.delete(env_profile.pk)
             pass
     print(f"New env-agent combo added to database: {count}")
