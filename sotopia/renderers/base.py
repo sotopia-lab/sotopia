@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import BaseModel, Field, validator
 
 
@@ -25,7 +23,7 @@ class RenderContext(BaseModel):
             try:
                 agent_idx = int(v.split("_")[1])
                 assert agent_idx >= 0
-            except:
+            except Exception:
                 raise ValueError(
                     "If viewer is an agent, it must be of the form agent_i, where i is a non-negative integer."
                 )

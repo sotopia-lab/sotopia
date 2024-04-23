@@ -16,7 +16,7 @@ def pearsonr(
     y: ArrayLike,
     *,
     alternative: str = ...,
-    method: ResamplingMethod | None = ...
+    method: ResamplingMethod | None = ...,
 ) -> PearsonRResult: ...
 def spearmanr(
     a: ArrayLike,

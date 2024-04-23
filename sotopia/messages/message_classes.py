@@ -5,9 +5,7 @@ from pydantic import BaseModel, Field
 
 from sotopia.utils import format_docstring
 
-ActionType = Literal[
-    "none", "speak", "non-verbal communication", "action", "leave"
-]
+ActionType = Literal["none", "speak", "non-verbal communication", "action", "leave"]
 
 
 class Message(BaseModel):
@@ -34,9 +32,7 @@ class SimpleMessage(Message):
 class Observation(Message):
     last_turn: str = Field(description="the last turn of the conversation")
     turn_number: int = Field(description="the turn number of the conversation")
-    available_actions: list[ActionType] = Field(
-        description="the available actions"
-    )
+    available_actions: list[ActionType] = Field(description="the available actions")
 
     def to_natural_language(self) -> str:
         if self.turn_number == 0:
@@ -56,12 +52,8 @@ class ScriptBackground(Message):
 
     def to_natural_language(self) -> str:
         if self.p1_background or self.p2_background:
-            p1_background = (
-                self.p1_background if self.p1_background else "Unknown"
-            )
-            p2_background = (
-                self.p2_background if self.p2_background else "Unknown"
-            )
+            p1_background = self.p1_background if self.p1_background else "Unknown"
+            p2_background = self.p2_background if self.p2_background else "Unknown"
             # Not using AND, since in stranger relation the background is not visible
             return format_docstring(
                 f"""Here is the context of this interaction:
@@ -188,9 +180,7 @@ class ScriptInteraction(Message):
 
     def parse(
         self, agent_names: list[str], background: str
-    ) -> tuple[
-        list[list[tuple[str, str, Message]]], list[tuple[str, Message]]
-    ]:
+    ) -> tuple[list[list[tuple[str, str, Message]]], list[tuple[str, Message]]]:
         interaction = self.interactions
         # print("Interaction: ", interaction)
         lines = self.split_by_turn(interaction)
@@ -216,12 +206,10 @@ class ScriptInteraction(Message):
                 res = self.parse_single_dialogue(line)
                 action: AgentAction = cast(AgentAction, res["action"])
                 argument: str = cast(str, res["argument"])
-                turn: int = cast(int, res["turn"])
+                cast(int, res["turn"])
                 name: str = cast(str, res["name"])
 
-                parsed_action = AgentAction(
-                    action_type=action, argument=argument
-                )
+                parsed_action = AgentAction(action_type=action, argument=argument)
                 if name not in agent_names:
                     print(
                         f"The name of the agent, {name}, is not in the list of agent names, {agent_names}"
@@ -258,9 +246,7 @@ class ScriptInteraction(Message):
                     (
                         inactive_agent_name,
                         "Environment",
-                        AgentAction(
-                            action_type="none", argument="did nothing"
-                        ),
+                        AgentAction(action_type="none", argument="did nothing"),
                     ),
                 ]
             )
@@ -283,9 +269,7 @@ class ScriptInteraction(Message):
             raise ValueError(
                 f"The dialogue does not match the expected format: {dialogue}"
             )
-            return (
-                None  # TODO Which should we use, return None or raise error?
-            )
+            return None  # TODO Which should we use, return None or raise error?
 
         turn, name = match_turn_name.groups()
         action_content = dialogue[
@@ -324,12 +308,8 @@ class ScriptInteraction(Message):
         # Split using 'Turn #' as delimiter, but keep the delimiter in the results
         dialogues = re.split(r"(?=Turn #?\d+)", input_string)
         # Remove any empty strings and strip whitespace
-        dialogues = [
-            dialogue.strip() for dialogue in dialogues if dialogue.strip()
-        ]
-        dialogues = [
-            dialogue for dialogue in dialogues if dialogue.startswith("Turn")
-        ]
+        dialogues = [dialogue.strip() for dialogue in dialogues if dialogue.strip()]
+        dialogues = [dialogue for dialogue in dialogues if dialogue.startswith("Turn")]
         # Change from Turn #x to Turn (#)x (# is optional)
         dialogues[-1] = "\n".join(
             dialogues[-1].split("\n")[:2]

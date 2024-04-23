@@ -1,11 +1,10 @@
 import logging
 import re
-from typing import TypeVar, cast
+from typing import Any, TypeVar
 
 import gin
 from beartype import beartype
 from beartype.typing import Type
-from langchain.callbacks import StdOutCallbackHandler
 from langchain.chains import LLMChain
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
@@ -13,35 +12,21 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
     PromptTemplate,
 )
-from langchain.schema import (
-    BaseOutputParser,
-    HumanMessage,
-    OutputParserException,
-)
+from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_community.llms import OpenAI
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from rich import print
-from rich.logging import RichHandler
 from typing_extensions import Literal
 
 from sotopia.database import EnvironmentProfile, RelationshipProfile
-from sotopia.messages import (
-    ActionType,
-    AgentAction,
-    ScriptBackground,
-    ScriptEnvironmentResponse,
-)
+from sotopia.messages import ActionType, AgentAction, ScriptBackground
 from sotopia.messages.message_classes import (
     ScriptInteraction,
     ScriptInteractionReturnType,
-    SimpleMessage,
 )
 from sotopia.utils import format_docstring
 
 from .langchain_callback_handler import LoggingCallbackHandler
-from .llama2 import Llama2
 
 log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
@@ -61,21 +46,43 @@ LLM_Name = Literal[
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "together_ai/togethercomputer/llama-2-7b-chat",
     "together_ai/togethercomputer/falcon-7b-instruct",
+    "groq/llama3-70b-8192",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
+
+
+class PatchedChatLiteLLM(ChatLiteLLM):
+    max_tokens: int | None = None  # type: ignore
+
+    @property
+    def _default_params(self) -> dict[str, Any]:
+        """Get the default parameters for calling OpenAI API."""
+        set_model_value = self.model
+        if self.model_name is not None:
+            set_model_value = self.model_name
+
+        params = {
+            "model": set_model_value,
+            "force_timeout": self.request_timeout,
+            "stream": self.streaming,
+            "n": self.n,
+            "temperature": self.temperature,
+            "custom_llm_provider": self.custom_llm_provider,
+            **self.model_kwargs,
+        }
+        if self.max_tokens is not None:
+            params["max_tokens"] = self.max_tokens
+
+        return params
 
 
 class EnvResponse(BaseModel):
     reasoning: str = Field(
         description="first reiterate agents' social goals and then reason about what agents say/do and whether that aligns with their goals."
     )
-    p1_rate: int = Field(
-        description="rating of participant 1, on the scale of 0 to 9"
-    )
-    p2_rate: int = Field(
-        description="rating of participant 2, on the scale of 0 to 9"
-    )
+    p1_rate: int = Field(description="rating of participant 1, on the scale of 0 to 9")
+    p2_rate: int = Field(description="rating of participant 2, on the scale of 0 to 9")
 
 
 class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
@@ -125,9 +132,7 @@ class ListOfIntOutputParser(BaseOutputParser[list[int]]):
                 output = output.split(":")[1]
             result = [int(x) for x in output.split(" ") if x]
             if self.number_of_int and len(result) != self.number_of_int:
-                msg = (
-                    f"Expect {self.number_of_int} integers, got {len(result)}"
-                )
+                msg = f"Expect {self.number_of_int} integers, got {len(result)}"
                 raise OutputParserException(msg)
             if self.range_of_int:
                 for x in result:
@@ -209,9 +214,7 @@ class ScriptOutputParser(BaseOutputParser[ScriptInteractionReturnType]):
         description="The names of the two agents in the conversation"
     )
     background: str = Field(description="The background of the conversation")
-    single_turn: bool = Field(
-        description="Whether the output is a single turn"
-    )
+    single_turn: bool = Field(description="Whether the output is a single turn")
 
     def get_format_instructions(self) -> str:
         if self.single_turn:
@@ -272,18 +275,14 @@ f. Oliver Thompson left the conversation"""
             )
             return parsed_interaction
         except Exception as e:
-            print(
-                f"Exception {e}: the output format is not correct. Reformatting "
-            )
+            print(f"Exception {e}: the output format is not correct. Reformatting ")
             reformat_parsed_result = format_bad_output_for_script(
                 ill_formed_output=output,
                 format_instructions=self.get_format_instructions(),
                 agents=agent_names,
             )
             print("Reformatted output: ", reformat_parsed_result)
-            interaction = ScriptInteraction(
-                interactions=reformat_parsed_result
-            )
+            interaction = ScriptInteraction(interactions=reformat_parsed_result)
             parsed_interaction = interaction.parse(
                 agent_names=agent_names, background=self.background
             )
@@ -296,13 +295,22 @@ f. Oliver Thompson left the conversation"""
 
 
 def _return_fixed_model_version(model_name: str) -> str:
-    return {
-        "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
-        "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
-        "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
-        "gpt-4": "gpt-4-0613",
-        "gpt-4-turbo": "gpt-4-1106-preview",
-    }[model_name]
+    if model_name in [
+        "gpt-3.5-turbo",
+        "gpt-3.5-turbo-finetuned",
+        "gpt-3.5-turbo-ft-MF",
+        "gpt-4",
+        "gpt-4-turbo",
+    ]:
+        return {
+            "gpt-3.5-turbo": "gpt-3.5-turbo-0613",
+            "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
+            "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
+            "gpt-4": "gpt-4-0613",
+            "gpt-4-turbo": "gpt-4-1106-preview",
+        }[model_name]
+    else:
+        return model_name
 
 
 @gin.configurable
@@ -318,20 +326,15 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    chat = ChatLiteLLM(
+    chat = PatchedChatLiteLLM(
         model=model_name,
         temperature=temperature,
-        max_tokens=2700,  # tweak as needed
         max_retries=max_retries,
     )
     human_message_prompt = HumanMessagePromptTemplate(
-        prompt=PromptTemplate(
-            template=template, input_variables=input_variables
-        )
+        prompt=PromptTemplate(template=template, input_variables=input_variables)
     )
-    chat_prompt_template = ChatPromptTemplate.from_messages(
-        [human_message_prompt]
-    )
+    chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
     chain = LLMChain(llm=chat, prompt=chat_prompt_template)
     return chain
 
@@ -408,10 +411,9 @@ def generate(
     temperature: float = 0.7,
 ) -> OutputType:
     input_variables = re.findall(r"{(.*?)}", template)
-    assert set(input_variables) == set(
-        list(input_values.keys()) + ["format_instructions"]
-    ) or set(input_variables) == set(
-        list(input_values.keys())
+    assert (
+        set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
+        or set(input_variables) == set(list(input_values.keys()))
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
     # process template
     template = format_docstring(template)
@@ -422,9 +424,7 @@ def generate(
         temperature=temperature,
     )
     if "format_instructions" not in input_values:
-        input_values[
-            "format_instructions"
-        ] = output_parser.get_format_instructions()
+        input_values["format_instructions"] = output_parser.get_format_instructions()
     result = chain.predict([logging_handler], **input_values)
     try:
         parsed_result = output_parser.parse(result)
@@ -453,10 +453,9 @@ async def agenerate(
     temperature: float = 0.7,
 ) -> tuple[OutputType, str]:
     input_variables = re.findall(r"{(.*?)}", template)
-    assert set(input_variables) == set(
-        list(input_values.keys()) + ["format_instructions"]
-    ) or set(input_variables) == set(
-        list(input_values.keys())
+    assert (
+        set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
+        or set(input_variables) == set(list(input_values.keys()))
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
     # process template
     template = format_docstring(template)
@@ -467,9 +466,7 @@ async def agenerate(
         temperature=temperature,
     )
     if "format_instructions" not in input_values:
-        input_values[
-            "format_instructions"
-        ] = output_parser.get_format_instructions()
+        input_values["format_instructions"] = output_parser.get_format_instructions()
     result = await chain.apredict([logging_handler], **input_values)
     prompt = logging_handler.retrive_prompt()
     try:
@@ -566,9 +563,7 @@ async def agenerate_relationship_profile(
         input_values=dict(
             agent_profile=agent_profile,
         ),
-        output_parser=PydanticOutputParser(
-            pydantic_object=RelationshipProfile
-        ),
+        output_parser=PydanticOutputParser(pydantic_object=RelationshipProfile),
     )
 
 
@@ -657,7 +652,7 @@ def generate_action(
         )
     except KeyboardInterrupt:
         raise KeyboardInterrupt
-    except:
+    except Exception:
         return AgentAction(action_type="none", argument="")
 
 
@@ -702,7 +697,7 @@ def generate_action_speak(
         return AgentAction(action_type="speak", argument=utterance)
     except KeyboardInterrupt:
         raise KeyboardInterrupt
-    except:
+    except Exception:
         return AgentAction(action_type="none", argument="")
 
 
@@ -767,7 +762,7 @@ async def agenerate_action(
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
         )
-    except:
+    except Exception:
         return AgentAction(action_type="none", argument=""), ""
 
 
@@ -848,7 +843,7 @@ async def agenerate_script(
 
 @beartype
 def process_history(
-    script: ScriptBackground | EnvResponse | dict[str, AgentAction]
+    script: ScriptBackground | EnvResponse | dict[str, AgentAction],
 ) -> str:
     """
     Format the script background
