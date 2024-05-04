@@ -1,20 +1,13 @@
 import abc
 import logging
 from collections import defaultdict
-from typing import Generic, Type, Union
 
 import gin
 from beartype import beartype
 from langchain.output_parsers import PydanticOutputParser
-from langchain.schema import BaseOutputParser
 from pydantic import BaseModel, Field, validator
 
-from sotopia.generation_utils.generate import (
-    EnvResponsePydanticOutputParser,
-    ListOfIntOutputParser,
-    agenerate,
-    generate,
-)
+from sotopia.generation_utils.generate import agenerate
 from sotopia.messages import (
     AgentAction,
     Message,
@@ -77,16 +70,12 @@ class EvaluationBySocialDimensions(BaseModel):
         return v
 
     @validator("relationship", "financial_and_material_benefits")
-    def minus_five_to_five_validator(
-        cls, v: tuple[str, int]
-    ) -> tuple[str, int]:
+    def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -5 and v[1] <= 5
         return v
 
     @validator("secret", "social_rules")
-    def minus_ten_to_zero_validator(
-        cls, v: tuple[str, int]
-    ) -> tuple[str, int]:
+    def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -10 and v[1] <= 0
         return v
 
@@ -144,16 +133,12 @@ class EvaluationBySocialDimensionsPlus(BaseModel):
         return v
 
     @validator("relationship", "financial_and_material_benefits")
-    def minus_five_to_five_validator(
-        cls, v: tuple[str, int]
-    ) -> tuple[str, int]:
+    def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -5 and v[1] <= 5
         return v
 
     @validator("secret", "social_rules")
-    def minus_ten_to_zero_validator(
-        cls, v: tuple[str, int]
-    ) -> tuple[str, int]:
+    def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -10 and v[1] <= 0
         return v
 
@@ -187,9 +172,7 @@ class Evaluator(abc.ABC):
 
 @beartype
 class RuleBasedTerminatedEvaluator(Evaluator):
-    def __init__(
-        self, max_turn_number: int = 20, max_stale_turn: int = 2
-    ) -> None:
+    def __init__(self, max_turn_number: int = 20, max_stale_turn: int = 2) -> None:
         self.max_turn_number = max_turn_number
         self.max_stale_turn = max_stale_turn
 
@@ -222,9 +205,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
             if stale_count > self.max_stale_turn:
                 break
         stale_too_long = stale_count > self.max_stale_turn
-        terminated = (
-            conversation_too_long or p1_leaving or p2_leaving or stale_too_long
-        )
+        terminated = conversation_too_long or p1_leaving or p2_leaving or stale_too_long
         reasons_for_termination = (
             f"{'The conversation is too long; ' if conversation_too_long else ''}"
             f"{'Agent 1 is leaving; ' if p1_leaving else ''}"
@@ -246,9 +227,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
 
 class ReachGoalLLMEvaluator(Evaluator):
     @beartype
-    def __init__(
-        self, model_name: str, response_format: str = "basic"
-    ) -> None:
+    def __init__(self, model_name: str, response_format: str = "basic") -> None:
         self.model_name = model_name
         self.prompt = ""
         self.response_format = response_format
@@ -302,9 +281,9 @@ class ReachGoalLLMEvaluator(Evaluator):
                     {format_instructions}
                 """,
                 input_values=dict(history=history),
-                output_parser=PydanticOutputParser[
-                    EnvResponsePlus | EnvResponse
-                ](pydantic_object=response_format_class),
+                output_parser=PydanticOutputParser[EnvResponsePlus | EnvResponse](
+                    pydantic_object=response_format_class
+                ),
                 temperature=temperature,
             )
             self.prompt = prompt
@@ -317,9 +296,7 @@ class ReachGoalLLMEvaluator(Evaluator):
                         (
                             (
                                 dimension,
-                                response.agent_1_evaluation.dict()[dimension][
-                                    1
-                                ],
+                                response.agent_1_evaluation.dict()[dimension][1],
                             ),
                             response.agent_1_evaluation.dict()[dimension][0],
                         ),
@@ -331,9 +308,7 @@ class ReachGoalLLMEvaluator(Evaluator):
                         (
                             (
                                 dimension,
-                                response.agent_2_evaluation.dict()[dimension][
-                                    1
-                                ],
+                                response.agent_2_evaluation.dict()[dimension][1],
                             ),
                             response.agent_2_evaluation.dict()[dimension][0],
                         ),
@@ -347,7 +322,7 @@ class ReachGoalLLMEvaluator(Evaluator):
 
 @beartype
 def _reduce(
-    responses_per_reducer: list[tuple[tuple[str, float | int | bool], str]]
+    responses_per_reducer: list[tuple[tuple[str, float | int | bool], str]],
 ) -> tuple[dict[str, float | int | bool], str]:
     responses_dict = defaultdict(list)
     comments_dict: dict[str, str] = defaultdict(str)
@@ -364,7 +339,7 @@ def _reduce(
             assert all([isinstance(x, (float, int)) for x in v])
             reduced_dict[k] = sum(v) / len(v)
             scores.append(reduced_dict[k])
-    if len(scores) and not "overall_score" in responses_dict:
+    if len(scores) and "overall_score" not in responses_dict:
         scores = [x for x in scores if x is not None]
         reduced_dict["overall_score"] = sum(scores) / len(scores)
     comments = "\n".join([f"{k}: {v}" for k, v in comments_dict.items()])
@@ -382,9 +357,9 @@ def unweighted_aggregate_evaluate(
         responses (list[tuple[str, tuple[tuple[str, int | bool], str]]]): list of responses from the environment
         Each response is a tuple of (agent_name/environment, (response, reasoning))
     """
-    responses_dict: dict[
-        str, list[tuple[tuple[str, int | float | bool], str]]
-    ] = defaultdict(list)
+    responses_dict: dict[str, list[tuple[tuple[str, int | float | bool], str]]] = (
+        defaultdict(list)
+    )
     for response in responses:
         assert response[0] == "environment" or response[0].startswith("agent")
         responses_dict[response[0]].append(response[1])

@@ -1,6 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable
+from typing import Callable, cast
 
 from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile
@@ -11,16 +11,14 @@ from sotopia.generation_utils.generate import (
     generate_action_speak,
     generate_goal,
 )
-from sotopia.messages import AgentAction, Message, Observation
+from sotopia.messages import AgentAction, Observation
 from sotopia.messages.message_classes import ScriptBackground
 
 
 async def ainput(prompt: str = "") -> str:
     with ThreadPoolExecutor(1, "ainput") as executor:
         return (
-            await asyncio.get_event_loop().run_in_executor(
-                executor, input, prompt
-            )
+            await asyncio.get_event_loop().run_in_executor(executor, input, prompt)
         ).rstrip()
 
 
@@ -72,9 +70,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         else:
             action = gen_func(
                 self.model_name,
-                history="\n".join(
-                    f"{y.to_natural_language()}" for x, y in self.inbox
-                ),
+                history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
                 turn_number=obs.turn_number,
                 action_types=obs.available_actions,
                 agent=self.agent_name,
@@ -90,9 +86,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         else:
             action, prompt = await agenerate_action(
                 self.model_name,
-                history="\n".join(
-                    f"{y.to_natural_language()}" for x, y in self.inbox
-                ),
+                history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
                 turn_number=obs.turn_number,
                 action_types=obs.available_actions,
                 agent=self.agent_name,
@@ -104,9 +98,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 current_agent = self.agent_name
                 if f"{current_agent}:" in action.argument:
                     print("Fixing Mixtral's generation format")
-                    action.argument = action.argument.replace(
-                        f"{current_agent}: ", ""
-                    )
+                    action.argument = action.argument.replace(f"{current_agent}: ", "")
                 elif f"{current_agent} said:" in action.argument:
                     print("Fixing Mixtral's generation format")
                     action.argument = action.argument.replace(
@@ -114,9 +106,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     )
 
             return action
-
-
-from typing import cast
 
 
 class ScriptWritingAgent(LLMAgent):
@@ -141,13 +130,9 @@ class ScriptWritingAgent(LLMAgent):
 
     async def aact(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
-        message_to_compose = [
-            y for idx, (x, y) in enumerate(self.inbox) if idx != 0
-        ]
+        message_to_compose = [y for idx, (x, y) in enumerate(self.inbox) if idx != 0]
 
-        history = "\n".join(
-            f"{y.to_natural_language()}" for y in message_to_compose
-        )
+        history = "\n".join(f"{y.to_natural_language()}" for y in message_to_compose)
 
         action, prompt = await agenerate_script(
             model_name=self.model_name,
@@ -223,15 +208,13 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
             )
             try:
                 action_type_number = int(action_type_number)  # type: ignore
-            except:
+            except TypeError:
                 print("Please input a number.")
                 action_type_number = await ainput(
                     "Action type (Please only input the number): "
                 )
                 action_type_number = int(action_type_number)  # type: ignore
-            assert isinstance(
-                action_type_number, int
-            ), "Please input a number."
+            assert isinstance(action_type_number, int), "Please input a number."
             action_type = obs.available_actions[action_type_number]
         else:
             action_type = "none"
@@ -250,6 +233,5 @@ class Agents(dict[str, BaseAgent[Observation, AgentAction]]):
 
     def act(self, obs: dict[str, Observation]) -> dict[str, AgentAction]:
         return {
-            agent_name: agent.act(obs[agent_name])
-            for agent_name, agent in self.items()
+            agent_name: agent.act(obs[agent_name]) for agent_name, agent in self.items()
         }

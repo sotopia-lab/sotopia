@@ -6,20 +6,19 @@ import subprocess
 import typing
 import uuid
 from datetime import datetime
-from typing import Generator, Literal, cast
+from typing import Literal, cast
 
 import pydantic
 import pytest
-from fastapi import Body, Request
+from fastapi import Body
 from fastapi.applications import FastAPI
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 from fastapi.testclient import TestClient
 from redis import Redis
 from redis.lock import Lock
-from redis_om import JsonModel, Migrator
-from redis_om.model.model import Field
+from redis_om import Migrator
+from starlette.responses import Response
 
 from sotopia.database import (
     AgentProfile,
@@ -28,7 +27,6 @@ from sotopia.database import (
     MessageTransaction,
     SessionTransaction,
 )
-from sotopia.messages import AgentAction, Observation, SimpleMessage
 
 Migrator().run()
 
@@ -53,9 +51,7 @@ async def connect(
 ) -> list[MessageTransaction]:
     session_transactions = cast(
         list[SessionTransaction],
-        SessionTransaction.find(
-            SessionTransaction.session_id == session_id
-        ).all(),
+        SessionTransaction.find(SessionTransaction.session_id == session_id).all(),
     )
     if not session_transactions:
         if role == "client":
@@ -87,9 +83,7 @@ async def connect(
 async def _get_single_exist_session(session_id: str) -> SessionTransaction:
     session_transactions = cast(
         list[SessionTransaction],
-        SessionTransaction.find(
-            SessionTransaction.session_id == session_id
-        ).all(),
+        SessionTransaction.find(SessionTransaction.session_id == session_id).all(),
     )
     if not session_transactions:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -190,13 +184,11 @@ async def enter_waiting_room(sender_id: str) -> str:
     for matching_in_waiting_room in matchings_in_waiting_room:
         if sender_id in matching_in_waiting_room.client_ids:
             index = matching_in_waiting_room.client_ids.index(sender_id)
-            match (index):
+            match index:
                 case 0:
                     if len(matching_in_waiting_room.client_ids) > 1:
                         _start_server(matching_in_waiting_room.session_ids)
-                        matching_in_waiting_room.session_id_retrieved[
-                            0
-                        ] = "true"
+                        matching_in_waiting_room.session_id_retrieved[0] = "true"
                         return matching_in_waiting_room.session_ids[0]
                     else:
                         if (
@@ -204,9 +196,7 @@ async def enter_waiting_room(sender_id: str) -> str:
                             - matching_in_waiting_room.timestamp
                             > WAITING_ROOM_TIMEOUT
                         ):
-                            MatchingInWaitingRoom.delete(
-                                matching_in_waiting_room.pk
-                            )
+                            MatchingInWaitingRoom.delete(matching_in_waiting_room.pk)
                             _start_server(matching_in_waiting_room.session_ids)
                             return matching_in_waiting_room.session_ids[0]
                         else:
@@ -218,29 +208,19 @@ async def enter_waiting_room(sender_id: str) -> str:
                             - matching_in_waiting_room.timestamp
                             > WAITING_ROOM_TIMEOUT
                         ):
-                            MatchingInWaitingRoom.delete(
-                                matching_in_waiting_room.pk
-                            )
-                            _start_server(
-                                matching_in_waiting_room.session_ids[1:]
-                            )
+                            MatchingInWaitingRoom.delete(matching_in_waiting_room.pk)
+                            _start_server(matching_in_waiting_room.session_ids[1:])
                             return matching_in_waiting_room.session_ids[1]
                         else:
                             return ""
                     else:
-                        matching_in_waiting_room.session_id_retrieved[
-                            1
-                        ] = "true"
-                        MatchingInWaitingRoom.delete(
-                            matching_in_waiting_room.pk
-                        )
+                        matching_in_waiting_room.session_id_retrieved[1] = "true"
+                        MatchingInWaitingRoom.delete(matching_in_waiting_room.pk)
                         return matching_in_waiting_room.session_ids[1]
                 case _:
-                    assert (
-                        False
-                    ), f"{matching_in_waiting_room} has more than 2 clients, not expected"
+                    assert False, f"{matching_in_waiting_room} has more than 2 clients, not expected"
     else:
-        lock = Lock(conn, f"lock:check_available_spots")
+        lock = Lock(conn, "lock:check_available_spots")
         with lock:
             matchings_in_waiting_room = cast(
                 list[MatchingInWaitingRoom],
@@ -248,13 +228,9 @@ async def enter_waiting_room(sender_id: str) -> str:
             )
             for matching_in_waiting_room in matchings_in_waiting_room:
                 if len(matching_in_waiting_room.client_ids) == 1:
-                    matching_in_waiting_room.timestamp = (
-                        datetime.now().timestamp()
-                    )
+                    matching_in_waiting_room.timestamp = datetime.now().timestamp()
                     matching_in_waiting_room.client_ids.append(sender_id)
-                    matching_in_waiting_room.session_ids.append(
-                        str(uuid.uuid4())
-                    )
+                    matching_in_waiting_room.session_ids.append(str(uuid.uuid4()))
                     matching_in_waiting_room.session_id_retrieved.append("")
                     matching_in_waiting_room.save()
                     return ""
@@ -267,9 +243,6 @@ async def enter_waiting_room(sender_id: str) -> str:
         )
         matching_in_waiting_room.save()
         return ""
-
-
-from starlette.responses import Response
 
 
 class PrettyJSONResponse(Response):
@@ -315,9 +288,7 @@ def test_connect() -> None:
 
     sessions = cast(
         list[SessionTransaction],
-        SessionTransaction.find(
-            SessionTransaction.session_id == session_id
-        ).all(),
+        SessionTransaction.find(SessionTransaction.session_id == session_id).all(),
     )
     assert len(sessions) == 1
     assert sessions[0].server_id == server_id
@@ -341,9 +312,7 @@ def test_send_message() -> None:
 
     sessions = cast(
         list[SessionTransaction],
-        SessionTransaction.find(
-            SessionTransaction.session_id == session_id
-        ).all(),
+        SessionTransaction.find(SessionTransaction.session_id == session_id).all(),
     )
     assert len(sessions) == 1
     assert sessions[0].server_id == server_id

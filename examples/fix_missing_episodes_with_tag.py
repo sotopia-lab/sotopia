@@ -16,23 +16,12 @@ python examples/fix_missing_episodes_with_tag.py \
 import asyncio
 import logging
 from collections import Counter, defaultdict
-from typing import (
-    Any,
-    Dict,
-    Generator,
-    List,
-    Literal,
-    Optional,
-    Set,
-    Tuple,
-    cast,
-)
+from typing import Any, Dict, Generator, List, Set, Tuple, cast
 
 import gin
 from absl import flags
 from absl.flags import FLAGS
 from rich.logging import RichHandler
-from rich.terminal_theme import MONOKAI
 from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 
@@ -68,6 +57,7 @@ logging.basicConfig(
     ],
 )
 
+
 # get all episode logs
 def get_all_episodes(tags: List[str] = []) -> List[Tuple[EpisodeLog, str]]:
     # episode_pks: List[str] = list(EpisodeLog.all_pks())
@@ -83,7 +73,7 @@ def get_all_episodes(tags: List[str] = []) -> List[Tuple[EpisodeLog, str]]:
     for pk, tag in tqdm(episode_pks):
         try:
             curr_ep = EpisodeLog.get(pk)
-        except:
+        except Exception as _:
             continue
         all_episodes.append((curr_ep, tag))
     print(f"all episodes loaded {len(all_episodes)}")
@@ -104,14 +94,10 @@ def get_all_env_agent_combos(
 
     for env_pk in experiment_env_pks:
         env_agent_combo_storage_list = list(
-            EnvAgentComboStorage.find(
-                EnvAgentComboStorage.env_id == env_pk
-            ).all()
+            EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_pk).all()
         )[start_combo_idx:end_combo_idx]
         for combo in env_agent_combo_storage_list:
-            all_combos_map[cast(str, combo.pk)] = cast(
-                EnvAgentComboStorage, combo
-            )
+            all_combos_map[cast(str, combo.pk)] = cast(EnvAgentComboStorage, combo)
     print(f"all combos loaded {len(all_combos_map)}")
     return all_combos_map
 
@@ -134,9 +120,9 @@ def get_combo_model_map(
     all_episodes: List[Tuple[EpisodeLog, str]],
     all_combos_map: Dict[str, EnvAgentComboStorage],
 ) -> Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]]:
-    combo_model_map: Dict[
-        str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
-    ] = defaultdict(Counter)
+    combo_model_map: Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]] = (
+        defaultdict(Counter)
+    )
 
     bad_combos = []
     valid_count = 0
@@ -144,8 +130,6 @@ def get_combo_model_map(
     bad_rewards_count = 0
     bad_gpt4_rewards_count = 0
     bad_combo_count = 0
-    bad_lite_mode_count = 0
-    bad_background_count = 0
     episodes_to_delete = []
 
     # iterate through episodes
@@ -240,9 +224,7 @@ def get_combo_model_map(
 
 
 def get_all_model_pairs(
-    combo_model_map: Dict[
-        str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
-    ]
+    combo_model_map: Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]],
 ) -> Set[tuple[LLM_Name, LLM_Name, LLM_Name, str]]:
     all_model_pairs = set()
     for key in combo_model_map:
@@ -258,9 +240,7 @@ def get_all_model_pairs(
 
 
 def get_all_missing_model_pairs(
-    combo_model_map: Dict[
-        str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
-    ],
+    combo_model_map: Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]],
     all_model_pairs: Set[tuple[LLM_Name, LLM_Name, LLM_Name, str]],
     num_required: int,
     all_combos_map: Dict[str, EnvAgentComboStorage] = {},
@@ -291,9 +271,7 @@ def get_all_missing_model_pairs(
                 combo_missing_model_map[key][model_tag_pair] += (
                     num_required - combo_model_map[key][model_tag_pair]
                 )
-                missing_count += (
-                    num_required - combo_model_map[key][model_tag_pair]
-                )
+                missing_count += num_required - combo_model_map[key][model_tag_pair]
     print("-" * 20 + f"Missing {missing_count} Model Pairs" + "-" * 20)
     print()
     return combo_missing_model_map
@@ -306,9 +284,7 @@ def get_missing_model_combo_map(
         str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
     ],
     all_combos_map: Dict[str, EnvAgentComboStorage],
-) -> Dict[
-    tuple[LLM_Name, LLM_Name, LLM_Name, str], List[tuple[str, str, str]]
-]:
+) -> Dict[tuple[LLM_Name, LLM_Name, LLM_Name, str], List[tuple[str, str, str]]]:
     missing_model_combo_map = defaultdict(list)
     for combo_pk in combo_missing_model_map:
         model_counter = combo_missing_model_map[combo_pk]
@@ -346,17 +322,13 @@ def yield_env_agent_combo(
             model_name=model_names["env"],
             action_order="round-robin",
             evaluators=[
-                RuleBasedTerminatedEvaluator(
-                    max_turn_number=20, max_stale_turn=2
-                ),
+                RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             terminal_evaluators=[
                 ReachGoalLLMEvaluator(model_names["env"]),
             ],
         )
-        agent_profiles = [
-            AgentProfile.get(id) for id in (agent_id1, agent_id2)
-        ]
+        agent_profiles = [AgentProfile.get(id) for id in (agent_id1, agent_id2)]
 
         agents = [
             LLMAgent(agent_profile=agent_profile, model_name=agent_model)
@@ -410,9 +382,7 @@ def re_run_missing_episodes(
     print(f"Rerunning with model: {model_names} and tag: {rerun_tag}")
     print(f"total missing episodes: {env_agent_combo_iter_length}")
 
-    env_agent_combo_iter = yield_env_agent_combo(
-        combo_and_models_to_run, model_names
-    )
+    env_agent_combo_iter = yield_env_agent_combo(combo_and_models_to_run, model_names)
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
 
     def run_script() -> None:
@@ -426,9 +396,7 @@ def re_run_missing_episodes(
             )
             for env_agent_combo in env_agent_combo_batch
         ]
-        _ = asyncio.run(
-            tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
-        )
+        _ = asyncio.run(tqdm_asyncio.gather(*episode_futures, desc="Running one batch"))
 
     def run_interaction() -> None:
         asyncio.run(

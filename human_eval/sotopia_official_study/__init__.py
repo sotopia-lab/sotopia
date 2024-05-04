@@ -3,7 +3,7 @@ import os
 import re
 import time
 from collections import defaultdict
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 
 from otree.api import (  # type: ignore
     BaseConstants,
@@ -44,21 +44,13 @@ def find_names(convo_text: str) -> Tuple[Optional[str], Optional[str]]:
 def parse_scenario(text: str) -> Optional[str]:
     pattern = r"Scenario: (.*?)\n"
     scenario_match = re.search(pattern, text, re.DOTALL)
-    return (
-        scenario_match.group(1).strip()
-        if scenario_match
-        else "No scenario found."
-    )
+    return scenario_match.group(1).strip() if scenario_match else "No scenario found."
 
 
 def parse_social_goal(text: str, name: Optional[str]) -> str:
     goal_pattern = rf"{name}'s goal: (.*?)\n"
     goal_match = re.search(goal_pattern, text, re.DOTALL)
-    return (
-        goal_match.group(1).strip()
-        if goal_match
-        else f"No goal found for {name}."
-    )
+    return goal_match.group(1).strip() if goal_match else f"No goal found for {name}."
 
 
 def parse_personal_info(text: str, name: Optional[str]) -> Dict[str, str]:
@@ -95,30 +87,22 @@ def parse_personal_info(text: str, name: Optional[str]) -> Dict[str, str]:
 def parse_conversation(
     convo_text: str, names: Tuple[Optional[str], Optional[str]]
 ) -> List[Dict[str, str]]:
-    convo_text = convo_text.replace(
-        "left the conversation,", "left the conversation."
-    )
+    convo_text = convo_text.replace("left the conversation,", "left the conversation.")
     turns = re.split(r"Turn #\d+[:\n]", convo_text)
     parsed_conversation: List[Dict[str, str]] = []
 
     for turn in turns:
         for name in names:
             if name and name in turn:
-                dialogue = (
-                    turn.split(":", 1)[1].strip() if ":" in turn else turn
-                )
-                parsed_conversation.append(
-                    {"speaker": name, "dialogue": dialogue}
-                )
+                dialogue = turn.split(":", 1)[1].strip() if ":" in turn else turn
+                parsed_conversation.append({"speaker": name, "dialogue": dialogue})
                 break
     return parsed_conversation[1:]  # Skip the first empty string from split
 
 
 raw_dataset: List[Tuple[str, str]] = read_json_files()
 processed_dataset: List[Dict[str, Any]] = []
-player_annotated_data: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(
-    list
-)
+player_annotated_data: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
 pks: List[str] = []
 
 
@@ -130,9 +114,7 @@ for data in raw_dataset:
         personal_info = {
             name: parse_personal_info(rewards_prompt, name) for name in names
         }
-        social_goal = {
-            name: parse_social_goal(rewards_prompt, name) for name in names
-        }
+        social_goal = {name: parse_social_goal(rewards_prompt, name) for name in names}
         parsed_conversation = parse_conversation(rewards_prompt, names)
         scenario = parse_scenario(rewards_prompt)
         assert len(parsed_conversation) > 0
@@ -176,10 +158,7 @@ class Player(BasePlayer):
     def push_queue(self) -> Tuple[str, str, str]:
         for pk in pks:
             # if self.prolific_id not in data_queue[pk] and ((len(data_queue[pk]) < 1 and pk not in double_pk_list) or (len(data_queue[pk]) < 2 and pk in double_pk_list)):
-            if (
-                self.prolific_id not in data_queue[pk]
-                and len(data_queue[pk]) < 2
-            ):
+            if self.prolific_id not in data_queue[pk] and len(data_queue[pk]) < 2:
                 data_queue[pk].append(self.prolific_id)
                 selected_pk = pk
                 selected_data = json.dumps(processed_dataset[pks.index(pk)])
@@ -391,9 +370,7 @@ class SotopiaEval(Page):
             print("length after timeout: {}".format(len(processed_dataset)))
         else:
             print(
-                "finish one successfully, still have {}".format(
-                    len(processed_dataset)
-                )
+                "finish one successfully, still have {}".format(len(processed_dataset))
             )
 
     form_model = "player"

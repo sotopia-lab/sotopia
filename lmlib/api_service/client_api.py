@@ -1,7 +1,6 @@
 import json
-import os
 import os.path as osp
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import requests
 

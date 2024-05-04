@@ -68,9 +68,7 @@ def computeRandomAgreement(
     return agree / tot
 
 
-def create_fleiss_table(
-    df: pd.DataFrame, col: str, groupCol: str
-) -> pd.DataFrame:
+def create_fleiss_table(df: pd.DataFrame, col: str, groupCol: str) -> pd.DataFrame:
     # Group the data by the group column and count ratings per category
     fleiss_df = df.groupby([groupCol, col])[col].count().unstack(fill_value=0)
     # Convert to a numpy array and add a row representing total ratings per group
@@ -78,9 +76,7 @@ def create_fleiss_table(
     return pd.DataFrame(fleiss_table, columns=range(fleiss_table.shape[1]))
 
 
-def fleiss_kappa(
-    df: pd.DataFrame, n_rater: int, method: str = "fleiss"
-) -> float:
+def fleiss_kappa(df: pd.DataFrame, n_rater: int, method: str = "fleiss") -> float:
     df = df.copy()
     n_categories = df.shape[1]
 
@@ -94,9 +90,7 @@ def fleiss_kappa(
         n_rater * (n_rater - 1) * n_sub
     )
     if method == "fleiss":
-        p_mean_exp = ((table.sum(axis=0) ** 2).sum()) / (
-            n_sub**2 * n_rater**2
-        )
+        p_mean_exp = ((table.sum(axis=0) ** 2).sum()) / (n_sub**2 * n_rater**2)
     elif method.startswith("rand") or method.startswith("unif"):
         p_mean_exp = 1 / n_categories
     if p_mean == 1 and p_mean_exp == 1:
@@ -187,9 +181,7 @@ if __name__ == "__main__":
         var_name="raterId",
         value_name="rating",
     )
-    longDf["ratingBinary"] = (
-        longDf["rating"] / longDf["rating"].abs().max()
-    ).round(0)
+    longDf["ratingBinary"] = (longDf["rating"] / longDf["rating"].abs().max()).round(0)
 
     scores = computeAlpha(longDf, "ratingBinary", groupCol="id")
     rkappa = computeFleissKappa(longDf, "ratingBinary", "id", 2, "randolf")
