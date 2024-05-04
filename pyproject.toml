@@ -11,7 +11,7 @@ packages = [{include = "sotopia"}]
 python = ">=3.11, <3.12"
 datasets = "^2.16.1"
 pandas = "^2.1.1"
-langchain-community = "^0.0.30"
+langchain-community = "^0.0.33"
 lxml = "^4.9.3"
 scipy = "^1.11.3"
 openai = "^1.11.0"
