@@ -51,6 +51,8 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
                 env_candidate = random.choice(self.env_candidates)
                 if isinstance(env_candidate, str):
                     env_profile = EnvironmentProfile.get(env_candidate)
+                elif isinstance(env_candidate, EnvironmentProfile):
+                    env_profile = env_candidate
             else:
                 env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
                 env_profile = EnvironmentProfile.get(env_profile_id)
