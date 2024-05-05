@@ -153,8 +153,8 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             p2_name="",
         )
 
-        self.agents = []
-        self.action_spaces = {}
+        self.agents: list[Any] = []
+        self.action_spaces: dict[str, dict[str, Any]] = {}
         self.available_action_types = list(available_action_types)
         self.action_order = action_order
         self.action_mask: list[bool] = []

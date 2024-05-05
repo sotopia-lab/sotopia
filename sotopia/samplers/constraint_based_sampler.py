@@ -121,9 +121,9 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
         else:
             for _ in range(size):
                 if self.env_candidates:
-                    env_profile = random.choice(self.env_candidates)
-                    if isinstance(env_profile, str):
-                        env_profile = EnvironmentProfile.get(env_profile)
+                    env_candidate = random.choice(self.env_candidates)
+                    if isinstance(env_candidate, str):
+                        env_profile = EnvironmentProfile.get(env_candidate)
                 else:
                     env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
                     env_profile = EnvironmentProfile.get(env_profile_id)
