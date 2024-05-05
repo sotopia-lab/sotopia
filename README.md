@@ -1,4 +1,5 @@
-![sotopia](figs/title.png)
+<p align="center"><img src="figs/title.png" width="300"></p>
+
 # Sotopia: an Open-ended Social Learning Environment
 [![Project Page](https://img.shields.io/badge/Project-Page-green.svg)](https://www.sotopia.world/projects/sotopia)
 [![Paper PDF](https://img.shields.io/badge/Paper-PDF-red.svg)](https://arxiv.org/abs/2310.11667)
@@ -12,11 +13,17 @@
 [![Dataset](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Dataset-yellow)](https://huggingface.co/datasets/cmu-lti/sotopia)
 [![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://huggingface.co/spaces/cmu-lti/sotopia-space/)
 
+## News
+
+* [05/2024] Sotopia will be presented at ICLR 2024 as a spotlight ⭐!
+* [05/2024] We release [a simple tutorial](https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing) for you to run sotopia end-to-end on google colab.
+
+
 ## Introduction
 
 Sotopia is an open-ended social learning environment that allows agents to interact with each other and the environment. The environment is designed to be a platform for evaluating and faciliating social intelligence in language agents. The environment is designed to be open-ended, meaning that the environment can be easily extended to include new environments and new agents. The environment is also designed to be scalable, meaning that the environment can be easily scaled to include a large number of agents and environments.
 
-*Sotopia is accepted to ICLR 2024 as a spotlight ⭐!*
+
 
 ```bibtex
 @inproceedings{zhou2024sotopia,
