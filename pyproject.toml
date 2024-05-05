@@ -51,6 +51,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
+python_version = "3.11"
 ignore_missing_imports = true
 check_untyped_defs = true
 follow_imports = "skip"
