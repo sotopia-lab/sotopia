@@ -147,7 +147,7 @@ def computeAlpha(
             ):
                 skew = 0
             else:
-                skew = d2[valCol].describe()["freq"] / len(d2)
+                skew = float(d2[valCol].describe()["freq"]) / len(d2)
     else:
         rnd = np.nan
         skew = 0
