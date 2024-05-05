@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, TypeVar, NewType
+from typing import Any, NewType
 
 import gin
 from beartype import beartype
@@ -14,7 +14,6 @@ from langchain.prompts import (
 )
 from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_core.language_models import LanguageModelOutput
 from pydantic import BaseModel, Field
 from rich import print
 from typing_extensions import Literal
@@ -50,8 +49,8 @@ LLM_Name = Literal[
     "groq/llama3-70b-8192",
 ]
 
-#OutputType = TypeVar('OutputType', bound=object)
-OutputType = NewType('OutputType', object)
+# OutputType = TypeVar('OutputType', bound=object)
+OutputType = NewType("OutputType", object)
 
 
 class PatchedChatLiteLLM(ChatLiteLLM):
