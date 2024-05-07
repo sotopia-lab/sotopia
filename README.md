@@ -1,4 +1,6 @@
-<p align="center"><img src="figs/title.png" width="300"></p>
+<div style="width: 100%;">
+  <img src="figs/title.png" style="width: 100%;" alt="sotopia"></img>
+</div>
 
 # Sotopia: an Open-ended Social Learning Environment
 [![Project Page](https://img.shields.io/badge/Project-Page-green.svg)](https://www.sotopia.world/projects/sotopia)
