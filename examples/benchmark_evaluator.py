@@ -44,8 +44,7 @@ def get_dimension_correlation(
         dimension_scores_agent1_machine = [relevant_episode.rewards[0][1][dimension] for relevant_episode in machine_annotations]  # type: ignore
         dimension_scores_agent2_machine = [relevant_episode.rewards[1][1][dimension] for relevant_episode in machine_annotations]  # type: ignore
     x = dimension_scores_agent1_human + dimension_scores_agent2_human
-    y = dimension_scores_agent2_machine + dimension_scores_agent1_machine
-    breakpoint()
+    y = dimension_scores_agent1_machine + dimension_scores_agent2_machine
     res = stats.pearsonr(x, y)
     spearman_res = stats.spearmanr(x, y)
     mse = ((np.array(x) - np.array(y)) ** 2).mean()
@@ -57,48 +56,6 @@ def get_dimension_correlation(
         "spearman_pvalue": spearman_res.pvalue,
         "mse": mse,
     }
-
-def fix_missing_evaluation(
-        ordered_re_eval_episodes: list[EpisodeLog], 
-        human_annotation_dict: dict[str, EpisodeLog], 
-        with_dimension_list: list[int],
-        tag: str,
-        model: str,
-        batch_size: int,
-        push_to_db: bool,
-        verbose: bool,
-    ) -> list[EpisodeLog]:
-    while sum(with_dimension_list) != len(ordered_re_eval_episodes):
-        re_annotate_list = [pk for missing, pk in zip(with_dimension_list, human_annotation_dict.keys()) if missing==0]
-        re_evaluate_episodes = run_async_server_in_batch_aevaluate(
-            tag=tag,
-            model=model, # type: ignore
-            batch_size=batch_size,
-            push_to_db=push_to_db,
-            verbose=verbose,
-            reeval_list=re_annotate_list,
-        )
-        for index, missing in enumerate(with_dimension_list):
-            if missing == 0:
-                missing_episode = ordered_re_eval_episodes[index]
-                for re_eval_episode in re_evaluate_episodes:
-                    assert isinstance(re_eval_episode, EpisodeLog)
-                    if (
-                        missing_episode.environment == re_eval_episode.environment
-                        and missing_episode.agents == re_eval_episode.agents
-                        and missing_episode.models[1:] == re_eval_episode.models[1:] # type: ignore
-                    ):
-                        ordered_re_eval_episodes[index] = re_eval_episode
-                        break
-
-        with_dimension_list = [
-            int(not isinstance(relevant_episode.rewards[0], float))
-            for relevant_episode in ordered_re_eval_episodes
-        ]
-        for missing, pk in zip(with_dimension_list, ordered_re_eval_episodes):
-            if missing == 0:
-                EpisodeLog.delete(pk)
-    return ordered_re_eval_episodes
 
 @app.command()
 def evaluate_evaluator(
@@ -124,8 +81,8 @@ def evaluate_evaluator(
     # Call the function with the specified parameters
     
     re_evaluate_episodes: list[EpisodeLog] = EpisodeLog.find(EpisodeLog.tag == tag).all() # type: ignore
-    if not re_evaluate_episodes: 
-        re_evaluate_episodes = run_async_server_in_batch_aevaluate(
+    if len(re_evaluate_episodes) < len(re_annotate_list):
+        run_async_server_in_batch_aevaluate(
             tag=tag,
             model=model, # type: ignore
             batch_size=batch_size,
@@ -133,7 +90,34 @@ def evaluate_evaluator(
             verbose=verbose,
             reeval_list=re_annotate_list,
         )
-
+    else:
+        valid_episodes = [
+                not isinstance(relevant_episode.rewards[0], float)
+                for relevant_episode in re_evaluate_episodes
+            ]
+        re_annotate_list = [episode.pk for valid, episode in zip(valid_episodes, re_evaluate_episodes) if not valid] # type: ignore
+        while re_annotate_list:
+            run_async_server_in_batch_aevaluate(
+                tag=tag,
+                model=model, # type: ignore
+                batch_size=batch_size,
+                push_to_db=push_to_db,
+                verbose=verbose,
+                reeval_list=re_annotate_list,
+            )
+            re_annotate_list = []
+            re_evaluate_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all() # type: ignore
+            valid_episodes = [
+                not isinstance(relevant_episode.rewards[0], float)
+                for relevant_episode in re_evaluate_episodes
+            ]
+            for valid, episode in zip(valid_episodes, re_evaluate_episodes):
+                if not valid:
+                    pk = episode.pk
+                    assert isinstance(pk, str)
+                    EpisodeLog.delete(pk)
+                    re_annotate_list.append(pk)
+        
     correlation_list = []
     ordered_re_eval_episodes = []
 
@@ -148,27 +132,6 @@ def evaluate_evaluator(
                 ordered_re_eval_episodes.append(re_eval_episode)
                 break
     
-    with_dimension_list = [
-        int(not isinstance(relevant_episode.rewards[0], float))
-        for relevant_episode in ordered_re_eval_episodes
-    ]
-    breakpoint()
-    for missing, pk in zip(with_dimension_list, ordered_re_eval_episodes):
-        if missing == 0:
-            EpisodeLog.delete(pk)
-    
-    if sum(with_dimension_list) != len(ordered_re_eval_episodes):
-        ordered_re_eval_episodes = fix_missing_evaluation(
-            ordered_re_eval_episodes, 
-            human_annotation_dict, # type: ignore
-            with_dimension_list,
-            tag,
-            model,
-            batch_size,
-            push_to_db,
-            verbose,
-        )
-
     for dimension in relevant_dimension:
         correlation = get_dimension_correlation(aggregate_human_annotations, ordered_re_eval_episodes, dimension)
         correlation_list.append(correlation)
