@@ -418,7 +418,7 @@ async def aevaluate_one_episode(
     model: str = "gpt-4",
     tag: str | None = None,
     push_to_db: bool = False,
-) -> None:
+) -> EpisodeLog:
     history = episode.rewards_prompt.replace("Prompt after formatting:", "").split(
         ",\nBased on previous interactions"
     )[0]
@@ -469,3 +469,4 @@ async def aevaluate_one_episode(
             epilog.save()
         except Exception as e:
             logging.error(f"Failed to save episode log: {e}")
+    return epilog

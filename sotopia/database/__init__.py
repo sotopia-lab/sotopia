@@ -27,6 +27,7 @@ from .serialization import (
 )
 from .session_transaction import MessageTransaction, SessionTransaction
 from .waiting_room import MatchingInWaitingRoom
+from .aggregate_annotations import human_annotation_to_episodelog
 
 __all__ = [
     "AgentProfile",
@@ -51,6 +52,7 @@ __all__ = [
     "envagnetcombostorage_to_jsonl",
     "episodes_to_csv",
     "episodes_to_jsonl",
+    "human_annotation_to_episodelog",
     "jsonl_to_agentprofiles",
     "jsonl_to_environmentprofiles",
     "jsonl_to_episodes",

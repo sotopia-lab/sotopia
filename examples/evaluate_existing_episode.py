@@ -45,7 +45,7 @@ def run_async_server_in_batch_aevaluate(
     tag: str | None = None,
     push_to_db: bool = False,
     verbose: bool = False,
-) -> None:
+) -> list[EpisodeLog]:
     if not verbose:
         logger = logging.getLogger()
         logger.setLevel(logging.CRITICAL)
@@ -53,6 +53,7 @@ def run_async_server_in_batch_aevaluate(
         logger.removeHandler(rich_handler)
 
     episode_batch: list[EpisodeLog] = []
+    re_evaluated_episodes: list[EpisodeLog] = []
 
     while True:
         for env_pk in tqdm(reeval_list):
@@ -69,10 +70,9 @@ def run_async_server_in_batch_aevaluate(
                     )
                     for episode in episode_batch
                 ]
-                asyncio.run(
+                re_evaluated_episodes.extend(asyncio.run(
                     tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
-                )
-
+                ))
                 episode_batch = []
         else:
             if episode_batch:
@@ -86,10 +86,10 @@ def run_async_server_in_batch_aevaluate(
                     )
                     for episode in episode_batch
                 ]
-                asyncio.run(
+                re_evaluated_episodes.extend(asyncio.run(
                     tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
-                )
-            return
+                ))
+            return re_evaluated_episodes
 
 
 @app.command()
