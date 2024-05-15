@@ -10,7 +10,7 @@ Run ```python examples/evaluate_existing_episodes.py --help``` for more informat
 
 ### Example 1.1: benchmarking the evaluator
 ```python
-python examples/benchmark_evaluator.py --model=<the model used to re-evaluate the existing episodes> --batch_size=<batch size used for evaluation> --push-to-db
+python examples/benchmark_evaluator.py --push-to-db --model=<the model used to be evaluated as evaluator> --tag=<tag to upload to the database> --batch_size=10
 ```
 
 ## Example 2: Generate script-like episodes
