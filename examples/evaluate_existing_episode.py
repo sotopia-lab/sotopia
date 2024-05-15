@@ -53,8 +53,6 @@ def run_async_server_in_batch_aevaluate(
         logger.removeHandler(rich_handler)
 
     episode_batch: list[EpisodeLog] = []
-    re_evaluated_episodes: list[EpisodeLog] = []
-
     while True:
         for env_pk in tqdm(reeval_list):
             episode = EpisodeLog.get(env_pk)
