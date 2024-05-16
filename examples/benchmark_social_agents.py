@@ -1,15 +1,13 @@
 from datasets import load_dataset
 import typer
 from sotopia.database.persistent_profile import EnvironmentList
-from sotopia.database.env_agent_combo_storage import EnvAgentComboStorage
 import asyncio
 import logging
 import os
 import subprocess
-from typing import Any, Generator, cast
+from typing import Generator
 
 import gin
-from absl import flags
 from tqdm import tqdm
 
 from sotopia.agents import LLMAgent
@@ -32,7 +30,7 @@ from sotopia.samplers import (
     EnvAgentCombo,
 )
 from sotopia.server import run_async_server
-from sotopia_conf.gin_utils import parse_gin_flags, run
+from sotopia_conf.gin_utils import parse_gin_flags
 from experiment_eval import check_existing_episodes
 
 app = typer.Typer()
@@ -48,11 +46,11 @@ DEFAULT_GIN_FILES = [
 ]
 
 DEFAULT_GIN_BINDINGS = [
-    '--gin.ENV_IDS=[]',
+    "--gin.ENV_IDS=[]",
     '--gin.AGENT1_MODEL="groq/llama3-70b-8192"',
-    '--gin.PUSH_TO_DB=True',
-    '--gin.OMNISCIENT=False',
-    '--gin.VERBOSE=False',
+    "--gin.PUSH_TO_DB=True",
+    "--gin.OMNISCIENT=False",
+    "--gin.VERBOSE=False",
 ]
 
 process = subprocess.Popen(
@@ -60,19 +58,19 @@ process = subprocess.Popen(
 )
 git_head_hash = process.communicate()[0].strip()
 
-def initilize_benchmark_combo(dataset)->list[EnvAgentComboStorage]: # type: ignore
+
+def initilize_benchmark_combo(dataset) -> list[EnvAgentComboStorage]:  # type: ignore
     list_of_env_agent_combo_storage = []
     for combo in dataset["train"]:
         env_agent_combo_storage = EnvAgentComboStorage(
-            env_id=combo["env_id"],
-            agent_ids=combo["agent_ids"]
+            env_id=combo["env_id"], agent_ids=combo["agent_ids"]
         )
         list_of_env_agent_combo_storage.append(env_agent_combo_storage)
     return list_of_env_agent_combo_storage
 
 
 def get_avg_reward(episodes: list[EpisodeLog], model_name: str) -> dict[str, float]:
-    rewards_list = []   
+    rewards_list = []
     avg_reward_dict = {}
     for episode in episodes:
         assert episode.models is not None, "episode.models should not be None"
@@ -86,7 +84,6 @@ def get_avg_reward(episodes: list[EpisodeLog], model_name: str) -> dict[str, flo
         avg_reward = sum(rewards) / len(rewards)
         avg_reward_dict[dimension] = avg_reward
     return avg_reward_dict
-
 
 
 @gin.configurable
@@ -127,7 +124,10 @@ def _iterate_env_agent_combo_not_in_db(
             agent_profiles = [AgentProfile.get(id) for id in agent_ids]
             # make sure the second agent (i.e., the agent being benchmarked) is always the indexed agent
             if int(index) == 0:
-                model_names["agent1"], model_names["agent2"] = model_names["agent2"], model_names["agent1"]
+                model_names["agent1"], model_names["agent2"] = (
+                    model_names["agent2"],
+                    model_names["agent1"],
+                )
             agents = [
                 LLMAgent(agent_profile=agent_profile, model_name=agent_model)
                 for agent_profile, agent_model in zip(
@@ -137,9 +137,10 @@ def _iterate_env_agent_combo_not_in_db(
             ]
             yield env, agents
 
+
 @gin.configurable
 def run_async_benchmark_in_batch(
-        *,
+    *,
     batch_size: int = 1,
     model_names: dict[str, LLM_Name] = {
         "env": "gpt-4",
@@ -151,7 +152,9 @@ def run_async_benchmark_in_batch(
 ) -> None:
     dataset = load_dataset("cmu-lti/sotopia", data_files="benchmark_agents.json")
     benchmark_combo = initilize_benchmark_combo(dataset)
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, tag=tag ,env_agent_combo_storage_list=benchmark_combo)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+        model_names=model_names, tag=tag, env_agent_combo_storage_list=benchmark_combo
+    )
     env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
     number_of_fix_turns = 0
@@ -187,9 +190,9 @@ def run_async_benchmark_in_batch(
                     )
                 )
             # remove episodes that has bad rewards
-            simulated_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all() 
+            simulated_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()
             valid_episodes = [
-                not isinstance(relevant_episode.rewards[0], float) # type: ignore
+                not isinstance(relevant_episode.rewards[0], float)  # type: ignore
                 for relevant_episode in simulated_episodes
             ]
             for valid, episode in zip(valid_episodes, simulated_episodes):
@@ -197,35 +200,42 @@ def run_async_benchmark_in_batch(
                     pk = episode.pk
                     assert isinstance(pk, str)
                     EpisodeLog.delete(pk)
-            
-            env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, tag=tag ,env_agent_combo_storage_list=benchmark_combo)
+
+            env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+                model_names=model_names,
+                tag=tag,
+                env_agent_combo_storage_list=benchmark_combo,
+            )
             env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
-            env_agent_combo_batch = [] 
+            env_agent_combo_batch = []
             number_of_fix_turns += 1
             if env_agent_combo_iter_length == 0 or number_of_fix_turns >= 5:
-                rewards_dict = get_avg_reward(simulated_episodes, model_names["agent2"]) # type: ignore
-                rewards_dict["model_name"] = model_names["agent2"] # type: ignore
+                rewards_dict = get_avg_reward(simulated_episodes, model_names["agent2"])  # type: ignore
+                rewards_dict["model_name"] = model_names["agent2"]  # type: ignore
                 print(rewards_dict)
                 return
+
 
 @app.command()
 def main(
     eval_model: str = "gpt-4o-2024-05-13",
     batch_size: int = 10,
     gin_file: list[str] = typer.Option(
-        DEFAULT_GIN_FILES, help="Path to gin configuration file. Multiple paths may be passed and will be imported in the given order, with later configurations overriding earlier ones."
+        DEFAULT_GIN_FILES,
+        help="Path to gin configuration file. Multiple paths may be passed and will be imported in the given order, with later configurations overriding earlier ones.",
     ),
     gin_search_paths: list[str] = typer.Option(
-        _DEFAULT_GIN_SEARCH_PATHS, help="Comma-separated list of gin config path prefixes to be prepended to suffixes given via `--gin_file`. Only the first prefix that produces a valid path for each suffix will be used."
+        _DEFAULT_GIN_SEARCH_PATHS,
+        help="Comma-separated list of gin config path prefixes to be prepended to suffixes given via `--gin_file`. Only the first prefix that produces a valid path for each suffix will be used.",
     ),
-)-> None:
+) -> None:
     gin_bindings = DEFAULT_GIN_BINDINGS + [
         f'--gin.AGENT2_MODEL="{eval_model}"',
-        f'--gin.BATCH_SIZE={batch_size}',
+        f"--gin.BATCH_SIZE={batch_size}",
         f'--gin.TAG="benchmark_{eval_model}"',
-        f'--gin.TAG_TO_CHECK_EXISTING_EPISODES="benchmark_{eval_model}"'
+        f'--gin.TAG_TO_CHECK_EXISTING_EPISODES="benchmark_{eval_model}"',
     ]
-    
+
     parse_gin_flags(
         gin_search_paths,
         gin_file,
@@ -233,7 +243,6 @@ def main(
     )
     run_async_benchmark_in_batch()
 
+
 if __name__ == "__main__":
     app()
-
-
