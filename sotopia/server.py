@@ -432,6 +432,7 @@ async def aevaluate_one_episode(
                             turn_number=-1,
                             history=history,
                             messages=None,
+                            temperature=0.0,
                         )
                         for sing_evaluator in [evaluator]
                     ]

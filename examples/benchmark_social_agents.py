@@ -1,17 +1,15 @@
 from datasets import load_dataset
+import typer
 from sotopia.database.persistent_profile import EnvironmentList
 from sotopia.database.env_agent_combo_storage import EnvAgentComboStorage
 import asyncio
 import logging
 import os
 import subprocess
-from datetime import datetime
-from logging import FileHandler
 from typing import Any, Generator, cast
 
 import gin
 from absl import flags
-from rich.logging import RichHandler
 from tqdm import tqdm
 
 from sotopia.agents import LLMAgent
@@ -31,20 +29,31 @@ from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import (
     BaseSampler,
-    ConstraintBasedSampler,
     EnvAgentCombo,
 )
 from sotopia.server import run_async_server
 from sotopia_conf.gin_utils import parse_gin_flags, run
 from experiment_eval import check_existing_episodes
 
+app = typer.Typer()
+
 _DEFAULT_GIN_SEARCH_PATHS = [
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ]
-FLAGS = flags.FLAGS
 
-# date and message only
-FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+DEFAULT_GIN_FILES = [
+    "sotopia_conf/generation_utils_conf/generate.gin",
+    "sotopia_conf/server_conf/server.gin",
+    "sotopia_conf/run_async_server_in_batch.gin",
+]
+
+DEFAULT_GIN_BINDINGS = [
+    '--gin.ENV_IDS=[]',
+    '--gin.AGENT1_MODEL="groq/llama3-70b-8192"',
+    '--gin.PUSH_TO_DB=True',
+    '--gin.OMNISCIENT=False',
+    '--gin.VERBOSE=False',
+]
 
 process = subprocess.Popen(
     ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
@@ -178,7 +187,7 @@ def run_async_benchmark_in_batch(
                     )
                 )
             # remove episodes that has bad rewards
-            simulated_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()  # type: ignore
+            simulated_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all() 
             valid_episodes = [
                 not isinstance(relevant_episode.rewards[0], float) # type: ignore
                 for relevant_episode in simulated_episodes
@@ -195,41 +204,36 @@ def run_async_benchmark_in_batch(
             number_of_fix_turns += 1
             if env_agent_combo_iter_length == 0 or number_of_fix_turns >= 5:
                 rewards_dict = get_avg_reward(simulated_episodes, model_names["agent2"]) # type: ignore
+                rewards_dict["model_name"] = model_names["agent2"] # type: ignore
                 print(rewards_dict)
                 return
 
-def main(_: Any) -> None:
+@app.command()
+def main(
+    eval_model: str = "gpt-4o-2024-05-13",
+    batch_size: int = 10,
+    gin_file: list[str] = typer.Option(
+        DEFAULT_GIN_FILES, help="Path to gin configuration file. Multiple paths may be passed and will be imported in the given order, with later configurations overriding earlier ones."
+    ),
+    gin_search_paths: list[str] = typer.Option(
+        _DEFAULT_GIN_SEARCH_PATHS, help="Comma-separated list of gin config path prefixes to be prepended to suffixes given via `--gin_file`. Only the first prefix that produces a valid path for each suffix will be used."
+    ),
+)-> None:
+    gin_bindings = DEFAULT_GIN_BINDINGS + [
+        f'--gin.AGENT2_MODEL="{eval_model}"',
+        f'--gin.BATCH_SIZE={batch_size}',
+        f'--gin.TAG="benchmark_{eval_model}"',
+        f'--gin.TAG_TO_CHECK_EXISTING_EPISODES="benchmark_{eval_model}"'
+    ]
+    
     parse_gin_flags(
-        # User-provided gin paths take precedence if relative paths conflict.
-        FLAGS.gin_search_paths + _DEFAULT_GIN_SEARCH_PATHS,
-        FLAGS.gin_file,
-        FLAGS.gin_bindings,
+        gin_search_paths,
+        gin_file,
+        gin_bindings,
     )
     run_async_benchmark_in_batch()
 
-
-
 if __name__ == "__main__":
-    flags.DEFINE_multi_string(
-        "gin_file",
-        default=None,
-        help="Path to gin configuration file. Multiple paths may be passed and "
-        "will be imported in the given order, with later configurations  "
-        "overriding earlier ones.",
-    )
+    app()
 
-    flags.DEFINE_multi_string(
-        "gin_bindings", default=[], help="Individual gin bindings."
-    )
-
-    flags.DEFINE_list(
-        "gin_search_paths",
-        default=["."],
-        help="Comma-separated list of gin config path prefixes to be prepended "
-        "to suffixes given via `--gin_file`. If a file appears in. Only the "
-        "first prefix that produces a valid path for each suffix will be "
-        "used.",
-    )
-
-    run(main)
 
