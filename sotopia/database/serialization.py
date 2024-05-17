@@ -27,7 +27,7 @@ class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
     social_goals: dict[str, str] = Field(required=True)
     social_interactions: str = Field(required=True)
     reasoning: str = Field(required=False)
-    rewards: list[dict[str, float]] = Field(required=False)
+    rewards: list[tuple[float, dict[str, float]]] = Field(required=False)
 
 
 class AgentProfileWithPersonalInformation(BaseModel):
