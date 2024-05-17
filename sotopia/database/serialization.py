@@ -87,13 +87,15 @@ def _map_gender_to_adj(gender: str) -> str:
         return ""
 
 
-def get_rewards_from_episode(episode: EpisodeLog) -> list[dict[str, float]]:
+def get_rewards_from_episode(
+    episode: EpisodeLog,
+) -> list[tuple[float, dict[str, float]]]:
     assert (
         len(episode.rewards) == 2
         and (not isinstance(episode.rewards[0], float))
         and (not isinstance(episode.rewards[1], float))
     )
-    return [episode.rewards[0][1], episode.rewards[1][1]]
+    return [episode.rewards[0], episode.rewards[1]]
 
 
 def get_scenario_from_episode(episode: EpisodeLog) -> str:

@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 
+from sotopia.database.serialization import get_rewards_from_episode
+
 app = Typer()
 
 target_model_patterns: list[list[str]] = [
@@ -44,34 +46,38 @@ def get_dimension_correlation(
     assert sum(with_dimension_list) == len(human_annotations), "Data is missing"
     if dimension == "overall":
         dimension_scores_agent1_human = [
-            relevant_episode.rewards[0][0] for relevant_episode in human_annotations
-        ]  # type: ignore
+            get_rewards_from_episode(relevant_episode)[0][0]
+            for relevant_episode in human_annotations
+        ]
         dimension_scores_agent2_human = [
-            relevant_episode.rewards[1][0] for relevant_episode in human_annotations
-        ]  # type: ignore
+            get_rewards_from_episode(relevant_episode)[1][0]
+            for relevant_episode in human_annotations
+        ]
         dimension_scores_agent1_machine = [
-            relevant_episode.rewards[0][0] for relevant_episode in machine_annotations
-        ]  # type: ignore
+            get_rewards_from_episode(relevant_episode)[0][0]
+            for relevant_episode in machine_annotations
+        ]
         dimension_scores_agent2_machine = [
-            relevant_episode.rewards[1][0] for relevant_episode in machine_annotations
-        ]  # type: ignore
+            get_rewards_from_episode(relevant_episode)[1][0]
+            for relevant_episode in machine_annotations
+        ]
     else:
         dimension_scores_agent1_human = [
-            relevant_episode.rewards[0][1][dimension]
+            get_rewards_from_episode(relevant_episode)[0][1][dimension]
             for relevant_episode in human_annotations
-        ]  # type: ignore
+        ]
         dimension_scores_agent2_human = [
-            relevant_episode.rewards[1][1][dimension]
+            get_rewards_from_episode(relevant_episode)[1][1][dimension]
             for relevant_episode in human_annotations
-        ]  # type: ignore
+        ]
         dimension_scores_agent1_machine = [
-            relevant_episode.rewards[0][1][dimension]
+            get_rewards_from_episode(relevant_episode)[0][1][dimension]
             for relevant_episode in machine_annotations
-        ]  # type: ignore
+        ]
         dimension_scores_agent2_machine = [
-            relevant_episode.rewards[1][1][dimension]
+            get_rewards_from_episode(relevant_episode)[1][1][dimension]
             for relevant_episode in machine_annotations
-        ]  # type: ignore
+        ]
     x = dimension_scores_agent1_human + dimension_scores_agent2_human
     y = dimension_scores_agent1_machine + dimension_scores_agent2_machine
     res = stats.pearsonr(x, y)
@@ -130,10 +136,10 @@ def evaluate_evaluator(
             for relevant_episode in re_evaluate_episodes
         ]
         re_annotate_list = [
-            episode.pk
+            episode.pk  # type: ignore
             for valid, episode in zip(valid_episodes, re_evaluate_episodes)
             if not valid
-        ]  # type: ignore
+        ]
         while re_annotate_list:
             run_async_server_in_batch_aevaluate(
                 tag=tag,
