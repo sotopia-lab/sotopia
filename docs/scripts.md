@@ -1,4 +1,4 @@
-# Agent vs Storyteller Scripts
+## Agent vs Storyteller Scripts
 
 ### Basic Scripts
 Here are some of the script for running {gpt-3.5-turbo, mixtral-7b-moe} under {normal interaction, omniscient interaction, script generation} mode in {normal, lite} setting.
@@ -10,3 +10,4 @@ Current `fix_missing_episodes_with_tag.py` first detects erroneous episodes, del
 ### Fine-tuning
 
 * `evaluate_finetuned_full.sh`: evaluate the fine-tuned model (gpt-3.5 finetuned on the full dataset) on the sotopia lite setting.
+* `evaluate_finetuned_MF.sh`: evaluate the fine-tuned model (gpt-3.5 finetuned on the lite dataset) on the mutual friends setting.
