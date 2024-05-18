@@ -177,7 +177,6 @@ def test_episode_log_serialization() -> None:
 
     episodes_to_jsonl([episode_log], "./test_episode_log.jsonl")
     rebuild_episode_log = jsonl_to_episodes("./test_episode_log.jsonl")[0]
-    print(episode_log)
     assert episode_log.dict() == rebuild_episode_log.dict()
 
     episodes_to_csv([episode_log], "./test_episode_log.csv")

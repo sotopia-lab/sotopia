@@ -1,6 +1,6 @@
 from evaluate_existing_episode import run_async_server_in_batch_aevaluate
 from sotopia.database import (
-    human_annotation_to_episodelog,
+    map_human_annotations_to_episode_logs,
     AnnotationForEpisode,
     EpisodeLog,
 )
@@ -24,13 +24,20 @@ target_model_patterns: list[list[str]] = [
 def get_human_annotations(
     target_model_patterns: list[list[str]],
 ) -> list[AnnotationForEpisode]:
-    human_episodes: list[AnnotationForEpisode] = []
+    episodes_with_human_annotation: list[AnnotationForEpisode] = []
     for pk in AnnotationForEpisode.all_pks():
         episode_human = AnnotationForEpisode.get(pk)
         episode_model = EpisodeLog.get(episode_human.episode)
         if episode_model.models in target_model_patterns:
-            human_episodes.append(episode_human)
-    return human_episodes
+            episodes_with_human_annotation.append(episode_human)
+    return episodes_with_human_annotation
+
+
+def get_dimension_scores(agent_index:int, episodes:list[EpisodeLog], dimension:str, overall:bool)->list[float]:
+    if overall:
+        return [get_rewards_from_episode(relevant_episode)[agent_index][0] for relevant_episode in episodes]
+    else:
+        return [get_rewards_from_episode(relevant_episode)[agent_index][1][dimension] for relevant_episode in episodes]
 
 
 def get_dimension_correlation(
@@ -39,45 +46,16 @@ def get_dimension_correlation(
     dimension: str,
 ) -> dict[str, float]:
     # check the data is present
-    with_dimension_list = [
+    episodes_with_valid_rewards = [
         int(not isinstance(relevant_episode.rewards[0], float))
         for relevant_episode in machine_annotations
     ]
-    assert sum(with_dimension_list) == len(human_annotations), "Data is missing"
-    if dimension == "overall":
-        dimension_scores_agent1_human = [
-            get_rewards_from_episode(relevant_episode)[0][0]
-            for relevant_episode in human_annotations
-        ]
-        dimension_scores_agent2_human = [
-            get_rewards_from_episode(relevant_episode)[1][0]
-            for relevant_episode in human_annotations
-        ]
-        dimension_scores_agent1_machine = [
-            get_rewards_from_episode(relevant_episode)[0][0]
-            for relevant_episode in machine_annotations
-        ]
-        dimension_scores_agent2_machine = [
-            get_rewards_from_episode(relevant_episode)[1][0]
-            for relevant_episode in machine_annotations
-        ]
-    else:
-        dimension_scores_agent1_human = [
-            get_rewards_from_episode(relevant_episode)[0][1][dimension]
-            for relevant_episode in human_annotations
-        ]
-        dimension_scores_agent2_human = [
-            get_rewards_from_episode(relevant_episode)[1][1][dimension]
-            for relevant_episode in human_annotations
-        ]
-        dimension_scores_agent1_machine = [
-            get_rewards_from_episode(relevant_episode)[0][1][dimension]
-            for relevant_episode in machine_annotations
-        ]
-        dimension_scores_agent2_machine = [
-            get_rewards_from_episode(relevant_episode)[1][1][dimension]
-            for relevant_episode in machine_annotations
-        ]
+    assert sum(episodes_with_valid_rewards) == len(human_annotations), "Data is missing"
+    overall = (dimension == "overall")
+    dimension_scores_agent1_human = get_dimension_scores(0, human_annotations, dimension, overall)
+    dimension_scores_agent2_human = get_dimension_scores(1, human_annotations, dimension, overall)
+    dimension_scores_agent1_machine = get_dimension_scores(0, machine_annotations, dimension, overall)
+    dimension_scores_agent2_machine = get_dimension_scores(1, machine_annotations, dimension, overall)
     x = dimension_scores_agent1_human + dimension_scores_agent2_human
     y = dimension_scores_agent1_machine + dimension_scores_agent2_machine
     res = stats.pearsonr(x, y)
@@ -111,62 +89,62 @@ def evaluate_evaluator(
         "goal",
     ]
     human_annotations = get_human_annotations(target_model_patterns)
-    human_annotation_dict = human_annotation_to_episodelog(
+    human_annotation_dict = map_human_annotations_to_episode_logs(
         human_annotations, return_model_episodes=False, aggregate=True
     )
-    re_annotate_list = list(human_annotation_dict.keys())
+    to_re_evaluate_list = list(human_annotation_dict.keys())
     aggregate_human_annotations: list[EpisodeLog] = list(human_annotation_dict.values())  # type: ignore
     # Call the function with the specified parameters
 
-    re_evaluate_episodes: list[EpisodeLog] = EpisodeLog.find(
+    re_evaluated_episodes: list[EpisodeLog] = EpisodeLog.find(
         EpisodeLog.tag == tag
     ).all()  # type: ignore
-    if len(re_evaluate_episodes) < len(re_annotate_list):
+    if len(re_evaluated_episodes) < len(to_re_evaluate_list):
         run_async_server_in_batch_aevaluate(
             tag=tag,
             model=model,  # type: ignore
             batch_size=batch_size,
             push_to_db=push_to_db,
             verbose=verbose,
-            reeval_list=re_annotate_list,
+            reeval_list=to_re_evaluate_list,
         )
     else:
         valid_episodes = [
             not isinstance(relevant_episode.rewards[0], float)
-            for relevant_episode in re_evaluate_episodes
+            for relevant_episode in re_evaluated_episodes
         ]
-        re_annotate_list = [
+        to_re_evaluate_list = [
             episode.pk  # type: ignore
-            for valid, episode in zip(valid_episodes, re_evaluate_episodes)
+            for valid, episode in zip(valid_episodes, re_evaluated_episodes)
             if not valid
         ]
-        while re_annotate_list:
+        while to_re_evaluate_list:
             run_async_server_in_batch_aevaluate(
                 tag=tag,
                 model=model,  # type: ignore
                 batch_size=batch_size,
                 push_to_db=push_to_db,
                 verbose=verbose,
-                reeval_list=re_annotate_list,
+                reeval_list=to_re_evaluate_list,
             )
-            re_annotate_list = []
-            re_evaluate_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()  # type: ignore
+            to_re_evaluate_list = []
+            re_evaluated_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()  # type: ignore
             valid_episodes = [
                 not isinstance(relevant_episode.rewards[0], float)
-                for relevant_episode in re_evaluate_episodes
+                for relevant_episode in re_evaluated_episodes
             ]
-            for valid, episode in zip(valid_episodes, re_evaluate_episodes):
+            for valid, episode in zip(valid_episodes, re_evaluated_episodes):
                 if not valid:
                     pk = episode.pk
                     assert isinstance(pk, str)
                     EpisodeLog.delete(pk)
-                    re_annotate_list.append(pk)
+                    to_re_evaluate_list.append(pk)
 
     correlation_list = []
     ordered_re_eval_episodes = []
 
     for human_annotated_episode in aggregate_human_annotations:
-        for re_eval_episode in re_evaluate_episodes:
+        for re_eval_episode in re_evaluated_episodes:
             assert isinstance(re_eval_episode, EpisodeLog)
             if (
                 human_annotated_episode.environment == re_eval_episode.environment

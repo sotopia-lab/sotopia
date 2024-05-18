@@ -11,9 +11,9 @@ def aggregate_reasoning(reasonings: List[str]) -> str:
 def aggregate_rewards(
     rewards: List[Tuple[float, Dict[str, float]]],
 ) -> Tuple[float, Dict[str, float]]:
-    def average_dict(item: List[Dict[str, float]]) -> Dict[str, float]:
-        keys = item[0].keys()
-        return {k: sum(d[k] for d in item) / len(item) for k in keys}
+    def average_dict(dict_list: List[Dict[str, float]]) -> Dict[str, float]:
+        keys = dict_list[0].keys()
+        return {k: sum(d[k] for d in dict_list) / len(dict_list) for k in keys}
 
     def average_list(item: List[float]) -> float:
         return sum(item) / len(item)
@@ -25,16 +25,22 @@ def aggregate_rewards(
     return ret_rewards
 
 
-def human_annotation_to_episodelog(
+def map_human_annotations_to_episode_logs(
     human_annotation: list[AnnotationForEpisode],
     return_model_episodes: bool = False,
     aggregate: bool = False,
 ) -> dict[str, EpisodeLog | tuple[EpisodeLog, EpisodeLog]]:
     """
-    retrieve related episodes and return the {pk: EpisodeLog}
-    if return_model_episodes is True, return {pk: (human_episode, model_episode)}
-    if aggregate==False, the primary key here is the AnnotationForEpisode's episode
-    if aggregate==True, the primary key here is the model episode
+    Map human annotations to corresponding episode logs.
+
+    Args:
+        human_annotations (List[AnnotationForEpisode]): List of annotations for episodes.
+        return_model_episodes (bool, optional): If True, returns a tuple of human and model episodes. Defaults to False.
+        aggregate (bool, optional): If True, aggregates reasoning and rewards across all human annotations per model episode. The primary key will be the model episode. Defaults to False.
+
+    Returns:
+        Dict[str, Union[EpisodeLog, Tuple[EpisodeLog, EpisodeLog]]]: A dictionary mapping episode primary keys to EpisodeLog objects or tuples of (human_episode, model_episode) depending on 
+        return_model_episodes and aggregate flags.
     """
 
     model_human_pk_mapping: Dict[str, List[str]] = defaultdict(list)

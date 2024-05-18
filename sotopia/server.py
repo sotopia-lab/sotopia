@@ -469,4 +469,3 @@ async def aevaluate_one_episode(
             epilog.save()
         except Exception as e:
             logging.error(f"Failed to save episode log: {e}")
-    return None
