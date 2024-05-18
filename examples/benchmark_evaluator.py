@@ -33,11 +33,19 @@ def get_human_annotations(
     return episodes_with_human_annotation
 
 
-def get_dimension_scores(agent_index:int, episodes:list[EpisodeLog], dimension:str, overall:bool)->list[float]:
+def get_dimension_scores(
+    agent_index: int, episodes: list[EpisodeLog], dimension: str, overall: bool
+) -> list[float]:
     if overall:
-        return [get_rewards_from_episode(relevant_episode)[agent_index][0] for relevant_episode in episodes]
+        return [
+            get_rewards_from_episode(relevant_episode)[agent_index][0]
+            for relevant_episode in episodes
+        ]
     else:
-        return [get_rewards_from_episode(relevant_episode)[agent_index][1][dimension] for relevant_episode in episodes]
+        return [
+            get_rewards_from_episode(relevant_episode)[agent_index][1][dimension]
+            for relevant_episode in episodes
+        ]
 
 
 def get_dimension_correlation(
@@ -51,11 +59,19 @@ def get_dimension_correlation(
         for relevant_episode in machine_annotations
     ]
     assert sum(episodes_with_valid_rewards) == len(human_annotations), "Data is missing"
-    overall = (dimension == "overall")
-    dimension_scores_agent1_human = get_dimension_scores(0, human_annotations, dimension, overall)
-    dimension_scores_agent2_human = get_dimension_scores(1, human_annotations, dimension, overall)
-    dimension_scores_agent1_machine = get_dimension_scores(0, machine_annotations, dimension, overall)
-    dimension_scores_agent2_machine = get_dimension_scores(1, machine_annotations, dimension, overall)
+    overall = dimension == "overall"
+    dimension_scores_agent1_human = get_dimension_scores(
+        0, human_annotations, dimension, overall
+    )
+    dimension_scores_agent2_human = get_dimension_scores(
+        1, human_annotations, dimension, overall
+    )
+    dimension_scores_agent1_machine = get_dimension_scores(
+        0, machine_annotations, dimension, overall
+    )
+    dimension_scores_agent2_machine = get_dimension_scores(
+        1, machine_annotations, dimension, overall
+    )
     x = dimension_scores_agent1_human + dimension_scores_agent2_human
     y = dimension_scores_agent1_machine + dimension_scores_agent2_machine
     res = stats.pearsonr(x, y)

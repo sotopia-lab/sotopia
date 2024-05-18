@@ -39,7 +39,7 @@ def map_human_annotations_to_episode_logs(
         aggregate (bool, optional): If True, aggregates reasoning and rewards across all human annotations per model episode. The primary key will be the model episode. Defaults to False.
 
     Returns:
-        Dict[str, Union[EpisodeLog, Tuple[EpisodeLog, EpisodeLog]]]: A dictionary mapping episode primary keys to EpisodeLog objects or tuples of (human_episode, model_episode) depending on 
+        Dict[str, Union[EpisodeLog, Tuple[EpisodeLog, EpisodeLog]]]: A dictionary mapping episode primary keys to EpisodeLog objects or tuples of (human_episode, model_episode) depending on
         return_model_episodes and aggregate flags.
     """
 
