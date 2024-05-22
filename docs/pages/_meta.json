@@ -1,0 +1,33 @@
+{
+    "index": {
+        "type": "page",
+        "title": "Home",
+        "theme": {
+            "timestamp": false,
+            "layout": "full"
+        }
+    },
+    "contribution_menu": {
+        "title": "Documentation",
+        "type": "menu",
+        "items": {
+            "examples": {
+                "title": "Examples",
+                "href": "/examples"
+            },
+            "hyperparameters": {
+                "title": "Hyperparameters",
+                "href": "/hyperparameters"
+            },
+            "scripts": {
+                "title": "Scripts",
+                "href": "/scripts"
+            },
+            "xml": {
+                "title": "XML Formatter",
+                "href": "/xml"
+
+            }
+        }
+    }
+}
