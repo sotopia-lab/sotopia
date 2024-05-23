@@ -4,6 +4,8 @@ import { Button } from "../components/ui/button"
 import { MoveRight } from "lucide-react"
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "../components/ui/accordion"
 import { Steps } from 'nextra/components'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
+
 
 
 # Sotopia - Getting Started
@@ -103,27 +105,46 @@ Redis stack is a required dependency for using Sotopia. There are two ways to se
         <AccordionContent>
         <Steps>
         ### Download the Redis stack
-        ```bash
-        # if you are using Ubunutu 20.04
-        curl -fsSL https://packages.redis.io/redis-stack/redis-stack-server-7.2.0-v10.focal.x86_64.tar.gz -o redis-stack-server.tar.gz
-        tar -xvzf redis-stack-server.tar.gz
-        export PATH=$(pwd)/redis-stack-server-7.2.0-v10/bin:$PATH
-        # if you are using Ubunutu 22.04, please do an extra step
-        wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb
-        sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb
-        # if you are using macOs
-        brew tap redis-stack/redis-stack
-        brew install redis-stack
-        ```
+        <Tabs defaultValue="ubuntu20" className="w-full mt-3 bg-inherit">
+          <TabsList>
+            <TabsTrigger value="ubuntu20">Ubuntu 20.04</TabsTrigger>
+            <TabsTrigger value="ubuntu22">Ubuntu 22.04</TabsTrigger>
+            <TabsTrigger value="mac">Mac OS</TabsTrigger>
+          </TabsList>
+          <TabsContent value="ubuntu20">
+          ```bash
+          curl -fsSL https://packages.redis.io/redis-stack/redis-stack-server-7.2.0-v10.focal.x86_64.tar.gz -o redis-stack-server.tar.gz
+          tar -xvzf redis-stack-server.tar.gz
+          export PATH=$(pwd)/redis-stack-server-7.2.0-v10/bin:$PATH
+          ```
+          </TabsContent>
+          <TabsContent value="ubuntu22">
+          ```bash
+          curl -fsSL https://packages.redis.io/redis-stack/redis-stack-server-7.2.0-v10.focal.x86_64.tar.gz -o redis-stack-server.tar.gz
+          tar -xvzf redis-stack-server.tar.gz
+          export PATH=$(pwd)/redis-stack-server-7.2.0-v10/bin:$PATH
+          wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb
+          ```
+          </TabsContent>
+          <TabsContent value="mac">
+          ```bash
+          brew tap redis-stack/redis-stack
+          brew install redis-stack
+          ```
+          </TabsContent>
+        </Tabs>
+
 
         ### Start the server
         ```bash
-        ./redis-stack-server-7.2.0-v10/bin/redis-stack-server --daemonize yes
+        redis-stack-server --daemonize yes
         ```
 
         For other platforms, please check the [instruction](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/).
 
-        ### The `REDIS_OM_URL` need to be set before loading and saving agents:
+        ### Set the environment variable:
+        The `REDIS_OM_URL` need to be set before loading and saving agents
         ```bash
         conda env config vars set REDIS_OM_URL="redis://user:password@host:port"
         ```
