@@ -64,16 +64,17 @@ pip install sotopia
         <AccordionContent>
           <p>Install the nightly version with:</p>
           ```bash
+          git clone git@github.com:sotopia-lab/sotopia.git;
           curl -sSL https://install.python-poetry.org | python3;
           poetry install;
           ```
         </AccordionContent>
       </AccordionItem>
-      <AccordionItem>
+      <AccordionItem value="item-3">
         <AccordionTrigger>Where to put my OpenAI/TogetherAI/Groq/Replicate API keys?</AccordionTrigger>
         <AccordionContent>
-          Although API keys are not required for all the experiments, you need to use these keys when you use LLMs from these providers.
-          For example, set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:
+          <p>Although API keys are not required for all the experiments, you need to use these keys when you use LLMs from these providers.
+          For example, set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:</p>
           ```bash
           conda env config vars set OPENAI_API_KEY=your_key
           ```
