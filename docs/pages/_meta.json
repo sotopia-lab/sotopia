@@ -1,11 +1,7 @@
 {
     "index": {
         "type": "page",
-        "title": "Home",
-        "theme": {
-            "timestamp": false,
-            "layout": "full"
-        }
+        "title": "Home"
     },
     "contribution_menu": {
         "title": "Documentation",
