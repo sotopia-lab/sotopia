@@ -38,7 +38,24 @@ Sotopia is an open-ended social learning environment that allows agents to inter
 ```
 
 
-## Installation
+## Get started
+### Use on Google Colab
+
+If you want to try it out on Google Colab first, please check out our Colab Tutorial Series:
+
+<ol>
+<li> Basic
+  <ol>
+    <li> <a href="https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing">1.1 Playing with Sotopia in a Google Colab Notebook</a> </li>
+    <li> <a href="https://colab.research.google.com/drive/1Gi2U3cA0KG1nekw1A0N0DZpx6gKrj8Nc?usp=sharing">1.2 Browsing sotopia data</a> </li>
+  </ol>
+</li>
+<li>
+Building your own social agent (coming soon!)
+</li>
+</ol>
+
+### Install locally
 This package supports Python 3.11 and above. In one line,
 `pip install sotopia` or `pip install uv; uv pip install sotopia`.
 
@@ -68,6 +85,8 @@ Make a folder to store the logs:
 ```bash
 mkdir logs
 ```
+
+
 
 ## Easy Sample Server
 You can view an episode demo with default parameters with the following:

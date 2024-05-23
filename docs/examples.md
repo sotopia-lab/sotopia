@@ -8,6 +8,11 @@ python examples/evaluate_existing_episodes.py --tag=<tag to upload to the databa
 
 Run ```python examples/evaluate_existing_episodes.py --help``` for more information.
 
+### Example 1.1: benchmarking the evaluator
+```python
+python examples/benchmark_evaluator.py --push-to-db --model=<the model used to be evaluated as evaluator> --tag=<tag to upload to the database> --batch_size=10
+```
+
 ## Example 2: Generate script-like episodes
 See `docs/simulation_modes.md` for more information.
 
