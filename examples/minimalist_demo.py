@@ -16,7 +16,7 @@ asyncio.run(
         model_dict={
             "env": "gpt-4",
             "agent1": "gpt-3.5-turbo",
-            "agent2": "gpt-3.5-turbo",
+            "agent2": "groq/llama3-70b-8192",
         },
         sampler=UniformSampler(),
     )
