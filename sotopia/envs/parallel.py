@@ -266,7 +266,6 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         background_for_a = agent_backgrounds[0]
         background_for_b = agent_backgrounds[1]
 
-        print("Is the agent omniscient?", omniscient)
         if not omniscient:
             background_for_a.p2_goal = "Unknown"
             background_for_b.p1_goal = "Unknown"
