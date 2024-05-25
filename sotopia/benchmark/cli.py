@@ -2,7 +2,7 @@ from datasets import load_dataset
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
-from typing import Generator, Annotated
+from typing import Generator
 
 from tqdm import tqdm
 
@@ -28,6 +28,7 @@ from sotopia.samplers import (
 from sotopia.server import run_async_server
 
 import typer
+
 app = typer.Typer()
 
 
@@ -90,7 +91,7 @@ def _iterate_all_env_agent_combo_not_in_db(
     hard_envs = EnvironmentList.get("01HAK34YPB1H1RWXQDASDKHSNS").environments
     agent_index = EnvironmentList.get("01HAK34YPB1H1RWXQDASDKHSNS").agent_index
     assert isinstance(agent_index, list), "agent_index should be a list"
-    envs_index_mapping:dict[str, list[str]] = {env_id: [] for env_id in set(hard_envs)}
+    envs_index_mapping: dict[str, list[str]] = {env_id: [] for env_id in set(hard_envs)}
     # Repeat 10 times to match the number of combos
     for _ in range(10):
         for index, env_id in zip(agent_index, hard_envs):
@@ -220,18 +221,28 @@ def run_async_benchmark_in_batch(
 
 @app.command()
 def cli(
-   model: str = typer.Option(..., help="The language model you want to benchmark."),
-    partner_model: str = typer.Option("groq/llama3-70b-8192", help="The partner model you want to use."),
-    evaluator_model: str = typer.Option("gpt-4o", help="The evaluator model you want to use."),
+    model: str = typer.Option(..., help="The language model you want to benchmark."),
+    partner_model: str = typer.Option(
+        "groq/llama3-70b-8192", help="The partner model you want to use."
+    ),
+    evaluator_model: str = typer.Option(
+        "gpt-4o", help="The evaluator model you want to use."
+    ),
     batch_size: int = typer.Option(10, help="The batch size you want to use."),
-    task: str = typer.Option("hard", help="The task id you want to benchmark.")
+    task: str = typer.Option("hard", help="The task id you want to benchmark."),
 ) -> None:
     """A simple command-line interface example."""
     typer.echo(
         f"Running benchmark for {model} and {partner_model} on task {task} with {evaluator_model}."
     )
     tag = f"benchmark_{model}_q"
-    run_async_benchmark_in_batch(batch_size=batch_size, model_names={"agent1": model, "agent2": partner_model, "env": evaluator_model}, tag=tag, verbose=False)
+    run_async_benchmark_in_batch(
+        batch_size=batch_size,
+        model_names={"agent1": model, "agent2": partner_model, "env": evaluator_model},
+        tag=tag,
+        verbose=False,
+    )
+
 
 if __name__ == "__main__":
     app()
