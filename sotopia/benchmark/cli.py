@@ -221,11 +221,13 @@ def run_async_benchmark_in_batch(
 
 @app.command()
 def cli(
-    model: str = typer.Option(..., help="The language model you want to benchmark."),
-    partner_model: str = typer.Option(
+    model: LLM_Name = typer.Option(
+        ..., help="The language model you want to benchmark."
+    ),
+    partner_model: LLM_Name = typer.Option(
         "groq/llama3-70b-8192", help="The partner model you want to use."
     ),
-    evaluator_model: str = typer.Option(
+    evaluator_model: LLM_Name = typer.Option(
         "gpt-4o", help="The evaluator model you want to use."
     ),
     batch_size: int = typer.Option(10, help="The batch size you want to use."),
