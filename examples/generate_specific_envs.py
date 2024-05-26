@@ -4,13 +4,15 @@ in `sotopia/generation_utils/generate.py` with the appropriate parameters.
 Here are the datasets we have so far:
 1. Mutual-Friend (https://huggingface.co/datasets/mutual_friends)
 2. Craigslist-Bargains (https://huggingface.co/datasets/craigslist_bargains)
+
+You will have to install the datasets library to use this file.
 """
 
 import names
 import numpy as np
 from datasets import DatasetDict, load_dataset
 
-from .generate import StrOutputParser, generate
+from sotopia.generation_utils.generate import StrOutputParser, generate
 
 
 async def generate_mutual_friend_envs() -> tuple[str, list[str]]:

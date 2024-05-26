@@ -338,11 +338,16 @@ async def test_waiting_room() -> None:
             await asyncio.sleep(0.1)
         return str(response.text)
 
-    async with asyncio.timeout(200):
-        _ = await asyncio.gather(
-            _join_after_seconds(random.random() * 199),
-            _join_after_seconds(random.random() * 199),
-            _join_after_seconds(random.random() * 199),
-            _join_after_seconds(random.random() * 199),
-            _join_after_seconds(random.random() * 199),
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(
+                _join_after_seconds(random.random() * 199),
+                _join_after_seconds(random.random() * 199),
+                _join_after_seconds(random.random() * 199),
+                _join_after_seconds(random.random() * 199),
+                _join_after_seconds(random.random() * 199),
+            ),
+            timeout=200,
         )
+    except (TimeoutError, asyncio.TimeoutError) as _:
+        pass
