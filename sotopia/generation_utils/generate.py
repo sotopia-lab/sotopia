@@ -336,9 +336,7 @@ def obtain_chain(
                 input_variables=input_variables,
             )
         )
-        chat_prompt_template = ChatPromptTemplate.from_messages(
-            [human_message_prompt]
-        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
         chat_openai = ChatTogether(
             model_name=model_name,
             temperature=temperature,
