@@ -1,5 +1,7 @@
 # Example Scripts For Using The Library
 
+Note: before running examples, please install extra dependencies with `pip install sotopia[examples]` or `poetry install -E examples` if you are using poetry.
+
 ## Example 1: Evaluating existing episodes
 
 ```python
