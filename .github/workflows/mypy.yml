@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         curl -sSL https://install.python-poetry.org | python3
-        poetry install --with test
+        poetry install --with test -E chat
     - name: Type-checking package with mypy
       run: |
         # Run this mypy instance against our main package.
