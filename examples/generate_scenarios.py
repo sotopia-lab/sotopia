@@ -12,6 +12,8 @@ from sotopia.database import EnvAgentComboStorage, EnvironmentProfile
 from sotopia.database.persistent_profile import RelationshipType
 from sotopia.generation_utils import (
     LLM_Name,
+)
+from .generate_specific_envs import (  # type:ignore[import-untyped]
     generate_craigslist_bargains_envs,
     generate_mutual_friend_envs,
 )

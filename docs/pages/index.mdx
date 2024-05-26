@@ -3,7 +3,7 @@ import { Lumiflex } from 'uvcanvas'
 import { Button } from "../components/ui/button"
 import { MoveRight } from "lucide-react"
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "../components/ui/accordion"
-import { Steps } from 'nextra/components'
+import { Steps, Callout } from 'nextra/components'
 
 
 # Sotopia - Getting Started
@@ -30,15 +30,20 @@ https://github.com/sotopia-lab/sotopia
 
 ## Installation
 
-<div className='mt-3 space-x-3 flex flex-row items-center'>
+<Callout>
+
+<div className='space-x-3 flex flex-row items-center'>
+<span className='font-bold'> Check out </span>
 <Link target="_blank" href="https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"/> </Link>
 <span className='font-bold'> for a quick tutorial </span>
 </div>
 
+</Callout>
+
 ### Basic Usage
 
-This package supports Python 3.11 and above.
+This package supports Python 3.10 and above. Tested on Ubuntu 22.04 with python 3.11.
 
 
 
@@ -77,6 +82,19 @@ pip install sotopia
           For example, set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:</p>
           ```bash
           conda env config vars set OPENAI_API_KEY=your_key
+          ```
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-4">
+        <AccordionTrigger>What if I want to run examples and sotopia-chat?</AccordionTrigger>
+        <AccordionContent>
+          <p>Install the package with the following command:</p>
+          ```bash
+          pip install sotopia[examples, chat]
+          ```
+          if you are using poetry, you can install the package with:
+          ```bash
+          poetry install -E examples -E chat
           ```
         </AccordionContent>
       </AccordionItem>

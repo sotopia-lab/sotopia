@@ -65,7 +65,8 @@ class XMLRenderer(BaseRenderer):
                         self.parser,
                     ).getroot()
                 except etree.XMLSyntaxError as e:
-                    e.add_note(f"The xml_string is {xml_string}")
-                    raise e
+                    raise etree.XMLSyntaxError(
+                        f"Failed to parse xml_string: {xml_string}"
+                    ) from e
 
         return _render_xml(root, context)
