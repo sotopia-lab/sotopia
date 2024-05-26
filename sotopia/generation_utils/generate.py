@@ -345,7 +345,7 @@ def obtain_chain(
         chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
         return chain
     else:
-        chat = PatchedChatLiteLLM(
+        chat = ChatOpenAI(
             model=model_name,
             temperature=temperature,
             max_retries=max_retries,
