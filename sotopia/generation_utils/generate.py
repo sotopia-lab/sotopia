@@ -14,12 +14,12 @@ from langchain.prompts import (
 )
 from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_together import ChatTogether
 from pydantic import BaseModel, Field
 from rich import print
 from typing_extensions import Literal
 
 from sotopia.database import EnvironmentProfile, RelationshipProfile
+from sotopia.generation_utils.llama2 import Llama2
 from sotopia.messages import ActionType, AgentAction, ScriptBackground
 from sotopia.messages.message_classes import (
     ScriptInteraction,
@@ -328,18 +328,18 @@ def obtain_chain(
     if "together_ai" in model_name:
         model_name = "/".join(model_name.split("/")[1:])
         human_message_prompt = HumanMessagePromptTemplate(
-            prompt=PromptTemplate(
-                template=template,
-                input_variables=input_variables,
+        prompt=PromptTemplate(
+            template=template,
+            input_variables=input_variables,
             )
         )
-        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-        chat_openai = ChatTogether(
-            model_name=model_name,
-            temperature=temperature,
-            max_retries=max_retries,
+        chat_prompt_template = ChatPromptTemplate.from_messages(
+            [human_message_prompt]
         )
-        chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
+        together_llm = Llama2(
+            model_name=model_name, temperature=temperature
+        )
+        chain = LLMChain(llm=together_llm, prompt=chat_prompt_template)
         return chain
     else:
         chat = PatchedChatLiteLLM(
