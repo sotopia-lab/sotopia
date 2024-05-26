@@ -1,8 +1,13 @@
+from datetime import datetime
+import subprocess
 from datasets import load_dataset
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
 from typing import Generator, cast
+
+from logging import FileHandler
+from rich.logging import RichHandler
 
 from tqdm import tqdm
 
@@ -28,8 +33,34 @@ from sotopia.samplers import (
 from sotopia.server import run_async_server
 
 import typer
+from pathlib import Path
 
 app = typer.Typer()
+
+# date and message only
+FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+
+process = subprocess.Popen(
+    ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
+)
+git_head_hash = process.communicate()[0].strip()
+
+logging_path = Path(
+    datetime.now().strftime(
+        "./logs/%H_%M_%d_%m_%Y_{str(git_head_hash.decode('utf-8'))}.log"
+    )
+)
+logging_path.mkdir(parents=True, exist_ok=True)
+
+logging.basicConfig(
+    level=15,
+    format=FORMAT,
+    datefmt="[%X]",
+    handlers=[
+        RichHandler(),
+        FileHandler(logging_path),
+    ],
+)
 
 
 def check_existing_episodes(
@@ -221,11 +252,10 @@ def run_async_benchmark_in_batch(
 
 @app.command()
 def cli(
-    model: str = typer.Option(
-        ..., help="The language model you want to benchmark."
-    ),
+    model: str = typer.Option(..., help="The language model you want to benchmark."),
     partner_model: str = typer.Option(
-        "together_ai/meta-llama/Llama-2-70b-chat-hf", help="The partner model you want to use."
+        "together_ai/meta-llama/Llama-2-70b-chat-hf",
+        help="The partner model you want to use.",
     ),
     evaluator_model: str = typer.Option(
         "gpt-4o", help="The evaluator model you want to use."
@@ -237,7 +267,7 @@ def cli(
     typer.echo(
         f"Running benchmark for {model} and {partner_model} on task {task} with {evaluator_model} as the evaluator."
     )
-    model = cast(LLM_Name, model) 
+    model = cast(LLM_Name, model)
     partner_model = cast(LLM_Name, partner_model)
     evaluator_model = cast(LLM_Name, evaluator_model)
     tag = f"benchmark_{model}_q"

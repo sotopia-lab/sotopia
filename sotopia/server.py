@@ -6,7 +6,6 @@ from typing import Literal, Sequence, Type, cast
 import gin
 import rich
 from beartype import beartype
-from tqdm.asyncio import tqdm_asyncio
 
 from sotopia.agents import (
     Agents,
@@ -315,7 +314,7 @@ async def run_async_server(
     ]
 
     batch_results = (
-        await tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
+        await asyncio.gather(*episode_futures)
         if using_async
         else [await i for i in episode_futures]
     )
