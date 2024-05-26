@@ -16,6 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         curl -sSL https://install.python-poetry.org | python3
+        poetry lock
         poetry install --with test -E chat
     - name: Test with pytest
       env: # Or as an environment variable
