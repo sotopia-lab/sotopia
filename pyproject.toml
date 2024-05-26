@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{include = "sotopia"}]
 
 [tool.poetry.dependencies]
-python = ">=3.10, <=3.12"
+python = ">=3.10, <3.13"
 pandas = "^2.1.1"
 lxml = "^4.9.3"
 openai = "^1.11.0"
