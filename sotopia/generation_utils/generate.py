@@ -33,22 +33,18 @@ log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
 
 LLM_Name = Literal[
-    "togethercomputer/llama-2-7b-chat",
-    "togethercomputer/llama-2-70b-chat",
-    "togethercomputer/mpt-30b-chat",
+    "together_ai/meta-llama/Llama-2-7b-chat-hf",
+    "together_ai/meta-llama/Llama-2-70b-chat-hf",
+    "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
+    "together_ai/meta-llama/Llama-3-8b-chat-hf",
+    "together_ai/meta-llama/Llama-3-70b-chat-hf",
     "gpt-3.5-turbo",
     "gpt-3.5-turbo-finetuned",
     "gpt-3.5-turbo-ft-MF",
-    "text-davinci-003",
     "gpt-4",
     "gpt-4-turbo",
     "human",
     "redis",
-    "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "together_ai/togethercomputer/llama-2-7b-chat",
-    "together_ai/togethercomputer/falcon-7b-instruct",
-    "meta-llama/Llama-3-8b-chat-hf",
-    "meta-llama/Llama-3-70b-chat-hf",
     "groq/llama3-70b-8192",
 ]
 
@@ -329,7 +325,8 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    if "togethercomputer" in model_name:
+    if "together_ai" in model_name:
+        model_name = "/".join(model_name.split("/")[1:])
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
                 template=template,

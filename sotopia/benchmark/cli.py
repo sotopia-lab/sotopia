@@ -2,7 +2,7 @@ from datasets import load_dataset
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
-from typing import Generator
+from typing import Generator, cast
 
 from tqdm import tqdm
 
@@ -221,13 +221,13 @@ def run_async_benchmark_in_batch(
 
 @app.command()
 def cli(
-    model: LLM_Name = typer.Option(
+    model: str = typer.Option(
         ..., help="The language model you want to benchmark."
     ),
-    partner_model: LLM_Name = typer.Option(
-        "meta-llama/Llama-3-70b-chat-hf", help="The partner model you want to use."
+    partner_model: str = typer.Option(
+        "together_ai/meta-llama/Llama-2-70b-chat-hf", help="The partner model you want to use."
     ),
-    evaluator_model: LLM_Name = typer.Option(
+    evaluator_model: str = typer.Option(
         "gpt-4o", help="The evaluator model you want to use."
     ),
     batch_size: int = typer.Option(10, help="The batch size you want to use."),
@@ -235,8 +235,11 @@ def cli(
 ) -> None:
     """A simple command-line interface example."""
     typer.echo(
-        f"Running benchmark for {model} and {partner_model} on task {task} with {evaluator_model}."
+        f"Running benchmark for {model} and {partner_model} on task {task} with {evaluator_model} as the evaluator."
     )
+    model = cast(LLM_Name, model) 
+    partner_model = cast(LLM_Name, partner_model)
+    evaluator_model = cast(LLM_Name, evaluator_model)
     tag = f"benchmark_{model}_q"
     run_async_benchmark_in_batch(
         batch_size=batch_size,
