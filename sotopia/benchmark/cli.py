@@ -225,7 +225,7 @@ def cli(
         ..., help="The language model you want to benchmark."
     ),
     partner_model: LLM_Name = typer.Option(
-        "groq/llama3-70b-8192", help="The partner model you want to use."
+        "meta-llama/Llama-3-70b-chat-hf", help="The partner model you want to use."
     ),
     evaluator_model: LLM_Name = typer.Option(
         "gpt-4o", help="The evaluator model you want to use."

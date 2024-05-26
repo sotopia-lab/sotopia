@@ -14,6 +14,7 @@ from langchain.prompts import (
 )
 from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_community.chat_models import ChatLiteLLM
+from langchain_together import ChatTogether
 from pydantic import BaseModel, Field
 from rich import print
 from typing_extensions import Literal
@@ -46,6 +47,8 @@ LLM_Name = Literal[
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "together_ai/togethercomputer/llama-2-7b-chat",
     "together_ai/togethercomputer/falcon-7b-instruct",
+    "meta-llama/Llama-3-8b-chat-hf",
+    "meta-llama/Llama-3-70b-chat-hf",
     "groq/llama3-70b-8192",
 ]
 
@@ -326,17 +329,35 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    chat = PatchedChatLiteLLM(
-        model=model_name,
-        temperature=temperature,
-        max_retries=max_retries,
-    )
-    human_message_prompt = HumanMessagePromptTemplate(
-        prompt=PromptTemplate(template=template, input_variables=input_variables)
-    )
-    chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-    chain = LLMChain(llm=chat, prompt=chat_prompt_template)
-    return chain
+    if "togethercomputer" in model_name:
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages(
+            [human_message_prompt]
+        )
+        chat_openai = ChatTogether(
+            model_name=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+        )
+        chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
+        return chain
+    else:
+        chat = PatchedChatLiteLLM(
+            model=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+        )
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(template=template, input_variables=input_variables)
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chain = LLMChain(llm=chat, prompt=chat_prompt_template)
+        return chain
 
 
 @beartype
