@@ -1,11 +1,12 @@
 import logging
+import os
 import re
 from typing import Any, TypeVar
 
 import gin
 from beartype import beartype
 from beartype.typing import Type
-from langchain.chains import LLMChain
+from langchain.chains.llm import LLMChain
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -14,7 +15,7 @@ from langchain.prompts import (
 )
 from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_together import ChatTogether
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from rich import print
 from typing_extensions import Literal
@@ -334,10 +335,12 @@ def obtain_chain(
             )
         )
         chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-        chat_openai = ChatTogether(
+        chat_openai = ChatOpenAI(
             model_name=model_name,
             temperature=temperature,
             max_retries=max_retries,
+            openai_api_base="https://api.together.xyz/v1",
+            openai_api_key=os.environ.get("TOGETHER_API_KEY"),
         )
         chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
         return chain
