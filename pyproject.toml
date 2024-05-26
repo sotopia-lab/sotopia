@@ -34,7 +34,6 @@ beartype = "^0.14.0"
 torch = ">=2.1 <2.3"
 transformers = "^4.34.0"
 langchain-openai = "^0.0.5"
-langchain-together = "^0.1.2"
 litellm = "^1.23.12"
 
 [tool.poetry.group.dev.dependencies]
