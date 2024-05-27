@@ -344,6 +344,24 @@ def obtain_chain(
         )
         chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
         return chain
+    elif "groq" in model_name:
+        model_name = "/".join(model_name.split("/")[1:])
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chat_openai = ChatOpenAI(
+            model_name=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            openai_api_base="https://api.groq.com/openai/v1",
+            openai_api_key=os.environ.get("GROQ_API_KEY"),
+        )
+        chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
+        return chain
     else:
         chat = ChatOpenAI(
             model=model_name,

@@ -1,5 +1,4 @@
 from datetime import datetime
-import subprocess
 from datasets import load_dataset
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
@@ -36,31 +35,6 @@ import typer
 from pathlib import Path
 
 app = typer.Typer()
-
-# date and message only
-FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-
-process = subprocess.Popen(
-    ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
-)
-git_head_hash = process.communicate()[0].strip()
-
-logging_path = Path(
-    datetime.now().strftime(
-        "./logs/%H_%M_%d_%m_%Y_{str(git_head_hash.decode('utf-8'))}.log"
-    )
-)
-logging_path.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    level=15,
-    format=FORMAT,
-    datefmt="[%X]",
-    handlers=[
-        RichHandler(),
-        FileHandler(logging_path),
-    ],
-)
 
 
 def check_existing_episodes(
@@ -250,6 +224,29 @@ def run_async_benchmark_in_batch(
                 return
 
 
+def _set_up_logs(
+    *,
+    log_file_level: int = logging.DEBUG,
+    log_rich_level: int = logging.INFO,
+    log_format: str = "%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    log_file: str = datetime.now().strftime("./logs/%H_%M_%d_%m_%Y.log"),
+    print_logs: bool = False,
+) -> None:
+    # date and message only
+    logging_path = Path(log_file)
+    logging_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logging.basicConfig(
+        level=log_file_level,
+        format=log_format,
+        datefmt="[%X]",
+        handlers=[
+            FileHandler(logging_path),
+            RichHandler(level=log_rich_level) if print_logs else RichHandler(level=100),
+        ],
+    )
+
+
 @app.command()
 def cli(
     model: str = typer.Option(..., help="The language model you want to benchmark."),
@@ -262,8 +259,10 @@ def cli(
     ),
     batch_size: int = typer.Option(10, help="The batch size you want to use."),
     task: str = typer.Option("hard", help="The task id you want to benchmark."),
+    print_logs: bool = typer.Option(False, help="Print logs."),
 ) -> None:
     """A simple command-line interface example."""
+    _set_up_logs(print_logs=print_logs)
     typer.echo(
         f"Running benchmark for {model} and {partner_model} on task {task} with {evaluator_model} as the evaluator."
     )
