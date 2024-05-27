@@ -162,6 +162,7 @@ def run_async_benchmark_in_batch(
     )
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
     number_of_fix_turns = 0
+    loop = asyncio.get_event_loop()
     while True:
         for env_agent_combo in tqdm(
             env_agent_combo_iter,
@@ -173,7 +174,7 @@ def run_async_benchmark_in_batch(
                 logging.info(
                     f"Running batch of {batch_size} episodes: {env_agent_combo_batch}"
                 )
-                asyncio.run(
+                loop.run_until_complete(
                     run_async_server(
                         model_dict=model_names,
                         sampler=BaseSampler[Observation, AgentAction](),
@@ -188,7 +189,7 @@ def run_async_benchmark_in_batch(
                 logging.info(
                     f"Running batch of {batch_size} episodes: {env_agent_combo_batch}"
                 )
-                asyncio.run(
+                loop.run_until_complete(
                     run_async_server(
                         model_dict=model_names,
                         sampler=BaseSampler[Observation, AgentAction](),
