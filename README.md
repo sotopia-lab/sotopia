@@ -2,23 +2,27 @@
   <img src="figs/title.png" style="width: 100%;" alt="sotopia"></img>
 </div>
 
-# Sotopia: an Open-ended Social Learning Environment
+<h1 align="center">Sotopia: an Open-ended Social Learning Environment</h1>
+
+<div align="center">
+
 [![pypi](https://img.shields.io/pypi/v/sotopia.svg)](https://pypi.python.org/pypi/sotopia)
 [![versions](https://img.shields.io/pypi/pyversions/sotopia.svg)](https://github.com/sotopia/sotopia)
+[![CI](https://img.shields.io/github/actions/workflow/status/sotopia-lab/sotopia/tests.yml?branch=main&logo=github&label=CI)](https://github.com/sotopia-lab/sotopia/actions?query=branch%3Amain)
+[![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing)
 
-<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
-[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
-[![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/tests.yml/badge.svg?branch=main)]()
-[![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/pre-commit.yml/badge.svg?branch=main)]()
 [![Project Page](https://img.shields.io/badge/Project-Page-green.svg)](https://www.sotopia.world/projects/sotopia)
-
 [![Paper PDF](https://img.shields.io/badge/Paper-PDF-red.svg)](https://arxiv.org/abs/2310.11667)
 [![Dataset](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Dataset-yellow)](https://huggingface.co/datasets/cmu-lti/sotopia)
 [![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://huggingface.co/spaces/cmu-lti/sotopia-space/)
 
+
+
+</div>
+
 ## News
 
-* [05/2024] Sotopia will be presented at ICLR 2024 as a spotlight ⭐!
+* [05/2024] Sotopia is presented at ICLR 2024 as a spotlight ⭐!
 * [05/2024] We release [a simple tutorial](https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing) for you to run sotopia end-to-end on google colab.
 
 
@@ -37,6 +41,9 @@ Sotopia is an open-ended social learning environment that allows agents to inter
   url = {https://openreview.net/forum?id=mM7VurbA4r},
 }
 ```
+
+## Help
+See [documentation](https://docs.sotopia.world) for more details.
 
 
 ## Get started
