@@ -105,11 +105,15 @@ def _iterate_all_env_agent_combo_not_in_db(
     for _ in range(10):
         for index, env_id in zip(agent_index, hard_envs):
             envs_index_mapping[env_id].append(index)
-    
+
     for env_agent_combo_storage in env_agent_combo_storage_list:
         agent_ids = env_agent_combo_storage.agent_ids
         env_id = env_agent_combo_storage.env_id
-        if check_existing_episodes(env_id, agent_ids, model_names, tag) or check_existing_episodes(env_id=env_id, agent_ids=agent_ids, models=model_names_switched, tag=tag):
+        if check_existing_episodes(
+            env_id, agent_ids, model_names, tag
+        ) or check_existing_episodes(
+            env_id=env_id, agent_ids=agent_ids, models=model_names_switched, tag=tag
+        ):
             logging.info(
                 f"Episode for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
             )
