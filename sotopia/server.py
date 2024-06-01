@@ -12,7 +12,6 @@ from sotopia.agents import (
     Agents,
     HumanAgent,
     LLMAgent,
-    RedisAgent,
     ScriptWritingAgent,
     SpeakAgent,
 )
