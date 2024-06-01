@@ -137,6 +137,7 @@ data/*
 deprecated/*
 
 *.csv
+*.jsonl
 
 #backup
 backup/*
