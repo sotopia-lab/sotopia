@@ -115,23 +115,6 @@ async def arun_one_episode(
 ) -> list[tuple[str, str, Message]]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     environment_messages = env.reset(agents=agents, omniscient=omniscient)
-    agents_model_names = [model_dict["agent1"], model_dict["agent2"]]
-    for agent_name, agent_model in zip(env.agents, agents_model_names):
-        if agent_model == "human":
-            agents[agent_name] = HumanAgent(agent_name)
-        elif agent_model == "redis":
-            agents[agent_name] = RedisAgent(agent_name)
-        elif script_like and not json_in_script:
-            agents[agent_name] = ScriptWritingAgent(
-                agent_name,
-                model_name=agent_model,
-                background=env.background,
-                agent_names=env.agents,
-            )
-        else:
-            agents[agent_name] = LLMAgent(
-                agent_name, model_name=agent_model, script_like=script_like
-            )
     agents.reset()
 
     messages: list[list[tuple[str, str, Message]]] = []
