@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sotopia"
-version = "0.0.6"
+version = "0.0.8"
 description = "A platform for simulating and evaluating social interaction."
 authors = ["Hao Zhu <prokilchu@gmail.com>"]
 license = "MIT License"
@@ -24,7 +24,7 @@ together = "^0.2.4"
 pydantic = "1.10.12"
 beartype = "^0.14.0"
 langchain-openai = "^0.0.5"
-litellm = "^1.23.12"
+litellm = "~1.23.12"
 
 # dependency versions for extras
 fastapi = { version = "^0.109.2", optional = true }
