@@ -38,14 +38,15 @@ class EpisodeLog(JsonModel):
         ), f"Number of agents in rewards {len(rewards)} and agents {agent_number} do not match"
         return values
 
-    def render_for_humans(self) -> tuple[list[AgentProfile], list[str]]:
+    def render_for_humans(self, agent_profiles: list[AgentProfile]|None=None) -> tuple[list[AgentProfile], list[str]]:
         """Generate a human readable version of the episode log.
 
         Returns:
             A tuple of (a list of agent_profiles, a list of str): The agent profiles, and the messages and rewards in each turn.
         """
 
-        agent_profiles = [AgentProfile.get(pk=uuid_str) for uuid_str in self.agents]
+        if agent_profiles is None:
+            agent_profiles = [AgentProfile.get(pk=uuid_str) for uuid_str in self.agents]
         messages_and_rewards = []
         for idx, turn in enumerate(self.messages):
             messages_in_this_turn = []

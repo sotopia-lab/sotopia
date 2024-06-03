@@ -194,7 +194,7 @@ async def arun_one_episode(
         rewards_prompt=info["rewards_prompt"]["overall_prompt"],
     )
     rich.print(epilog.rewards_prompt)
-    agent_profiles, conversation = epilog.render_for_humans()
+    agent_profiles, conversation = epilog.render_for_humans([agent.profile for agent in agent_list])
     for agent_profile in agent_profiles:
         rich.print(agent_profile)
     for message in conversation:
