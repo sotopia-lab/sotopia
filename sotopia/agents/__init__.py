@@ -7,6 +7,7 @@ from .llm_agent import (
     Agents,
     HumanAgent,
     LLMAgent,
+    LLMAgentX,
     ScriptWritingAgent,
     SpeakAgent,
 )
@@ -15,6 +16,7 @@ from .redis_agent import RedisAgent
 __all__ = [
     "BaseAgent",
     "LLMAgent",
+    "LLMAgentX",
     "Agents",
     "HumanAgent",
     "SpeakAgent",
