@@ -235,7 +235,9 @@ async def run_async_server(
     """
 
     assert not (push_to_db and tag is None), "please provide a tag when push to db"
-    assert model_dict or env_agent_combo_list, "please provide model_dict or env_agent_combo_list"
+    assert (
+        model_dict or env_agent_combo_list
+    ), "please provide model_dict or env_agent_combo_list"
 
     # Create Environment and agents
     # This step will be moved to outside this function
@@ -269,9 +271,9 @@ async def run_async_server(
             ],
         }
         agents_model_dict = {
-                "agent1": model_dict["agent1"],
-                "agent2": model_dict["agent2"],
-            }
+            "agent1": model_dict["agent1"],
+            "agent2": model_dict["agent2"],
+        }
         env_agent_combo_iter = sampler.sample(
             agent_classes=[
                 get_agent_class(model_name) for model_name in agents_model_dict.values()

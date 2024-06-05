@@ -4,7 +4,7 @@ import rich
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
-from typing import Generator, cast
+from typing import cast
 
 from logging import FileHandler
 from rich.logging import RichHandler
@@ -54,7 +54,11 @@ def check_existing_episodes(
     if existing_episode:
         for episode in existing_episode:
             assert isinstance(episode, EpisodeLog), "episode should be an EpisodeLog"
-            models_list = [models['env'], models['test_model'], models['partner_model']] if index == "0" else [models['env'], models['partner_model'], models['test_model']]
+            models_list = (
+                [models["env"], models["test_model"], models["partner_model"]]
+                if index == "0"
+                else [models["env"], models["partner_model"], models["test_model"]]
+            )
             if episode.agents == agent_ids and episode.models == models_list:
                 return True
         return False
@@ -88,6 +92,7 @@ def get_avg_reward(episodes: list[EpisodeLog], model_name: str) -> dict[str, flo
         avg_reward_dict[dimension] = avg_reward
     return avg_reward_dict
 
+
 def _list_all_env_agent_combo_not_in_db(
     model_names: dict[str, LLM_Name],
     env_agent_combo_storage_list: list[EnvAgentComboStorage],
@@ -101,18 +106,18 @@ def _list_all_env_agent_combo_not_in_db(
     env_agent_combo_storage_index_list = []
     for env_id, index in zip(hard_envs, agent_index):
         for env_agent_combo_storage in env_agent_combo_storage_list:
-            if env_agent_combo_storage.env_id == env_id: 
+            if env_agent_combo_storage.env_id == env_id:
                 env_agent_combo_storage_index_list.append(
-                        (env_agent_combo_storage, index)
-                    )
-   
+                    (env_agent_combo_storage, index)
+                )
+
     list_of_env_agent_combo_storage = []
     for env_agent_combo_storage, index in env_agent_combo_storage_index_list:
         agent_ids = env_agent_combo_storage.agent_ids
         env_id = env_agent_combo_storage.env_id
         if check_existing_episodes(
             env_id=env_id, agent_ids=agent_ids, models=model_names, index=index, tag=tag
-            ):
+        ):
             logging.info(
                 f"Episode for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
             )
@@ -135,11 +140,13 @@ def _list_all_env_agent_combo_not_in_db(
             LLMAgent(agent_profile=agent_profile, model_name=agent_model)
             for agent_profile, agent_model in zip(
                 agent_profiles,
-                [model_names["test_model"], model_names["partner_model"]] if index == "0" else [model_names["partner_model"], model_names["test_model"]],
+                [model_names["test_model"], model_names["partner_model"]]
+                if index == "0"
+                else [model_names["partner_model"], model_names["test_model"]],
             )
         ]
         list_of_env_agent_combo_storage.append((env, agents))
-    return list_of_env_agent_combo_storage # type: ignore
+    return list_of_env_agent_combo_storage  # type: ignore
 
 
 def run_async_benchmark_in_batch(
@@ -215,7 +222,9 @@ def run_async_benchmark_in_batch(
             env_agent_combo_batch = []
             number_of_fix_turns += 1
             if len(env_agent_combo_list) == 0 or number_of_fix_turns >= 5:
-                rewards_dict = get_avg_reward(simulated_episodes, model_names["test_model"])  # type: ignore
+                rewards_dict = get_avg_reward(
+                    simulated_episodes, model_names["test_model"]
+                )  # type: ignore
                 rewards_dict["model_name"] = model_names["test_model"]  # type: ignore
                 rewards_dict["episode_count"] = len(simulated_episodes)
                 rich.print(rewards_dict)
@@ -270,7 +279,11 @@ def cli(
     tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
     run_async_benchmark_in_batch(
         batch_size=batch_size,
-        model_names={"env": evaluator_model, "test_model": model, "partner_model": partner_model},
+        model_names={
+            "env": evaluator_model,
+            "test_model": model,
+            "partner_model": partner_model,
+        },
         tag=tag,
         verbose=False,
         push_to_db=True,
