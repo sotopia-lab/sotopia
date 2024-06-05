@@ -223,8 +223,9 @@ def run_async_benchmark_in_batch(
             number_of_fix_turns += 1
             if len(env_agent_combo_list) == 0 or number_of_fix_turns >= 5:
                 rewards_dict = get_avg_reward(
-                    simulated_episodes, model_names["test_model"] # type: ignore 
-                ) 
+                    simulated_episodes,
+                    model_names["test_model"],  # type: ignore
+                )
                 rewards_dict["model_name"] = model_names["test_model"]  # type: ignore
                 rewards_dict["episode_count"] = len(simulated_episodes)
                 rich.print(rewards_dict)
