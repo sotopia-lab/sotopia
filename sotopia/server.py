@@ -105,7 +105,6 @@ def run_sync_server(
 async def arun_one_episode(
     env: ParallelSotopiaEnv,
     agent_list: Sequence[BaseAgent[Observation, AgentAction]],
-    model_dict: dict[str, LLM_Name],
     omniscient: bool = False,
     script_like: bool = False,
     json_in_script: bool = False,
@@ -114,23 +113,6 @@ async def arun_one_episode(
 ) -> list[tuple[str, str, Message]]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     environment_messages = env.reset(agents=agents, omniscient=omniscient)
-    agents_model_names = [model_dict["agent1"], model_dict["agent2"]]
-    for agent_name, agent_model in zip(env.agents, agents_model_names):
-        if agent_model == "human":
-            agents[agent_name] = HumanAgent(agent_name)
-        elif agent_model == "redis":
-            agents[agent_name] = RedisAgent(agent_name)
-        elif script_like and not json_in_script:
-            agents[agent_name] = ScriptWritingAgent(
-                agent_name,
-                model_name=agent_model,
-                background=env.background,
-                agent_names=env.agents,
-            )
-        else:
-            agents[agent_name] = LLMAgent(
-                agent_name, model_name=agent_model, script_like=script_like
-            )
     agents.reset()
 
     messages: list[list[tuple[str, str, Message]]] = []
@@ -201,7 +183,7 @@ async def arun_one_episode(
         environment=env.profile.pk,
         agents=[agent.profile.pk for agent in agent_list],
         tag=tag,
-        models=[model_dict["env"], model_dict["agent1"], model_dict["agent2"]],
+        models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
         messages=[
             [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
             for messages_in_turn in messages
@@ -229,9 +211,9 @@ async def arun_one_episode(
 @gin.configurable
 @beartype
 async def run_async_server(
-    model_dict: dict[str, LLM_Name],
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
     action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",
+    model_dict: dict[str, LLM_Name] = {},
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
     omniscient: bool = False,
     script_like: bool = False,
@@ -253,30 +235,18 @@ async def run_async_server(
     """
 
     assert not (push_to_db and tag is None), "please provide a tag when push to db"
+    assert model_dict or env_agent_combo_list, "please provide model_dict or env_agent_combo_list"
 
     # Create Environment and agents
     # This step will be moved to outside this function
-
-    env_params = {
-        "model_name": model_dict["env"],
-        "action_order": action_order,
-        "evaluators": [
-            RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
-        ],
-        "terminal_evaluators": [
-            ReachGoalLLMEvaluator(model_dict["env"]),
-        ],
-    }
-    agents_model_dict = {
-        "agent1": model_dict["agent1"],
-        "agent2": model_dict["agent2"],
-    }
 
     def get_agent_class(
         model_name: str,
     ) -> Type[BaseAgent[Observation, AgentAction]]:
         if model_name == "human":
             return HumanAgent
+        elif model_name == "redis":
+            return RedisAgent
         elif script_like and not json_in_script:
             return ScriptWritingAgent
         else:
@@ -288,6 +258,20 @@ async def run_async_server(
         ), "No sampler should be used when `env_agent_combo_list` is not empty"
         env_agent_combo_iter = iter(env_agent_combo_list)
     else:
+        env_params = {
+            "model_name": model_dict["env"],
+            "action_order": action_order,
+            "evaluators": [
+                RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
+            ],
+            "terminal_evaluators": [
+                ReachGoalLLMEvaluator(model_dict["env"]),
+            ],
+        }
+        agents_model_dict = {
+                "agent1": model_dict["agent1"],
+                "agent2": model_dict["agent2"],
+            }
         env_agent_combo_iter = sampler.sample(
             agent_classes=[
                 get_agent_class(model_name) for model_name in agents_model_dict.values()
@@ -303,7 +287,6 @@ async def run_async_server(
         arun_one_episode(
             env=env_agent_combo[0],
             agent_list=env_agent_combo[1],
-            model_dict=model_dict,
             omniscient=omniscient,
             script_like=script_like,
             json_in_script=json_in_script,

@@ -1,5 +1,6 @@
 from datetime import datetime
 from datasets import load_dataset
+import rich
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
@@ -41,6 +42,7 @@ def check_existing_episodes(
     env_id: str,
     agent_ids: list[str],
     models: dict[str, LLM_Name],
+    index: str,
     tag: str | None = None,
 ) -> bool:
     if tag:
@@ -52,13 +54,8 @@ def check_existing_episodes(
     if existing_episode:
         for episode in existing_episode:
             assert isinstance(episode, EpisodeLog), "episode should be an EpisodeLog"
-            assert isinstance(episode.models, list), "episode.models should be a list"
-            episode_models_dict = {
-                'env': episode.models[0],
-                'agent1': episode.models[1],
-                'agent2': episode.models[2],
-            }
-            if episode.agents == agent_ids and episode_models_dict == models:
+            models_list = [models['env'], models['test_model'], models['partner_model']] if index == "0" else [models['env'], models['partner_model'], models['test_model']]
+            if episode.agents == agent_ids and episode.models == models_list:
                 return True
         return False
     else:
@@ -91,8 +88,7 @@ def get_avg_reward(episodes: list[EpisodeLog], model_name: str) -> dict[str, flo
         avg_reward_dict[dimension] = avg_reward
     return avg_reward_dict
 
-
-def _iterate_all_env_agent_combo_not_in_db(
+def _list_all_env_agent_combo_not_in_db(
     model_names: dict[str, LLM_Name],
     env_agent_combo_storage_list: list[EnvAgentComboStorage],
     tag: str | None = None,
@@ -101,25 +97,22 @@ def _iterate_all_env_agent_combo_not_in_db(
     hard_envs = EnvironmentList.get("01HAK34YPB1H1RWXQDASDKHSNS").environments
     agent_index = EnvironmentList.get("01HAK34YPB1H1RWXQDASDKHSNS").agent_index
     assert isinstance(agent_index, list), "agent_index should be a list"
-    envs_index_mapping: dict[str, list[str]] = {env_id: [] for env_id in set(hard_envs)}
-    # Repeat 10 times to match the number of combos
-    model_names_switched = {
-        "env": model_names["env"],
-        "agent1": model_names["agent2"],
-        "agent2": model_names["agent1"],
-    }
-    for _ in range(10):
-        for index, env_id in zip(agent_index, hard_envs):
-            envs_index_mapping[env_id].append(index)
 
-    for env_agent_combo_storage in env_agent_combo_storage_list:
+    env_agent_combo_storage_index_list = []
+    for env_id, index in zip(hard_envs, agent_index):
+        for env_agent_combo_storage in env_agent_combo_storage_list:
+            if env_agent_combo_storage.env_id == env_id: 
+                env_agent_combo_storage_index_list.append(
+                        (env_agent_combo_storage, index)
+                    )
+   
+    list_of_env_agent_combo_storage = []
+    for env_agent_combo_storage, index in env_agent_combo_storage_index_list:
         agent_ids = env_agent_combo_storage.agent_ids
         env_id = env_agent_combo_storage.env_id
         if check_existing_episodes(
-            env_id, agent_ids, model_names, tag
-        ) or check_existing_episodes(
-            env_id=env_id, agent_ids=agent_ids, models=model_names_switched, tag=tag
-        ):
+            env_id=env_id, agent_ids=agent_ids, models=model_names, index=index, tag=tag
+            ):
             logging.info(
                 f"Episode for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
             )
@@ -138,20 +131,15 @@ def _iterate_all_env_agent_combo_not_in_db(
         )
         agent_profiles = [AgentProfile.get(id) for id in agent_ids]
         # make sure the second agent (i.e., the agent being benchmarked) is always the indexed agent
-        index = envs_index_mapping[env_id].pop(0)
-        if int(index) == 0:
-            model_names["agent1"], model_names["agent2"] = (
-                model_names["agent2"],
-                model_names["agent1"],
-            )
         agents = [
             LLMAgent(agent_profile=agent_profile, model_name=agent_model)
             for agent_profile, agent_model in zip(
                 agent_profiles,
-                [model_names["agent1"], model_names["agent2"]],
+                [model_names["test_model"], model_names["partner_model"]] if index == "0" else [model_names["partner_model"], model_names["test_model"]],
             )
         ]
-        yield env, agents
+        list_of_env_agent_combo_storage.append((env, agents))
+    return list_of_env_agent_combo_storage # type: ignore
 
 
 def run_async_benchmark_in_batch(
@@ -159,19 +147,16 @@ def run_async_benchmark_in_batch(
     batch_size: int = 1,
     model_names: dict[str, LLM_Name] = {
         "env": "gpt-4",
-        "agent1": "gpt-3.5-turbo",
-        "agent2": "gpt-3.5-turbo",
+        "test_model": "gpt-3.5-turbo",
+        "partner_model": "gpt-3.5-turbo",
     },
     tag: str | None = None,
+    push_to_db: bool = False,
     verbose: bool = False,
 ) -> None:
     dataset = load_dataset("cmu-lti/sotopia", data_files="benchmark_agents.json")
     benchmark_combo = initilize_benchmark_combo(dataset)
-    env_agent_combo_iter = _iterate_all_env_agent_combo_not_in_db(
-        model_names=model_names, tag=tag, env_agent_combo_storage_list=benchmark_combo
-    )
-    env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
-    env_agent_combo_iter = _iterate_all_env_agent_combo_not_in_db(
+    env_agent_combo_list = _list_all_env_agent_combo_not_in_db(
         model_names=model_names, tag=tag, env_agent_combo_storage_list=benchmark_combo
     )
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
@@ -179,8 +164,7 @@ def run_async_benchmark_in_batch(
     loop = asyncio.get_event_loop()
     while True:
         for env_agent_combo in tqdm(
-            env_agent_combo_iter,
-            total=env_agent_combo_iter_length,
+            env_agent_combo_list,
             desc="Running all envs in batch",
         ):
             env_agent_combo_batch.append(env_agent_combo)
@@ -190,10 +174,9 @@ def run_async_benchmark_in_batch(
                 )
                 loop.run_until_complete(
                     run_async_server(
-                        model_dict=model_names,
                         sampler=BaseSampler[Observation, AgentAction](),
                         env_agent_combo_list=env_agent_combo_batch,
-                        push_to_db=True,
+                        push_to_db=push_to_db,
                         tag=tag,
                     )
                 )
@@ -208,7 +191,7 @@ def run_async_benchmark_in_batch(
                         model_dict=model_names,
                         sampler=BaseSampler[Observation, AgentAction](),
                         env_agent_combo_list=env_agent_combo_batch,
-                        push_to_db=True,
+                        push_to_db=push_to_db,
                         tag=tag,
                     )
                 )
@@ -223,25 +206,19 @@ def run_async_benchmark_in_batch(
                     pk = episode.pk
                     assert isinstance(pk, str)
                     EpisodeLog.delete(pk)
-            breakpoint()
 
-            env_agent_combo_iter = _iterate_all_env_agent_combo_not_in_db(
-                model_names=model_names,
-                tag=tag,
-                env_agent_combo_storage_list=benchmark_combo,
-            )
-            env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
-            env_agent_combo_iter = _iterate_all_env_agent_combo_not_in_db(
+            env_agent_combo_list = _list_all_env_agent_combo_not_in_db(
                 model_names=model_names,
                 tag=tag,
                 env_agent_combo_storage_list=benchmark_combo,
             )
             env_agent_combo_batch = []
             number_of_fix_turns += 1
-            if env_agent_combo_iter_length == 0 or number_of_fix_turns >= 5:
-                rewards_dict = get_avg_reward(simulated_episodes, model_names["agent2"])  # type: ignore
-                rewards_dict["model_name"] = model_names["agent1"]  # type: ignore
-                print(rewards_dict)
+            if len(env_agent_combo_list) == 0 or number_of_fix_turns >= 5:
+                rewards_dict = get_avg_reward(simulated_episodes, model_names["test_model"])  # type: ignore
+                rewards_dict["model_name"] = model_names["test_model"]  # type: ignore
+                rewards_dict["episode_count"] = len(simulated_episodes)
+                rich.print(rewards_dict)
                 return
 
 
@@ -290,12 +267,13 @@ def cli(
     model = cast(LLM_Name, model)
     partner_model = cast(LLM_Name, partner_model)
     evaluator_model = cast(LLM_Name, evaluator_model)
-    tag = f"benchmark_{model}_final"
+    tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
     run_async_benchmark_in_batch(
         batch_size=batch_size,
-        model_names={"env": evaluator_model, "agent1": model, "agent2": partner_model},
+        model_names={"env": evaluator_model, "test_model": model, "partner_model": partner_model},
         tag=tag,
         verbose=False,
+        push_to_db=True,
     )
 
 
