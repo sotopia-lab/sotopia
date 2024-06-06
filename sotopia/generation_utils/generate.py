@@ -1,11 +1,12 @@
 import logging
+import os
 import re
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import gin
 from beartype import beartype
 from beartype.typing import Type
-from langchain.chains import LLMChain
+from langchain.chains.llm import LLMChain
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -13,7 +14,7 @@ from langchain.prompts import (
     PromptTemplate,
 )
 from langchain.schema import BaseOutputParser, OutputParserException
-from langchain_community.chat_models import ChatLiteLLM
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from rich import print
 from typing_extensions import Literal
@@ -32,49 +33,22 @@ log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
 
 LLM_Name = Literal[
-    "togethercomputer/llama-2-7b-chat",
-    "togethercomputer/llama-2-70b-chat",
-    "togethercomputer/mpt-30b-chat",
+    "together_ai/meta-llama/Llama-2-7b-chat-hf",
+    "together_ai/meta-llama/Llama-2-70b-chat-hf",
+    "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
+    "together_ai/meta-llama/Llama-3-8b-chat-hf",
+    "together_ai/meta-llama/Llama-3-70b-chat-hf",
     "gpt-3.5-turbo",
     "gpt-3.5-turbo-finetuned",
     "gpt-3.5-turbo-ft-MF",
-    "text-davinci-003",
     "gpt-4",
     "gpt-4-turbo",
     "human",
     "redis",
-    "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "together_ai/togethercomputer/llama-2-7b-chat",
-    "together_ai/togethercomputer/falcon-7b-instruct",
     "groq/llama3-70b-8192",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
-
-
-class PatchedChatLiteLLM(ChatLiteLLM):
-    max_tokens: int | None = None  # type: ignore
-
-    @property
-    def _default_params(self) -> dict[str, Any]:
-        """Get the default parameters for calling OpenAI API."""
-        set_model_value = self.model
-        if self.model_name is not None:
-            set_model_value = self.model_name
-
-        params = {
-            "model": set_model_value,
-            "force_timeout": self.request_timeout,
-            "stream": self.streaming,
-            "n": self.n,
-            "temperature": self.temperature,
-            "custom_llm_provider": self.custom_llm_provider,
-            **self.model_kwargs,
-        }
-        if self.max_tokens is not None:
-            params["max_tokens"] = self.max_tokens
-
-        return params
 
 
 class EnvResponse(BaseModel):
@@ -326,17 +300,54 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    chat = PatchedChatLiteLLM(
-        model=model_name,
-        temperature=temperature,
-        max_retries=max_retries,
-    )
-    human_message_prompt = HumanMessagePromptTemplate(
-        prompt=PromptTemplate(template=template, input_variables=input_variables)
-    )
-    chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-    chain = LLMChain(llm=chat, prompt=chat_prompt_template)
-    return chain
+    if "together_ai" in model_name:
+        model_name = "/".join(model_name.split("/")[1:])
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chat_openai = ChatOpenAI(
+            model_name=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            openai_api_base="https://api.together.xyz/v1",
+            openai_api_key=os.environ.get("TOGETHER_API_KEY"),
+        )
+        chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
+        return chain
+    elif "groq" in model_name:
+        model_name = "/".join(model_name.split("/")[1:])
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chat_openai = ChatOpenAI(
+            model_name=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            openai_api_base="https://api.groq.com/openai/v1",
+            openai_api_key=os.environ.get("GROQ_API_KEY"),
+        )
+        chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
+        return chain
+    else:
+        chat = ChatOpenAI(
+            model=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+        )
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(template=template, input_variables=input_variables)
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chain = LLMChain(llm=chat, prompt=chat_prompt_template)
+        return chain
 
 
 @beartype
