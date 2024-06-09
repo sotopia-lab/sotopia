@@ -321,7 +321,7 @@ async def arun_one_script(
         omniscient (bool): Whether the agent knows the goal of the other
     """
 
-    agents = Agents({agent.agent_name: agent for agent in      agent_list})
+    agents = Agents({agent.agent_name: agent for agent in agent_list})
     env.reset(agents=agents, omniscient=omniscient)
 
     agent_names = [agent.agent_name for agent in agent_list]
