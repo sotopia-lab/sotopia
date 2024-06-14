@@ -3,7 +3,7 @@
 ```
 sotopia_benchmark --model=<your_model_name>
 ```
-or 
+or
 
 ```
 python sotopia/benchmark/cli.py --model=<your_model_name>
