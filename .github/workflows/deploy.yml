@@ -4,9 +4,6 @@
 #
 name: Deploy Next.js site to Pages
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 on:
   # Runs on pushes targeting the default branch
