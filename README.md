@@ -54,8 +54,8 @@ If you want to try it out on Google Colab first, please check out our Colab Tuto
 <ol>
 <li> Basic
   <ol>
-    <li> <a href="https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing">1.1 Playing with Sotopia in a Google Colab Notebook</a> </li>
-    <li> <a href="https://colab.research.google.com/drive/1Gi2U3cA0KG1nekw1A0N0DZpx6gKrj8Nc?usp=sharing">1.2 Browsing sotopia data</a> </li>
+    <li> <a href="https://colab.research.google.com/github/sotopia-lab/sotopia/blob/main/notebooks/tutorials/1.1-setup.ipynb">1.1 Playing with Sotopia in a Google Colab Notebook</a> </li>
+    <li> <a href="https://colab.research.google.com/github/sotopia-lab/sotopia/blob/main/notebooks/tutorials/1.2-browse-data.ipynb">1.2 Browsing sotopia data</a> </li>
   </ol>
 </li>
 <li>
