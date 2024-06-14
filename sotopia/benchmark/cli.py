@@ -1,5 +1,5 @@
 from datetime import datetime
-from datasets import load_dataset
+import requests
 import rich
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
@@ -66,9 +66,9 @@ def check_existing_episodes(
         return False
 
 
-def initilize_benchmark_combo(dataset) -> list[EnvAgentComboStorage]:  # type: ignore
+def initilize_benchmark_combo(data: list[dict[str, str]]) -> list[EnvAgentComboStorage]:
     list_of_env_agent_combo_storage = []
-    for combo in dataset["train"]:
+    for combo in data:
         env_agent_combo_storage = EnvAgentComboStorage(
             env_id=combo["env_id"], agent_ids=combo["agent_ids"]
         )
@@ -161,8 +161,15 @@ def run_async_benchmark_in_batch(
     push_to_db: bool = False,
     verbose: bool = False,
 ) -> None:
-    dataset = load_dataset("cmu-lti/sotopia", data_files="benchmark_agents.json")
-    benchmark_combo = initilize_benchmark_combo(dataset)
+    url = "https://huggingface.co/datasets/cmu-lti/sotopia/resolve/main/benchmark_agents.json?raw=true"
+    response = requests.get(url)
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()
+        print("Data fetched successfully")
+    else:
+        print(f"Failed to fetch data. Status code: {response.status_code}")
+    benchmark_combo = initilize_benchmark_combo(data)
     env_agent_combo_list = _list_all_env_agent_combo_not_in_db(
         model_names=model_names, tag=tag, env_agent_combo_storage_list=benchmark_combo
     )
