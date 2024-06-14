@@ -259,7 +259,7 @@ def _set_up_logs(
 def cli(
     model: str = typer.Option(..., help="The language model you want to benchmark."),
     partner_model: str = typer.Option(
-        "together_ai/meta-llama/Llama-2-70b-chat-hf",
+        "meta-llama/Llama-3-70b-chat-hf",
         help="The partner model you want to use.",
     ),
     evaluator_model: str = typer.Option(
