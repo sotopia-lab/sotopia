@@ -53,7 +53,6 @@ def run_async_server_in_batch_aevaluate(
         logger.removeHandler(rich_handler)
 
     episode_batch: list[EpisodeLog] = []
-
     while True:
         for env_pk in tqdm(reeval_list):
             episode = EpisodeLog.get(env_pk)
@@ -72,7 +71,6 @@ def run_async_server_in_batch_aevaluate(
                 asyncio.run(
                     tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
-
                 episode_batch = []
         else:
             if episode_batch:
@@ -89,7 +87,7 @@ def run_async_server_in_batch_aevaluate(
                 asyncio.run(
                     tqdm_asyncio.gather(*episode_futures, desc="Running one batch")
                 )
-            return
+            return None
 
 
 @app.command()

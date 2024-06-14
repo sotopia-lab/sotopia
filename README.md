@@ -1,5 +1,10 @@
-![sotopia](figs/title.png)
+<div style="width: 100%;">
+  <img src="figs/title.png" style="width: 100%;" alt="sotopia"></img>
+</div>
+
 # Sotopia: an Open-ended Social Learning Environment
+[![Project Page](https://img.shields.io/badge/Project-Page-green.svg)](https://www.sotopia.world/projects/sotopia)
+[![Paper PDF](https://img.shields.io/badge/Paper-PDF-red.svg)](https://arxiv.org/abs/2310.11667)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3109/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
 <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
@@ -7,12 +12,20 @@
 [![bear-ified](https://raw.githubusercontent.com/beartype/beartype-assets/main/badge/bear-ified.svg)](https://beartype.readthedocs.io)
 [![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/tests.yml/badge.svg?branch=main)]()
 [![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/pre-commit.yml/badge.svg?branch=main)]()
+[![Dataset](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Dataset-yellow)](https://huggingface.co/datasets/cmu-lti/sotopia)
+[![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://huggingface.co/spaces/cmu-lti/sotopia-space/)
+
+## News
+
+* [05/2024] Sotopia will be presented at ICLR 2024 as a spotlight ⭐!
+* [05/2024] We release [a simple tutorial](https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing) for you to run sotopia end-to-end on google colab.
+
 
 ## Introduction
 
 Sotopia is an open-ended social learning environment that allows agents to interact with each other and the environment. The environment is designed to be a platform for evaluating and faciliating social intelligence in language agents. The environment is designed to be open-ended, meaning that the environment can be easily extended to include new environments and new agents. The environment is also designed to be scalable, meaning that the environment can be easily scaled to include a large number of agents and environments.
 
-*Sotopia is accepted to ICLR 2024 as a spotlight ⭐!*
+
 
 ```bibtex
 @inproceedings{zhou2024sotopia,
@@ -25,7 +38,24 @@ Sotopia is an open-ended social learning environment that allows agents to inter
 ```
 
 
-## Installation
+## Get started
+### Use on Google Colab
+
+If you want to try it out on Google Colab first, please check out our Colab Tutorial Series:
+
+<ol>
+<li> Basic
+  <ol>
+    <li> <a href="https://colab.research.google.com/github/sotopia-lab/sotopia/blob/main/notebooks/tutorials/1.1-setup.ipynb">1.1 Playing with Sotopia in a Google Colab Notebook</a> </li>
+    <li> <a href="https://colab.research.google.com/github/sotopia-lab/sotopia/blob/main/notebooks/tutorials/1.2-browse-data.ipynb">1.2 Browsing sotopia data</a> </li>
+  </ol>
+</li>
+<li>
+Building your own social agent (coming soon!)
+</li>
+</ol>
+
+### Install locally
 This package supports Python 3.11 and above. In one line,
 `pip install sotopia` or `pip install uv; uv pip install sotopia`.
 
@@ -55,6 +85,8 @@ Make a folder to store the logs:
 ```bash
 mkdir logs
 ```
+
+
 
 ## Easy Sample Server
 You can view an episode demo with default parameters with the following:

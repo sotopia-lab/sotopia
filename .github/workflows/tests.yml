@@ -1,5 +1,14 @@
 name: Pytest
-on: [push]
+on:
+  push:
+    branches:
+      - main
+      - release
+      - dev
+  pull_request:
+    branches:
+      - main
+      - release
 
 jobs:
   Pytest:
@@ -16,7 +25,8 @@ jobs:
     - name: Install dependencies
       run: |
         curl -sSL https://install.python-poetry.org | python3
-        poetry install --all-extras
+        poetry lock
+        poetry install --with test -E chat
     - name: Test with pytest
       env: # Or as an environment variable
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

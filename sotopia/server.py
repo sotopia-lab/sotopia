@@ -36,7 +36,7 @@ from sotopia.samplers import BaseSampler, EnvAgentCombo
 @beartype
 def run_sync_server(
     model_name_dict: dict[str, LLM_Name],
-    action_order: Literal["simutaneous", "round-robin", "random"],
+    action_order: Literal["simultaneous", "round-robin", "random"],
     agents_info: dict[str, dict[str, str]] | None = None,
     partial_background_file: str | None = None,
     full_background_file: str | None = None,
@@ -232,7 +232,7 @@ async def arun_one_episode(
 async def run_async_server(
     model_dict: dict[str, LLM_Name],
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
-    action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",
+    action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
     omniscient: bool = False,
     script_like: bool = False,

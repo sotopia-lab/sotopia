@@ -21,7 +21,7 @@ class EpisodeLog(JsonModel):
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
     rewards_prompt: str
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def agent_number_message_number_reward_number_turn_number_match(
         cls, values: Any
     ) -> Any:
