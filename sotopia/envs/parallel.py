@@ -202,10 +202,10 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         ), "partial_background_file and full_background_file are not supported anymore"
         if agents is not None:
             assert agents, "agents must be provided"
-            assert len(agents) == 2, "Only supporting two agents right now"
+            assert len(agents) >= 2, "Only supporting two agents right now"
             agent_names = list(agents.keys())
             agent_goals = self.profile.agent_goals
-            assert len(agent_goals) == 2, "Only supporting two agents right now"
+            assert len(agent_goals) >= 2, "Only supporting two agents right now"
 
             raw_background = ScriptBackground(
                 scenario=self.profile.scenario,
@@ -241,7 +241,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             raise ValueError("agents must be provided")
 
-        self.agents = [self.background.p1_name, self.background.p2_name]
+        self.agents = [agent_name for agent_name in agents.keys()]
         agent_backgrounds: list[ScriptBackground] = []
         if omniscient:
             for i in range(self.num_agents):
@@ -306,6 +306,11 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 if self.action_mask[1]
                 else ["none"],
             ),
+            "Email Server": Observation(
+                last_turn="",
+                turn_number=0,
+                available_actions= ["none"],
+            ),
         }
 
     @beartype
@@ -357,7 +362,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         self.action_mask = [False for _ in self.agents]
         if self.action_order == "round-robin":
-            self.action_mask[self.turn_number % len(self.action_mask)] = True
+            self.action_mask[self.turn_number % (len(self.action_mask)-1)] = True
         elif self.action_order == "random":
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
@@ -494,12 +499,17 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         self.action_mask = [False for _ in self.agents]
         if self.action_order == "round-robin":
-            self.action_mask[self.turn_number % len(self.action_mask)] = True
+            self.action_mask[self.turn_number % (len(self.action_mask)-1)] = True # the email server is not included in the round-robin
         elif self.action_order == "random":
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
+        if "/api" in obs:
+            self.action_mask[0] = False
+            self.action_mask[1] = False
+            self.action_mask[2] = True
+
         info = {
             self.background.p1_name: {
                 "comments": response.comments or "",
@@ -529,6 +539,13 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                     turn_number=self.turn_number,
                     available_actions=list(self.available_action_types)
                     if self.action_mask[1]
+                    else ["none"],
+                ),
+                "Email Server": Observation(
+                    last_turn=render_text_for_agent(obs, agent_id=1),
+                    turn_number=self.turn_number,
+                    available_actions= list(self.available_action_types)
+                    if self.action_mask[2]
                     else ["none"],
                 ),
             },

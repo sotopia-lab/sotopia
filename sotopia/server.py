@@ -115,7 +115,6 @@ async def arun_one_episode(
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     environment_messages = env.reset(agents=agents, omniscient=omniscient)
     agents.reset()
-
     messages: list[list[tuple[str, str, Message]]] = []
 
     # Main Event Loop
@@ -127,7 +126,7 @@ async def arun_one_episode(
         ]
     )
     # set goal for agents
-    for index, agent_name in enumerate(env.agents):
+    for index, agent_name in enumerate(env.agents[:-1]): # last agent is the environment
         agents[agent_name].goal = env.profile.agent_goals[index]
     rewards: list[list[float]] = []
     reasons: list[str] = []
@@ -173,9 +172,9 @@ async def arun_one_episode(
         )
         # print("Environment message: ", environment_messages)
         # exit(0)
-        rewards.append([rewards_in_turn[agent_name] for agent_name in env.agents])
+        rewards.append([rewards_in_turn[agent_name] for agent_name in env.agents[:-1]])
         reasons.append(
-            " ".join(info[agent_name]["comments"] for agent_name in env.agents)
+            " ".join(info[agent_name]["comments"] for agent_name in env.agents[:-1])
         )
         done = all(terminated.values())
 

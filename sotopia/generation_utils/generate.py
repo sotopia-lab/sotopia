@@ -793,7 +793,7 @@ async def agenerate_action_x(
                 Note that {agent}'s goal is only visible to you.
                 You should try your best to achieve {agent}'s goal in a way that align with their character traits.
                 Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
-                Remember that you are a human in this conversation, and human try to keep their output short and to the point. Just imagine every character you type costs you energy and time. Your output should not exceed 10 words in one turn.
+                Remember that you are a human in this conversation, and human try to keep their output short and to the point. Just imagine every character you type costs you energy and time. Your output should usually not exceed 10 words in one turn. But feel free to use more words if necessary.
                 {history}.
                 You are at Turn #{turn_number}. Your available action types are
                 {action_list}.
