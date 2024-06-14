@@ -127,7 +127,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         available_action_types: set[ActionType] = set(
             ["none", "speak", "non-verbal communication", "action", "leave"]
         ),
-        action_order: Literal["simutaneous", "round-robin", "random"] = "simutaneous",
+        action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
         model_name: str = "gpt-3.5-turbo",
         evaluators: list[Evaluator] = [],
         terminal_evaluators: list[Evaluator] = [],
@@ -138,7 +138,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         Args:
             available_action_types (set[ActionType], optional): The action types that are available to the agents. Defaults to set(["none", "speak", "non-verbal communication", "action"]).
-            action_order (Literal["simutaneous", "round-robin", "random"], optional): The order in which the agents take actions. Defaults to "simutaneous".
+            action_order (Literal["simultaneous", "round-robin", "random"], optional): The order in which the agents take actions. Defaults to "simultaneous".
             model_name (str, optional): The name of the language model to use. Defaults to "gpt-3.5-turbo".
         """
         super().__init__()
