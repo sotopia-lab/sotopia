@@ -1,5 +1,9 @@
 name: pre-commit
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 on:
   pull_request:
   push:

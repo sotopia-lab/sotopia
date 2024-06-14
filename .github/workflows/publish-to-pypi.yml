@@ -8,6 +8,10 @@
 
 name: Upload Python Package
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 on:
   release:
     types: [published]
