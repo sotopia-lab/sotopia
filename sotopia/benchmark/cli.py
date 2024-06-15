@@ -1,5 +1,5 @@
 from datetime import datetime
-import requests
+import requests  # type: ignore
 import rich
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
@@ -169,6 +169,7 @@ def run_async_benchmark_in_batch(
         print("Data fetched successfully")
     else:
         print(f"Failed to fetch data. Status code: {response.status_code}")
+        raise ValueError("Failed to fetch data")
     benchmark_combo = initilize_benchmark_combo(data)
     env_agent_combo_list = _list_all_env_agent_combo_not_in_db(
         model_names=model_names, tag=tag, env_agent_combo_storage_list=benchmark_combo
@@ -266,7 +267,7 @@ def _set_up_logs(
 def cli(
     model: str = typer.Option(..., help="The language model you want to benchmark."),
     partner_model: str = typer.Option(
-        "meta-llama/Llama-3-70b-chat-hf",
+        "together_ai/meta-llama/Llama-3-70b-chat-hf",
         help="The partner model you want to use.",
     ),
     evaluator_model: str = typer.Option(
