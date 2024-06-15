@@ -1,5 +1,5 @@
 from datetime import datetime
-import requests  # type: ignore
+import requests
 import rich
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
