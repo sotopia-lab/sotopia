@@ -35,7 +35,7 @@ from sotopia.samplers import BaseSampler, EnvAgentCombo
 @beartype
 def run_sync_server(
     model_name_dict: dict[str, LLM_Name],
-    action_order: Literal["simutaneous", "round-robin", "random"],
+    action_order: Literal["simultaneous", "round-robin", "random"],
     agents_info: dict[str, dict[str, str]] | None = None,
     partial_background_file: str | None = None,
     full_background_file: str | None = None,
