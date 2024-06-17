@@ -23,7 +23,7 @@ absl-py = "^2.0.0"
 together = "^0.2.4"
 pydantic = "1.10.12"
 beartype = "^0.14.0"
-langchain-openai = "^0.0.5"
+langchain-openai = ">=0.0.5,<0.0.7"
 litellm = "~1.23.12"
 
 # dependency versions for extras
