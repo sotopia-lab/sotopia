@@ -1243,13 +1243,13 @@ test = ["objgraph", "psutil"]
 
 [[package]]
 name = "groq"
-version = "0.4.2"
+version = "0.9.0"
 description = "The official Python library for the groq API"
 optional = true
 python-versions = ">=3.7"
 files = [
-    {file = "groq-0.4.2-py3-none-any.whl", hash = "sha256:5b2b472c64d9f35210e0487db465415d47162da3a114031ecbfc8843d26302a5"},
-    {file = "groq-0.4.2.tar.gz", hash = "sha256:42e8b0abd0f2b2da024b9a747d28960d62951a5364f078e1537c9fceeca8259d"},
+    {file = "groq-0.9.0-py3-none-any.whl", hash = "sha256:d0e46f4ad645504672bb09c8100af3ced3a7db0d5119dc13e4aca535fc455874"},
+    {file = "groq-0.9.0.tar.gz", hash = "sha256:130ed5e35d3acfaab46b9e7a078eeaebf91052f4a9d71f86f87fb319b5fec332"},
 ]
 
 [package.dependencies]
@@ -5243,4 +5243,4 @@ groq = ["groq"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "600053405f0536f699d97b3f5e3a7a8327cfc0e1ef69649bab85217acc63fe3a"
+content-hash = "8a0b1ec0ff4d152b0cfbf03bd7009de8ff553ae8a52aa93c1d639f0ad733b0b8"
