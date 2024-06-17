@@ -33,4 +33,9 @@ jobs:
         REDIS_OM_URL: ${{ secrets.REDIS_OM_URL }}
         TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
       run: |
-        poetry run pytest
+        poetry run pytest --cov=. --cov-report=xml
+
+    - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+            token: ${{ secrets.CODECOV_TOKEN }}
