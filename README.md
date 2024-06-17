@@ -22,8 +22,7 @@
 
 ## News
 
-* [05/2024] Sotopia is presented at ICLR 2024 as a spotlight ⭐!
-* [05/2024] We release [a simple tutorial](https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing) for you to run sotopia end-to-end on google colab.
+* [05/2024] Sotopia was presented at ICLR 2024 as a spotlight ⭐!
 
 
 ## Introduction
