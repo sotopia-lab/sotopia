@@ -9,6 +9,7 @@ import requests
 
 from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile, MessageTransaction
+from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages import AgentAction, Observation
 
 
@@ -30,6 +31,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         # super().__init__(agent_name=agent_name, uuid_str=uuid_str)
         self.session_id = session_id or str(uuid4())
         self.sender_id = str(uuid4())
+        self.model_name: LLM_Name = "redis"
         print(f"session id: {self.session_id}")
         print("step 1: connect to the server")
         assert (

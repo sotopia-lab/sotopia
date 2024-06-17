@@ -5,6 +5,7 @@ from typing import Callable, cast
 from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile
 from sotopia.generation_utils.generate import (
+    LLM_Name,
     agenerate_action,
     agenerate_script,
     generate_action,
@@ -171,6 +172,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
             uuid_str=uuid_str,
             agent_profile=agent_profile,
         )
+        self.model_name: LLM_Name = "human"
 
     @property
     def goal(self) -> str:

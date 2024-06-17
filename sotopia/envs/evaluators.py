@@ -246,7 +246,7 @@ class ReachGoalLLMEvaluator(Evaluator):
         turn_number: int,
         messages: list[tuple[str, Message]] | None,
         history: str = "",
-        temperature: float = 0.7,
+        temperature: float = 0.0,
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # filter did nothing
         if not history and messages:
