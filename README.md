@@ -81,7 +81,7 @@ For some experiments, TogetherAI key is required to run the code. Please set the
 conda env config vars set TOGETHER_API_KEY=your_key
 ```
 
-A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. You can also check [Q&A](/docs/all_the_issues.md) to initiate the redis server with the Sotopia data.
+A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. You can also check [Q&A](/docs/troubleshooting.md) to initiate the redis server with the Sotopia data.
 
 The `REDIS_OM_URL` need to be set before loading and saving agents:
 ```bash
@@ -155,7 +155,7 @@ To run a large batch of environments, you can change the `ENV_IDS` parameter in 
 ## Getting access to your simulation
 After running experiments, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
 
-For the original Sotopia simulation in our paper's experiments, you can find how to get them in the [Q&A](/docs/all_the_issues.md) section in the `./docs` folder.
+For the original Sotopia simulation in our paper's experiments, you can find how to get them in the [Q&A](/docs/troubleshooting.md) section in the `./docs` folder.
 
 ## Adding new characters and environments
 You can use the following function with the `**kwargs` being the properties of the `AgentProfile` class. This is the same for the scenarios/environments.
