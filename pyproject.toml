@@ -2,28 +2,26 @@
 name = "sotopia"
 version = "0.0.9"
 description = "A platform for simulating and evaluating social interaction."
-authors = ["Hao Zhu <prokilchu@gmail.com>"]
+authors = ["Hao Zhu <prokilchu@gmail.com>, Xuhui Zhou <xuhuiz@cs.cmu.edu>"]
 license = "MIT License"
 readme = "README.md"
 packages = [{include = "sotopia"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.13"
-pandas = "^2.1.1"
 lxml = "^4.9.3"
 openai = "^1.11.0"
 langchain = "0.1.5"
 rich = "^13.6.0"
 PettingZoo = "1.24.0"
 redis-om = "^0.2.1"
-pandas-stubs = "*"
 types-tqdm = "*"
 gin-config = "^0.5.0"
 absl-py = "^2.0.0"
 together = "^0.2.4"
 pydantic = "1.10.12"
 beartype = "^0.14.0"
-langchain-openai = "^0.0.5"
+langchain-openai = ">=0.0.5,<0.0.7"
 litellm = "~1.23.12"
 
 # dependency versions for extras
@@ -31,13 +29,14 @@ fastapi = { version = "^0.109.2", optional = true }
 tabulate = { version = "^0.9.0", optional = true }
 anthropic = { version = "^0.26.0", optional = true }
 xmltodict = { version = "^0.13.0", optional = true }
-groq = { version = "^0.4.2", optional = true }
+groq = { version = ">=0.4.2,<0.10.0", optional = true }
 cohere = { version = "^5.1.8", optional = true }
-google-generativeai = { version = "^0.5.4", optional = true }
+google-generativeai = { version = ">=0.5.4,<0.7.0", optional = true }
 transformers = { version = "^4.41.0", optional = true }
 datasets = { version = "^2.19.0", optional = true }
 scipy = { version = "^1.13.1", optional = true }
 torch = { version = "^2.3.0", optional = true }
+pandas = { version = "^2.1.1", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
@@ -55,7 +54,7 @@ anthropic = ["anthropic"]
 groq = ["groq"]
 cohere = ["cohere"]
 google-generativeai = ["google-generativeai"]
-examples = ["transformers", "datasets", "scipy", "torch"]
+examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 chat = ["fastapi"]
 
 [build-system]
@@ -77,3 +76,6 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+
+[tool.poetry.scripts]
+sotopia_benchmark = "sotopia.benchmark:app"

@@ -21,6 +21,8 @@ from sotopia.database import (
     jsonl_to_agentprofiles,
 )
 
+import csv
+
 
 def test_episode_log_serialization() -> None:
     episode_log = EpisodeLog(
@@ -175,11 +177,24 @@ def test_episode_log_serialization() -> None:
         rewards_prompt='Prompt after formatting:\n\n    Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.\n    Original string: \n\n Turn #9: You decide to speak.\n\n "I understand your concerns, Noah, but I believe that supporting children in conflict zones is a cause worth investing in. While we may not be able to solve the problem on our own, every little bit helps. I plan to donate, and I hope you will consider doing the same."\n\n You wait for Noah Davis\'s response.\n\n Turn #10: Noah Davis said: "I understand your perspective, Finnegan. However, I still have my own financial commitments to consider. Is there a way we can support\n\n    Format instructions: The output should be formatted as a JSON instance that conforms to the JSON schema below.\n\nAs an example, for the schema {"properties": {"foo": {"title": "Foo", "description": "a list of strings", "type": "array", "items": {"type": "string"}}}, "required": ["foo"]}}\nthe object {"foo": ["bar", "baz"]} is a well-formatted instance of the schema. The object {"properties": {"foo": ["bar", "baz"]}} is not well-formatted.\n\nHere is the output schema:\n```\n{"description": "An interface for messages.\\nThere is only one required method: to_natural_language", "properties": {"action_type": {"title": "Action Type", "description": "whether to speak at this turn or choose to not do anything", "enum": ["none", "speak", "non-verbal communication", "action", "leave"], "type": "string"}, "argument": {"title": "Argument", "description": "the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action", "type": "string"}}, "required": ["action_type", "argument"]}\n```\n\n    Please only generate the JSON:\n    \x1b[0m',
     )
 
-    episodes_to_jsonl([episode_log], "./test_episode_log.jsonl")
-    rebuild_episode_log = jsonl_to_episodes("./test_episode_log.jsonl")[0]
+    episodes_to_jsonl([episode_log], "/tmp/test_episode_log.jsonl")
+    rebuild_episode_log = jsonl_to_episodes("/tmp/test_episode_log.jsonl")[0]
     assert episode_log.dict() == rebuild_episode_log.dict()
 
-    episodes_to_csv([episode_log], "./test_episode_log.csv")
+    episodes_to_csv([episode_log], "/tmp/test_episode_log.csv")
+    with open("/tmp/test_episode_log.csv") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            print(row.keys())
+            assert row["episode_id"] == episode_log.pk
+            assert row["environment_id"] == episode_log.environment
+            assert row["agent_ids"] == str(episode_log.agents)
+            assert row["experiment_tag"] == episode_log.tag
+            assert row["experiment_model_name_pairs"] == str(episode_log.models)
+            assert row["raw_messages"] == str(episode_log.messages)
+            assert row["reasoning"] == episode_log.reasoning
+            assert row["raw_rewards"] == str(episode_log.rewards)
+            assert row["raw_rewards_prompt"] == episode_log.rewards_prompt
 
 
 def test_relationship_profile_serialization() -> None:
@@ -192,16 +207,25 @@ def test_relationship_profile_serialization() -> None:
     )
 
     relationshipprofiles_to_jsonl(
-        [relationship_profile], "./test_relationship_profile.jsonl"
+        [relationship_profile], "/tmp/test_relationship_profile.jsonl"
     )
     rebuild_relationship_profile = jsonl_to_relationshipprofiles(
-        "./test_relationship_profile.jsonl"
+        "/tmp/test_relationship_profile.jsonl"
     )[0]
     assert relationship_profile.dict() == rebuild_relationship_profile.dict()
 
     relationshipprofiles_to_csv(
-        [relationship_profile], "./test_relationship_profile.csv"
+        [relationship_profile], "/tmp/test_relationship_profile.csv"
     )
+
+    with open("/tmp/test_relationship_profile.csv") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            assert row["relationship_id"] == relationship_profile.pk
+            assert row["agent1_id"] == relationship_profile.agent_1_id
+            assert row["agent2_id"] == relationship_profile.agent_2_id
+            assert row["relationship"] == str(relationship_profile.relationship)
+            assert row["background_story"] == relationship_profile.background_story
 
 
 def test_environment_profile_serialization() -> None:
@@ -221,14 +245,34 @@ def test_environment_profile_serialization() -> None:
     )
 
     environmentprofiles_to_jsonl(
-        [environment_profile], "./test_environment_profile.jsonl"
+        [environment_profile], "/tmp/test_environment_profile.jsonl"
     )
     rebuild_environment_profile = jsonl_to_environmentprofiles(
-        "./test_environment_profile.jsonl"
+        "/tmp/test_environment_profile.jsonl"
     )[0]
     assert environment_profile.dict() == rebuild_environment_profile.dict()
 
-    environmentprofiles_to_csv([environment_profile], "./test_environment_profile.csv")
+    environmentprofiles_to_csv(
+        [environment_profile], "/tmp/test_environment_profile.csv"
+    )
+
+    with open("/tmp/test_environment_profile.csv") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            assert row["env_id"] == environment_profile.pk
+            assert row["codename"] == environment_profile.codename
+            assert row["source"] == environment_profile.source
+            assert row["scenario"] == environment_profile.scenario
+            assert row["agent_goals"] == str(environment_profile.agent_goals)
+            assert row["relationship"] == str(environment_profile.relationship)
+            assert row["age_constraint"] == environment_profile.age_constraint or ""
+            assert (
+                row["occupation_constraint"]
+                == environment_profile.occupation_constraint
+            )
+            assert row["agent_constraint"] == str(
+                environment_profile.agent_constraint or ""
+            )
 
 
 def test_envagentcombostorage_serialization() -> None:
@@ -239,16 +283,23 @@ def test_envagentcombostorage_serialization() -> None:
     )
 
     envagnetcombostorage_to_jsonl(
-        [envagentcombo_storage], "./test_envagentcombo_storage.jsonl"
+        [envagentcombo_storage], "/tmp/test_envagentcombo_storage.jsonl"
     )
     rebuild_envagentcombo_storage = jsonl_to_envagnetcombostorage(
-        "./test_envagentcombo_storage.jsonl"
+        "/tmp/test_envagentcombo_storage.jsonl"
     )[0]
     assert envagentcombo_storage.dict() == rebuild_envagentcombo_storage.dict()
 
     envagnetcombostorage_to_csv(
-        [envagentcombo_storage], "./test_envagentcombo_storage.csv"
+        [envagentcombo_storage], "/tmp/test_envagentcombo_storage.csv"
     )
+
+    with open("/tmp/test_envagentcombo_storage.csv") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            assert row["combo_id"] == envagentcombo_storage.pk
+            assert row["env_id"] == envagentcombo_storage.env_id
+            assert row["agent_ids"] == str(envagentcombo_storage.agent_ids)
 
 
 def test_agentprofile_serialization() -> None:
@@ -271,8 +322,17 @@ def test_agentprofile_serialization() -> None:
         mbti="ENTP",
     )
 
-    agentprofiles_to_jsonl([agent_profile], "./test_agent_profile.jsonl")
-    rebuild_agent_profile = jsonl_to_agentprofiles("./test_agent_profile.jsonl")[0]
+    agentprofiles_to_jsonl([agent_profile], "/tmp/test_agent_profile.jsonl")
+    rebuild_agent_profile = jsonl_to_agentprofiles("/tmp/test_agent_profile.jsonl")[0]
     assert agent_profile.dict() == rebuild_agent_profile.dict()
 
-    agentprofiles_to_csv([agent_profile], "./test_agent_profile.csv")
+    agentprofiles_to_csv([agent_profile], "/tmp/test_agent_profile.csv")
+
+    with open("/tmp/test_agent_profile.csv") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            assert row["agent_id"] == agent_profile.pk
+            assert row["first_name"] == agent_profile.first_name
+            assert row["last_name"] == agent_profile.last_name
+            assert row["age"] == str(agent_profile.age)
+            assert row["occupation"] == agent_profile.occupation

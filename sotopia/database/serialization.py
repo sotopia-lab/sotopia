@@ -1,6 +1,7 @@
+import csv
 import json
+from typing import Any
 
-import pandas as pd
 from pydantic import BaseModel, Field
 
 from .env_agent_combo_storage import EnvAgentComboStorage
@@ -175,6 +176,25 @@ def get_social_interactions_from_episode(
     return "\n\n".join(overall_social_interaction)
 
 
+def _serialize_data_to_csv(data: dict[str, list[Any]], csv_file_path: str) -> None:
+    """
+    Serialize data to a csv file without pandas
+    """
+    max_length = max(len(lst) for lst in data.values())
+
+    # Create and write to the csv file
+    with open(csv_file_path, "w", newline="") as file:
+        writer = csv.writer(file)
+        # Write the header
+        writer.writerow(data.keys())
+
+        # Write the data rows
+        for i in range(max_length):
+            # Create a row for each index in the longest list
+            row = [data[key][i] if i < len(data[key]) else "" for key in data.keys()]
+            writer.writerow(row)
+
+
 def episodes_to_csv(
     episodes: list[EpisodeLog], csv_file_path: str = "episodes.csv"
 ) -> None:
@@ -184,7 +204,7 @@ def episodes_to_csv(
         episodes (list[EpisodeLog]): List of episodes.
         filepath (str, optional): The file path. Defaults to "episodes.csv".
     """
-    data = {
+    data: dict[str, list[Any]] = {
         "episode_id": [episode.pk for episode in episodes],
         "environment_id": [episode.environment for episode in episodes],
         "agent_ids": [episode.agents for episode in episodes],
@@ -207,8 +227,9 @@ def episodes_to_csv(
         "reasoning": [episode.reasoning for episode in episodes],
         "rewards": [get_rewards_from_episode(episode) for episode in episodes],
     }
-    df = pd.DataFrame(data)
-    df.to_csv(csv_file_path, index=False)
+
+    # Serialize data to a csv file without pandas
+    _serialize_data_to_csv(data, csv_file_path)
 
 
 def episodes_to_jsonl(
@@ -253,15 +274,16 @@ def agentprofiles_to_csv(
         agent_profiles (list[AgentProfile]): List of agent profiles.
         filepath (str, optional): The file path. Defaults to "agent_profiles.csv".
     """
-    data = {
+    data: dict[str, list[Any]] = {
         "agent_id": [profile.pk for profile in agent_profiles],
         "first_name": [profile.first_name for profile in agent_profiles],
         "last_name": [profile.last_name for profile in agent_profiles],
         "age": [profile.age for profile in agent_profiles],
         "occupation": [profile.occupation for profile in agent_profiles],
     }
-    df = pd.DataFrame(data)
-    df.to_csv(csv_file_path, index=False)
+
+    # Serialize data to a csv file without pandas
+    _serialize_data_to_csv(data, csv_file_path)
 
 
 def agentprofiles_to_jsonl(
@@ -308,7 +330,7 @@ def environmentprofiles_to_csv(
         environment_profiles (list[EnvironmentProfile]): List of environment profiles.
         filepath (str, optional): The file path. Defaults to "environment_profiles.csv".
     """
-    data = {
+    data: dict[str, list[Any]] = {
         "env_id": [profile.pk for profile in environment_profiles],
         "codename": [profile.codename for profile in environment_profiles],
         "source": [profile.source for profile in environment_profiles],
@@ -323,8 +345,9 @@ def environmentprofiles_to_csv(
             profile.agent_constraint for profile in environment_profiles
         ],
     }
-    df = pd.DataFrame(data)
-    df.to_csv(csv_file_path, index=False)
+
+    # Serialize data to a csv file without pandas
+    _serialize_data_to_csv(data, csv_file_path)
 
 
 def environmentprofiles_to_jsonl(
@@ -366,7 +389,7 @@ def relationshipprofiles_to_csv(
         relationship_profiles (list[RelationshipProfile]): List of relationship profiles.
         filepath (str, optional): The file path. Defaults to "relationship_profiles.csv".
     """
-    data = {
+    data: dict[str, list[Any]] = {
         "relationship_id": [profile.pk for profile in relationship_profiles],
         "agent1_id": [profile.agent_1_id for profile in relationship_profiles],
         "agent2_id": [profile.agent_2_id for profile in relationship_profiles],
@@ -375,8 +398,9 @@ def relationshipprofiles_to_csv(
             profile.background_story for profile in relationship_profiles
         ],
     }
-    df = pd.DataFrame(data)
-    df.to_csv(csv_file_path, index=False)
+
+    # Serialize data to a csv file without pandas
+    _serialize_data_to_csv(data, csv_file_path)
 
 
 def envagnetcombostorage_to_csv(
@@ -389,13 +413,14 @@ def envagnetcombostorage_to_csv(
         env_agent_combo_storages (list[EnvAgentComboStorage]): List of environment-agent combo storages.
         filepath (str, optional): The file path. Defaults to "env_agent_combo_storages.csv".
     """
-    data = {
+    data: dict[str, list[Any]] = {
         "combo_id": [storage.pk for storage in env_agent_combo_storages],
         "env_id": [storage.env_id for storage in env_agent_combo_storages],
         "agent_ids": [storage.agent_ids for storage in env_agent_combo_storages],
     }
-    df = pd.DataFrame(data)
-    df.to_csv(csv_file_path, index=False)
+
+    # Serialize data to a csv file without pandas
+    _serialize_data_to_csv(data, csv_file_path)
 
 
 def relationshipprofiles_to_jsonl(
