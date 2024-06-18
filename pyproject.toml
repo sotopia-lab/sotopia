@@ -46,6 +46,7 @@ ruff = "*"
 
 [tool.poetry.group.test.dependencies]
 pytest = "*"
+pytest-cov = "*"
 pytest-asyncio = "*"
 mypy = "^1.8.0"
 
