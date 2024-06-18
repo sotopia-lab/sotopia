@@ -34,6 +34,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
             self.agent_name = agent_name
 
         self._goal: str | None = None
+        self.model_name: str = ""
 
     @property
     def goal(self) -> str:

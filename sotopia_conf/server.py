@@ -22,7 +22,7 @@ def main(_: Any) -> None:
         FLAGS.gin_bindings,
     )
 
-    asyncio.run(run_async_server())  # type: ignore[call-arg]
+    asyncio.run(run_async_server())
 
 
 if __name__ == "__main__":
