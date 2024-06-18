@@ -3002,13 +3002,13 @@ testing = ["docopt", "pytest"]
 
 [[package]]
 name = "pettingzoo"
-version = "1.24.0"
+version = "1.24.3"
 description = "Gymnasium for multi-agent reinforcement learning."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pettingzoo-1.24.0-py3-none-any.whl", hash = "sha256:c9ad75739869dff19ee41a58a948e39cde6c6e3f34af6de6639f7e2438bc3829"},
-    {file = "pettingzoo-1.24.0.tar.gz", hash = "sha256:7d28d847964680ae554eb3fcc639f733174f1901883bf18cc9715607c4675418"},
+    {file = "pettingzoo-1.24.3-py3-none-any.whl", hash = "sha256:23ed90517d2e8a7098bdaf5e31234b3a7f7b73ca578d70d1ca7b9d0cb0e37982"},
+    {file = "pettingzoo-1.24.3.tar.gz", hash = "sha256:91f9094f18e06fb74b98f4099cd22e8ae4396125e51719d50b30c9f1c7ab07e6"},
 ]
 
 [package.dependencies]
@@ -3023,7 +3023,7 @@ classic = ["chess (==1.9.4)", "pygame (==2.3.0)", "rlcard (==1.0.5)", "shimmy[op
 mpe = ["pygame (==2.3.0)"]
 other = ["pillow (>=8.0.1)"]
 sisl = ["box2d-py (==2.3.5)", "pygame (==2.3.0)", "pymunk (==6.2.0)", "scipy (>=1.4.1)"]
-testing = ["AutoROM", "pre-commit", "pynput", "pytest", "pytest-cov"]
+testing = ["AutoROM", "pre-commit", "pynput", "pytest", "pytest-cov", "pytest-markdown-docs", "pytest-xdist"]
 
 [[package]]
 name = "pexpect"
@@ -5229,4 +5229,4 @@ groq = ["groq"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "096a882b6e14ad14a42bbda97a856641da4c8d5c078618cb8474b9f1d91dc0ef"
+content-hash = "9c928912f5807959ae5c4697654fc742d977d34d4944ccb1794990e45dac6687"
