@@ -12,7 +12,7 @@ async def test_agenerate_list_integer() -> None:
     async version of test_generate_list_integer
     """
     length, lower, upper = 5, -10, 10
-    list_of_int, _ = await agenerate(
+    list_of_int = await agenerate(
         "gpt-3.5-turbo",
         "{format_instructions}",
         {},
@@ -31,7 +31,7 @@ async def test_agenerate_list_integer_together() -> None:
     async version of test_generate_list_integer
     """
     length, lower, upper = 5, -10, 10
-    list_of_int, _ = await agenerate(
+    list_of_int = await agenerate(
         "togethercomputer/llama-2-70b-chat",
         "{format_instructions}",
         {},
