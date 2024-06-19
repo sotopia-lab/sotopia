@@ -9,7 +9,7 @@ packages = [{include = "sotopia"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.13"
-lxml = "^4.9.3"
+lxml = ">=4.9.3,<6.0.0"
 openai = "^1.11.0"
 langchain = "0.1.5"
 rich = "^13.6.0"
