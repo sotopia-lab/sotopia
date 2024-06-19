@@ -3,25 +3,7 @@ import pytest
 from sotopia.generation_utils.generate import (
     ListOfIntOutputParser,
     agenerate,
-    generate,
 )
-
-
-def test_generate_list_integer() -> None:
-    """
-    Test that the integer generator works
-    """
-    length, lower, upper = 5, -10, 10
-    list_of_int = generate(
-        "gpt-3.5-turbo",
-        "{format_instructions}",
-        {},
-        ListOfIntOutputParser(length, (lower, upper)),
-    )
-    assert isinstance(list_of_int, list)
-    assert len(list_of_int) == length
-    assert all(isinstance(i, int) for i in list_of_int)
-    assert all(lower <= i <= upper for i in list_of_int)
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,6 @@ from .llm_agent import (
     HumanAgent,
     LLMAgent,
     ScriptWritingAgent,
-    SpeakAgent,
 )
 from .redis_agent import RedisAgent
 
@@ -17,7 +16,6 @@ __all__ = [
     "LLMAgent",
     "Agents",
     "HumanAgent",
-    "SpeakAgent",
     "generate_background",
     "generate_background_conversation",
     "RedisAgent",
