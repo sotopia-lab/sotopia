@@ -14,6 +14,7 @@ from langchain.prompts import (
     PromptTemplate,
 )
 from langchain.schema import BaseOutputParser, OutputParserException
+from langchain_core.prompts.image import ImagePromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from rich import print
@@ -296,9 +297,6 @@ def obtain_chain(
     temperature: float = 0.7,
     max_retries: int = 6,
 ) -> LLMChain:
-    """
-    Using langchain to sample profiles for participants
-    """
     model_name = _return_fixed_model_version(model_name)
     if "together_ai" in model_name:
         model_name = "/".join(model_name.split("/")[1:])
@@ -348,6 +346,38 @@ def obtain_chain(
         chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
         chain = LLMChain(llm=chat, prompt=chat_prompt_template)
         return chain
+
+
+@beartype
+def obtain_vision_chain(
+    model_name: str,
+    template: str,
+    input_variables: list[str],
+    image_url: str,
+    temperature: float = 0.7,
+    max_retries: int = 6,
+) -> LLMChain:
+    model_name = _return_fixed_model_version(model_name)
+
+    chat = ChatOpenAI(
+        model=model_name,
+        temperature=temperature,
+        max_retries=max_retries,
+    )
+
+    human_message_prompt = HumanMessagePromptTemplate(
+        prompt=[
+            PromptTemplate(template=template, input_variables=input_variables),
+            ImagePromptTemplate(template={"url": image_url}),
+        ]
+    )
+    chat_prompt_template = ChatPromptTemplate.from_messages(
+        [
+            human_message_prompt,
+        ]
+    )
+    chain = LLMChain(llm=chat, prompt=chat_prompt_template)
+    return chain
 
 
 @beartype
@@ -416,9 +446,11 @@ def format_bad_output(
 @gin.configurable
 @beartype
 async def agenerate(
+    *,
     model_name: str,
     template: str,
     input_values: dict[str, str],
+    image_url: str = "",
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
 ) -> OutputType:
@@ -429,12 +461,21 @@ async def agenerate(
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
     # process template
     template = format_docstring(template)
-    chain = obtain_chain(
-        model_name=model_name,
-        template=template,
-        input_variables=input_variables,
-        temperature=temperature,
-    )
+    if image_url:
+        chain = obtain_vision_chain(
+            model_name=model_name,
+            template=template,
+            input_variables=input_variables,
+            image_url=image_url,
+            temperature=temperature,
+        )
+    else:
+        chain = obtain_chain(
+            model_name=model_name,
+            template=template,
+            input_variables=input_variables,
+            temperature=temperature,
+        )
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
     result = await chain.apredict([logging_handler], **input_values)

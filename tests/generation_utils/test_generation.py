@@ -13,10 +13,10 @@ async def test_agenerate_list_integer() -> None:
     """
     length, lower, upper = 5, -10, 10
     list_of_int = await agenerate(
-        "gpt-3.5-turbo",
-        "{format_instructions}",
-        {},
-        ListOfIntOutputParser(length, (lower, upper)),
+        model_name="gpt-3.5-turbo",
+        template="{format_instructions}",
+        input_values={},
+        output_parser=ListOfIntOutputParser(length, (lower, upper)),
     )
     assert isinstance(list_of_int, list)
     assert len(list_of_int) == length
@@ -32,10 +32,10 @@ async def test_agenerate_list_integer_together() -> None:
     """
     length, lower, upper = 5, -10, 10
     list_of_int = await agenerate(
-        "togethercomputer/llama-2-70b-chat",
-        "{format_instructions}",
-        {},
-        ListOfIntOutputParser(length, (lower, upper)),
+        model_name="together_ai/llama-2-70b-chat",
+        template="{format_instructions}",
+        input_values={},
+        output_parser=ListOfIntOutputParser(length, (lower, upper)),
     )
     assert isinstance(list_of_int, list)
     assert len(list_of_int) == length
