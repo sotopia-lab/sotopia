@@ -12,7 +12,7 @@ import names
 import numpy as np
 from datasets import DatasetDict, load_dataset
 
-from sotopia.generation_utils.generate import StrOutputParser, generate
+from sotopia.generation_utils.generate import StrOutputParser, agenerate
 
 
 async def generate_mutual_friend_envs() -> tuple[str, list[str]]:
@@ -78,7 +78,7 @@ async def generate_craigslist_bargains_envs() -> tuple[str, list[str]]:
     all_data = craigslist_bargains_dataset["train"]
     # sample one datum from all data
     datum = np.random.choice(all_data)
-    scenario = generate(
+    scenario = await agenerate(
         model_name="gpt-4",
         template="The following sentence is automatically generated with the following"
         'template: "One person is selling <item> for <price>, another person is'
@@ -100,7 +100,7 @@ async def generate_craigslist_bargains_envs() -> tuple[str, list[str]]:
             datum["agent_info"]["Target"][i] = datum["items"]["Price"][0] / (
                 1 + markup_ratio
             )
-        goal = generate(
+        goal = await agenerate(
             model_name="gpt-4",
             template="The following sentence is automatically generated with the following"
             'template: "You want to <role> this item. Your target price '

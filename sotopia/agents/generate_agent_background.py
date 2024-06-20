@@ -2,14 +2,11 @@ import json
 import os
 from typing import Callable
 
-from sotopia.generation_utils.generate import (
-    convert_narratives,
-    generate_init_profile,
-)
+from sotopia.generation_utils.generate import convert_narratives, agenerate_init_profile
 from sotopia.messages import Message, ScriptBackground
 
 
-def generate_background(
+async def generate_background(
     info_json_file: str, basic_info: dict[str, str]
 ) -> tuple[str, str, str, str, list[dict[str, str]]]:
     if os.path.isfile(info_json_file):
@@ -22,7 +19,7 @@ def generate_background(
             previous_messages = info_dict["messages"]
     else:
         initial_profile = str(basic_info)
-        profile = generate_init_profile(
+        profile = await agenerate_init_profile(
             model_name="gpt-3.5-turbo", basic_info=basic_info
         )
         first_narrative = convert_narratives(
