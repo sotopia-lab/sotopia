@@ -1,0 +1,23 @@
+codecov:
+  notify:
+    wait_for_ci: true
+
+coverage:
+  status:
+    patch:
+      default:
+        threshold: 100% # allow patch coverage to be lower than project coverage by any amount
+    project:
+      default:
+        threshold: 5% # allow project coverage to drop at most 5%
+
+comment:                  # this is a top-level key
+  layout: " diff, flags, files"
+  behavior: default
+  require_changes: false  # if true: only post the comment if coverage changes
+  require_base: false        # [true :: must have a base report to post]
+  require_head: true       # [true :: must have a head report to post]
+  hide_project_coverage: false # [true :: only show coverage on the git diff]
+
+github_checks:
+    annotations: false
