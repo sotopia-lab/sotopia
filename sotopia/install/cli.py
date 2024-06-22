@@ -100,7 +100,7 @@ def cli(
     if load_database is None:
         load_database = (
             Prompt.ask(
-                "Do you want to load the database with initial sotopia(-pi) data?",
+                "Do you want to load the database with initial data?",
                 choices=["Yes", "No"],
                 default="Yes",
                 console=console,
@@ -111,7 +111,7 @@ def cli(
     if load_database and custom_load_database_url is None:
         load_from_custom_url = (
             Prompt.ask(
-                "Do you want to use a custom URL?",
+                "Do you want to use a custom URL to load your data?",
                 choices=["Yes", "No"],
                 default="No",
                 console=console,
@@ -124,28 +124,65 @@ def cli(
             )
 
     if load_database:
+        dataset_name = Prompt.ask(
+            "Which dataset do you want to load?",
+            choices=["sotopia", "sotopia-pi", "agents_vs_script"],
+            default="Sotopia",
+            console=console,
+        )
         url = (
             custom_load_database_url
-            or "https://huggingface.co/datasets/cmu-lti/sotopia-pi/resolve/main/dump.rdb?download=true"
+            or f"https://huggingface.co/datasets/cmu-lti/{dataset_name}/resolve/main/dump.rdb?download=true"
         )
-        console.log(f"""Loading the database with initial data from {url}.
-            The data is from the sotopia(-pi) dataset (CC-BY-SA 4.0). Please cite the dataset if you use it.
-            @inproceedings{{wang2024sotopiapi,
-                title={{SOTOPIA-$\\pi$: Interactive Learning of Socially Intelligent Language Agents}},
-                author={{Ruiyi Wang and Haofei Yu and Wenxin Zhang and Zhengyang Qi and Maarten Sap and Graham Neubig and Yonatan Bisk and Hao Zhu}},"
-                booktitle={{Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) 2024}},
-                year={{2024}},
-            }}
-            @inproceedings{{
-                zhou2024sotopia,
-                title={{{{SOTOPIA}}: Interactive Evaluation for Social Intelligence in Language Agents}},
-                author={{Xuhui Zhou and Hao Zhu and Leena Mathur and Ruohong Zhang and Haofei Yu and Zhengyang Qi and Louis-Philippe Morency and Yonatan Bisk and Daniel Fried and Graham Neubig and Maarten Sap}},
-                booktitle={{The Twelfth International Conference on Learning Representations}},
-                year={{2024}},
-                url={{https://openreview.net/forum?id=mM7VurbA4r}}
-            }}
-            """)
-
+        if dataset_name == "soptopia":
+            console.log(f"""Loading the database with initial data from {url}.
+                The data is from the sotopia dataset. Please cite the dataset if you use it.
+                @inproceedings{{
+                    zhou2024sotopia,
+                    title={{{{SOTOPIA}}: Interactive Evaluation for Social Intelligence in Language Agents}},
+                    author={{Xuhui Zhou and Hao Zhu and Leena Mathur and Ruohong Zhang and Haofei Yu and Zhengyang Qi and Louis-Philippe Morency and Yonatan Bisk and Daniel Fried and Graham Neubig and Maarten Sap}},
+                    booktitle={{The Twelfth International Conference on Learning Representations}},
+                    year={{2024}},
+                    url={{https://openreview.net/forum?id=mM7VurbA4r}}
+                }}
+                """)
+        elif dataset_name == "sotopia-pi":
+            console.log(f"""Loading the database with initial data from {url}.
+                The data is from the sotopia(-pi) dataset (CC-BY-SA 4.0). Please cite the dataset if you use it.
+                @inproceedings{{wang2024sotopiapi,
+                    title={{SOTOPIA-$\\pi$: Interactive Learning of Socially Intelligent Language Agents}},
+                    author={{Ruiyi Wang and Haofei Yu and Wenxin Zhang and Zhengyang Qi and Maarten Sap and Graham Neubig and Yonatan Bisk and Hao Zhu}},"
+                    booktitle={{Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) 2024}},
+                    year={{2024}},
+                }}
+                @inproceedings{{
+                    zhou2024sotopia,
+                    title={{{{SOTOPIA}}: Interactive Evaluation for Social Intelligence in Language Agents}},
+                    author={{Xuhui Zhou and Hao Zhu and Leena Mathur and Ruohong Zhang and Haofei Yu and Zhengyang Qi and Louis-Philippe Morency and Yonatan Bisk and Daniel Fried and Graham Neubig and Maarten Sap}},
+                    booktitle={{The Twelfth International Conference on Learning Representations}},
+                    year={{2024}},
+                    url={{https://openreview.net/forum?id=mM7VurbA4r}}
+                }}
+                """)
+        elif dataset_name == "agents_vs_script":
+            console.log(f"""Loading the database with initial data from {url}.
+                The data is from the agents_vs_script dataset. Please cite the dataset if you use it.
+                @misc{{zhou2024real,
+                    title={{Is this the real life? Is this just fantasy? The Misleading Success of Simulating Social Interactions With LLMs}},
+                    author={{Xuhui Zhou and Zhe Su and Tiwalayo Eisape and Hyunwoo Kim and Maarten Sap}},
+                    year={{2024}},
+                    eprint={{2403.05020}},
+                    archivePrefix={{arXiv}},
+                }}
+                @inproceedings{{
+                    zhou2024sotopia,
+                    title={{{{SOTOPIA}}: Interactive Evaluation for Social Intelligence in Language Agents}},
+                    author={{Xuhui Zhou and Hao Zhu and Leena Mathur and Ruohong Zhang and Haofei Yu and Zhengyang Qi and Louis-Philippe Morency and Yonatan Bisk and Daniel Fried and Graham Neubig and Maarten Sap}},
+                    booktitle={{The Twelfth International Conference on Learning Representations}},
+                    year={{2024}},
+                    url={{https://openreview.net/forum?id=mM7VurbA4r}}
+                }}
+                """)
         Path("redis-data").mkdir(exist_ok=True)
         try:
             subprocess.run(f"curl -L {url} -o redis-data/dump.rdb", shell=True)
