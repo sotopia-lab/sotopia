@@ -1,5 +1,6 @@
 import subprocess
 from typing import Literal, Optional
+from pydantic import BaseModel
 import rich
 import rich.errors
 import typer
@@ -7,6 +8,8 @@ import typer
 from rich.prompt import Prompt
 
 from pathlib import Path
+from .menu import Menu
+import tempfile
 
 app = typer.Typer()
 
@@ -25,6 +28,63 @@ def _get_system() -> Literal["Linux", "Darwin", "Windows"]:
         raise ValueError(
             f"You are using {system} which is not supported. Please use Linux, MacOS or Windows."
         )
+
+
+class Dataset(BaseModel):
+    id: str
+    display_name: str
+    url: str
+    venue: str
+    license: str
+    citation: str
+
+
+class Datasets(BaseModel):
+    datasets: list[Dataset]
+
+
+def _get_dataset_to_be_loaded(
+    published_datasets: Datasets, console: rich.console.Console
+) -> str:
+    menu = Menu(
+        *(
+            f"{dataset.display_name} ({dataset.venue}, {dataset.license})"
+            for dataset in published_datasets.datasets
+        ),
+        "None of the above, I want only an empty database.",
+        "No, I have a custom URL.",
+        start_index=0,
+        align="left",
+        rule_title="Select the dataset to be loaded",
+    )
+
+    dataset = menu.ask(return_index=True)
+    assert isinstance(dataset, int)
+
+    if dataset < len(published_datasets.datasets):
+        console.log(
+            f"""Loading the database with data from {published_datasets.datasets[dataset].url}.
+This data is from the {published_datasets.datasets[dataset].display_name}.
+Licensed under {published_datasets.datasets[dataset].license}.
+Please cite the following paper(s) if you use this data:
+{published_datasets.datasets[dataset].citation}"""
+        )
+        return published_datasets.datasets[dataset].url
+    elif dataset == len(published_datasets.datasets):
+        console.log("Starting redis with an empty database.")
+        return ""
+    else:
+        custom_load_database_url = Prompt.ask(
+            "Enter the URL to load the database with initial data from.",
+        )
+        if custom_load_database_url == "":
+            console.log("Starting redis with an empty database.")
+            return ""
+        else:
+            console.log(
+                f"Loading the database with initial data from {custom_load_database_url}."
+            )
+            return custom_load_database_url
 
 
 @app.command()
@@ -100,7 +160,7 @@ def cli(
     if load_database is None:
         load_database = (
             Prompt.ask(
-                "Do you want to load the database with initial data?",
+                "Do you want to load the database with published data?",
                 choices=["Yes", "No"],
                 default="Yes",
                 console=console,
@@ -123,80 +183,56 @@ def cli(
                 "Enter the URL to load the database with initial data from.",
             )
 
+    url = ""
     if load_database:
-        dataset_name = Prompt.ask(
-            "Which dataset do you want to load?",
-            choices=["sotopia", "sotopia-pi", "agents_vs_script"],
-            default="Sotopia",
-            console=console,
-        )
-        url = (
-            custom_load_database_url
-            or f"https://huggingface.co/datasets/cmu-lti/{dataset_name}/resolve/main/dump.rdb?download=true"
-        )
-        if dataset_name == "soptopia":
-            console.log(f"""Loading the database with initial data from {url}.
-                The data is from the sotopia dataset. Please cite the dataset if you use it.
-                @inproceedings{{
-                    zhou2024sotopia,
-                    title={{{{SOTOPIA}}: Interactive Evaluation for Social Intelligence in Language Agents}},
-                    author={{Xuhui Zhou and Hao Zhu and Leena Mathur and Ruohong Zhang and Haofei Yu and Zhengyang Qi and Louis-Philippe Morency and Yonatan Bisk and Daniel Fried and Graham Neubig and Maarten Sap}},
-                    booktitle={{The Twelfth International Conference on Learning Representations}},
-                    year={{2024}},
-                    url={{https://openreview.net/forum?id=mM7VurbA4r}}
-                }}
-                """)
-        elif dataset_name == "sotopia-pi":
-            console.log(f"""Loading the database with initial data from {url}.
-                The data is from the sotopia(-pi) dataset (CC-BY-SA 4.0). Please cite the dataset if you use it.
-                @inproceedings{{wang2024sotopiapi,
-                    title={{SOTOPIA-$\\pi$: Interactive Learning of Socially Intelligent Language Agents}},
-                    author={{Ruiyi Wang and Haofei Yu and Wenxin Zhang and Zhengyang Qi and Maarten Sap and Graham Neubig and Yonatan Bisk and Hao Zhu}},"
-                    booktitle={{Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) 2024}},
-                    year={{2024}},
-                }}
-                @inproceedings{{
-                    zhou2024sotopia,
-                    title={{{{SOTOPIA}}: Interactive Evaluation for Social Intelligence in Language Agents}},
-                    author={{Xuhui Zhou and Hao Zhu and Leena Mathur and Ruohong Zhang and Haofei Yu and Zhengyang Qi and Louis-Philippe Morency and Yonatan Bisk and Daniel Fried and Graham Neubig and Maarten Sap}},
-                    booktitle={{The Twelfth International Conference on Learning Representations}},
-                    year={{2024}},
-                    url={{https://openreview.net/forum?id=mM7VurbA4r}}
-                }}
-                """)
-        elif dataset_name == "agents_vs_script":
-            console.log(f"""Loading the database with initial data from {url}.
-                The data is from the agents_vs_script dataset. Please cite the dataset if you use it.
-                @misc{{zhou2024real,
-                    title={{Is this the real life? Is this just fantasy? The Misleading Success of Simulating Social Interactions With LLMs}},
-                    author={{Xuhui Zhou and Zhe Su and Tiwalayo Eisape and Hyunwoo Kim and Maarten Sap}},
-                    year={{2024}},
-                    eprint={{2403.05020}},
-                    archivePrefix={{arXiv}},
-                }}
-                @inproceedings{{
-                    zhou2024sotopia,
-                    title={{{{SOTOPIA}}: Interactive Evaluation for Social Intelligence in Language Agents}},
-                    author={{Xuhui Zhou and Hao Zhu and Leena Mathur and Ruohong Zhang and Haofei Yu and Zhengyang Qi and Louis-Philippe Morency and Yonatan Bisk and Daniel Fried and Graham Neubig and Maarten Sap}},
-                    booktitle={{The Twelfth International Conference on Learning Representations}},
-                    year={{2024}},
-                    url={{https://openreview.net/forum?id=mM7VurbA4r}}
-                }}
-                """)
-        Path("redis-data").mkdir(exist_ok=True)
+        fn = Path(__file__).parent / "published_datasets.json"
+        published_datasets = Datasets.parse_file(fn)
+        url = _get_dataset_to_be_loaded(published_datasets, console)
+
+    tmpdir_context = tempfile.TemporaryDirectory()
+    tmpdir = tmpdir_context.__enter__()
+
+    if url:
         try:
-            subprocess.run(f"curl -L {url} -o redis-data/dump.rdb", shell=True)
+            subprocess.run(f"curl -L {url} -o {tmpdir}/dump.rdb", shell=True)
             console.log("Database downloaded successfully.")
         except subprocess.CalledProcessError:
             console.log("Database download failed. Please check the URL and try again.")
     else:
-        Path("redis-data").mkdir(exist_ok=True)
         console.log("Starting redis with an empty database.")
 
     if use_docker:
+        current_directory = Path(__file__).parent
+        directory = Prompt.ask(
+            "Enter the directory where you want to store the data. Press enter to use the current directory.",
+            default=current_directory,
+        )
+        try:
+            subprocess.run(f"mkdir -p {directory}/redis-data", shell=True)
+        except subprocess.CalledProcessError:
+            console.log(
+                "Failed to create directory. Please check the path and try again."
+            )
+            exit(1)
+        if Path.exists(Path(directory) / "redis-data/dump.rdb"):
+            cover_existing = Prompt.ask(
+                "The directory already contains a dump.rdb file. Do you want to overwrite it?",
+                choices=["Yes", "No"],
+                default="No",
+                console=console,
+            )
+            if cover_existing == "No":
+                console.log(
+                    "Exiting the installation. Please provide a different directory."
+                )
+                exit(0)
+        else:
+            subprocess.run(
+                f"mv {tmpdir}/dump.rdb {directory}/redis-data/dump.rdb", shell=True
+            )
         try:
             subprocess.run(
-                "docker run --name redis-stack -p 6379:6379 -p 8001:8001 -v ($pwd)/redis-data/:/data/ redis/redis-stack:latest",
+                f"docker run --name redis-stack -p 6379:6379 -p 8001:8001 -v {directory}/redis-data:/data/ redis/redis-stack:latest",
                 shell=True,
             )
             console.log("Redis started successfully.")
@@ -208,8 +244,20 @@ def cli(
                 subprocess.run("brew tap redis-stack/redis-stack", shell=True)
                 subprocess.run("brew install redis-stack", shell=True)
                 if load_database:
+                    if Path("/opt/homebrew/var/db/redis-stack/dump.rdb").exists():
+                        cover_existing = Prompt.ask(
+                            "The directory already contains a dump.rdb file. Do you want to overwrite it?",
+                            choices=["Yes", "No"],
+                            default="No",
+                            console=console,
+                        )
+                        if cover_existing == "No":
+                            console.log(
+                                "Exiting the installation. Please provide a different directory."
+                            )
+                            exit(0)
                     subprocess.run(
-                        "mv redis-data/dump.rdb /opt/homebrew/var/db/redis-stack/dump.rdb",
+                        f"mv {tmpdir}/dump.rdb /opt/homebrew/var/db/redis-stack/dump.rdb",
                         shell=True,
                     )
                 subprocess.run("redis-stack-server --daemonize yes", shell=True)
@@ -225,7 +273,7 @@ def cli(
                 subprocess.run("tar -xvzf redis-stack-server.tar.gz", shell=True)
                 if load_database:
                     subprocess.run(
-                        "mv redis-data/dump.rdb ./redis-stack-server-7.2.0-v10/var/db/redis-stack/dump.rdb",
+                        f"mv {tmpdir}/dump.rdb ./redis-stack-server-7.2.0-v10/var/db/redis-stack/dump.rdb",
                         shell=True,
                     )
                 subprocess.run(
@@ -234,6 +282,8 @@ def cli(
                 )
             except subprocess.CalledProcessError:
                 console.log("Redis start failed. Please check the logs and try again.")
+
+    tmpdir_context.__exit__(None, None, None)
 
 
 if __name__ == "__main__":
