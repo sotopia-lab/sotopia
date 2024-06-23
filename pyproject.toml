@@ -79,5 +79,4 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 
 [tool.poetry.scripts]
-sotopia_benchmark = "sotopia.benchmark:app"
-sotopia_install = "sotopia.install:app"
+sotopia = "sotopia.cli:app"

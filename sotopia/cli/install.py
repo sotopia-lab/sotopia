@@ -3,15 +3,16 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 import rich
 import rich.errors
-import typer
 
 from rich.prompt import Prompt
 
 from pathlib import Path
+
+import typer
 from .menu import Menu
 import tempfile
 
-app = typer.Typer()
+from .app import app
 
 
 def _get_system() -> Literal["Linux", "Darwin", "Windows"]:
@@ -88,7 +89,7 @@ Please cite the following paper(s) if you use this data:
 
 
 @app.command()
-def cli(
+def install(
     use_docker: Optional[bool] = typer.Option(None, help="Install redis using docker."),
     load_database: Optional[bool] = typer.Option(
         None, help="Load the database with initial sotopia(-pi) data."
