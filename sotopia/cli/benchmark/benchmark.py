@@ -34,7 +34,7 @@ from sotopia.server import run_async_server
 
 import typer
 from pathlib import Path
-from .app import app
+from ..app import app
 
 
 def check_existing_episodes(

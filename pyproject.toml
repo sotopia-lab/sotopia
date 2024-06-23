@@ -15,7 +15,6 @@ langchain = "~0.2.5"
 rich = "^13.6.0"
 PettingZoo = "1.24.3"
 redis-om = "^0.2.1"
-types-tqdm = "*"
 gin-config = "^0.5.0"
 absl-py = "^2.0.0"
 together = "^0.2.4"
@@ -42,6 +41,8 @@ pandas = { version = "^2.1.1", optional = true }
 pre-commit = "*"
 nbmake = "*"
 types-setuptools = "*"
+types-requests = "*"
+types-tqdm = "*"
 ruff = "*"
 
 [tool.poetry.group.test.dependencies]

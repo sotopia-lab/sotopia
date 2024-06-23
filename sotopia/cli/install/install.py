@@ -12,7 +12,7 @@ import typer
 from .menu import Menu
 import tempfile
 
-from .app import app
+from ..app import app
 
 
 def _get_system() -> Literal["Linux", "Darwin", "Windows"]:
