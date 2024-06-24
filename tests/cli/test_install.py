@@ -3,6 +3,7 @@ from typer.testing import CliRunner
 
 from sotopia.cli import app
 import subprocess
+import time
 
 runner = CliRunner()
 
@@ -13,6 +14,7 @@ def test_install() -> None:
         ["install", "--no-use-docker", "--load-database", "--overwrite-existing-data"],
     )
     assert result.exit_code == 0
+    time.sleep(1)
 
     if platform.system() == "Darwin":
         subprocess.run("redis-cli shutdown", shell=True, check=True)
@@ -25,6 +27,7 @@ def test_install() -> None:
 
     result = runner.invoke(app, ["install"], input="No\nNo\n")
     assert result.exit_code == 0
+    time.sleep(1)
     if platform.system() == "Darwin":
         subprocess.run("redis-cli shutdown", shell=True, check=True)
     elif platform.system() == "Linux":
