@@ -17,9 +17,12 @@ on:
 
 jobs:
   Pytest:
-    runs-on: ubuntu-latest
     strategy:
       max-parallel: 5
+      matrix:
+        os: [ubuntu-latest, macos-13]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v3
