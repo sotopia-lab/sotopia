@@ -286,7 +286,9 @@ Docker must be installed for this option. If you don't have docker installed, pl
                 shell=True,
                 check=True,
             )
-            console.log("Redis started successfully.")
+            console.log(
+                "Redis started successfully. To stop redis, run `docker stop redis-stack`. To restart, run `docker restart redis-stack`."
+            )
         except subprocess.CalledProcessError:
             console.log("Redis start failed. Please check the logs and try again.")
     else:
@@ -324,7 +326,7 @@ Docker must be installed for this option. If you don't have docker installed, pl
                     "redis-stack-server --daemonize yes", shell=True, check=True
                 )
                 console.log(
-                    "Redis started successfully. To stop redis, run `redis-cli shutdown`."
+                    "Redis started successfully. To stop redis, run `redis-cli shutdown`. To restart, run this script again."
                 )
             except subprocess.CalledProcessError:
                 console.log("Redis start failed. Please check the logs and try again.")
@@ -350,7 +352,7 @@ Docker must be installed for this option. If you don't have docker installed, pl
                     check=True,
                 )
                 console.log(
-                    "Redis started successfully. To stop redis, run `./redis-stack-server-7.2.0-v10/bin/redis-cli shutdown`."
+                    "Redis started successfully. To stop redis, run `./redis-stack-server-7.2.0-v10/bin/redis-cli shutdown`. To restart, run this script again."
                 )
             except subprocess.CalledProcessError:
                 console.log("Redis start failed. Please check the logs and try again.")
