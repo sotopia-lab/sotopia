@@ -15,9 +15,9 @@ def test_install() -> None:
     assert result.exit_code == 0
 
     if platform.system() == "Darwin":
-        subprocess.call("redis-cli shutdown")
+        subprocess.run("redis-cli shutdown")
     elif platform.system() == "Linux":
-        subprocess.call("./redis-stack-server-7.2.0-v10/bin/redis-cli shutdown")
+        subprocess.run("./redis-stack-server-7.2.0-v10/bin/redis-cli shutdown")
 
     result = runner.invoke(
         app,
