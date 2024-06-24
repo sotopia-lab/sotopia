@@ -12,7 +12,12 @@ def test_install() -> None:
     if platform.system() == "Darwin":
         result = runner.invoke(
             app,
-            ["install", "--no-use-docker", "--overwrite-existing-data"],
+            [
+                "install",
+                "--no-use-docker",
+                "--no-load-database",
+                "--overwrite-existing-data",
+            ],
         )
         assert result.exit_code == 0
         time.sleep(1)
@@ -36,7 +41,7 @@ def test_install() -> None:
         )
 
     if platform.system() == "Darwin":
-        result = runner.invoke(app, ["install"], input="Yes\nNo\n\n")
+        result = runner.invoke(app, ["install"], input="No\nNo\n")
         assert result.exit_code == 0
         time.sleep(1)
         subprocess.run("redis-cli shutdown", shell=True, check=True)
