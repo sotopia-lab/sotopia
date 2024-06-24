@@ -31,6 +31,7 @@ jobs:
       with:
         python-version: 3.11.2
     - name: Set up Docker
+      if: runner.os == 'ubuntu-latest'
       uses: docker-practice/actions-setup-docker@master
       timeout-minutes: 12
     - name: Install Poetry
