@@ -30,6 +30,10 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.11.2
+    - name: add poetry to path on MacOS
+      if: matrix.os == 'macos-13'
+      run: |
+        export PATH="/Users/runner/.local/bin:$PATH"
     - name: Install dependencies
       run: |
         curl -sSL https://install.python-poetry.org | python3
