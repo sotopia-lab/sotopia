@@ -341,6 +341,9 @@ Docker must be installed for this option. If you don't have docker installed, pl
                     "tar -xvzf redis-stack-server.tar.gz", shell=True, check=True
                 )
                 if load_database:
+                    Path("./redis-stack-server-7.2.0-v10/var/db/redis-stack").mkdir(
+                        parents=True, exist_ok=True
+                    )
                     subprocess.run(
                         f"mv {tmpdir}/dump.rdb ./redis-stack-server-7.2.0-v10/var/db/redis-stack/dump.rdb",
                         shell=True,
