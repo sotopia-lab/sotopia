@@ -25,18 +25,15 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: 3.11.2
-    - name: add poetry to path on MacOS
-      if: matrix.os == 'macos-13'
-      run: |
-        export PATH="/Users/runner/.local/bin:$PATH"
+    - name: Install Poetry
+      uses: abatilo/actions-poetry@v2
     - name: Install dependencies
       run: |
-        curl -sSL https://install.python-poetry.org | python3
         poetry lock
         poetry install --with test -E chat
     - name: Test with pytest
