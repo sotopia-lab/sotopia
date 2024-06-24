@@ -41,7 +41,6 @@ def test_install() -> None:
         )
 
     if platform.system() == "Darwin":
-        subprocess.run("brew install docker; dockerd &", shell=True, check=True)
         result = runner.invoke(app, ["install"], input="Yes\nNo\n\n")
         assert result.exit_code == 0
         time.sleep(1)
