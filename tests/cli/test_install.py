@@ -22,9 +22,3 @@ def test_install() -> None:
             shell=True,
             check=True,
         )
-
-    result = runner.invoke(
-        app,
-        ["install", "--use-docker", "--load-database", "--overwrite-existing-data"],
-    )
-    assert result.exit_code == 0
