@@ -317,6 +317,10 @@ Docker must be installed for this option. If you don't have docker installed, pl
                                 "Exiting the installation. Please provide a different directory."
                             )
                             exit(0)
+                    else:
+                        Path("/opt/homebrew/var/db/redis-stack/").mkdir(
+                            parents=True, exist_ok=True
+                        )
                     subprocess.run(
                         f"mv {tmpdir}/dump.rdb /opt/homebrew/var/db/redis-stack/dump.rdb",
                         shell=True,
