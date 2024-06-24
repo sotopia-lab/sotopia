@@ -22,3 +22,13 @@ def test_install() -> None:
             shell=True,
             check=True,
         )
+
+    result = runner.invoke(app, ["install"], input="No\nNo\n")
+    if platform.system() == "Darwin":
+        subprocess.run("redis-cli shutdown", shell=True, check=True)
+    elif platform.system() == "Linux":
+        subprocess.run(
+            "./redis-stack-server-7.2.0-v10/bin/redis-cli shutdown",
+            shell=True,
+            check=True,
+        )
