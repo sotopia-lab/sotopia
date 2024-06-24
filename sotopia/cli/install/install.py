@@ -3,8 +3,11 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 import rich
 import rich.errors
+from ..rich_pixels import Pixels
 
 from rich.prompt import Prompt
+from rich.segment import Segment
+from rich.style import Style
 
 from pathlib import Path
 
@@ -88,23 +91,60 @@ Please cite the following paper(s) if you use this data:
             return custom_load_database_url
 
 
+_pixel_art = """\
+
+
+███████      ███████  ██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+█████        ██       ██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+█████      ███        ████████         ██████████████  ███████████████████████████  ████████████████xx████████████████████████x███████████████xxx█xxx███
+█████  ██████         ███████   █████   ███     ███       ████    ████  ██    ██████████     ███████xx██x██xxxxx████xxxxx███xxxxxxx███xxxxx███xxx█xxx███
+█████      ███        ████████       ████    ██   ███  █████   ██   ██     █    ██  ██   ██   ██████xx██xxx██xxxx██xx████████xxx████xxx███xx██xxx█xxx███
+█████        ██       █████████████     █  █████   ██  ████  █████   █  ██████  ██  ██  ████  ██████xx██xx█████xx██xxxxxx████xxx████xx████xx██xxx█xxx███
+█████         ██████  ███████   ██████  █   ████  ███  ████   ████   █   ████   ██  █   ████  ██████xx██xx█████xx████████xx██xxx████xx████xx██xxx█xxx███
+█████        ███      █████████        ███       █████    ███      ███  █      ███  ██         █████xx██xx█████xx██xxxxxxxx███xxxxx█xxxxxxxxx█xxx█xxx███
+█████       ██        ████████████████████████████████████████████████  ████████████████████████████████████████████████████████████████████████████████
+█████   █████       ██████████████████████████████████████████████████  ████████████████████████████████████████████████████████████████████████████████
+
+
+"""
+
+
 @app.command()
 def install(
     use_docker: Optional[bool] = typer.Option(None, help="Install redis using docker."),
     load_database: Optional[bool] = typer.Option(
-        None, help="Load the database with initial sotopia(-pi) data."
+        None, help="Load the database with initial data."
     ),
-    custom_load_database_url: Optional[str] = typer.Option(
+    load_sotopia_pi_data: bool = typer.Option(
+        True,
+        help="Load the database with initial data from Sotopia π. Only applicable if `load_database` is True.",
+    ),
+    custom_database_url: Optional[str] = typer.Option(
         None, help="Load the database with initial data from a custom URL."
+    ),
+    redis_data_path: Optional[str] = typer.Option(
+        None,
+        help="Path to store the redis data. Only applicable if `use_docker` is True.",
+    ),
+    overwrite_existing_data: Optional[bool] = typer.Option(
+        None, help="Overwrite existing data in the redis data path."
     ),
 ) -> None:
     console = rich.console.Console()
+    mapping = {
+        " ": Segment(" ", Style.parse("black on black")),
+        "█": Segment("█", Style.parse("white")),
+        "x": Segment("x", Style.parse("magenta on magenta")),
+    }
+    pixels = Pixels.from_ascii(_pixel_art, mapping)
+    console.print(pixels, justify="center")
     system = _get_system()
 
     if use_docker is None:
         use_docker = (
             Prompt.ask(
-                "Do you want to use docker? (Recommended) You will need to have docker installed.",
+                """Do you want to use docker? (Recommended)
+Docker must be installed for this option. If you don't have docker installed, please install it and run this command again.""",
                 choices=["Yes", "No"],
                 default="Yes",
                 console=console,
@@ -158,6 +198,9 @@ def install(
                     )
                     exit(1)
 
+    next_state: Literal["ask_data_source", "empty_database", "custom_url"] | None = None
+    url = ""
+
     if load_database is None:
         load_database = (
             Prompt.ask(
@@ -168,34 +211,36 @@ def install(
             )
             == "Yes"
         )
+        if load_database:
+            next_state = "ask_data_source"
+        else:
+            next_state = "empty_database"
+    elif not load_database:
+        next_state = "empty_database"
+    else:
+        if load_sotopia_pi_data:
+            next_state = "custom_url"
+            url = "https://huggingface.co/datasets/cmu-lti/sotopia-pi/resolve/main/dump.rdb?download=true"
+        elif custom_database_url is None:
+            next_state = "ask_data_source"
+        else:
+            next_state = "custom_url"
+            url = custom_database_url
 
-    if load_database and custom_load_database_url is None:
-        load_from_custom_url = (
-            Prompt.ask(
-                "Do you want to use a custom URL to load your data?",
-                choices=["Yes", "No"],
-                default="No",
-                console=console,
-            )
-            == "Yes"
-        )
-        if load_from_custom_url:
-            custom_load_database_url = Prompt.ask(
-                "Enter the URL to load the database with initial data from.",
-            )
-
-    url = ""
-    if load_database:
+    if next_state == "ask_data_source":
         fn = Path(__file__).parent / "published_datasets.json"
         published_datasets = Datasets.parse_file(fn)
         url = _get_dataset_to_be_loaded(published_datasets, console)
+        next_state = "custom_url"
+
+    assert next_state in ["custom_url", "empty_database"]
 
     tmpdir_context = tempfile.TemporaryDirectory()
     tmpdir = tmpdir_context.__enter__()
 
     if url:
         try:
-            subprocess.run(f"curl -L {url} -o {tmpdir}/dump.rdb", shell=True)
+            subprocess.run(f"curl -L {url} -o {Path(tmpdir) / 'dump.rdb'}", shell=True)
             console.log("Database downloaded successfully.")
         except subprocess.CalledProcessError:
             console.log("Database download failed. Please check the URL and try again.")
@@ -204,37 +249,42 @@ def install(
 
     if use_docker:
         current_directory = Path(__file__).parent
-        directory = Prompt.ask(
-            "Enter the directory where you want to store the data. Press enter to use the current directory.",
-            default=current_directory,
-        )
-        try:
-            subprocess.run(f"mkdir -p {directory}/redis-data", shell=True)
-        except subprocess.CalledProcessError:
-            console.log(
-                "Failed to create directory. Please check the path and try again."
+        if redis_data_path is None:
+            directory = Prompt.ask(
+                "Enter the directory where you want to store the data. Press enter to use the current directory.",
+                default=current_directory,
             )
-            exit(1)
-        if Path.exists(Path(directory) / "redis-data/dump.rdb"):
-            cover_existing = Prompt.ask(
-                "The directory already contains a dump.rdb file. Do you want to overwrite it?",
-                choices=["Yes", "No"],
-                default="No",
-                console=console,
-            )
-            if cover_existing == "No":
-                console.log(
-                    "Exiting the installation. Please provide a different directory."
-                )
-                exit(0)
         else:
-            subprocess.run(
-                f"mv {tmpdir}/dump.rdb {directory}/redis-data/dump.rdb", shell=True
-            )
+            directory = redis_data_path
+        (Path(directory) / "redis-data").mkdir(parents=True, exist_ok=True)
+        if load_database:
+            if Path.exists(Path(directory) / "redis-data" / "dump.rdb"):
+                cover_existing = (
+                    Prompt.ask(
+                        "The directory already contains a dump.rdb file. Do you want to overwrite it?",
+                        choices=["Yes", "No"],
+                        default="No",
+                        console=console,
+                    )
+                    if overwrite_existing_data is None
+                    else "Yes"
+                    if overwrite_existing_data
+                    else "No"
+                )
+                if cover_existing == "No":
+                    console.log(
+                        "Exiting the installation. Please provide a different directory."
+                    )
+                    exit(0)
+            else:
+                (Path(tmpdir) / "dump.rdb").rename(
+                    Path(directory) / "redis-data/dump.rdb"
+                )
         try:
             subprocess.run(
-                f"docker run --name redis-stack -p 6379:6379 -p 8001:8001 -v {directory}/redis-data:/data/ redis/redis-stack:latest",
+                f"docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v {directory}/redis-data:/data/ redis/redis-stack:latest",
                 shell=True,
+                check=True,
             )
             console.log("Redis started successfully.")
         except subprocess.CalledProcessError:
@@ -242,15 +292,23 @@ def install(
     else:
         if system == "Darwin":
             try:
-                subprocess.run("brew tap redis-stack/redis-stack", shell=True)
-                subprocess.run("brew install redis-stack", shell=True)
+                subprocess.run(
+                    "brew tap redis-stack/redis-stack", shell=True, check=True
+                )
+                subprocess.run("brew install redis-stack", shell=True, check=True)
                 if load_database:
                     if Path("/opt/homebrew/var/db/redis-stack/dump.rdb").exists():
-                        cover_existing = Prompt.ask(
-                            "The directory already contains a dump.rdb file. Do you want to overwrite it?",
-                            choices=["Yes", "No"],
-                            default="No",
-                            console=console,
+                        cover_existing = (
+                            Prompt.ask(
+                                "The directory already contains a dump.rdb file. Do you want to overwrite it?",
+                                choices=["Yes", "No"],
+                                default="No",
+                                console=console,
+                            )
+                            if overwrite_existing_data is None
+                            else "Yes"
+                            if overwrite_existing_data
+                            else "No"
                         )
                         if cover_existing == "No":
                             console.log(
@@ -260,9 +318,14 @@ def install(
                     subprocess.run(
                         f"mv {tmpdir}/dump.rdb /opt/homebrew/var/db/redis-stack/dump.rdb",
                         shell=True,
+                        check=True,
                     )
-                subprocess.run("redis-stack-server --daemonize yes", shell=True)
-                console.log("Redis started successfully.")
+                subprocess.run(
+                    "redis-stack-server --daemonize yes", shell=True, check=True
+                )
+                console.log(
+                    "Redis started successfully. To stop redis, run `redis-cli shutdown`."
+                )
             except subprocess.CalledProcessError:
                 console.log("Redis start failed. Please check the logs and try again.")
         elif system == "Linux":
@@ -270,16 +333,24 @@ def install(
                 subprocess.run(
                     "curl -fsSL https://packages.redis.io/redis-stack/redis-stack-server-7.2.0-v10.focal.x86_64.tar.gz -o redis-stack-server.tar.gz",
                     shell=True,
+                    check=True,
                 )
-                subprocess.run("tar -xvzf redis-stack-server.tar.gz", shell=True)
+                subprocess.run(
+                    "tar -xvzf redis-stack-server.tar.gz", shell=True, check=True
+                )
                 if load_database:
                     subprocess.run(
                         f"mv {tmpdir}/dump.rdb ./redis-stack-server-7.2.0-v10/var/db/redis-stack/dump.rdb",
                         shell=True,
+                        check=True,
                     )
                 subprocess.run(
                     "./redis-stack-server-7.2.0-v10/bin/redis-stack-server --daemonize yes",
                     shell=True,
+                    check=True,
+                )
+                console.log(
+                    "Redis started successfully. To stop redis, run `./redis-stack-server-7.2.0-v10/bin/redis-stack-server stop`."
                 )
             except subprocess.CalledProcessError:
                 console.log("Redis start failed. Please check the logs and try again.")
