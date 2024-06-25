@@ -41,12 +41,12 @@ def test_install() -> None:
         )
 
     if platform.system() == "Darwin":
-        result = runner.invoke(app, ["install"], input="No\nNo\n")
+        result = runner.invoke(app, ["install"], input="Homebrew\nNo\n")
         assert result.exit_code == 0
         time.sleep(1)
         subprocess.run("redis-cli shutdown", shell=True, check=True)
     elif platform.system() == "Linux":
-        result = runner.invoke(app, ["install"], input="Yes\nNo\n\n")
+        result = runner.invoke(app, ["install"], input="Docker\nNo\n\n")
         assert result.exit_code == 0
         time.sleep(1)
         subprocess.run(
