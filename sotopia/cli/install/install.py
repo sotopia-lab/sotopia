@@ -141,16 +141,31 @@ def install(
     system = _get_system()
 
     if use_docker is None:
-        use_docker = (
-            Prompt.ask(
-                """Do you want to use docker? (Recommended)
-Docker must be installed for this option. If you don't have docker installed, please install it and run this command again.""",
-                choices=["Yes", "No"],
-                default="Yes",
-                console=console,
+        if system == "Windows":
+            console.log(
+                "Installing Redis with Docker... Check if Docker Desktop is installed."
             )
-            == "Yes"
-        )
+            use_docker = True
+        elif system == "Darwin":
+            use_docker = (
+                Prompt.ask(
+                    "Do you want to use Docker or Homebrew to install redis? We recommand you to use Docker.",
+                    choices=["Docker", "Homebrew"],
+                    default="Docker",
+                    console=console,
+                )
+                == "Docker"
+            )
+        else:
+            use_docker = (
+                Prompt.ask(
+                    "Do you want to use Docker to install redis or directly install Redis stack binary? We recommand you to use Docker.",
+                    choices=["Docker", "Binary"],
+                    default="Docker",
+                    console=console,
+                )
+                == "Docker"
+            )
 
     if use_docker:
         try:
