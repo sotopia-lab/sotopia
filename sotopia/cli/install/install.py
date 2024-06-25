@@ -178,25 +178,46 @@ Docker must be installed for this option. If you don't have docker installed, pl
                     And then run this command again.
                     """
                 )
-        else:
-            if system == "Windows":
-                console.log("""For Windows, unfortunately only docker is supported.
-                    Check the official documentation:
-                    https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/windows/.
-                """)
+            exit(1)
+        try:
+            subprocess.check_output("docker ps", shell=True)
+        except subprocess.CalledProcessError:
+            if system == "Darwin":
+                console.log(
+                    """Docker Daemon was not started. Please launch Docker App.
+                    """
+                )
+            elif system == "Linux":
+                console.log(
+                    """Docker Daemon was not started. Please run `dockerd`
+                    """
+                )
+            else:
+                console.log(
+                    """Docker Daemon was not started. Please launch Docker App.
+                    """
+                )
+            exit(1)
+    else:
+        if system == "Windows":
+            console.log("""For Windows, unfortunately only docker is supported.
+                Check the official documentation:
+                https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/windows/.
+            """)
+            exit(1)
+        elif system == "Darwin":
+            # check if homebrew is installed
+            try:
+                subprocess.check_output("command -v brew", shell=True)
+                subprocess.run("brew update-reset", shell=True, check=True)
+            except subprocess.CalledProcessError:
+                console.log(
+                    """Homebrew is required for install redis without docker on MacOS.
+                    Please check https://brew.sh/.
+                    And then run this command again.
+                    """
+                )
                 exit(1)
-            elif system == "Darwin":
-                # check if homebrew is installed
-                try:
-                    subprocess.check_output("command -v brew", shell=True)
-                except subprocess.CalledProcessError:
-                    console.log(
-                        """Homebrew is required for install redis without docker on MacOS.
-                        Please check https://brew.sh/.
-                        And then run this command again.
-                        """
-                    )
-                    exit(1)
 
     next_state: Literal["ask_data_source", "empty_database", "custom_url"] | None = None
     url = ""
