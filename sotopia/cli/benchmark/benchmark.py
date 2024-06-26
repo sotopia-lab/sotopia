@@ -360,7 +360,7 @@ def benchmark_all(
     batch_size: int = typer.Option(10, help="The batch size you want to use."),
     task: str = typer.Option("hard", help="The task id you want to benchmark."),
     print_logs: bool = typer.Option(False, help="Print logs."),
-):
+) -> None:
     for model in model_list:
         benchmark(
             model=model,
@@ -388,7 +388,7 @@ def benchmark_display(
         "gpt-4o", help="The evaluator model you want to use."
     ),
     task: str = typer.Option("hard", help="The task id you want to benchmark."),
-):
+) -> None:
     """
     Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
     Aggregate all the results for the benchmark, as described in https://github.com/sotopia-lab/sotopia-space/blob/main/data_dir/models_vs_gpt35.jsonl
@@ -402,7 +402,7 @@ def benchmark_display(
         if len(episodes) == 0:
             print(f"No episodes found for {model}")
             continue
-        avg_rewards = get_avg_reward(episodes, model)
+        avg_rewards = get_avg_reward(episodes, model)  # type: ignore
         model_rewards_dict[model] = avg_rewards
         print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
 
