@@ -4,7 +4,8 @@ import rich
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
-from typing import cast
+import json
+from typing import cast, List, Dict, OrderedDict
 
 from logging import FileHandler
 from rich.logging import RichHandler
@@ -262,6 +263,51 @@ def _set_up_logs(
     )
 
 
+def save_to_jsonl(
+    model_rewards_dict: Dict[str, Dict[str, float]],
+    partner_model: str,
+):
+    simplified_model_name = partner_model.split("/")[-1]
+    output_fn = f"./models_vs_{simplified_model_name}.jsonl"
+    outputs: List[str] = []
+    for model, rewards in model_rewards_dict.items():
+        formatted_reward = OrderedDict(
+            {
+                "model_name": model,
+                **{
+                    f"{v[0]} {v[1]}": rewards[k]
+                    for k, v in dimension_range_mapping.items()
+                },
+            }
+        )
+        outputs.append(json.dumps(formatted_reward))
+    with open(output_fn, "w") as f:
+        f.write("\n".join(outputs))
+
+    print(f"Output saved to {output_fn}")
+
+
+default_model_list: List[str] = [
+    "gpt-4o",
+    "gpt-3.5-turbo",
+    "together_ai/meta-llama/Llama-3-70b-chat-hf",
+    "together_ai/meta-llama/Llama-3-8b-chat-hf",
+    # "together_ai/mistralai/Mistral-7B-Instruct-v0.1",
+    "together_ai/mistralai/Mistral-22B-Instruct-v0.1",
+]
+dimension_range_mapping = OrderedDict(
+    {
+        "social_rules": ["SOC", [-10, 0]],
+        "secret": ["SEC", [-10, 0]],
+        "financial_and_material_benefits": ["FIN", [-5, 5]],
+        "relationship": ["REL", [-5, 5]],
+        "knowledge": ["KNO", [0, 10]],
+        "goal": ["GOAL", [0, 10]],
+        "believability": ["BEL", [0, 10]],
+    }
+)
+
+
 @app.command()
 def benchmark(
     model: str = typer.Option(..., help="The language model you want to benchmark."),
@@ -296,3 +342,68 @@ def benchmark(
         verbose=False,
         push_to_db=True,
     )
+
+
+@app.command()
+def benchmark_all(
+    model_list: List[str] = typer.Option(
+        default_model_list,
+        help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}.",
+    ),
+    partner_model: str = typer.Option(
+        "together_ai/meta-llama/Llama-3-70b-chat-hf",
+        help="The partner model you want to use.",
+    ),
+    evaluator_model: str = typer.Option(
+        "gpt-4o", help="The evaluator model you want to use."
+    ),
+    batch_size: int = typer.Option(10, help="The batch size you want to use."),
+    task: str = typer.Option("hard", help="The task id you want to benchmark."),
+    print_logs: bool = typer.Option(False, help="Print logs."),
+):
+    for model in model_list:
+        benchmark(
+            model=model,
+            partner_model=partner_model,
+            evaluator_model=evaluator_model,
+            batch_size=batch_size,
+            task=task,
+            print_logs=print_logs,
+        )
+    typer.echo("All models benchmarked successfully.")
+    benchmark_display(model_list, partner_model, evaluator_model, task)
+
+
+@app.command()
+def benchmark_display(
+    model_list: List[str] = typer.Option(
+        default=default_model_list,
+        help=f"List of models to benchmark. Default is the pre-loaded model list {default_model_list}.",
+    ),
+    partner_model: str = typer.Option(
+        "together_ai/meta-llama/Llama-3-70b-chat-hf",
+        help="The partner model you want to use.",
+    ),
+    evaluator_model: str = typer.Option(
+        "gpt-4o", help="The evaluator model you want to use."
+    ),
+    task: str = typer.Option("hard", help="The task id you want to benchmark."),
+):
+    """
+    Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
+    Aggregate all the results for the benchmark, as described in https://github.com/sotopia-lab/sotopia-space/blob/main/data_dir/models_vs_gpt35.jsonl
+    """
+
+    print(f"Displaying performance for {model_list} vs {partner_model} on task {task}")
+    model_rewards_dict = dict()
+    for model in model_list:
+        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+        episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()
+        if len(episodes) == 0:
+            print(f"No episodes found for {model}")
+            continue
+        avg_rewards = get_avg_reward(episodes, model)
+        model_rewards_dict[model] = avg_rewards
+        print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
+
+    save_to_jsonl(model_rewards_dict, partner_model)
