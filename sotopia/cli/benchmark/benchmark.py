@@ -266,7 +266,7 @@ def _set_up_logs(
 def save_to_jsonl(
     model_rewards_dict: Dict[str, Dict[str, float]],
     partner_model: str,
-):
+) -> None:
     simplified_model_name = partner_model.split("/")[-1]
     output_fn = f"./models_vs_{simplified_model_name}.jsonl"
     outputs: List[str] = []
