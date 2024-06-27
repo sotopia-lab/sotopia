@@ -34,8 +34,7 @@ from sotopia.server import run_async_server
 
 import typer
 from pathlib import Path
-
-app = typer.Typer()
+from ..app import app
 
 
 def check_existing_episodes(
@@ -264,7 +263,7 @@ def _set_up_logs(
 
 
 @app.command()
-def cli(
+def benchmark(
     model: str = typer.Option(..., help="The language model you want to benchmark."),
     partner_model: str = typer.Option(
         "together_ai/meta-llama/Llama-3-70b-chat-hf",
@@ -297,7 +296,3 @@ def cli(
         verbose=False,
         push_to_db=True,
     )
-
-
-if __name__ == "__main__":
-    app()

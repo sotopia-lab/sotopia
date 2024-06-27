@@ -13,7 +13,6 @@ from sotopia.agents import (
     LLMAgent,
     RedisAgent,
     ScriptWritingAgent,
-    SpeakAgent,
 )
 from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import EpisodeLog
@@ -67,7 +66,9 @@ def run_sync_server(
         if agent_model == "human":
             agents[agent_name] = HumanAgent(agent_name)
         elif mode == "speak":
-            agents[agent_name] = SpeakAgent(agent_name, model_name=agent_model)
+            raise NotImplementedError(
+                "Deprecated. The original Speaker Agent is not implemented in the async context."
+            )
         else:
             agents[agent_name] = LLMAgent(agent_name, model_name=agent_model)
     agents.reset()

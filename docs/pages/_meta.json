@@ -7,6 +7,14 @@
         "title": "Documentation",
         "type": "menu",
         "items": {
+            "agents": {
+                "title": "Agents",
+                "href": "/agents"
+            },
+            "environments": {
+                "title": "Environments",
+                "href": "/environments"
+            },
             "examples": {
                 "title": "Examples",
                 "href": "/examples"
