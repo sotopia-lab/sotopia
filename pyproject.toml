@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sotopia"
-version = "0.0.10"
+version = "0.0.11"
 description = "A platform for simulating and evaluating social interaction."
 authors = ["Hao Zhu <prokilchu@gmail.com>, Xuhui Zhou <xuhuiz@cs.cmu.edu>"]
 license = "MIT License"
