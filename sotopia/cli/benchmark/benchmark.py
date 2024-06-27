@@ -310,43 +310,7 @@ dimension_range_mapping = OrderedDict(
 
 @app.command()
 def benchmark(
-    model: str = typer.Option(..., help="The language model you want to benchmark."),
-    partner_model: str = typer.Option(
-        "together_ai/meta-llama/Llama-3-70b-chat-hf",
-        help="The partner model you want to use.",
-    ),
-    evaluator_model: str = typer.Option(
-        "gpt-4o", help="The evaluator model you want to use."
-    ),
-    batch_size: int = typer.Option(10, help="The batch size you want to use."),
-    task: str = typer.Option("hard", help="The task id you want to benchmark."),
-    print_logs: bool = typer.Option(False, help="Print logs."),
-) -> None:
-    """A simple command-line interface example."""
-    _set_up_logs(print_logs=print_logs)
-    typer.echo(
-        f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
-    )
-    model = cast(LLM_Name, model)
-    partner_model = cast(LLM_Name, partner_model)
-    evaluator_model = cast(LLM_Name, evaluator_model)
-    tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
-    run_async_benchmark_in_batch(
-        batch_size=batch_size,
-        model_names={
-            "env": evaluator_model,
-            "test_model": model,
-            "partner_model": partner_model,
-        },
-        tag=tag,
-        verbose=False,
-        push_to_db=True,
-    )
-
-
-@app.command()
-def benchmark_all(
-    model_list: List[str] = typer.Option(
+    models: List[str] = typer.Option(
         default_model_list,
         help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}.",
     ),
@@ -360,18 +324,35 @@ def benchmark_all(
     batch_size: int = typer.Option(10, help="The batch size you want to use."),
     task: str = typer.Option("hard", help="The task id you want to benchmark."),
     print_logs: bool = typer.Option(False, help="Print logs."),
+    only_show_performance: bool = typer.Option(False, help="Only show performance."),
 ) -> None:
-    for model in model_list:
-        benchmark(
-            model=model,
-            partner_model=partner_model,
-            evaluator_model=evaluator_model,
-            batch_size=batch_size,
-            task=task,
-            print_logs=print_logs,
+    if only_show_performance:
+        benchmark_display(models, partner_model, evaluator_model, task)
+        return
+
+    """A simple command-line interface example."""
+    _set_up_logs(print_logs=print_logs)
+
+    for model in models:
+        typer.echo(
+            f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
         )
-    typer.echo("All models benchmarked successfully.")
-    benchmark_display(model_list, partner_model, evaluator_model, task)
+        model = cast(LLM_Name, model)
+        partner_model = cast(LLM_Name, partner_model)
+        evaluator_model = cast(LLM_Name, evaluator_model)
+        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+        run_async_benchmark_in_batch(
+            batch_size=batch_size,
+            model_names={
+                "env": evaluator_model,
+                "test_model": model,
+                "partner_model": partner_model,
+            },
+            tag=tag,
+            verbose=False,
+            push_to_db=True,
+        )
+    # benchmark_display(models, partner_model, evaluator_model, task)
 
 
 @app.command()

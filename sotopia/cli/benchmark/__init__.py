@@ -1,3 +1,3 @@
-from .benchmark import benchmark, benchmark_display, benchmark_all
+from .benchmark import benchmark
 
-__all__ = ["benchmark", "benchmark_display", "benchmark_all"]
+__all__ = ["benchmark"]
