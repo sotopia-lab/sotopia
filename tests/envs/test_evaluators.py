@@ -234,4 +234,6 @@ async def test_reach_goal_llm_evaluator_goalonly_async() -> None:
     print("---------------------")
     print("Response after 2 turns:", response2)
 
-    assert False  # Stop here to see all responses as we are not sure what should be the assertion here
+    assert len(response2[0][0][1][1].split()) > len(
+        "Samuel Anderson's goal was to greet his friends and be polite.".split()
+    )

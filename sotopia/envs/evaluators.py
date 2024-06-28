@@ -148,7 +148,7 @@ class EvaluationGoalOnly(BaseModel):
         ...,
         description="Please first reiterate agent's social goals. "
         "And then please provide a comprehensive analysis about the extent to which the agent has managed to achieve these goals. "
-        "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
+        "The first entry (str) of the object is the 'reasoning' field, and the second entry (int) of the object is the 'score' field. In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
     )
 
     @validator("goal")
