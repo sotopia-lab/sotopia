@@ -2141,13 +2141,13 @@ requests = ">=2,<3"
 
 [[package]]
 name = "litellm"
-version = "1.23.16"
+version = "1.40.13"
 description = "Library to easily interface with LLM API providers"
 optional = false
-python-versions = ">=3.8, !=2.7.*, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*, !=3.7.*"
+python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 files = [
-    {file = "litellm-1.23.16-py3-none-any.whl", hash = "sha256:c1d7183edc74dad7d140cb7c9ac0c23e550d4126549eb302c75b46380724a3ad"},
-    {file = "litellm-1.23.16.tar.gz", hash = "sha256:7d477c8560743cc762f1e61fc2c209ffa9d733879da198daeb5d0effbb62a1c1"},
+    {file = "litellm-1.40.13-py3-none-any.whl", hash = "sha256:b95ad1dea43f49804122c3f8a6c9f90ffb1d1d8654887d94aa6f77ed46ba7a5d"},
+    {file = "litellm-1.40.13.tar.gz", hash = "sha256:7898a59a2a5c49abe166c857f79eeebe4fa3218cb93879da5f17b640787587cf"},
 ]
 
 [package.dependencies]
@@ -2155,15 +2155,15 @@ aiohttp = "*"
 click = "*"
 importlib-metadata = ">=6.8.0"
 jinja2 = ">=3.1.2,<4.0.0"
-openai = ">=1.0.0"
+openai = ">=1.27.0"
 python-dotenv = ">=0.2.0"
 requests = ">=2.31.0,<3.0.0"
-tiktoken = ">=0.4.0"
+tiktoken = ">=0.7.0"
 tokenizers = "*"
 
 [package.extras]
-extra-proxy = ["streamlit (>=1.29.0,<2.0.0)"]
-proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "fastapi (>=0.104.1,<0.105.0)", "fastapi-sso (>=0.10.0,<0.11.0)", "gunicorn (>=21.2.0,<22.0.0)", "orjson (>=3.9.7,<4.0.0)", "python-multipart (>=0.0.6,<0.0.7)", "pyyaml (>=6.0.1,<7.0.0)", "rq", "uvicorn (>=0.22.0,<0.23.0)"]
+extra-proxy = ["azure-identity (>=1.15.0,<2.0.0)", "azure-keyvault-secrets (>=4.8.0,<5.0.0)", "google-cloud-kms (>=2.21.3,<3.0.0)", "prisma (==0.11.0)", "resend (>=0.8.0,<0.9.0)"]
+proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "cryptography (>=42.0.5,<43.0.0)", "fastapi (>=0.111.0,<0.112.0)", "fastapi-sso (>=0.10.0,<0.11.0)", "gunicorn (>=22.0.0,<23.0.0)", "orjson (>=3.9.7,<4.0.0)", "python-multipart (>=0.0.9,<0.0.10)", "pyyaml (>=6.0.1,<7.0.0)", "rq", "uvicorn (>=0.22.0,<0.23.0)"]
 
 [[package]]
 name = "lxml"
@@ -5380,4 +5380,4 @@ groq = ["groq"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "ffedc0d7d6aed3596541e63d08ab1214aa4f5228abe44c5a6668e056eed4a0c0"
+content-hash = "c7fde1dcb0317048180ad14fa8469b72872e72123214b3e713e8052a8280712b"
