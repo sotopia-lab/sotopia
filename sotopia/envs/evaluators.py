@@ -143,6 +143,20 @@ class EvaluationBySocialDimensionsPlus(BaseModel):
         return v
 
 
+class EvaluationGoalOnly(BaseModel):
+    goal: tuple[str, int] = Field(
+        ...,
+        description="Please first reiterate agent's social goals. "
+        "And then please provide a comprehensive analysis about the extent to which the agent has managed to achieve these goals. "
+        "The first entry (str) of the object is the 'reasoning' field, and the second entry (int) of the object is the 'score' field. In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
+    )
+
+    @validator("goal")
+    def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
+        assert v[1] >= 0 and v[1] <= 10
+        return v
+
+
 class EnvResponse(BaseModel):
     agent_1_evaluation: EvaluationBySocialDimensions
     agent_2_evaluation: EvaluationBySocialDimensions
@@ -151,6 +165,11 @@ class EnvResponse(BaseModel):
 class EnvResponsePlus(BaseModel):
     agent_1_evaluation: EvaluationBySocialDimensionsPlus
     agent_2_evaluation: EvaluationBySocialDimensionsPlus
+
+
+class EnvResponseGoalOnly(BaseModel):
+    agent_1_evaluation: EvaluationGoalOnly
+    agent_2_evaluation: EvaluationGoalOnly
 
 
 class Evaluator(abc.ABC):
@@ -268,7 +287,8 @@ class ReachGoalLLMEvaluator(Evaluator):
         response_format_class = (
             EnvResponsePlus if self.response_format == "plus" else EnvResponse
         )
-
+        if self.response_format == "goal_only":
+            response_format_class = EnvResponseGoalOnly
         try:
             response: (
                 EnvResponsePlus | EnvResponse
@@ -281,9 +301,9 @@ class ReachGoalLLMEvaluator(Evaluator):
                     {format_instructions}
                 """,
                 input_values=dict(history=history),
-                output_parser=PydanticOutputParser[EnvResponsePlus | EnvResponse](
-                    pydantic_object=response_format_class
-                ),
+                output_parser=PydanticOutputParser[
+                    EnvResponsePlus | EnvResponse | EnvResponseGoalOnly
+                ](pydantic_object=response_format_class),
                 temperature=temperature,
             )
             response_list = []
