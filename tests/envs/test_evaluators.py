@@ -6,6 +6,7 @@ from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
+    EnvResponseGoalOnly,
 )
 from sotopia.messages import AgentAction, Observation, ScriptBackground, SimpleMessage
 
@@ -177,7 +178,9 @@ async def test_reach_goal_llm_evaluator_async() -> None:
 
 @pytest.mark.asyncio
 async def test_reach_goal_llm_evaluator_goalonly_async() -> None:
-    evaluator = ReachGoalLLMEvaluator("gpt-4", response_format="goal_only")
+    evaluator = ReachGoalLLMEvaluator(
+        "gpt-4", response_format_class=EnvResponseGoalOnly
+    )
     background = ScriptBackground(
         scenario="Conversation between two friends at a trivia night",
         p1_name="Samuel Anderson",

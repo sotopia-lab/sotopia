@@ -1,6 +1,7 @@
 import abc
 import logging
 from collections import defaultdict
+from typing import Union
 
 import gin
 from beartype import beartype
@@ -143,7 +144,7 @@ class EvaluationBySocialDimensionsPlus(BaseModel):
         return v
 
 
-class EvaluationGoalOnly(BaseModel):
+class EvaluateByGoalOnly(BaseModel):
     goal: tuple[str, int] = Field(
         ...,
         description="Please first reiterate agent's social goals. "
@@ -168,8 +169,11 @@ class EnvResponsePlus(BaseModel):
 
 
 class EnvResponseGoalOnly(BaseModel):
-    agent_1_evaluation: EvaluationGoalOnly
-    agent_2_evaluation: EvaluationGoalOnly
+    agent_1_evaluation: EvaluateByGoalOnly
+    agent_2_evaluation: EvaluateByGoalOnly
+
+
+EnvResponseType = Union[EnvResponse, EnvResponsePlus, EnvResponseGoalOnly]
 
 
 class Evaluator(abc.ABC):
@@ -246,10 +250,14 @@ class RuleBasedTerminatedEvaluator(Evaluator):
 
 class ReachGoalLLMEvaluator(Evaluator):
     @beartype
-    def __init__(self, model_name: str, response_format: str = "basic") -> None:
+    def __init__(
+        self,
+        model_name: str,
+        response_format_class: type[EnvResponseType] = EnvResponse,
+    ) -> None:
         self.model_name = model_name
         self.prompt = ""
-        self.response_format = response_format
+        self.response_format_class = response_format_class
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
@@ -284,15 +292,10 @@ class ReachGoalLLMEvaluator(Evaluator):
                     for x, y in messages_filtered
                 ]
             )
-        response_format_class = (
-            EnvResponsePlus if self.response_format == "plus" else EnvResponse
-        )
-        if self.response_format == "goal_only":
-            response_format_class = EnvResponseGoalOnly
+
+        response_format_class = self.response_format_class
         try:
-            response: (
-                EnvResponsePlus | EnvResponse
-            )  # fix type error from langchain 0.0.264. we don't need this line for langchain 0.0.263
+            response: EnvResponseType  # fix type error from langchain 0.0.264. we don't need this line for langchain 0.0.263
             response = await agenerate(
                 model_name=self.model_name,
                 template="""{history},
@@ -301,9 +304,9 @@ class ReachGoalLLMEvaluator(Evaluator):
                     {format_instructions}
                 """,
                 input_values=dict(history=history),
-                output_parser=PydanticOutputParser[
-                    EnvResponsePlus | EnvResponse | EnvResponseGoalOnly
-                ](pydantic_object=response_format_class),
+                output_parser=PydanticOutputParser[EnvResponseType](
+                    pydantic_object=response_format_class
+                ),
                 temperature=temperature,
             )
             response_list = []
