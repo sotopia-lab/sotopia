@@ -407,7 +407,7 @@ async def aevaluate_one_episode(
     history = episode.rewards_prompt.replace("Prompt after formatting:", "").split(
         ",\nBased on previous interactions"
     )[0]
-    evaluator = ReachGoalLLMEvaluator(model_name=model, response_format="basic")
+    evaluator = ReachGoalLLMEvaluator(model_name=model)
     response = unweighted_aggregate_evaluate(
         list(
             itertools.chain(
