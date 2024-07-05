@@ -1,7 +1,9 @@
 import abc
 import logging
 from collections import defaultdict
-from typing import Type, Generic, TypeVar
+from typing import Generic, TypeVar
+
+from pydantic.generics import GenericModel
 
 import gin
 from beartype import beartype
@@ -18,7 +20,9 @@ from sotopia.messages import (
 log = logging.getLogger("evaluators")
 
 
-class EvaluationBySocialDimensions(BaseModel):
+class SotopiaDimensions(BaseModel):
+    """The social dimensions used in Sotopia paper (ICLR 2024)"""
+
     believability: tuple[str, int] = Field(
         ...,
         description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? c. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
@@ -81,7 +85,9 @@ class EvaluationBySocialDimensions(BaseModel):
         return v
 
 
-class EvaluationBySocialDimensionsPlus(BaseModel):
+class SotopiaDimensionsPlus(BaseModel):
+    """Updated SotopiaDimensions with more detailed instructions"""
+
     believability: tuple[str, int] = Field(
         ...,
         description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? c. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
@@ -144,7 +150,9 @@ class EvaluationBySocialDimensionsPlus(BaseModel):
         return v
 
 
-class EvaluationByGoalOnly(BaseModel):
+class GoalDimension(BaseModel):
+    """Goal only evaluation"""
+
     goal: tuple[str, int] = Field(
         ...,
         description="Please first reiterate agent's social goals. "
@@ -158,36 +166,12 @@ class EvaluationByGoalOnly(BaseModel):
         return v
 
 
-EvaluationDimensions = TypeVar("EvaluationDimensions", bound=BaseModel)
+T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
 
-class EvaluationForTwoAgents(Generic[EvaluationDimensions], BaseModel):
-    agent_2_evaluation: EvaluationDimensions
-    agent_1_evaluation: EvaluationDimensions
-
-
-EnvResponseType = EvaluationForTwoAgents[EvaluationDimensions]
-EnvResponse = EvaluationForTwoAgents[EvaluationBySocialDimensions]
-EnvResponsePlus = EvaluationForTwoAgents[EvaluationBySocialDimensionsPlus]
-EnvResponseGoalOnly = EvaluationForTwoAgents[EvaluationByGoalOnly]
-
-
-# class EnvResponse(BaseModel):
-#     agent_1_evaluation: EvaluationBySocialDimensions
-#     agent_2_evaluation: EvaluationBySocialDimensions
-
-
-# class EnvResponsePlus(BaseModel):
-#     agent_1_evaluation: EvaluationBySocialDimensionsPlus
-#     agent_2_evaluation: EvaluationBySocialDimensionsPlus
-
-
-# class EnvResponseGoalOnly(BaseModel):
-#     agent_1_evaluation: EvaluationByGoalOnly
-#     agent_2_evaluation: EvaluationByGoalOnly
-# from typing import TypeVar, Type
-
-# EnvResponseType = TypeVar("EnvResponseType", bound=BaseModel)
+class EvaluationForTwoAgents(GenericModel, Generic[T_eval_dim]):
+    agent_1_evaluation: T_eval_dim
+    agent_2_evaluation: T_eval_dim
 
 
 class Evaluator(abc.ABC):
@@ -262,12 +246,12 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         return self(turn_number, messages)
 
 
-class ReachGoalLLMEvaluator(Evaluator):
+class ReachGoalLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     @beartype
     def __init__(
         self,
         model_name: str,
-        response_format_class: Type[EnvResponseType] = EnvResponse,
+        response_format_class: type[EvaluationForTwoAgents[T_eval_dim]],
     ) -> None:
         self.model_name = model_name
         self.prompt = ""
@@ -307,10 +291,8 @@ class ReachGoalLLMEvaluator(Evaluator):
                 ]
             )
 
-        response_format_class = self.response_format_class
         try:
-            response: EnvResponseType  # fix type error from langchain 0.0.264. we don't need this line for langchain 0.0.263
-            response = await agenerate(
+            response: EvaluationForTwoAgents[T_eval_dim] = await agenerate(
                 model_name=self.model_name,
                 template="""{history},
                     Based on previous interactions, evaluate how well participants achieve their goals.
@@ -318,8 +300,8 @@ class ReachGoalLLMEvaluator(Evaluator):
                     {format_instructions}
                 """,
                 input_values=dict(history=history),
-                output_parser=PydanticOutputParser[EnvResponseType](
-                    pydantic_object=response_format_class
+                output_parser=PydanticOutputParser[self.response_format_class](  # type: ignore[name-defined]
+                    pydantic_object=self.response_format_class
                 ),
                 temperature=temperature,
             )
