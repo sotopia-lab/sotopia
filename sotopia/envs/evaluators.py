@@ -1,7 +1,7 @@
 import abc
 import logging
 from collections import defaultdict
-from typing import Union
+from typing import Type, Generic, TypeVar
 
 import gin
 from beartype import beartype
@@ -65,17 +65,17 @@ class EvaluationBySocialDimensions(BaseModel):
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
     )
 
-    @validator("believability", "knowledge", "goal")
+    @validator("believability", "knowledge", "goal", allow_reuse=True)
     def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= 0 and v[1] <= 10
         return v
 
-    @validator("relationship", "financial_and_material_benefits")
+    @validator("relationship", "financial_and_material_benefits", allow_reuse=True)
     def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -5 and v[1] <= 5
         return v
 
-    @validator("secret", "social_rules")
+    @validator("secret", "social_rules", allow_reuse=True)
     def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -10 and v[1] <= 0
         return v
@@ -128,23 +128,23 @@ class EvaluationBySocialDimensionsPlus(BaseModel):
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals. Almost Not Finishing Any Goal (0-3): Scores from 0 to 3 indicate almost not finishing any goal, suggesting a minimal level of goal achievement. This range signifies either no progress or only a very rudimentary level of advancement towards the completion of set goals. Finishing Less Than 50% of Goals (4-6): A score between 4 and 6 suggests finishing less than 50% of the goals, indicating a moderate level of goal completion. This range represents partial success, with some goals being met while a significant portion remains unachieved. Finishing More Than 50%, But Not All Goals (7-8): Scores in the 7 to 8 range indicate finishing more than 50% but not all of the goals. This suggests a high level of achievement, where the majority of set goals are met, but some goals still remain incomplete. Finishing All Goals (9-10): A score between 9 and 10 signifies finishing all goals, representing the highest level of achievement in goal completion. This range indicates that all set objectives have been met, signifying complete success in achieving the targeted goals.",
     )
 
-    @validator("believability", "knowledge", "goal")
+    @validator("believability", "knowledge", "goal", allow_reuse=True)
     def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= 0 and v[1] <= 10
         return v
 
-    @validator("relationship", "financial_and_material_benefits")
+    @validator("relationship", "financial_and_material_benefits", allow_reuse=True)
     def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -5 and v[1] <= 5
         return v
 
-    @validator("secret", "social_rules")
+    @validator("secret", "social_rules", allow_reuse=True)
     def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -10 and v[1] <= 0
         return v
 
 
-class EvaluateByGoalOnly(BaseModel):
+class EvaluationByGoalOnly(BaseModel):
     goal: tuple[str, int] = Field(
         ...,
         description="Please first reiterate agent's social goals. "
@@ -152,28 +152,42 @@ class EvaluateByGoalOnly(BaseModel):
         "The first entry (str) of the object is the 'reasoning' field, and the second entry (int) of the object is the 'score' field. In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
     )
 
-    @validator("goal")
+    @validator("goal", allow_reuse=True)
     def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= 0 and v[1] <= 10
         return v
 
 
-class EnvResponse(BaseModel):
-    agent_1_evaluation: EvaluationBySocialDimensions
-    agent_2_evaluation: EvaluationBySocialDimensions
+EvaluationDimensions = TypeVar("EvaluationDimensions", bound=BaseModel)
 
 
-class EnvResponsePlus(BaseModel):
-    agent_1_evaluation: EvaluationBySocialDimensionsPlus
-    agent_2_evaluation: EvaluationBySocialDimensionsPlus
+class EvaluationForTwoAgents(Generic[EvaluationDimensions], BaseModel):
+    agent_2_evaluation: EvaluationDimensions
+    agent_1_evaluation: EvaluationDimensions
 
 
-class EnvResponseGoalOnly(BaseModel):
-    agent_1_evaluation: EvaluateByGoalOnly
-    agent_2_evaluation: EvaluateByGoalOnly
+EnvResponseType = EvaluationForTwoAgents[EvaluationDimensions]
+EnvResponse = EvaluationForTwoAgents[EvaluationBySocialDimensions]
+EnvResponsePlus = EvaluationForTwoAgents[EvaluationBySocialDimensionsPlus]
+EnvResponseGoalOnly = EvaluationForTwoAgents[EvaluationByGoalOnly]
 
 
-EnvResponseType = Union[EnvResponse, EnvResponsePlus, EnvResponseGoalOnly]
+# class EnvResponse(BaseModel):
+#     agent_1_evaluation: EvaluationBySocialDimensions
+#     agent_2_evaluation: EvaluationBySocialDimensions
+
+
+# class EnvResponsePlus(BaseModel):
+#     agent_1_evaluation: EvaluationBySocialDimensionsPlus
+#     agent_2_evaluation: EvaluationBySocialDimensionsPlus
+
+
+# class EnvResponseGoalOnly(BaseModel):
+#     agent_1_evaluation: EvaluationByGoalOnly
+#     agent_2_evaluation: EvaluationByGoalOnly
+# from typing import TypeVar, Type
+
+# EnvResponseType = TypeVar("EnvResponseType", bound=BaseModel)
 
 
 class Evaluator(abc.ABC):
@@ -253,7 +267,7 @@ class ReachGoalLLMEvaluator(Evaluator):
     def __init__(
         self,
         model_name: str,
-        response_format_class: type[EnvResponseType] = EnvResponse,
+        response_format_class: Type[EnvResponseType] = EnvResponse,
     ) -> None:
         self.model_name = model_name
         self.prompt = ""
