@@ -6,7 +6,7 @@ from typing import TypeVar
 import gin
 from beartype import beartype
 from beartype.typing import Type
-from langchain.chains.llm import LLMChain
+from langchain_core.runnables.base import RunnableSequence
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -14,7 +14,7 @@ from langchain.prompts import (
     PromptTemplate,
 )
 from langchain.schema import BaseOutputParser, OutputParserException
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from pydantic import BaseModel, Field
 from rich import print
 from typing_extensions import Literal
@@ -295,7 +295,7 @@ def obtain_chain(
     input_variables: list[str],
     temperature: float = 0.7,
     max_retries: int = 6,
-) -> LLMChain:
+) -> RunnableSequence:
     """
     Using langchain to sample profiles for participants
     """
@@ -316,7 +316,7 @@ def obtain_chain(
             openai_api_base="https://api.together.xyz/v1",
             openai_api_key=os.environ.get("TOGETHER_API_KEY"),
         )
-        chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
+        chain = chat_prompt_template | chat_openai
         return chain
     elif "groq" in model_name:
         model_name = "/".join(model_name.split("/")[1:])
@@ -334,7 +334,27 @@ def obtain_chain(
             openai_api_base="https://api.groq.com/openai/v1",
             openai_api_key=os.environ.get("GROQ_API_KEY"),
         )
-        chain = LLMChain(llm=chat_openai, prompt=chat_prompt_template)
+        chain = chat_prompt_template | chat_openai
+        return chain
+    elif "azure" in model_name:
+        # azure|deployment_name|version|endpoint|azure_openai_api_key
+        azure_credentials = model_name.split("|")[1:]
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        os.environ["AZURE_OPENAI_API_KEY"] = azure_credentials[3]
+        chat_openai = AzureChatOpenAI(
+            azure_deployment=azure_credentials[0],
+            openai_api_version=azure_credentials[1],
+            azure_endpoint=azure_credentials[2],
+            temperature=temperature,
+            max_retries=max_retries,
+        )
+        chain = chat_prompt_template | chat_openai
         return chain
     else:
         chat = ChatOpenAI(
@@ -346,7 +366,7 @@ def obtain_chain(
             prompt=PromptTemplate(template=template, input_variables=input_variables)
         )
         chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-        chain = LLMChain(llm=chat, prompt=chat_prompt_template)
+        chain = chat_prompt_template | chat
         return chain
 
 
@@ -380,7 +400,7 @@ def format_bad_output_for_script(
         "format_instructions": format_instructions,
         "agents": agents,
     }
-    reformat = chain.predict([logging_handler], **input_values)
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
@@ -408,7 +428,7 @@ def format_bad_output(
         "ill_formed_output": ill_formed_output,
         "format_instructions": format_instructions,
     }
-    reformat = chain.predict([logging_handler], **input_values)
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
@@ -437,9 +457,9 @@ async def agenerate(
     )
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
-    result = await chain.apredict([logging_handler], **input_values)
+    result = await chain.ainvoke(input_values, config={"callbacks": [logging_handler]})
     try:
-        parsed_result = output_parser.parse(result)
+        parsed_result = output_parser.parse(result.content)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e  # the problem has been handled in the parser
