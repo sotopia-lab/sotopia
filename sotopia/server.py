@@ -18,8 +18,10 @@ from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import EpisodeLog
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
+    EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
+    SotopiaDimensions,
     unweighted_aggregate_evaluate,
 )
 from sotopia.generation_utils.generate import LLM_Name, agenerate_script
@@ -268,7 +270,10 @@ async def run_async_server(
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             "terminal_evaluators": [
-                ReachGoalLLMEvaluator(model_dict["env"]),
+                ReachGoalLLMEvaluator(
+                    model_dict["env"],
+                    EvaluationForTwoAgents[SotopiaDimensions],
+                ),
             ],
         }
         agents_model_dict = {
@@ -339,7 +344,10 @@ async def arun_one_script(
     env_message = [("Environment", script_background)]
     agent_messages = env_message + agent_messages
 
-    evaluator = ReachGoalLLMEvaluator(model_name="gpt-4")
+    evaluator = ReachGoalLLMEvaluator(
+        model_name="gpt-4",
+        response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
+    )
     response = unweighted_aggregate_evaluate(
         list(
             itertools.chain(
@@ -407,7 +415,10 @@ async def aevaluate_one_episode(
     history = episode.rewards_prompt.replace("Prompt after formatting:", "").split(
         ",\nBased on previous interactions"
     )[0]
-    evaluator = ReachGoalLLMEvaluator(model_name=model, response_format="basic")
+    evaluator = ReachGoalLLMEvaluator(
+        model_name=model,
+        response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
+    )
     response = unweighted_aggregate_evaluate(
         list(
             itertools.chain(

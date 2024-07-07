@@ -3,6 +3,8 @@ import asyncio
 import pytest
 
 from sotopia.envs.evaluators import (
+    SotopiaDimensions,
+    EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
@@ -126,7 +128,9 @@ async def test_rule_based_teminated_evaluator_async() -> None:
 
 @pytest.mark.asyncio
 async def test_reach_goal_llm_evaluator_async() -> None:
-    evaluator = ReachGoalLLMEvaluator("gpt-4")
+    evaluator = ReachGoalLLMEvaluator(
+        "gpt-4", response_format_class=EvaluationForTwoAgents[SotopiaDimensions]
+    )
     response1, response2 = await asyncio.gather(
         evaluator.__acall__(
             1,
@@ -176,8 +180,10 @@ async def test_reach_goal_llm_evaluator_async() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reach_goal_llm_evaluator_goalonly_async() -> None:
-    evaluator = ReachGoalLLMEvaluator("gpt-4", response_format="goal_only")
+async def test_reach_goal_llm_evaluator_goal_only_async() -> None:
+    evaluator = ReachGoalLLMEvaluator(
+        "gpt-4", response_format_class=EvaluationForTwoAgents[SotopiaDimensions]
+    )
     background = ScriptBackground(
         scenario="Conversation between two friends at a trivia night",
         p1_name="Samuel Anderson",
