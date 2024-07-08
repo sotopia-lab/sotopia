@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import TypeVar
+from typing import TypeVar, Any
 
 import gin
 from beartype import beartype
@@ -295,7 +295,7 @@ def obtain_chain(
     input_variables: list[str],
     temperature: float = 0.7,
     max_retries: int = 6,
-) -> RunnableSequence:
+) -> RunnableSequence[Any, Any]:
     """
     Using langchain to sample profiles for participants
     """
@@ -337,8 +337,13 @@ def obtain_chain(
         chain = chat_prompt_template | chat_openai
         return chain
     elif "azure" in model_name:
-        # azure|deployment_name|version|endpoint|azure_openai_api_key
-        azure_credentials = model_name.split("|")[1:]
+        # azure/resource_name/deployment_name/version
+        azure_credentials = model_name.split("/")[1:]
+        resource_name, deployment_name, azure_version = (
+            azure_credentials[0],
+            azure_credentials[1],
+            azure_credentials[2],
+        )
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
                 template=template,
@@ -346,11 +351,10 @@ def obtain_chain(
             )
         )
         chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-        os.environ["AZURE_OPENAI_API_KEY"] = azure_credentials[3]
         chat_openai = AzureChatOpenAI(
-            azure_deployment=azure_credentials[0],
-            openai_api_version=azure_credentials[1],
-            azure_endpoint=azure_credentials[2],
+            azure_deployment=deployment_name,
+            openai_api_version=azure_version,
+            azure_endpoint=f"https://{resource_name}.openai.azure.com",
             temperature=temperature,
             max_retries=max_retries,
         )
@@ -400,7 +404,9 @@ def format_bad_output_for_script(
         "format_instructions": format_instructions,
         "agents": agents,
     }
-    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
+    reformat = chain.invoke(
+        input_values, config={"callbacks": [logging_handler]}
+    ).content
     log.info(f"Reformated output: {reformat}")
     return reformat
 
@@ -428,7 +434,9 @@ def format_bad_output(
         "ill_formed_output": ill_formed_output,
         "format_instructions": format_instructions,
     }
-    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
+    reformat = chain.invoke(
+        input_values, config={"callbacks": [logging_handler]}
+    ).content
     log.info(f"Reformated output: {reformat}")
     return reformat
 
