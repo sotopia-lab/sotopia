@@ -6,7 +6,8 @@ from typing import TypeVar, Any
 import gin
 from beartype import beartype
 from beartype.typing import Type
-from langchain_core.runnables.base import RunnableSequence
+from langchain_core.runnables.base import RunnableSerializable
+from langchain_core.messages.base import BaseMessage
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -295,7 +296,7 @@ def obtain_chain(
     input_variables: list[str],
     temperature: float = 0.7,
     max_retries: int = 6,
-) -> RunnableSequence[Any, Any]:
+) -> RunnableSerializable[dict[Any, Any], BaseMessage]:
     """
     Using langchain to sample profiles for participants
     """
@@ -351,14 +352,14 @@ def obtain_chain(
             )
         )
         chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-        chat_openai = AzureChatOpenAI(
+        chat_azure_openai = AzureChatOpenAI(
             azure_deployment=deployment_name,
             openai_api_version=azure_version,
             azure_endpoint=f"https://{resource_name}.openai.azure.com",
             temperature=temperature,
             max_retries=max_retries,
         )
-        chain = chat_prompt_template | chat_openai
+        chain = chat_prompt_template | chat_azure_openai
         return chain
     else:
         chat = ChatOpenAI(
@@ -380,7 +381,7 @@ def format_bad_output_for_script(
     format_instructions: str,
     agents: list[str],
     model_name: str = "gpt-3.5-turbo",
-) -> str:
+) -> BaseMessage:
     template = """
     Given the string that can not be parsed by a parser, reformat it to a string that can be parsed by the parser which uses the following format instructions. Do not add or delete any information.
     Small tip: for every round of conversation, first determine the name and the case, and whether this line contains errors. Correct it if necessary.
@@ -404,19 +405,17 @@ def format_bad_output_for_script(
         "format_instructions": format_instructions,
         "agents": agents,
     }
-    reformat = chain.invoke(
-        input_values, config={"callbacks": [logging_handler]}
-    ).content
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
 
 @beartype
 def format_bad_output(
-    ill_formed_output: str,
+    ill_formed_output: BaseMessage,
     format_instructions: str,
     model_name: str = "gpt-3.5-turbo",
-) -> str:
+) -> BaseMessage:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
     Original string: {ill_formed_output}
@@ -431,12 +430,10 @@ def format_bad_output(
         input_variables=re.findall(r"{(.*?)}", template),
     )
     input_values = {
-        "ill_formed_output": ill_formed_output,
+        "ill_formed_output": ill_formed_output.content,
         "format_instructions": format_instructions,
     }
-    reformat = chain.invoke(
-        input_values, config={"callbacks": [logging_handler]}
-    ).content
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
@@ -467,7 +464,7 @@ async def agenerate(
         input_values["format_instructions"] = output_parser.get_format_instructions()
     result = await chain.ainvoke(input_values, config={"callbacks": [logging_handler]})
     try:
-        parsed_result = output_parser.parse(result.content)
+        parsed_result = output_parser.invoke(result)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e  # the problem has been handled in the parser
@@ -478,7 +475,7 @@ async def agenerate(
         reformat_parsed_result = format_bad_output(
             result, format_instructions=output_parser.get_format_instructions()
         )
-        parsed_result = output_parser.parse(reformat_parsed_result)
+        parsed_result = output_parser.invoke(reformat_parsed_result)
     log.info(f"Generated result: {parsed_result}")
     return parsed_result
 
