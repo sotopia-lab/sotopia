@@ -150,6 +150,98 @@ class SotopiaDimensionsPlus(BaseModel):
         return v
 
 
+class EvaluationByGroup(BaseModel):
+    effectiveness: tuple[str, int] = Field(
+        ...,
+        description="""Consider features of verbosity (e.g. word count, sentence lengths, readability)
+         to analyze the interaction episode between the agents and use this as a method in evaluating 
+         the efficiency of this episode. Higher levels of efficiency should be reflected with focused, 
+         coherent, and collaborative communication that advances the team's objectives. Lower efficiency 
+         can be marked by disjointed, repetitive, or ineffective exchanges that hinder or delay the progress
+         in attaining the goal."""
+        """Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 
+        10 in the 'score' field. A higher score indicates that the agent is more efficient.""",
+    )
+    equity: tuple[str, int] = Field(
+        ...,
+        description="""Analyze the script of a team interaction and measure verbal equity, 
+        i.e., the extent to which the interaction shows a balanced distribution of speaking 
+        opportunities among team members. High verbal equity occurs when all team members 
+        have an equal chance to contribute their ideas, perspectives, and knowledge, and low 
+        verbal equity happens when the conversation tends to be dominated by one or a few individuals."""
+        """Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 
+        10 in the 'score' field. A higher score indicates a higher level of verbal equity.""",
+    )
+    transactivity: tuple[str, int] = Field(
+        ...,
+        description="""Analyze the provided social interaction episode between the given pair/team, 
+        focusing on identifying instances of transactive exchanges. High transactivity occurs when 
+        interlocutors actively elaborate on, build upon, or argue against previously presented ideas, 
+        fostering dynamic exchanges and deeper engagement. In contrast, low transactivity occurs when 
+        interactions involve minimal elaboration or engagement with prior contributions, resulting in 
+        less dynamic and interactive exchanges."""
+        """Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 
+        10 in the 'score' field. A higher score indicates a higher level of transactivity.""",
+    )
+
+    @validator("effectiveness", "equity", "transactivity")
+    def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
+        assert v[1] >= 0 and v[1] <= 10
+        return v
+    
+
+class EvaluationByGroupPlus(BaseModel):
+    effectiveness: tuple[str, int] = Field(
+        ...,
+        description="""Consider features of verbosity (e.g. word count, sentence lengths, readability) 
+         to analyze the interaction episode between the agents and use this as a method in evaluating 
+         the efficiency of this episode. Higher levels of efficiency should be reflected with focused, 
+         coherent, and collaborative communication that advances the team's objectives. Lower efficiency 
+         can be marked by disjointed, repetitive, or ineffective exchanges that hinder or delay the progress 
+         in attaining the goal."""
+        """Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 
+        10 in the 'score' field. A higher score indicates that the agent is more efficient. Specifically, 
+        Limited Efficiency (0-3): Scores in this range indicate that conversations are disjointed and lack coherence. 
+        They are characterized by high verbosity with long, unclear sentences. There are frequent off-topic discussions 
+        and poor topic transitions, resulting in minimal progress towards goals. Moderate Efficiency (4-6): A score 
+        between 4 and 6 suggests that there are some clear and relevant contributions, but occasional disjointed exchanges occur. 
+        Verbosity is moderate, with mixed sentence lengths. Topic transitions are acceptable, though there are some minor 
+        disruptions. Overall, there is adequate progress towards goals. High Efficiency (7-8): A score between 7 and 8 
+        indicate that contributions are mostly clear, concise, and relevant. Verbosity is low, with clear and precise sentences. 
+        Topic transitions are smooth and logical, leading to significant progress towards goals. Exceptional Efficiency (9-10): 
+        A score between 9 to 10 indicates that contributions are extremely clear, concise, and directly relevant. Verbosity is 
+        very low, reflecting highly efficient communication. Topic transitions are seamless, resulting in excellent progress towards 
+        goals with strong collaborative effort.""",
+    )
+    equity: tuple[str, int] = Field(
+        ...,
+        description="""Analyze the script of a team interaction and measure verbal equity, 
+        i.e., the extent to which the interaction shows a balanced distribution of speaking 
+        opportunities among team members. High verbal equity occurs when all team members 
+        have an equal chance to contribute their ideas, perspectives, and knowledge, and low 
+        verbal equity happens when the conversation tends to be dominated by one or a few individuals."""
+        """Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 
+        10 in the 'score' field. A higher score indicates a higher level of verbal equity.""",
+    )
+    transactivity: tuple[str, int] = Field(
+        ...,
+        description="""Analyze the provided social interaction episode between the given pair/team, 
+        focusing on identifying instances of transactive exchanges. High transactivity occurs when 
+        interlocutors actively elaborate on, build upon, or argue against previously presented ideas, 
+        fostering dynamic exchanges and deeper engagement. In contrast, low transactivity occurs when 
+        interactions involve minimal elaboration or engagement with prior contributions, resulting in 
+        less dynamic and interactive exchanges."""
+        """Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 
+        10 in the 'score' field. A higher score indicates a higher level of transactivity.""",
+    )
+
+    @validator("effectiveness", "equity", "transactivity")
+    def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
+        assert v[1] >= 0 and v[1] <= 10
+        return v
+    
+
+
 class GoalDimension(BaseModel):
     """Goal only evaluation"""
 

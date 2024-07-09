@@ -23,6 +23,7 @@ from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
+    EvaluationByGroup,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import LLM_Name
@@ -147,7 +148,7 @@ def _iterate_env_agent_combo_not_in_db(
                 terminal_evaluators=[
                     ReachGoalLLMEvaluator(
                         model_names["env"],
-                        EvaluationForTwoAgents[SotopiaDimensions],
+                        EvaluationForTwoAgents[EvaluationByGroup],
                     ),
                 ],
             )
