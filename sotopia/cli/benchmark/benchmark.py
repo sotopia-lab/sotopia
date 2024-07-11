@@ -4,7 +4,8 @@ import rich
 from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
-from typing import cast
+import json
+from typing import cast, List, Dict, OrderedDict
 
 from logging import FileHandler
 from rich.logging import RichHandler
@@ -267,9 +268,98 @@ def _set_up_logs(
     )
 
 
+def save_to_jsonl(
+    model_rewards_dict: Dict[str, Dict[str, float]],
+    partner_model: str,
+) -> None:
+    simplified_model_name = partner_model.split("/")[-1]
+    output_fn = f"./models_vs_{simplified_model_name}.jsonl"
+    outputs: List[str] = []
+    for model, rewards in model_rewards_dict.items():
+        formatted_reward = OrderedDict(
+            {
+                "model_name": model,
+                **{
+                    f"{v[0]} {v[1]}": rewards[k]
+                    for k, v in dimension_range_mapping.items()
+                },
+            }
+        )
+        outputs.append(json.dumps(formatted_reward))
+    with open(output_fn, "w") as f:
+        f.write("\n".join(outputs))
+
+    print(f"Output saved to {output_fn}")
+
+
+default_model_list: List[str] = [
+    "gpt-4o",
+]
+dimension_range_mapping = OrderedDict(
+    {
+        "social_rules": ["SOC", [-10, 0]],
+        "secret": ["SEC", [-10, 0]],
+        "financial_and_material_benefits": ["FIN", [-5, 5]],
+        "relationship": ["REL", [-5, 5]],
+        "knowledge": ["KNO", [0, 10]],
+        "goal": ["GOAL", [0, 10]],
+        "believability": ["BEL", [0, 10]],
+    }
+)
+
+
+def display_in_table(
+    model_rewards_dict: Dict[str, Dict[str, float]], partner_model: str
+) -> None:
+    table = rich.table.Table(
+        title="Model Performance when facing {}".format(partner_model)
+    )
+    table.add_column("Model")
+    for dimension in dimension_range_mapping.keys():
+        table.add_column(dimension)
+    for model, rewards in model_rewards_dict.items():
+        table.add_row(
+            model,
+            *[f"{rewards[k]:.2f}" for k in dimension_range_mapping.keys()],
+        )
+    rich.print(table)
+
+
+def benchmark_display(
+    model_list: List[str] = default_model_list,
+    partner_model: str = "together_ai/meta-llama/Llama-3-70b-chat-hf",
+    evaluator_model: str = "gpt-4o",
+    task: str = "hard",
+    output_to_jsonl: bool = False,
+) -> None:
+    """
+    Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
+    Aggregate all the results for the benchmark, as described in https://github.com/sotopia-lab/sotopia-space/blob/main/data_dir/models_vs_gpt35.jsonl
+    """
+
+    print(f"Displaying performance for {model_list} vs {partner_model} on task {task}")
+    model_rewards_dict = dict()
+    for model in model_list:
+        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+        episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()
+        if len(episodes) == 0:
+            print(f"No episodes found for {model}")
+            continue
+        avg_rewards = get_avg_reward(episodes, model)  # type: ignore
+        model_rewards_dict[model] = avg_rewards
+        print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
+
+    display_in_table(model_rewards_dict, partner_model)
+    if output_to_jsonl:
+        save_to_jsonl(model_rewards_dict, partner_model)
+
+
 @app.command()
 def benchmark(
-    model: str = typer.Option(..., help="The language model you want to benchmark."),
+    models: List[str] = typer.Option(
+        default_model_list,
+        help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}.",
+    ),
     partner_model: str = typer.Option(
         "together_ai/meta-llama/Llama-3-70b-chat-hf",
         help="The partner model you want to use.",
@@ -280,24 +370,35 @@ def benchmark(
     batch_size: int = typer.Option(10, help="The batch size you want to use."),
     task: str = typer.Option("hard", help="The task id you want to benchmark."),
     print_logs: bool = typer.Option(False, help="Print logs."),
+    only_show_performance: bool = typer.Option(False, help="Only show performance."),
+    output_to_jsonl: bool = typer.Option(False, help="Output to jsonl."),
 ) -> None:
+    if only_show_performance:
+        benchmark_display(models, partner_model, evaluator_model, task, output_to_jsonl)
+        return
+
     """A simple command-line interface example."""
     _set_up_logs(print_logs=print_logs)
-    typer.echo(
-        f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
-    )
-    model = cast(LLM_Name, model)
-    partner_model = cast(LLM_Name, partner_model)
-    evaluator_model = cast(LLM_Name, evaluator_model)
-    tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
-    run_async_benchmark_in_batch(
-        batch_size=batch_size,
-        model_names={
-            "env": evaluator_model,
-            "test_model": model,
-            "partner_model": partner_model,
-        },
-        tag=tag,
-        verbose=False,
-        push_to_db=True,
+
+    for model in models:
+        typer.echo(
+            f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
+        )
+        model = cast(LLM_Name, model)
+        partner_model = cast(LLM_Name, partner_model)
+        evaluator_model = cast(LLM_Name, evaluator_model)
+        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+        run_async_benchmark_in_batch(
+            batch_size=batch_size,
+            model_names={
+                "env": evaluator_model,
+                "test_model": model,
+                "partner_model": partner_model,
+            },
+            tag=tag,
+            verbose=False,
+            push_to_db=True,
+        )
+    benchmark_display(
+        models, partner_model, evaluator_model, task, output_to_jsonl=output_to_jsonl
     )
