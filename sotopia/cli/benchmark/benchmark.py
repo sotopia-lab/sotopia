@@ -5,7 +5,10 @@ from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
 import logging
 import json
-from typing import cast, List, Dict, OrderedDict
+import math
+from itertools import chain
+from collections import defaultdict
+from typing import cast, List, Dict, OrderedDict, Tuple
 
 from logging import FileHandler
 from rich.logging import RichHandler
@@ -21,10 +24,8 @@ from sotopia.database import (
 )
 from sotopia.database.serialization import get_rewards_from_episode
 from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import LLM_Name
@@ -78,21 +79,66 @@ def initilize_benchmark_combo(data: list[dict[str, str]]) -> list[EnvAgentComboS
     return list_of_env_agent_combo_storage
 
 
-def get_avg_reward(episodes: list[EpisodeLog], model_name: str) -> dict[str, float]:
-    rewards_list = []
+def get_avg_reward(
+    episodes: list[EpisodeLog], model_name: str
+) -> dict[str, tuple[float, float]]:
+    # rewards_list = []
+    rewards_dict = defaultdict(
+        list
+    )  # {pk: [rewards]}, {pk}_{i} denotes the i-th agent is the test agent
     avg_reward_dict = {}
+    avg_variance_dict = {}
+    var_reward_list = []
     for episode in episodes:
         assert episode.models is not None, "episode.models should not be None"
         if episode.models[1] == model_name:
             reward = get_rewards_from_episode(episode)[0][1]
+            rewards_dict[f"{episode.environment}_0"].append(reward)
         else:
             reward = get_rewards_from_episode(episode)[1][1]
-        rewards_list.append(reward)
+            rewards_dict[f"{episode.environment}_1"].append(reward)
+        # rewards_list.append(reward)
+    dimensions = list(rewards_dict.values())[0][0].keys()
+
+    def calc_variance(local_rewards_list: List[Dict[str, float]]) -> Dict[str, float]:
+        # get the variance within a list
+        local_var_reward_dict = {}
+        local_dimensions = local_rewards_list[0].keys()
+        assert set(local_dimensions) == set(dimensions), "dimensions should be the same"
+        for dimension in local_dimensions:
+            rewards = [reward[dimension] for reward in local_rewards_list]
+            avg_reward = sum(rewards) / len(rewards)
+            variance = sum([(reward - avg_reward) ** 2 for reward in rewards]) / len(
+                rewards
+            )
+            local_var_reward_dict[dimension] = variance
+
+        return local_var_reward_dict
+
+    rewards_list = list(chain(*rewards_dict.values()))
+
+    var_reward_list = [calc_variance(rewards) for rewards in rewards_dict.values()]
     for dimension in rewards_list[0].keys():
         rewards = [reward[dimension] for reward in rewards_list]
         avg_reward = sum(rewards) / len(rewards)
         avg_reward_dict[dimension] = avg_reward
-    return avg_reward_dict
+
+        variances = [variance[dimension] for variance in var_reward_list]
+        # print(f"Dimension {dimension}, variances: {variances}, {len(variances)}")
+        avg_variance = sum(variances) / len(variances)
+        avg_variance_dict[dimension] = avg_variance
+
+    return_rewards_dict = {
+        key: (avg_reward_dict[key], math.sqrt(avg_variance_dict[key]))
+        for key in avg_reward_dict.keys()
+    }
+    return_rewards_dict = {
+        **return_rewards_dict,
+        "setting_num": (float(len(var_reward_list)), 0.0),
+        "episode_count": (float(len(rewards_list)), 0.0),
+    }
+
+    return return_rewards_dict
 
 
 def _list_all_env_agent_combo_not_in_db(
@@ -133,10 +179,7 @@ def _list_all_env_agent_combo_not_in_db(
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             terminal_evaluators=[
-                ReachGoalLLMEvaluator(
-                    model_names["env"],
-                    EvaluationForTwoAgents[SotopiaDimensions],
-                ),
+                ReachGoalLLMEvaluator(model_names["env"]),
             ],
         )
         agent_profiles = [AgentProfile.get(id) for id in agent_ids]
@@ -240,7 +283,7 @@ def run_async_benchmark_in_batch(
                     model_names["test_model"],
                 )
                 rewards_dict["model_name"] = model_names["test_model"]  # type: ignore
-                rewards_dict["episode_count"] = len(simulated_episodes)
+                rewards_dict["episode_count"] = len(simulated_episodes)  # type: ignore
                 rich.print(rewards_dict)
                 return
 
@@ -269,7 +312,7 @@ def _set_up_logs(
 
 
 def save_to_jsonl(
-    model_rewards_dict: Dict[str, Dict[str, float]],
+    model_rewards_dict: Dict[str, Dict[str, Tuple[float, float]]],
     partner_model: str,
 ) -> None:
     simplified_model_name = partner_model.split("/")[-1]
@@ -280,7 +323,7 @@ def save_to_jsonl(
             {
                 "model_name": model,
                 **{
-                    f"{v[0]} {v[1]}": rewards[k]
+                    f"{v[0]} {v[1]}": rewards[k][0]
                     for k, v in dimension_range_mapping.items()
                 },
             }
@@ -309,7 +352,7 @@ dimension_range_mapping = OrderedDict(
 
 
 def display_in_table(
-    model_rewards_dict: Dict[str, Dict[str, float]], partner_model: str
+    model_rewards_dict: Dict[str, Dict[str, Tuple[float, float]]], partner_model: str
 ) -> None:
     table = rich.table.Table(
         title="Model Performance when facing {}".format(partner_model)
@@ -317,10 +360,18 @@ def display_in_table(
     table.add_column("Model")
     for dimension in dimension_range_mapping.keys():
         table.add_column(dimension)
+    table.add_column("Settings")
+    table.add_column("Episodes")
     for model, rewards in model_rewards_dict.items():
         table.add_row(
             model,
-            *[f"{rewards[k]:.2f}" for k in dimension_range_mapping.keys()],
+            *(
+                [
+                    f"{rewards[k][0]:.2f} ± {rewards[k][1]:.2f}"
+                    for k in dimension_range_mapping.keys()
+                ]
+                + [f"{rewards[k][0]:.0f}" for k in ["setting_num", "episode_count"]]
+            ),
         )
     rich.print(table)
 
@@ -347,7 +398,7 @@ def benchmark_display(
             continue
         avg_rewards = get_avg_reward(episodes, model)  # type: ignore
         model_rewards_dict[model] = avg_rewards
-        print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
+        # print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
 
     display_in_table(model_rewards_dict, partner_model)
     if output_to_jsonl:
