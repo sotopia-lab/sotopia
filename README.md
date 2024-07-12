@@ -2,23 +2,28 @@
   <img src="figs/title.png" style="width: 100%;" alt="sotopia"></img>
 </div>
 
-# Sotopia: an Open-ended Social Learning Environment
+<h1 align="center">Sotopia: an Open-ended Social Learning Environment</h1>
+
+<div align="center">
+
+[![pypi](https://img.shields.io/pypi/v/sotopia.svg)](https://pypi.python.org/pypi/sotopia)
+[![versions](https://img.shields.io/pypi/pyversions/sotopia.svg)](https://github.com/sotopia/sotopia)
+[![CI](https://img.shields.io/github/actions/workflow/status/sotopia-lab/sotopia/tests.yml?branch=main&logo=github&label=CI)](https://github.com/sotopia-lab/sotopia/actions?query=branch%3Amain)
+[![codecov](https://codecov.io/github/sotopia-lab/sotopia/graph/badge.svg?token=00LRQFX0QR)](https://codecov.io/github/sotopia-lab/sotopia)
+[![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing)
+
 [![Project Page](https://img.shields.io/badge/Project-Page-green.svg)](https://www.sotopia.world/projects/sotopia)
 [![Paper PDF](https://img.shields.io/badge/Paper-PDF-red.svg)](https://arxiv.org/abs/2310.11667)
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3109/)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
-<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
-[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
-[![bear-ified](https://raw.githubusercontent.com/beartype/beartype-assets/main/badge/bear-ified.svg)](https://beartype.readthedocs.io)
-[![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/tests.yml/badge.svg?branch=main)]()
-[![Github Action](https://github.com/XuhuiZhou/sotopia/actions/workflows/pre-commit.yml/badge.svg?branch=main)]()
 [![Dataset](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Dataset-yellow)](https://huggingface.co/datasets/cmu-lti/sotopia)
 [![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://huggingface.co/spaces/cmu-lti/sotopia-space/)
 
+
+
+</div>
+
 ## News
 
-* [05/2024] Sotopia will be presented at ICLR 2024 as a spotlight ⭐!
-* [05/2024] We release [a simple tutorial](https://colab.research.google.com/drive/14hJOfzpA37PRUzdlFgiqVzUGIhhngqnz?usp=sharing) for you to run sotopia end-to-end on google colab.
+* [05/2024] Sotopia was presented at ICLR 2024 as a spotlight ⭐!
 
 
 ## Introduction
@@ -36,6 +41,9 @@ Sotopia is an open-ended social learning environment that allows agents to inter
   url = {https://openreview.net/forum?id=mM7VurbA4r},
 }
 ```
+
+## Help
+See [documentation](https://docs.sotopia.world) for more details.
 
 
 ## Get started
@@ -74,7 +82,7 @@ For some experiments, TogetherAI key is required to run the code. Please set the
 conda env config vars set TOGETHER_API_KEY=your_key
 ```
 
-A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. You can also check [Q&A](/docs/all_the_issues.md) to initiate the redis server with the Sotopia data.
+A redis-stack server is required to run the code. Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. You can also check [Q&A](/docs/troubleshooting.md) to initiate the redis server with the Sotopia data.
 
 The `REDIS_OM_URL` need to be set before loading and saving agents:
 ```bash
@@ -148,7 +156,7 @@ To run a large batch of environments, you can change the `ENV_IDS` parameter in 
 ## Getting access to your simulation
 After running experiments, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
 
-For the original Sotopia simulation in our paper's experiments, you can find how to get them in the [Q&A](/docs/all_the_issues.md) section in the `./docs` folder.
+For the original Sotopia simulation in our paper's experiments, you can find how to get them in the [Q&A](/docs/troubleshooting.md) section in the `./docs` folder.
 
 ## Adding new characters and environments
 You can use the following function with the `**kwargs` being the properties of the `AgentProfile` class. This is the same for the scenarios/environments.

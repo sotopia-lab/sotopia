@@ -1,15 +1,14 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, cast
+from typing import cast
 
 from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile
 from sotopia.generation_utils.generate import (
+    LLM_Name,
     agenerate_action,
+    agenerate_goal,
     agenerate_script,
-    generate_action,
-    generate_action_speak,
-    generate_goal,
 )
 from sotopia.messages import AgentAction, Observation
 from sotopia.messages.message_classes import ScriptBackground
@@ -43,16 +42,8 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     def goal(self) -> str:
         if self._goal is not None:
             return self._goal
-        assert (
-            len(self.inbox) > 0
-        ), "attribute goal has to be called after at least one step"
-        goal = generate_goal(
-            self.model_name,
-            background=self.inbox[0][
-                1
-            ].to_natural_language(),  # Only consider the first message for now
-        )
-        return goal
+        else:
+            raise Exception("Goal is not set.")
 
     @goal.setter
     def goal(self, goal: str) -> None:
@@ -60,31 +51,25 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     def act(
         self,
-        obs: Observation,
-        gen_func: Callable[..., AgentAction] = generate_action,
+        _obs: Observation,
     ) -> AgentAction:
-        self.recv_message("Environment", obs)
-
-        if len(obs.available_actions) == 1 and "none" in obs.available_actions:
-            return AgentAction(action_type="none", argument="")
-        else:
-            action = gen_func(
-                self.model_name,
-                history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
-                turn_number=obs.turn_number,
-                action_types=obs.available_actions,
-                agent=self.agent_name,
-                goal=self.goal,
-            )
-            return action
+        raise Exception("Sync act method is deprecated. Use aact instead.")
 
     async def aact(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
 
+        if self._goal is None:
+            self._goal = await agenerate_goal(
+                self.model_name,
+                background=self.inbox[0][
+                    1
+                ].to_natural_language(),  # Only consider the first message for now
+            )
+
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="")
         else:
-            action, prompt = await agenerate_action(
+            action = await agenerate_action(
                 self.model_name,
                 history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
                 turn_number=obs.turn_number,
@@ -146,15 +131,6 @@ class ScriptWritingAgent(LLMAgent):
         return returned_action
 
 
-class SpeakAgent(LLMAgent):
-    def act(
-        self,
-        obs: Observation,
-        gen_func: Callable[..., AgentAction] = generate_action_speak,
-    ) -> AgentAction:
-        return super().act(obs, gen_func=gen_func)
-
-
 class HumanAgent(BaseAgent[Observation, AgentAction]):
     """
     A human agent that takes input from the command line.
@@ -171,6 +147,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
             uuid_str=uuid_str,
             agent_profile=agent_profile,
         )
+        self.model_name: LLM_Name = "human"
 
     @property
     def goal(self) -> str:

@@ -27,6 +27,8 @@ from sotopia.envs.evaluators import (
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.server import arun_one_episode
 
+from sotopia.envs.evaluators import SotopiaDimensions, EvaluationForTwoAgents
+
 process = subprocess.Popen(
     ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
 )
@@ -62,7 +64,7 @@ async def _start_server_with_two_session_ids_and_agent_env_combo(
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator("gpt-4"),
+            ReachGoalLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
         ],
     )
     random.shuffle(session_ids)
@@ -76,7 +78,6 @@ async def _start_server_with_two_session_ids_and_agent_env_combo(
     await arun_one_episode(
         env,
         agents,
-        {"env": "gpt-4", "agent1": "redis", "agent2": "redis"},
         tag="human_human_v0.0.3_dryrun",
         push_to_db=True,
     )
@@ -96,7 +97,7 @@ async def _start_server_with_one_session_id_and_agent_env_combo(
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator("gpt-4"),
+            ReachGoalLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
         ],
     )
 
@@ -126,11 +127,6 @@ async def _start_server_with_one_session_id_and_agent_env_combo(
     await arun_one_episode(
         env,
         agents,
-        {
-            "env": "gpt-4",
-            "agent1": "redis" if left_or_right == "left" else "gpt-4",
-            "agent2": "redis" if left_or_right == "right" else "gpt-4",
-        },
         tag="human_human_v0.0.3_dryrun",
         push_to_db=True,
     )

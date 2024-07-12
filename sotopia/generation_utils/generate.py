@@ -1,11 +1,13 @@
 import logging
+import os
 import re
-from typing import Any, TypeVar
+from typing import TypeVar, Any
 
 import gin
 from beartype import beartype
 from beartype.typing import Type
-from langchain.chains import LLMChain
+from langchain_core.runnables.base import RunnableSerializable
+from langchain_core.messages.base import BaseMessage
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -13,7 +15,7 @@ from langchain.prompts import (
     PromptTemplate,
 )
 from langchain.schema import BaseOutputParser, OutputParserException
-from langchain_community.chat_models import ChatLiteLLM
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from pydantic import BaseModel, Field
 from rich import print
 from typing_extensions import Literal
@@ -32,49 +34,22 @@ log = logging.getLogger("generate")
 logging_handler = LoggingCallbackHandler("langchain")
 
 LLM_Name = Literal[
-    "togethercomputer/llama-2-7b-chat",
-    "togethercomputer/llama-2-70b-chat",
-    "togethercomputer/mpt-30b-chat",
+    "together_ai/meta-llama/Llama-2-7b-chat-hf",
+    "together_ai/meta-llama/Llama-2-70b-chat-hf",
+    "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
+    "together_ai/meta-llama/Llama-3-8b-chat-hf",
+    "together_ai/meta-llama/Llama-3-70b-chat-hf",
     "gpt-3.5-turbo",
     "gpt-3.5-turbo-finetuned",
     "gpt-3.5-turbo-ft-MF",
-    "text-davinci-003",
     "gpt-4",
     "gpt-4-turbo",
     "human",
     "redis",
-    "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "together_ai/togethercomputer/llama-2-7b-chat",
-    "together_ai/togethercomputer/falcon-7b-instruct",
     "groq/llama3-70b-8192",
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
-
-
-class PatchedChatLiteLLM(ChatLiteLLM):
-    max_tokens: int | None = None  # type: ignore
-
-    @property
-    def _default_params(self) -> dict[str, Any]:
-        """Get the default parameters for calling OpenAI API."""
-        set_model_value = self.model
-        if self.model_name is not None:
-            set_model_value = self.model_name
-
-        params = {
-            "model": set_model_value,
-            "force_timeout": self.request_timeout,
-            "stream": self.streaming,
-            "n": self.n,
-            "temperature": self.temperature,
-            "custom_llm_provider": self.custom_llm_provider,
-            **self.model_kwargs,
-        }
-        if self.max_tokens is not None:
-            params["max_tokens"] = self.max_tokens
-
-        return params
 
 
 class EnvResponse(BaseModel):
@@ -321,22 +296,83 @@ def obtain_chain(
     input_variables: list[str],
     temperature: float = 0.7,
     max_retries: int = 6,
-) -> LLMChain:
+) -> RunnableSerializable[dict[Any, Any], BaseMessage]:
     """
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    chat = PatchedChatLiteLLM(
-        model=model_name,
-        temperature=temperature,
-        max_retries=max_retries,
-    )
-    human_message_prompt = HumanMessagePromptTemplate(
-        prompt=PromptTemplate(template=template, input_variables=input_variables)
-    )
-    chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-    chain = LLMChain(llm=chat, prompt=chat_prompt_template)
-    return chain
+    if "together_ai" in model_name:
+        model_name = "/".join(model_name.split("/")[1:])
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chat_openai = ChatOpenAI(
+            model_name=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            openai_api_base="https://api.together.xyz/v1",
+            openai_api_key=os.environ.get("TOGETHER_API_KEY"),
+        )
+        chain = chat_prompt_template | chat_openai
+        return chain
+    elif "groq" in model_name:
+        model_name = "/".join(model_name.split("/")[1:])
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chat_openai = ChatOpenAI(
+            model_name=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            openai_api_base="https://api.groq.com/openai/v1",
+            openai_api_key=os.environ.get("GROQ_API_KEY"),
+        )
+        chain = chat_prompt_template | chat_openai
+        return chain
+    elif "azure" in model_name:
+        # azure/resource_name/deployment_name/version
+        azure_credentials = model_name.split("/")[1:]
+        resource_name, deployment_name, azure_version = (
+            azure_credentials[0],
+            azure_credentials[1],
+            azure_credentials[2],
+        )
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chat_azure_openai = AzureChatOpenAI(
+            azure_deployment=deployment_name,
+            openai_api_version=azure_version,
+            azure_endpoint=f"https://{resource_name}.openai.azure.com",
+            temperature=temperature,
+            max_retries=max_retries,
+        )
+        chain = chat_prompt_template | chat_azure_openai
+        return chain
+    else:
+        chat = ChatOpenAI(
+            model=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+        )
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(template=template, input_variables=input_variables)
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chain = chat_prompt_template | chat
+        return chain
 
 
 @beartype
@@ -345,7 +381,7 @@ def format_bad_output_for_script(
     format_instructions: str,
     agents: list[str],
     model_name: str = "gpt-3.5-turbo",
-) -> str:
+) -> BaseMessage:
     template = """
     Given the string that can not be parsed by a parser, reformat it to a string that can be parsed by the parser which uses the following format instructions. Do not add or delete any information.
     Small tip: for every round of conversation, first determine the name and the case, and whether this line contains errors. Correct it if necessary.
@@ -369,17 +405,17 @@ def format_bad_output_for_script(
         "format_instructions": format_instructions,
         "agents": agents,
     }
-    reformat = chain.predict([logging_handler], **input_values)
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
 
 @beartype
 def format_bad_output(
-    ill_formed_output: str,
+    ill_formed_output: BaseMessage,
     format_instructions: str,
     model_name: str = "gpt-3.5-turbo",
-) -> str:
+) -> BaseMessage:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
     Original string: {ill_formed_output}
@@ -394,16 +430,17 @@ def format_bad_output(
         input_variables=re.findall(r"{(.*?)}", template),
     )
     input_values = {
-        "ill_formed_output": ill_formed_output,
+        "ill_formed_output": ill_formed_output.content,
         "format_instructions": format_instructions,
     }
-    reformat = chain.predict([logging_handler], **input_values)
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
 
+@gin.configurable
 @beartype
-def generate(
+async def agenerate(
     model_name: str,
     template: str,
     input_values: dict[str, str],
@@ -425,52 +462,9 @@ def generate(
     )
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
-    result = chain.predict([logging_handler], **input_values)
+    result = await chain.ainvoke(input_values, config={"callbacks": [logging_handler]})
     try:
-        parsed_result = output_parser.parse(result)
-    except KeyboardInterrupt:
-        raise KeyboardInterrupt
-    except Exception as e:
-        log.debug(
-            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
-            extra={"markup": True},
-        )
-        reformat_parsed_result = format_bad_output(
-            result, format_instructions=output_parser.get_format_instructions()
-        )
-        parsed_result = output_parser.parse(reformat_parsed_result)
-    log.info(f"Generated result: {parsed_result}")
-    return parsed_result
-
-
-@gin.configurable
-@beartype
-async def agenerate(
-    model_name: str,
-    template: str,
-    input_values: dict[str, str],
-    output_parser: BaseOutputParser[OutputType],
-    temperature: float = 0.7,
-) -> tuple[OutputType, str]:
-    input_variables = re.findall(r"{(.*?)}", template)
-    assert (
-        set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
-        or set(input_variables) == set(list(input_values.keys()))
-    ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
-    # process template
-    template = format_docstring(template)
-    chain = obtain_chain(
-        model_name=model_name,
-        template=template,
-        input_variables=input_variables,
-        temperature=temperature,
-    )
-    if "format_instructions" not in input_values:
-        input_values["format_instructions"] = output_parser.get_format_instructions()
-    result = await chain.apredict([logging_handler], **input_values)
-    prompt = logging_handler.retrive_prompt()
-    try:
-        parsed_result = output_parser.parse(result)
+        parsed_result = output_parser.invoke(result)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e  # the problem has been handled in the parser
@@ -481,38 +475,9 @@ async def agenerate(
         reformat_parsed_result = format_bad_output(
             result, format_instructions=output_parser.get_format_instructions()
         )
-        parsed_result = output_parser.parse(reformat_parsed_result)
+        parsed_result = output_parser.invoke(reformat_parsed_result)
     log.info(f"Generated result: {parsed_result}")
-    return parsed_result, prompt
-
-
-# deprecated function
-@beartype
-def generate_episode(
-    model_name: str,
-    participants: str = "Jack (a greedy person), Rose",
-    topic: str = "lawsuit",
-    extra_info: str = "",
-) -> EnvResponse:
-    """
-    Using langchain to generate an example episode
-    """
-    return generate(
-        model_name=model_name,
-        template="""
-            Please generate a episode for the interaction between {participants} regarding {topic}.
-            You should generate the personal backgrounds and goals in this interaction.
-            Use the following extra info if given: {extra_info}
-            Please use the following format:
-            {format_instructions}
-        """,
-        input_values=dict(
-            participants=participants,
-            topic=topic,
-            extra_info=extra_info,
-        ),
-        output_parser=EnvResponsePydanticOutputParser(),
-    )
+    return parsed_result
 
 
 @gin.configurable
@@ -593,114 +558,6 @@ async def agenerate_enviroment_profile(
     )
 
 
-@beartype
-def fill_in_background(
-    model_name: str,
-    partial_background: ScriptBackground,
-) -> ScriptBackground:
-    """
-    Fill in the missing information of the background
-    """
-    return generate(
-        model_name=model_name,
-        template="""Please fill in all missing information of the given background, don't leave any <missing_info> tag:
-            {partial_background}
-            Please use the following format:
-            {format_instructions}
-            """,
-        input_values=dict(
-            partial_background=partial_background.to_natural_language(),
-        ),
-        output_parser=PydanticOutputParser(pydantic_object=ScriptBackground),
-    )
-
-
-@beartype
-def generate_action(
-    model_name: str,
-    history: str,
-    turn_number: int,
-    action_types: list[ActionType],
-    agent: str,
-    goal: str,
-) -> AgentAction:
-    """
-    Using langchain to generate an example episode
-    """
-    try:
-        return generate(
-            model_name=model_name,
-            template="""
-                Imagine you are {agent}, your task is to act/speak like {agent} with {agent}'s social goal in mind.
-                You can find {agent}'s background and goal in the following history:
-                {history}
-                You are at Turn #{turn_number}. Your available action types are
-                {action_list}.
-                Note: You can "leave" this conversation if 1. this conversation makes you uncomfortable, 2. you find it uninteresting/you lose your patience, 3. you have achieved your social goals, 4. or for other reasons you want to leave.
-
-                Please only generate a JSON string including the action type and the argument.
-                Your action should follow the given format:
-                {format_instructions}
-            """,
-            input_values=dict(
-                agent=agent,
-                turn_number=str(turn_number),
-                history=history,
-                action_list=" ".join(action_types),
-            ),
-            output_parser=PydanticOutputParser(pydantic_object=AgentAction),
-        )
-    except KeyboardInterrupt:
-        raise KeyboardInterrupt
-    except Exception:
-        return AgentAction(action_type="none", argument="")
-
-
-@beartype
-def generate_action_speak(
-    model_name: str,
-    history: str,
-    turn_number: int,
-    action_types: list[ActionType],
-    agent: str,
-    goal: str,
-) -> AgentAction:
-    """
-    Using langchain to generate the action but only speak action is allowed
-    """
-    try:
-        utterance = generate(
-            model_name=model_name,
-            template="""
-                You are {agent}.
-                {history}
-
-                You are at Turn #{turn_number}. Your available action type is speak.
-                Your goal is: {goal}
-                Follow the given format:
-                {agent} said: <utterance>
-                <utterance> should not include any quotation marks, "Turn #", or etc.
-            """,
-            input_values=dict(
-                agent=agent,
-                turn_number=str(turn_number),
-                history=history,
-                goal=goal,
-            ),
-            output_parser=StrOutputParser(),
-        )
-        # delete the first line
-        utterance = utterance.replace(f"{agent} said:", "")
-        utterance = utterance.replace(f"Turn #{turn_number}:", "")
-        utterance = utterance.strip()
-        utterance = utterance.replace('"', "")
-        return AgentAction(action_type="speak", argument=utterance)
-    except KeyboardInterrupt:
-        raise KeyboardInterrupt
-    except Exception:
-        return AgentAction(action_type="none", argument="")
-
-
 @gin.configurable
 @beartype
 async def agenerate_action(
@@ -712,7 +569,7 @@ async def agenerate_action(
     goal: str,
     temperature: float = 0.7,
     script_like: bool = False,
-) -> tuple[AgentAction, str]:
+) -> AgentAction:
     """
     Using langchain to generate an example episode
     """
@@ -763,7 +620,7 @@ async def agenerate_action(
             temperature=temperature,
         )
     except Exception:
-        return AgentAction(action_type="none", argument=""), ""
+        return AgentAction(action_type="none", argument="")
 
 
 @gin.configurable
@@ -803,7 +660,7 @@ async def agenerate_script(
                     history=history,
                     agent=agent_name,
                 ),
-                output_parser=ScriptOutputParser(
+                output_parser=ScriptOutputParser(  # type: ignore[arg-type]
                     agent_names=agent_names,
                     background=background.to_natural_language(),
                     single_turn=True,
@@ -825,7 +682,7 @@ async def agenerate_script(
                 input_values=dict(
                     background=background.to_natural_language(),
                 ),
-                output_parser=ScriptOutputParser(
+                output_parser=ScriptOutputParser(  # type: ignore[arg-type]
                     agent_names=agent_names,
                     background=background.to_natural_language(),
                     single_turn=False,
@@ -859,11 +716,11 @@ def process_history(
 
 
 @beartype
-def generate_init_profile(model_name: str, basic_info: dict[str, str]) -> str:
+async def agenerate_init_profile(model_name: str, basic_info: dict[str, str]) -> str:
     """
     Using langchain to generate the background
     """
-    return generate(
+    return await agenerate(
         model_name=model_name,
         template="""Please expand a fictional background for {name}. Here is the basic information:
             {name}'s age: {age}
@@ -897,9 +754,9 @@ def generate_init_profile(model_name: str, basic_info: dict[str, str]) -> str:
 
 
 @beartype
-def convert_narratives(model_name: str, narrative: str, text: str) -> str:
+async def convert_narratives(model_name: str, narrative: str, text: str) -> str:
     if narrative == "first":
-        return generate(
+        return await agenerate(
             model_name=model_name,
             template="""Please convert the following text into a first-person narrative.
             e.g, replace name, he, she, him, her, his, and hers with I, me, my, and mine.
@@ -908,7 +765,7 @@ def convert_narratives(model_name: str, narrative: str, text: str) -> str:
             output_parser=StrOutputParser(),
         )
     elif narrative == "second":
-        return generate(
+        return await agenerate(
             model_name=model_name,
             template="""Please convert the following text into a second-person narrative.
             e.g, replace name, he, she, him, her, his, and hers with you, your, and yours.
@@ -921,11 +778,11 @@ def convert_narratives(model_name: str, narrative: str, text: str) -> str:
 
 
 @beartype
-def generate_goal(model_name: str, background: str) -> str:
+async def agenerate_goal(model_name: str, background: str) -> str:
     """
     Using langchain to generate the background
     """
-    return generate(
+    return await agenerate(
         model_name=model_name,
         template="""Please generate your goal based on the background:
             {background}
