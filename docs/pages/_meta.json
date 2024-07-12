@@ -27,6 +27,10 @@
                 "title": "Scripts",
                 "href": "/scripts"
             },
+            "benchmark": {
+                "title": "Benchmark",
+                "href": "/benchmark"
+            },
             "xml": {
                 "title": "XML Formatter",
                 "href": "/xml"
