@@ -447,7 +447,9 @@ async def agenerate(
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
 ) -> OutputType:
-    input_variables = re.findall(r"(?<!{){([^{}]+)}(?!})", template)
+    input_variables = re.findall(
+        r"(?<!{){([^{}]+)}(?!})", template
+    )  # Add negative lookbehind and lookahead to avoid matching {{}}; note that {ab{ab}ab} will not be matched
     assert (
         set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
         or set(input_variables) == set(list(input_values.keys()))
