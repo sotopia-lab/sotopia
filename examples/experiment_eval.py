@@ -10,6 +10,8 @@ import gin
 from absl import flags
 from rich.logging import RichHandler
 from tqdm import tqdm
+from typing import Type
+from pydantic import BaseModel
 
 from sotopia.agents import LLMAgent
 from sotopia.database import (
@@ -23,7 +25,6 @@ from sotopia.envs.evaluators import (
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
-    EvaluationByGroup,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import LLM_Name
@@ -108,6 +109,7 @@ def _iterate_env_agent_combo_not_in_db(
     model_names: dict[str, LLM_Name],
     env_ids: list[str] = [],
     tag: str | None = None,
+    evaluation_class: Type[BaseModel] = SotopiaDimensions,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
     """We iterate over each environment and return the **first** env-agent combo that is not in the database."""
     if not env_ids:
@@ -148,7 +150,7 @@ def _iterate_env_agent_combo_not_in_db(
                 terminal_evaluators=[
                     ReachGoalLLMEvaluator(
                         model_names["env"],
-                        EvaluationForTwoAgents[EvaluationByGroup],
+                        EvaluationForTwoAgents[evaluation_class],  # type: ignore
                     ),
                 ],
             )
@@ -209,6 +211,7 @@ def run_async_server_in_batch(
                     )
                 )
                 env_agent_combo_batch = []
+                return
         else:
             if env_agent_combo_batch:
                 logging.info(

@@ -206,7 +206,7 @@ class GoalDimension(BaseModel):
         return v
 
 
-T_eval_dim = TypeVar("T_eval_dim", bound=SotopiaDimensions)
+T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
 
 class EvaluationForTwoAgents(GenericModel, Generic[T_eval_dim]):
