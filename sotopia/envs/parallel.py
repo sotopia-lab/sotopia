@@ -2,7 +2,7 @@ import asyncio
 import copy
 import itertools
 import random
-from typing import Any, Literal
+from typing import Any, Literal, Optional, Type, TypeVar
 
 from beartype import beartype
 from gin import configurable
@@ -29,6 +29,8 @@ from sotopia.messages import (
 from sotopia.renderers import RenderContext, XMLRenderer
 
 from .evaluators import Evaluator, unweighted_aggregate_evaluate
+
+TBackground = TypeVar("TBackground", bound=ScriptBackground)
 
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
@@ -133,6 +135,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         terminal_evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,
         env_profile: EnvironmentProfile | None = None,
+        background_class: Optional[Type[TBackground]] = None,
     ) -> None:
         """A sotopia environment for parallel agents.
 
@@ -143,7 +146,11 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         """
         super().__init__()
         self.model_name = model_name
-        self.background = ScriptBackground(
+        if background_class is None:
+            self.background_class = ScriptBackground
+        else:
+            self.background_class = background_class
+        self.background = self.background_class(
             scenario="",
             p1_background="",
             p2_background="",
@@ -207,7 +214,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             agent_goals = self.profile.agent_goals
             assert len(agent_goals) == 2, "Only supporting two agents right now"
 
-            raw_background = ScriptBackground(
+            raw_background = self.background_class(
                 scenario=self.profile.scenario,
                 p1_background=get_bio(
                     self.profile.relationship,
@@ -229,7 +236,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 raw_background.p1_background = ""
                 raw_background.p2_background = ""
 
-            self.background = ScriptBackground(
+            self.background = self.background_class(
                 scenario=render_text_for_environment(raw_background.scenario),
                 p1_background=render_text_for_environment(raw_background.p1_background),
                 p2_background=render_text_for_environment(raw_background.p2_background),
@@ -242,14 +249,14 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             raise ValueError("agents must be provided")
 
         self.agents = [self.background.p1_name, self.background.p2_name]
-        agent_backgrounds: list[ScriptBackground] = []
+        agent_backgrounds = []
         if omniscient:
             for i in range(self.num_agents):
                 agent_backgrounds.append(copy.deepcopy(self.background))
         else:
             for i in range(self.num_agents):
                 agent_backgrounds.append(
-                    ScriptBackground(
+                    self.background_class(
                         scenario=render_text_for_agent(raw_background.scenario, i),
                         p1_background=render_text_for_agent(
                             raw_background.p1_background, i
