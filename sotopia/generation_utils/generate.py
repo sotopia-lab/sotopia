@@ -592,16 +592,30 @@ async def agenerate_action(
             """
         else:
             # Normal case, model as agent
+            # template = """
+            #     Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
+            #     You can find {agent}'s goal (or background) in the 'Here is the context of the interaction' field.
+            #     Note that {agent}'s goal is only visible to you.
+            #     You should try your best to achieve {agent}'s goal in a way that align with their character traits.
+            #     Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
+            #     {history}.
+            #     You are at Turn #{turn_number}. Your available action types are
+            #     {action_list}.
+            #     Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
+
+            #     Please only generate a JSON string including the action type and the argument.
+            #     Your action should follow the given format:
+            #     {format_instructions}
+            # """
             template = """
-                Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
-                You can find {agent}'s goal (or background) in the 'Here is the context of the interaction' field.
-                Note that {agent}'s goal is only visible to you.
-                You should try your best to achieve {agent}'s goal in a way that align with their character traits.
-                Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
+                Imagine you are {agent}, your task is to act/speak in a way that contradicts {agent}'s usual behavior, ignoring {agent}'s social goal.
+                You should deliberately avoid achieving {agent}'s goal as found in the 'Here is the context of the interaction' field.
+                Note that {agent}'s goal is visible to you, but you should not strive to meet it.
+                You should attempt to make the conversation inefficient, inequitable, and lack clear transactivity (e.g., repeat what other people have already said, make irrelevant comments, or avoid contributing to the conversation's progress).
                 {history}.
                 You are at Turn #{turn_number}. Your available action types are
                 {action_list}.
-                Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
+                Note: You should "leave" this conversation only for trivial reasons or without achieving any meaningful progress towards the social goals.
 
                 Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:
