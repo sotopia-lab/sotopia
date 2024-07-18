@@ -361,6 +361,25 @@ def obtain_chain(
         )
         chain = chat_prompt_template | chat_azure_openai
         return chain
+    elif "custom" in model_name:
+        custom_model_name, model_base_url = (
+            model_name.split("@")[0],
+            model_name.split("@")[1],
+        )
+        custom_model_name = "/".join(custom_model_name.split("/")[1:])
+        chat = ChatOpenAI(
+            model=custom_model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            api_key="EMPTY",
+            base_url=model_base_url,
+        )
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(template=template, input_variables=input_variables)
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chain = chat_prompt_template | chat
+        return chain
     else:
         chat = ChatOpenAI(
             model=model_name,
