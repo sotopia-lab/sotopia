@@ -1,10 +1,15 @@
 {
     "index": {
-        "type": "page",
-        "title": "Home"
+        "title": "Introduction",
+        "theme": {
+            "breadcrumb": true
+        }
     },
-    "contribution_menu": {
-        "title": "Documentation",
+    "---": {
+        "type": "separator"
+    },
+    "concepts": {
+        "title": "Concepts",
         "type": "menu",
         "items": {
             "agents": {
