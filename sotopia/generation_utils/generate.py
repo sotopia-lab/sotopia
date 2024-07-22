@@ -301,7 +301,7 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    if "together_ai" in model_name:
+    if model_name.startswith("together_ai"):
         model_name = "/".join(model_name.split("/")[1:])
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
@@ -319,7 +319,7 @@ def obtain_chain(
         )
         chain = chat_prompt_template | chat_openai
         return chain
-    elif "groq" in model_name:
+    elif model_name.startswith("groq"):
         model_name = "/".join(model_name.split("/")[1:])
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
@@ -337,7 +337,7 @@ def obtain_chain(
         )
         chain = chat_prompt_template | chat_openai
         return chain
-    elif "azure" in model_name:
+    elif model_name.startswith("azure"):
         # azure/resource_name/deployment_name/version
         azure_credentials = model_name.split("/")[1:]
         resource_name, deployment_name, azure_version = (
@@ -361,7 +361,7 @@ def obtain_chain(
         )
         chain = chat_prompt_template | chat_azure_openai
         return chain
-    elif "custom" in model_name:
+    elif model_name.startswith("custom"):
         custom_model_name, model_base_url = (
             model_name.split("@")[0],
             model_name.split("@")[1],
