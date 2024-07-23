@@ -153,6 +153,22 @@ For the complete set of parameters, please check the `sotopia_conf` folder.
 
 To run a large batch of environments, you can change the `ENV_IDS` parameter in `sotopia_conf/run_async_server_in_batch.gin` to a list of environment ids. When `gin.ENV_IDS==[]`, all environments on the DB will be used.
 
+## Custom OPENAI API URL
+To use a custom API url for agent models, you can set `AGENT1_MODEL` to the following format:
+```python
+"custom/{model_name}@{base_url}"
+```
+
+As an example, if you use vllm to expose an OpenAI API:
+```bash
+python -m vllm.entrypoints.openai.api_server     --model facebook/opt-125m
+```
+
+The `gin.AGENT1_MODEL` should be set to:
+```python
+"custom/facebook/opt-125m@http://localhost:8000/v1"
+```
+
 ## Getting access to your simulation
 After running experiments, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
 
