@@ -48,5 +48,11 @@
                 "href": "/examples"
             }
         }
+    },
+    "getting-started": {
+        "title": "Getting Started",
+        "type": "menu",
+        "items": {
+        }
     }
 }
