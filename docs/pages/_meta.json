@@ -20,10 +20,6 @@
                 "title": "Environments",
                 "href": "/environments"
             },
-            "examples": {
-                "title": "Examples",
-                "href": "/examples"
-            },
             "hyperparameters": {
                 "title": "Hyperparameters",
                 "href": "/hyperparameters"
@@ -40,6 +36,16 @@
                 "title": "XML Formatter",
                 "href": "/xml"
 
+            }
+        }
+    },
+    "examples": {
+        "title": "Examples",
+        "type": "menu",
+        "items": {
+            "examples": {
+                "title": "Examples",
+                "href": "/examples"
             }
         }
     }
