@@ -371,7 +371,9 @@ def obtain_chain(
             model=custom_model_name,
             temperature=temperature,
             max_retries=max_retries,
-            api_key="EMPTY",
+            api_key=os.environ.get("CUSTOM_API_KEY")
+            if os.environ.get("CUSTOM_API_KEY")
+            else "EMPTY",
             base_url=model_base_url,
         )
         human_message_prompt = HumanMessagePromptTemplate(
