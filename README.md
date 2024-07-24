@@ -169,6 +169,15 @@ The `gin.AGENT1_MODEL` should be set to:
 "custom/facebook/opt-125m@http://localhost:8000/v1"
 ```
 
+If your API requires a token, you can set the environment variable `CUSTOM_API_KEY` to your key.
+
+As another example, if your vllm API requires a token:
+
+```bash
+python -m vllm.entrypoints.openai.api_server     --model facebook/opt-125m --api_key hello
+```
+You could set the environment variable `CUSTOM_API_KEY` to `hello`.
+
 ## Getting access to your simulation
 After running experiments, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
 
