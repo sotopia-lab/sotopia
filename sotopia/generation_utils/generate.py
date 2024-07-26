@@ -485,7 +485,7 @@ async def agenerate(
     ).with_config({"callbacks": [logging_handler]})
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
-    result = await chain.ainvoke(input_values, config={"callbacks": [logging_handler]})
+    result = await chain.ainvoke(input_values)
     try:
         parsed_result = output_parser.invoke(result)
     except Exception as e:
