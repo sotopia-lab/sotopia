@@ -120,13 +120,9 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
             )
         else:
             for _ in range(size):
-                if self.env_candidates:
-                    env_profile = random.choice(self.env_candidates)
-                    if isinstance(env_profile, str):
-                        env_profile = EnvironmentProfile.get(env_profile)
-                else:
-                    env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
-                    env_profile = EnvironmentProfile.get(env_profile_id)
+                env_profile = random.choice(self.env_candidates)
+                if isinstance(env_profile, str):
+                    env_profile = EnvironmentProfile.get(env_profile)
                 env_profiles.append(env_profile)
                 env_profile_id = env_profile.pk
                 assert env_profile_id, "Env candidate must have an id"
