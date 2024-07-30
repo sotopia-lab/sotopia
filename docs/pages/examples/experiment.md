@@ -18,3 +18,10 @@ To run a large batch of environments, you can change the `ENV_IDS` parameter in 
 After running experiments, you can go to the `examples/redis_stats.ipynb` notebook to check the existing episodes (Episode Log section), as well as calculate the performance.
 
 For the original Sotopia simulation in our paper's experiments, you can find how to get them in the [Q&A](/docs/troubleshooting.md) section in the `./docs` folder.
+
+# Hyperparameters that are used in the simulation
+
+## Tags
+
+- `TAG`: The tag of the simulation. This tag is used to identify the simulation in the database.
+- `TAG_TO_CHECK_EXISTING_EPISODES`: Scripts like `examples/experiment_eval.py` checks if there are existing episodes with the same tag in the database. If there are, the simulation **will not** be run. This is to avoid running the same simulation twice. If you want to run the simulation again, you can change the tag or set `TAG_TO_CHECK_EXISTING_EPISODES` to `None`.

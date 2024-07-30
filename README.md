@@ -55,6 +55,9 @@ Then:
 
 This will setup the necessary environment variables and download the necessary data.
 
+> [!TIP]
+> Having trouble installing? Or don't want to install redis for now? We are working on a public redis server for you to use. Stay tuned!
+
 OpenAI key is required to run the code. Please set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:
 ```bash
 conda env config vars set OPENAI_API_KEY=your_key

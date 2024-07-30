@@ -10,49 +10,14 @@
     },
     "concepts": {
         "title": "Concepts",
-        "type": "menu",
-        "items": {
-            "agents": {
-                "title": "Agents",
-                "href": "/agents"
-            },
-            "environments": {
-                "title": "Environments",
-                "href": "/environments"
-            },
-            "hyperparameters": {
-                "title": "Hyperparameters",
-                "href": "/hyperparameters"
-            },
-            "scripts": {
-                "title": "Scripts",
-                "href": "/scripts"
-            },
-            "benchmark": {
-                "title": "Benchmark",
-                "href": "/benchmark"
-            },
-            "xml": {
-                "title": "XML Formatter",
-                "href": "/xml"
-
-            }
-        }
+        "type": "page"
     },
     "examples": {
         "title": "Examples",
-        "type": "menu",
-        "items": {
-            "examples": {
-                "title": "Examples",
-                "href": "/examples"
-            }
-        }
+        "type": "page"
     },
-    "getting-started": {
-        "title": "Getting Started",
-        "type": "menu",
-        "items": {
-        }
+    "contribution": {
+        "title": "Contribution",
+        "type": "page"
     }
 }
