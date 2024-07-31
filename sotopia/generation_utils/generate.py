@@ -555,32 +555,6 @@ async def agenerate_relationship_profile(
     )
 
 
-@beartype
-async def agenerate_enviroment_profile(
-    model_name: str,
-    inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
-    examples: str = "",
-) -> tuple[EnvironmentProfile, str]:
-    """
-    Using langchain to generate the background
-    """
-    return await agenerate(
-        model_name=model_name,
-        template="""Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
-        Examples:
-        {examples}
-        Inspirational prompt: {inspiration_prompt}
-        Please use the following format:
-        {format_instructions}
-        """,
-        input_values=dict(
-            inspiration_prompt=inspiration_prompt,
-            examples=examples,
-        ),
-        output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
-    )
-
-
 @gin.configurable
 @beartype
 async def agenerate_action(
