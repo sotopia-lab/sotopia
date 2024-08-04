@@ -46,6 +46,12 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
 
         assert replacement, "Uniform sampling without replacement is not supported yet"
 
+        if self.env_candidates is None:
+            self.env_candidates = list(EnvironmentProfile.all_pks())
+
+        if self.agent_candidates is None:
+            self.agent_candidates = list(AgentProfile.all_pks())
+
         for _ in range(size):
             env_profile = random.choice(self.env_candidates)
             if isinstance(env_profile, str):

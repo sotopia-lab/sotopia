@@ -19,16 +19,8 @@ class BaseSampler(Generic[ObsType, ActType]):
         env_candidates: Sequence[EnvironmentProfile | str] | None = None,
         agent_candidates: Sequence[AgentProfile | str] | None = None,
     ) -> None:
-        self.env_candidates = (
-            env_candidates
-            if env_candidates is not None
-            else list(EnvironmentProfile.all_pks())
-        )
-        self.agent_candidates = (
-            agent_candidates
-            if agent_candidates is not None
-            else list(AgentProfile.all_pks())
-        )
+        self.env_candidates = env_candidates
+        self.agent_candidates = agent_candidates
 
     def sample(
         self,
