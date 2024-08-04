@@ -6,6 +6,7 @@ import asyncio
 import logging
 import json
 import math
+from scipy import stats
 from itertools import chain
 from collections import defaultdict
 from typing import cast, List, Dict, OrderedDict, Tuple
@@ -89,8 +90,8 @@ def get_avg_reward(
         list
     )  # {pk: [rewards]}, {pk}_{i} denotes the i-th agent is the test agent
     avg_reward_dict = {}
+    avg_margin_dict = {}
     avg_variance_dict = {}
-    var_reward_list = []
     for episode in episodes:
         assert episode.models is not None, "episode.models should not be None"
         if episode.models[1] == model_name:
@@ -103,40 +104,84 @@ def get_avg_reward(
     dimensions = list(rewards_dict.values())[0][0].keys()
 
     def calc_variance(local_rewards_list: List[Dict[str, float]]) -> Dict[str, float]:
-        # get the variance within a list
+        # get the variance within a list, discarded
         local_var_reward_dict = {}
         local_dimensions = local_rewards_list[0].keys()
         assert set(local_dimensions) == set(dimensions), "dimensions should be the same"
         for dimension in local_dimensions:
             rewards = [reward[dimension] for reward in local_rewards_list]
             avg_reward = sum(rewards) / len(rewards)
-            variance = sum([(reward - avg_reward) ** 2 for reward in rewards]) / len(
-                rewards
+            variance = sum([(reward - avg_reward) ** 2 for reward in rewards]) / (
+                len(rewards) - 1
             )
             local_var_reward_dict[dimension] = variance
 
         return local_var_reward_dict
 
+    # def calc_margin_of_error(
+    #     local_rewards_list: List[Dict[str, float]], confidence_level: float = 0.95
+    # ) -> Dict[str, float]:
+    #     local_margin_reward_dict = {}
+    #     local_dimensions = local_rewards_list[0].keys()
+    #     assert set(local_dimensions) == set(dimensions), "dimensions should be the same"
+    #     for dimension in local_dimensions:
+    #         rewards = np.array([reward[dimension] for reward in local_rewards_list])
+    #         mean = np.mean(rewards)
+    #         sem = stats.sem(rewards)
+
+    #         confidence_interval = stats.t.interval(
+    #             confidence_level, len(rewards) - 1, loc=mean, scale=sem
+    #         )
+    #         lower_bound = confidence_interval[0]
+
+    #         local_margin_reward_dict[dimension] = mean - lower_bound
+
+    #     return local_margin_reward_dict
+
     rewards_list = list(chain(*rewards_dict.values()))
 
-    var_reward_list = [calc_variance(rewards) for rewards in rewards_dict.values()]
+    # margin_reward_list = [
+    #     calc_margin_of_error(rewards) for rewards in rewards_dict.values()
+    # ]
+    variance_reward_list = [calc_variance(rewards) for rewards in rewards_dict.values()]
     for dimension in rewards_list[0].keys():
-        rewards = [reward[dimension] for reward in rewards_list]
+        rewards = [
+            reward[dimension]
+            for reward in rewards_list
+            if not math.isnan(reward[dimension])
+        ]
         avg_reward = sum(rewards) / len(rewards)
         avg_reward_dict[dimension] = avg_reward
 
-        variances = [variance[dimension] for variance in var_reward_list]
-        # print(f"Dimension {dimension}, variances: {variances}, {len(variances)}")
+        variances = [
+            variance[dimension] for variance in variance_reward_list
+        ]  # average the variances for an estimation of the variance
         avg_variance = sum(variances) / len(variances)
         avg_variance_dict[dimension] = avg_variance
 
+    for dimension in rewards_list[0].keys():
+        # calculate the margin of error by the averaged mean and variance
+        avg_reward = avg_reward_dict[dimension]
+        avg_variance = avg_variance_dict[dimension]
+
+        combined_variance = avg_variance
+        combined_sem = math.sqrt(combined_variance / len(rewards_list))
+
+        confidence_level = 0.95
+        overall_t_value = stats.t.ppf(
+            1 - (1 - confidence_level) / 2, len(rewards_list) - 1
+        )
+
+        margin = overall_t_value * combined_sem
+        avg_margin_dict[dimension] = margin
+
     return_rewards_dict = {
-        key: (avg_reward_dict[key], math.sqrt(avg_variance_dict[key]))
+        key: (avg_reward_dict[key], avg_margin_dict[key])
         for key in avg_reward_dict.keys()
     }
     return_rewards_dict = {
         **return_rewards_dict,
-        "setting_num": (float(len(var_reward_list)), 0.0),
+        "setting_num": (float(len(variance_reward_list)), 0.0),
         "episode_count": (float(len(rewards_list)), 0.0),
     }
 
