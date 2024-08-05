@@ -6,7 +6,7 @@ import asyncio
 import logging
 import json
 import math
-from scipy import stats
+import numpy as np
 from itertools import chain
 from collections import defaultdict
 from typing import cast, List, Dict, OrderedDict, Tuple
@@ -168,8 +168,10 @@ def get_avg_reward(
         combined_sem = math.sqrt(combined_variance / len(rewards_list))
 
         confidence_level = 0.95
-        overall_t_value = stats.t.ppf(
-            1 - (1 - confidence_level) / 2, len(rewards_list) - 1
+        t_samples = np.random.standard_t(df=len(rewards_list), size=1000000)
+        # 计算分位数
+        overall_t_value = np.percentile(
+            t_samples, 100 * (1 - (1 - confidence_level) / 2)
         )
 
         margin = overall_t_value * combined_sem
