@@ -9,7 +9,7 @@ import math
 import numpy as np
 from itertools import chain
 from collections import defaultdict
-from typing import cast, List, Dict, OrderedDict, Tuple
+from typing import cast, OrderedDict
 
 from logging import FileHandler
 from rich.logging import RichHandler
@@ -85,7 +85,9 @@ def initilize_benchmark_combo(data: list[dict[str, str]]) -> list[EnvAgentComboS
 def get_avg_reward(
     episodes: list[EpisodeLog], model_name: str
 ) -> dict[str, tuple[float, float]]:
-    # rewards_list = []
+    """
+        return: dictionary of {dimension: (avg_reward, margin_of_error (in 95% confidence interval))}, plus the distinct setting number and episode count (in the same format, but with 0 margin of error)
+    """
     rewards_dict = defaultdict(
         list
     )  # {pk: [rewards]}, {pk}_{i} denotes the i-th agent is the test agent
@@ -100,10 +102,9 @@ def get_avg_reward(
         else:
             reward = get_rewards_from_episode(episode)[1][1]
             rewards_dict[f"{episode.environment}_1"].append(reward)
-        # rewards_list.append(reward)
     dimensions = list(rewards_dict.values())[0][0].keys()
 
-    def calc_variance(local_rewards_list: List[Dict[str, float]]) -> Dict[str, float]:
+    def calc_variance(local_rewards_list: list[dict[str, float]]) -> dict[str, float]:
         # get the variance within a list, discarded
         local_var_reward_dict = {}
         local_dimensions = local_rewards_list[0].keys()
@@ -117,47 +118,20 @@ def get_avg_reward(
             local_var_reward_dict[dimension] = variance
 
         return local_var_reward_dict
-
-    # def calc_margin_of_error(
-    #     local_rewards_list: List[Dict[str, float]], confidence_level: float = 0.95
-    # ) -> Dict[str, float]:
-    #     local_margin_reward_dict = {}
-    #     local_dimensions = local_rewards_list[0].keys()
-    #     assert set(local_dimensions) == set(dimensions), "dimensions should be the same"
-    #     for dimension in local_dimensions:
-    #         rewards = np.array([reward[dimension] for reward in local_rewards_list])
-    #         mean = np.mean(rewards)
-    #         sem = stats.sem(rewards)
-
-    #         confidence_interval = stats.t.interval(
-    #             confidence_level, len(rewards) - 1, loc=mean, scale=sem
-    #         )
-    #         lower_bound = confidence_interval[0]
-
-    #         local_margin_reward_dict[dimension] = mean - lower_bound
-
-    #     return local_margin_reward_dict
+    
+    def calc_average(list_to_average: list[float]) -> float:
+        return sum(list_to_average) / len(list_to_average)
 
     rewards_list = list(chain(*rewards_dict.values()))
 
-    # margin_reward_list = [
-    #     calc_margin_of_error(rewards) for rewards in rewards_dict.values()
-    # ]
     variance_reward_list = [calc_variance(rewards) for rewards in rewards_dict.values()]
     for dimension in rewards_list[0].keys():
-        rewards = [
-            reward[dimension]
-            for reward in rewards_list
-            if not math.isnan(reward[dimension])
-        ]
-        avg_reward = sum(rewards) / len(rewards)
-        avg_reward_dict[dimension] = avg_reward
-
-        variances = [
-            variance[dimension] for variance in variance_reward_list
-        ]  # average the variances for an estimation of the variance
-        avg_variance = sum(variances) / len(variances)
-        avg_variance_dict[dimension] = avg_variance
+        avg_reward_dict[dimension] = calc_average(
+            [reward[dimension] for reward in rewards_list]
+        )
+        avg_variance_dict[dimension] = calc_average(
+            [variance[dimension] for variance in variance_reward_list]
+        ) # average the variances for an estimation of the variance
 
     for dimension in rewards_list[0].keys():
         # calculate the margin of error by the averaged mean and variance
@@ -169,7 +143,7 @@ def get_avg_reward(
 
         confidence_level = 0.95
         t_samples = np.random.standard_t(df=len(rewards_list), size=1000000)
-        # 计算分位数
+
         overall_t_value = np.percentile(
             t_samples, 100 * (1 - (1 - confidence_level) / 2)
         )
@@ -364,12 +338,12 @@ def _set_up_logs(
 
 
 def save_to_jsonl(
-    model_rewards_dict: Dict[str, Dict[str, Tuple[float, float]]],
+    model_rewards_dict: dict[str, dict[str, tuple[float, float]]],
     partner_model: str,
 ) -> None:
     simplified_model_name = partner_model.split("/")[-1]
     output_fn = f"./models_vs_{simplified_model_name}.jsonl"
-    outputs: List[str] = []
+    outputs: list[str] = []
     for model, rewards in model_rewards_dict.items():
         formatted_reward = OrderedDict(
             {
@@ -387,7 +361,7 @@ def save_to_jsonl(
     print(f"Output saved to {output_fn}")
 
 
-default_model_list: List[str] = [
+default_model_list: list[str] = [
     "gpt-4o",
 ]
 dimension_range_mapping = OrderedDict(
@@ -404,7 +378,7 @@ dimension_range_mapping = OrderedDict(
 
 
 def display_in_table(
-    model_rewards_dict: Dict[str, Dict[str, Tuple[float, float]]], partner_model: str
+    model_rewards_dict: dict[str, dict[str, tuple[float, float]]], partner_model: str
 ) -> None:
     table = rich.table.Table(
         title="Model Performance when facing {}".format(partner_model)
@@ -429,7 +403,7 @@ def display_in_table(
 
 
 def benchmark_display(
-    model_list: List[str] = default_model_list,
+    model_list: list[str] = default_model_list,
     partner_model: str = "together_ai/meta-llama/Llama-3-70b-chat-hf",
     evaluator_model: str = "gpt-4o",
     task: str = "hard",
@@ -459,7 +433,7 @@ def benchmark_display(
 
 @app.command()
 def benchmark(
-    models: List[str] = typer.Option(
+    models: list[str] = typer.Option(
         default_model_list,
         help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}.",
     ),
