@@ -47,6 +47,7 @@ async def test_agenerate_list_integer_together() -> None:
 @pytest.mark.asyncio
 async def test_logging_behavior(caplog: Any) -> None:
     # Call the function under test
+    caplog.set_level(15)
     await agenerate(
         "gpt-3.5-turbo",
         "{format_instructions}",

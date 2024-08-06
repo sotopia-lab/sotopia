@@ -420,13 +420,13 @@ def format_bad_output_for_script(
         model_name=model_name,
         template=template,
         input_variables=re.findall(r"{(.*?)}", template),
-    ).with_config({"callbacks": [logging_handler]})
+    )
     input_values = {
         "ill_formed_output": ill_formed_output,
         "format_instructions": format_instructions,
         "agents": agents,
     }
-    reformat = chain.invoke(input_values)
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
@@ -449,12 +449,12 @@ def format_bad_output(
         model_name=model_name,
         template=template,
         input_variables=re.findall(r"{(.*?)}", template),
-    ).with_config({"callbacks": [logging_handler]})
+    )
     input_values = {
         "ill_formed_output": ill_formed_output.content,
         "format_instructions": format_instructions,
     }
-    reformat = chain.invoke(input_values)
+    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
     log.info(f"Reformated output: {reformat}")
     return reformat
 
@@ -482,10 +482,10 @@ async def agenerate(
         template=template,
         input_variables=input_variables,
         temperature=temperature,
-    ).with_config({"callbacks": [logging_handler]})
+    )
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
-    result = await chain.ainvoke(input_values)
+    result = await chain.ainvoke(input_values, config={"callbacks": [logging_handler]})
     try:
         parsed_result = output_parser.invoke(result)
     except Exception as e:

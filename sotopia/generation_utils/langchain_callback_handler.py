@@ -24,7 +24,7 @@ class LoggingCallbackHandler(StdOutCallbackHandler):
         **kwargs: Any,
     ) -> None:
         self.prompt = str(messages[0][0].content)
-        logging.log(15, f"LLM Call: {self.prompt}")
+        logging.log(15, f"Prompt after formatting:{self.prompt}")
 
     def on_chain_start(self, *args: Any, **kwargs: Any) -> None:
         pass
