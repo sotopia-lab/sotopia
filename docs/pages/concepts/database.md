@@ -38,6 +38,58 @@ def add_env_profile(**kwargs: dict[str, Any]) -> None:
     env_profile.save()
 ```
 
+## EpisodeLog
+
+### Class Overview
+
+The `EpisodeLog` class logs and validates episodes in a simulated environment with multiple agents.
+
+#### Attributes
+
+- **environment (str)**: environment pk.
+- **agents (list[str])**: List of agent pk.
+- **tag (str | None)**: Optional episode tag.
+- **models (list[str] | None)**: Optional list of models used.
+- **messages (list[list[tuple[str, str, str]]])**: Messages exchanged by agents, organized by turns.
+- **reasoning (str)**: Rationale behind episode events.
+- **rewards (list[tuple[float, dict[str, float]] | float])**: Rewards per dimension for agents.
+- **rewards_prompt (str)**: Prompt used to determine rewards.
+
+#### Methods
+
+##### agent_number_message_number_reward_number_turn_number_match
+Validates that the number of agents matches the number of rewards.
+- **Parameters**: `cls`, `values`
+- **Returns**: Validated values
+- **Raises**: Assertion error if the number of agents does not match the number of rewards.
+
+##### render_for_humans
+Generates a human-readable version of the episode log.
+- **Returns**: Tuple of (list of agent profiles, list of messages and rewards)
+
+#### Example Usage
+
+```python
+episode_log = EpisodeLog(
+    environment="SimulatedEnvironment",
+    agents=["agent_1", "agent_2"],
+    tag="example_tag",
+    models=["model_1", "model_2"],
+    messages=[
+        [("agent_1", "Environment", "message_1"), ("agent_2", "Environment", "message_2")],
+        [("agent_1", "agent_2", "message_3"), ("agent_2", "agent_1", "message_4")]
+    ],
+    reasoning="Example reasoning.",
+    rewards=[(10.0, {"metric_1": 5.0}), 8.0],
+    rewards_prompt="Example prompt."
+)
+episode_log.validate()
+agent_profiles, messages_and_rewards = episode_log.render_for_humans()
+print(agent_profiles)
+print("\n".join(messages_and_rewards))
+```
+
+
 ## Serialization and Deserialization
 
 It is very easy to serialize any database structures to JSON or CSV.
