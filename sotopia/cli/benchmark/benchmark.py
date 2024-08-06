@@ -86,7 +86,7 @@ def get_avg_reward(
     episodes: list[EpisodeLog], model_name: str
 ) -> dict[str, tuple[float, float]]:
     """
-        return: dictionary of {dimension: (avg_reward, margin_of_error (in 95% confidence interval))}, plus the distinct setting number and episode count (in the same format, but with 0 margin of error)
+    return: dictionary of {dimension: (avg_reward, margin_of_error (in 95% confidence interval))}, plus the distinct setting number and episode count (in the same format, but with 0 margin of error)
     """
     rewards_dict = defaultdict(
         list
@@ -118,7 +118,7 @@ def get_avg_reward(
             local_var_reward_dict[dimension] = variance
 
         return local_var_reward_dict
-    
+
     def calc_average(list_to_average: list[float]) -> float:
         return sum(list_to_average) / len(list_to_average)
 
@@ -131,11 +131,10 @@ def get_avg_reward(
         )
         avg_variance_dict[dimension] = calc_average(
             [variance[dimension] for variance in variance_reward_list]
-        ) # average the variances for an estimation of the variance
+        )  # average the variances for an estimation of the variance
 
     for dimension in rewards_list[0].keys():
         # calculate the margin of error by the averaged mean and variance
-        avg_reward = avg_reward_dict[dimension]
         avg_variance = avg_variance_dict[dimension]
 
         combined_variance = avg_variance
