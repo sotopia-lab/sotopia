@@ -1,6 +1,6 @@
 import logging
 from typing import Any
-
+from langchain_core.messages import BaseMessage
 from langchain.callbacks import StdOutCallbackHandler
 
 logging.addLevelName(15, "LangChain")
@@ -16,6 +16,15 @@ class LoggingCallbackHandler(StdOutCallbackHandler):
         super().__init__()
         self.logger = logging.getLogger(name)
         self.prompt = ""
+
+    def on_chat_model_start(
+        self,
+        serialized: dict[str, Any],
+        messages: list[list[BaseMessage]],
+        **kwargs: Any,
+    ) -> None:
+        self.prompt = str(messages[0][0].content)
+        logging.log(15, f"LLM Call: {self.prompt}")
 
     def on_chain_start(self, *args: Any, **kwargs: Any) -> None:
         pass
@@ -48,9 +57,7 @@ class LoggingCallbackHandler(StdOutCallbackHandler):
     ) -> None:
         """Run when agent ends."""
         # leave only prompt for environment
-        text = text.replace("\x1b[32;1m\x1b[1;3mHuman: ", "")
-        logging.log(15, f"LLM Call: {text}")
-        self.prompt = text
+        pass
 
     def retrive_prompt(self) -> str:
         return self.prompt
