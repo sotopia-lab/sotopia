@@ -51,7 +51,7 @@ See [documentation](https://docs.sotopia.world) for more details.
 We recommend using a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia; curl -sSL https://install.python-poetry.org | python3`.
 
 Then:
-`python -m pip install sotopia; sotopia_install`
+`python -m pip install sotopia; sotopia install`
 
 This will setup the necessary environment variables and download the necessary data.
 
