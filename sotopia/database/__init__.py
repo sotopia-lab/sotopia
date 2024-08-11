@@ -1,3 +1,5 @@
+from typing import TypeVar
+from redis_om import JsonModel
 from .annotators import Annotator
 from .env_agent_combo_storage import EnvAgentComboStorage
 from .logs import AnnotationForEpisode, EpisodeLog
@@ -60,3 +62,12 @@ __all__ = [
     "jsonl_to_envagnetcombostorage",
     "get_rewards_from_episode",
 ]
+
+InheritedJsonModel = TypeVar("InheritedJsonModel", bound="JsonModel")
+
+
+def _json_model_all(cls: type[InheritedJsonModel]) -> list[InheritedJsonModel]:
+    return cls.find().all()  # type: ignore[return-value]
+
+
+JsonModel.all = classmethod(_json_model_all)  # type: ignore[assignment,method-assign]
