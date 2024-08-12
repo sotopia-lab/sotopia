@@ -19,6 +19,9 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        display: ["clash", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
