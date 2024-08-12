@@ -1,19 +1,16 @@
-import Link from "next/link"
 
 export default {
-    logo: <div className="flex items-center">
-    <svg className="h-8 mx-2 dark:text-sky-300 dark:drop-shadow-[0_3px_10px_#bae6fd]"
-        viewBox="0 0 300 300"
-        fill="primary"
-        xmlns="http://www.w3.org/2000/svg"
-      href="https://sotopia.world"
-    >
-        <path d="M250,200c-55.23,0-100-44.77-100-100S194.77,0,250,0"/>
-        <path d="M50,100c55.23,0,100,44.77,100,100S105.23,300,50,300"/>
-        <path d="M50,0l100,0c0,55.23-44.77,100-100,100"/>
-        <path d="M250,300l-100,0c0-55.23,44.77-100,100-100"/>
-    </svg>
-    <span className="text-2xl font-bold">Sotopia</span></div>,
+    logo:
+    <div className="flex items-center">
+      <svg width="24" height="24" viewBox="0 0 300 300">
+        <path d="M150,108.33c0,46.03,55.96,83.33,125,83.33V25c-69.04,0-125,37.31-125,83.33Z" fill="currentColor" strokeWidth="0"/>
+        <path d="M150,191.67c0-46.03-55.96-83.33-125-83.33v166.67c69.04,0,125-37.31,125-83.33Z" fill="currentColor" strokeWidth="0"/>
+        <path d="M150,25h-65c-33.14,0-60,26.86-60,60v23.33c69.04,0,125-37.31,125-83.33Z" fill="currentColor" strokeWidth="0"/>
+        <path d="M150,275h65c33.14,0,60-26.86,60-60v-23.33c-69.04,0-125,37.31-125,83.33Z" fill="currentColor" strokeWidth="0"/>
+      </svg>
+    <span className="text-2xl font-display">Sotopia</span>
+    </div>,
+    logoLink: "https://docs.sotopia.world",
     project: {
       link: 'https://github.com/sotopia-lab/sotopia',
     },
