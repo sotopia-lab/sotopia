@@ -1,3 +1,10 @@
+## Basic Concepts of the Database
+
+We use the `JsonModel` class to define the structure of the database. This class is coming from [Redis-OM](https://github.com/redis/redis-om-node), which is a Redis Object Mapper for Node.js. You should learn a lot about how to use the database by reading their documentation.
+
+We do have more customized method `.all()` would return a list of all the corresponding objects in the database. Note that using `.all()` is going to block the database, so you should use it with caution.
+You might see codes using `all_pks()` which is a method from the `JsonModel` class. This method returns a list of all the primary keys of the corresponding objects in the database. This method is not blocking the database. However, it might not be as efficient as using `.all()`.
+
 ## Adding new characters and environments
 You can use the following function with the `**kwargs` being the properties of the `AgentProfile` class. This is the same for the scenarios/environments.
 ```python
@@ -98,10 +105,7 @@ It is very easy to serialize any database structures to JSON or CSV.
 ```python
 from sotopia.database import episodes_to_jsonl, EpisodeLog
 
-episodes: list[EpisodeLog] = [
-    EpisodeLog.get(pk=pk)
-    for pk in EpisodeLog.all_pks()
-]
+episodes: list[EpisodeLog] = EpisodeLog.all()
 
 episodes_to_jsonl(episodes, "episodes.jsonl")
 ```
@@ -111,15 +115,9 @@ episodes_to_jsonl(episodes, "episodes.jsonl")
 ```python
 from sotopia.database import environmentprofiles_to_jsonl, agentprofiles_to_jsonl
 
-agent_profiles: list[AgentProfile] = [
-    AgentProfile.get(pk=pk)
-    for pk in AgentProfile.all_pks()
-]
+agent_profiles: list[AgentProfile] = AgentProfile.all()
 
-environment_profiles: list[EnvironmentProfile] = [
-    EnvironmentProfile.get(pk=pk)
-    for pk in EnvironmentProfile.all_pks()
-]
+environment_profiles: list[EnvironmentProfile] = EnvironmentProfile.all()
 
 agentprofiles_to_jsonl(agent_profiles, "agent_profiles.jsonl")
 environmentprofiles_to_jsonl(environment_profiles, "environment_profiles.jsonl")
