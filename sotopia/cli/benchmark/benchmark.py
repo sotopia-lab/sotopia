@@ -409,7 +409,6 @@ def benchmark_display(
     output_to_jsonl: bool = False,
 ) -> None:
     """
-    Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
     Aggregate all the results for the benchmark, as described in https://github.com/sotopia-lab/sotopia-space/blob/main/data_dir/models_vs_gpt35.jsonl
     """
 
@@ -423,7 +422,6 @@ def benchmark_display(
             continue
         avg_rewards = get_avg_reward(episodes, model)  # type: ignore
         model_rewards_dict[model] = avg_rewards
-        # print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
 
     display_in_table(model_rewards_dict, partner_model)
     if output_to_jsonl:

@@ -1,7 +1,7 @@
 # Benchmark your model as a social agent in Sotopia
 
 ```
-sotopia cli benchmark --models <model1> --models <model2> [--only-show-performance]
+sotopia benchmark --models <model1> --models <model2> [--only-show-performance]
 ```
 or
 
