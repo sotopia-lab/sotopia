@@ -309,18 +309,11 @@ def benchmark_display(
             print(f"No episodes found for {model}")
             continue
         avg_rewards = get_avg_reward(episodes, model)  # type: ignore
-        binary_avg_rewards = get_avg_reward(episodes, model, binary=True)  # type: ignore
         model_rewards_dict[model] = avg_rewards
-        binary_model_rewards_dict = {model: binary_avg_rewards}
         # print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
         rich.print(model_rewards_dict)
-        rich.print("Ratio of episodes with positive risks")
-        rich.print(binary_avg_rewards)
 
     display_in_table(model_rewards_dict)
-
-    rich.print("Ratio of episodes with risks:")
-    display_in_table(binary_model_rewards_dict)
     if output_to_jsonl:
         save_to_jsonl(model_rewards_dict, partner_model)
 
