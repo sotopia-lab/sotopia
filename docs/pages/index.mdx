@@ -6,13 +6,9 @@ import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "..
 import { Steps, Callout } from 'nextra/components'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 
+Train and deploy AI agents that interact with humans and other AI agents with <span className="font-display text-xl">Sotopia</span>.
 
-
-# Sotopia - Getting Started
-https://github.com/sotopia-lab/sotopia
-
-
-## Simulate social interactions between AIs and humans
+## Features
 
 * Enables human-AI interaction
   - use `LLMAgent` to create LLM-based social agents,
@@ -44,12 +40,13 @@ https://github.com/sotopia-lab/sotopia
 This package supports Python 3.10 and above.
 </Callout>
 
+There are two ways to setup the package: automatic installation and manual setup.
 
-
-#### Install the package
-
+### Automatic Installation
 ```bash
 pip install sotopia
+sotopia install # an interative installer
+export REDIS_OM_URL="redis://localhost:6379"
 ```
 
 <Accordion type="single" collapsible className="w-full">
@@ -99,10 +96,24 @@ pip install sotopia
       </AccordionItem>
 </Accordion>
 
+### Manual Setup
+
+#### Clone the repo and install the package
+```bash
+git clone git@github.com:sotopia-lab/sotopia.git;
+curl -sSL https://install.python-poetry.org | python3;
+poetry install # or pip install -e .
+```
+
 #### Set up Redis stack
 
 Redis stack is a required dependency for using Sotopia. There are two ways to set up Redis stack:
 
+```bash
+sotopia install
+```
+
+or manual setup:
 <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="item-1">
         <AccordionTrigger>Docker is my thing.</AccordionTrigger>
@@ -182,15 +193,6 @@ Redis stack is a required dependency for using Sotopia. There are two ways to se
         </AccordionContent>
       </AccordionItem>
 </Accordion>
-
-#### Set up the log folder
-
-Just make a folder to store the logs:
-```bash
-mkdir logs
-```
-
-
 
 ## Quick Start
 

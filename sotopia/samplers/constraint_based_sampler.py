@@ -86,6 +86,12 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
         env_profiles: list[EnvironmentProfile] = []
         agents_which_fit_scenario: list[list[str]] = []
 
+        if self.env_candidates is None:
+            self.env_candidates = EnvironmentProfile.all()
+
+        if self.agent_candidates is None:
+            self.agent_candidates = AgentProfile.all()
+
         agent_candidate_ids: set[str] | None = None
         if self.agent_candidates:
             agent_candidate_ids = set(
@@ -120,13 +126,9 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
             )
         else:
             for _ in range(size):
-                if self.env_candidates:
-                    env_profile = random.choice(self.env_candidates)
-                    if isinstance(env_profile, str):
-                        env_profile = EnvironmentProfile.get(env_profile)
-                else:
-                    env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
-                    env_profile = EnvironmentProfile.get(env_profile_id)
+                env_profile = random.choice(self.env_candidates)
+                if isinstance(env_profile, str):
+                    env_profile = EnvironmentProfile.get(env_profile)
                 env_profiles.append(env_profile)
                 env_profile_id = env_profile.pk
                 assert env_profile_id, "Env candidate must have an id"

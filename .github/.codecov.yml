@@ -2,6 +2,11 @@ codecov:
   notify:
     wait_for_ci: true
 
+ignore:
+  - ".github" # ignore the .github directory
+  - "docs" # ignore the tests directory
+  - "figs" # ignore the figs directory
+
 coverage:
   status:
     patch:

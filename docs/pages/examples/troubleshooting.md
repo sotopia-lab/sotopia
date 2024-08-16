@@ -33,13 +33,13 @@ Redis saves snapshots of the database every few minutes. You can find them in th
 When utilizing the database in python code (as introduced in [here](https://github.com/sotopia-lab/sotopia/blob/main/notebooks/redis_stats.ipynb)), make sure you use in the command line:
 
 ```sh
-export REDIS_OM_URL="redis://:QzmCUD3C3RdsR@localhost:6379"
+export REDIS_OM_URL="<your_redis_url>"
 ```
 
 If you plan to add environmental variables in the python code like this:
 
 ```sh
-os.environ['REDIS_OM_URL'] = "redis://:QzmCUD3C3RdsR@localhost:6379"
+os.environ['REDIS_OM_URL'] = "<your_redis_url>"
 ```
 
 We need to make sure this line of code is put before `import redis` to make sure that you will not face additional authorization error.

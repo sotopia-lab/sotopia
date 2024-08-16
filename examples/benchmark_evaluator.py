@@ -25,8 +25,8 @@ def get_human_annotations(
     target_model_patterns: list[list[str]],
 ) -> list[AnnotationForEpisode]:
     episodes_with_human_annotation: list[AnnotationForEpisode] = []
-    for pk in AnnotationForEpisode.all_pks():
-        episode_human = AnnotationForEpisode.get(pk)
+    human_annotated_episodes = AnnotationForEpisode.all()
+    for episode_human in human_annotated_episodes:
         episode_model = EpisodeLog.get(episode_human.episode)
         if episode_model.models in target_model_patterns:
             episodes_with_human_annotation.append(episode_human)
