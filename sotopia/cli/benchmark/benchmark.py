@@ -1,4 +1,3 @@
-import subprocess
 from datetime import datetime
 import requests
 import rich
@@ -47,11 +46,6 @@ from ..app import app
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 
-process = subprocess.Popen(
-    ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
-)
-git_head_hash = process.communicate()[0].strip()
-
 logging.basicConfig(
     level=20,
     format=FORMAT,
@@ -78,9 +72,11 @@ dimension_range_mapping = OrderedDict(
 
 
 def get_avg_reward(
-    episodes: list[EpisodeLog], model_name: str, binary: bool = False
+    episodes: list[EpisodeLog], model_name: str
 ) -> dict[str, tuple[float, float]]:
     """
+    input: list of EpisodeLog, model_name
+
     return: dictionary of {dimension: (avg_reward, margin_of_error (in 95% confidence interval))}, plus the distinct setting number and episode count (in the same format, but with 0 margin of error)
     """
     rewards_dict = defaultdict(
@@ -93,13 +89,9 @@ def get_avg_reward(
         assert episode.models is not None, "episode.models should not be None"
         if episode.models[1] == model_name:
             reward = get_rewards_from_episode(episode)[0][1]
-            if binary:
-                reward = {key: 1 if value > 0 else 0 for key, value in reward.items()}
             rewards_dict[f"{episode.environment}_0"].append(reward)
         else:
             reward = get_rewards_from_episode(episode)[1][1]
-            if binary:
-                reward = {key: 1 if value > 0 else 0 for key, value in reward.items()}
             rewards_dict[f"{episode.environment}_1"].append(reward)
     dimensions = list(rewards_dict.values())[0][0].keys()
 
