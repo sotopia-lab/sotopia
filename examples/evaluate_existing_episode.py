@@ -98,10 +98,7 @@ def run_server(
     push_to_db: bool = True,
     verbose: bool = False,
 ) -> None:
-    annotated_episodes_pks = [
-        AnnotationForEpisode.get(anno).episode
-        for anno in AnnotationForEpisode.all_pks()
-    ]
+    annotated_episodes_pks = [anno.episode for anno in AnnotationForEpisode.all()]
     annotated_episodes_pks = list(set(annotated_episodes_pks))
     model = typing.cast(LLM_Name, model)
     # Call the function with the specified parameters
