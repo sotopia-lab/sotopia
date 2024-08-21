@@ -301,7 +301,7 @@ def obtain_chain(
     Using langchain to sample profiles for participants
     """
     model_name = _return_fixed_model_version(model_name)
-    if "together_ai" in model_name:
+    if model_name.startswith("together_ai"):
         model_name = "/".join(model_name.split("/")[1:])
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
@@ -319,7 +319,7 @@ def obtain_chain(
         )
         chain = chat_prompt_template | chat_openai
         return chain
-    elif "groq" in model_name:
+    elif model_name.startswith("groq"):
         model_name = "/".join(model_name.split("/")[1:])
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
@@ -337,7 +337,7 @@ def obtain_chain(
         )
         chain = chat_prompt_template | chat_openai
         return chain
-    elif "azure" in model_name:
+    elif model_name.startswith("azure"):
         # azure/resource_name/deployment_name/version
         azure_credentials = model_name.split("/")[1:]
         resource_name, deployment_name, azure_version = (
@@ -360,6 +360,27 @@ def obtain_chain(
             max_retries=max_retries,
         )
         chain = chat_prompt_template | chat_azure_openai
+        return chain
+    elif model_name.startswith("custom"):
+        custom_model_name, model_base_url = (
+            model_name.split("@")[0],
+            model_name.split("@")[1],
+        )
+        custom_model_name = "/".join(custom_model_name.split("/")[1:])
+        chat = ChatOpenAI(
+            model=custom_model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+            api_key=os.environ.get("CUSTOM_API_KEY")
+            if os.environ.get("CUSTOM_API_KEY")
+            else "EMPTY",
+            base_url=model_base_url,
+        )
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(template=template, input_variables=input_variables)
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        chain = chat_prompt_template | chat
         return chain
     else:
         chat = ChatOpenAI(
@@ -447,7 +468,9 @@ async def agenerate(
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
 ) -> OutputType:
-    input_variables = re.findall(r"{(.*?)}", template)
+    input_variables = re.findall(
+        r"(?<!{){([^{}]+)}(?!})", template
+    )  # Add negative lookbehind and lookahead to avoid matching {{}}; note that {ab{ab}ab} will not be matched
     assert (
         set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
         or set(input_variables) == set(list(input_values.keys()))

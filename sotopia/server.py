@@ -424,13 +424,13 @@ async def aevaluate_one_episode(
             itertools.chain(
                 *await asyncio.gather(
                     *[
-                        sing_evaluator.__acall__(
+                        single_evaluator.__acall__(
                             turn_number=-1,
                             history=history,
                             messages=None,
                             temperature=0.0,
                         )
-                        for sing_evaluator in [evaluator]
+                        for single_evaluator in [evaluator]
                     ]
                 )
             )
