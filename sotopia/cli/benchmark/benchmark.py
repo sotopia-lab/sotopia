@@ -132,10 +132,12 @@ def get_avg_reward(
         avg_variance = avg_variance_dict[dimension]
 
         combined_variance = avg_variance
-        combined_sem = math.sqrt(combined_variance / len(rewards_list))
+        combined_sem = math.sqrt(
+            combined_variance / len(rewards_list)
+        )  # sem = sqrt(variance / n), we use the averaged variance under different settings
 
         confidence_level = 0.95
-        t_samples = np.random.standard_t(df=len(rewards_list), size=1000000)
+        t_samples = np.random.standard_t(df=len(rewards_list) - 1, size=1000000)
 
         overall_t_value = np.percentile(
             t_samples, 100 * (1 - (1 - confidence_level) / 2)
@@ -381,7 +383,7 @@ def display_in_table(
     model_rewards_dict: dict[str, dict[str, tuple[float, float]]],
 ) -> None:
     table = rich.table.Table(
-        title="Risks Evaluation (+/- CI bounds)",
+        title="Rewards Evaluation (+/- CI bounds)",
     )
     table.add_column("Model")
     for dimension in model_rewards_dict[list(model_rewards_dict.keys())[0]].keys():
