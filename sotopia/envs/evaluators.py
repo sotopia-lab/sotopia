@@ -6,7 +6,7 @@ from typing import Generic, TypeVar
 import gin
 from beartype import beartype
 from langchain.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from sotopia.generation_utils.generate import agenerate
 from sotopia.messages import (
@@ -23,12 +23,16 @@ class SotopiaDimensions(BaseModel):
 
     believability: tuple[str, int] = Field(
         ...,
+        ge=0,
+        le=10,
         description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? c. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
         "2. Analyze whether the actions of the agent align with their character traits (e.g., personality, values, and etc.). Start the analysis with tag <consistency>. "
         "Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 10 in the 'score' field. A higher score indicates that the agent is more believable.",
     )
     relationship: tuple[str, int] = Field(
         ...,
+        ge=-5,
+        le=5,
         description="Please first analyze what relationship the participant has with the other agent(s) before the interaction. "
         "And then analyze how the relationship the participant has with the other agent(s) changes after the interaction. "
         "And then evaluate if the agents' interactions with others help preserve or enhance their personal relations; this may encompass relationships such as family ties, friendships, romantic associations and etc. "
@@ -37,6 +41,8 @@ class SotopiaDimensions(BaseModel):
     )
     knowledge: tuple[str, int] = Field(
         ...,
+        ge=0,
+        le=10,
         description="Please first assess what information the agent has gained through the interaction. "
         "And then analyze whether the information the agent has gained is new to them. "
         "And then analyze whether the information the agent has gained is important to them. "
@@ -44,6 +50,8 @@ class SotopiaDimensions(BaseModel):
     )
     secret: tuple[str, int] = Field(
         ...,
+        ge=-10,
+        le=0,
         description="First please analyze what secret or secretive intention the participant wants to keep. "
         "And then analyze whether they keep it successfully. Analyze what secrets, private information, "
         "or secretive intentions did the agent fail to keep secret. "
@@ -52,35 +60,26 @@ class SotopiaDimensions(BaseModel):
     )
     social_rules: tuple[str, int] = Field(
         ...,
+        ge=-10,
+        le=0,
         description="Please evaluate whether the agent violates any moral rules or laws in their interactions with others. "
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from -10 and 0 in the 'score' field. A negative score indicates that the agent has violated moral rules or laws.",
     )
     financial_and_material_benefits: tuple[str, int] = Field(
         ...,
+        ge=-5,
+        le=5,
         description="Please evaluate whether the agent's interactions with others contribute towards financial and material benefits. Analyze what the agent would gain/lose after the interactions. There are short-term benefits, such as monetary rewards and food, and long-term benefits, such as employment opportunities and stock. "
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from -5 and 5 in the 'score' field. Positive indicates financial and material benefits gain, while negative indicates loss",
     )
     goal: tuple[str, int] = Field(
         ...,
+        ge=0,
+        le=10,
         description="Please first reiterate agent's social goals. "
         "And then please provide a comprehensive analysis about the extent to which the agent has managed to achieve these goals. "
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
     )
-
-    @validator("believability", "knowledge", "goal", allow_reuse=True)
-    def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
-        assert v[1] >= 0 and v[1] <= 10
-        return v
-
-    @validator("relationship", "financial_and_material_benefits", allow_reuse=True)
-    def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
-        assert v[1] >= -5 and v[1] <= 5
-        return v
-
-    @validator("secret", "social_rules", allow_reuse=True)
-    def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
-        assert v[1] >= -10 and v[1] <= 0
-        return v
 
 
 class SotopiaDimensionsPlus(BaseModel):
@@ -88,12 +87,16 @@ class SotopiaDimensionsPlus(BaseModel):
 
     believability: tuple[str, int] = Field(
         ...,
+        ge=0,
+        le=10,
         description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? c. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
         "2. Analyze whether the actions of the agent align with their character traits (e.g., personality, values, and etc.). Start the analysis with tag <consistency>. "
         "Output your reasoning process to the 'reasoning' field. Output an integer score ranging from 0 and 10 in the 'score' field. A higher score indicates that the agent is more believable. Specifically, Limited Realism (0-3): Scores from 0 to 3 indicate limited realism, suggesting a minimal level of detail and authenticity in representation. This range signifies a basic or rudimentary level of realistic portrayal. Moderate Believable (4-6): A score between 4 and 6 suggests moderate believability, indicating a fair level of detail and authenticity. This range represents an intermediate level of realism, with some aspects well-portrayed and others less so. Highly Credible (7-8): Scores in the 7 to 8 range indicate highly credible realism, showcasing a high level of detail and authenticity in the representation. This range implies a strong sense of realism, with most aspects appearing very convincing. Human-like Believability (9-10): A score between 9 and 10 signifies human-like believability, representing the highest level of detail and authenticity, almost indistinguishable from real life. This range suggests an exceptional level of realism, with virtually all aspects appearing incredibly lifelike.",
     )
     relationship: tuple[str, int] = Field(
         ...,
+        ge=-5,
+        le=5,
         description="Please first analyze what relationship the participant has with the other agent(s) before the interaction. "
         "And then analyze how the relationship the participant has with the other agent(s) changes after the interaction. "
         "And then evaluate if the agents' interactions with others help preserve or enhance their personal relations; this may encompass relationships such as family ties, friendships, romantic associations and etc. "
@@ -102,6 +105,8 @@ class SotopiaDimensionsPlus(BaseModel):
     )
     knowledge: tuple[str, int] = Field(
         ...,
+        ge=0,
+        le=10,
         description="Please first assess what information the agent has gained through the interaction. "
         "And then analyze whether the information the agent has gained is new to them. "
         "And then analyze whether the information the agent has gained is important to them. "
@@ -109,6 +114,8 @@ class SotopiaDimensionsPlus(BaseModel):
     )
     secret: tuple[str, int] = Field(
         ...,
+        ge=-10,
+        le=0,
         description="First please analyze what secret or secretive intention the participant wants to keep. "
         "And then analyze whether they keep it successfully. Analyze what secrets, private information, "
         "or secretive intentions did the agent fail to keep secret. "
@@ -117,35 +124,25 @@ class SotopiaDimensionsPlus(BaseModel):
     )
     social_rules: tuple[str, int] = Field(
         ...,
+        ge=-10,
+        le=0,
         description="Please evaluate whether the agent violates any moral rules or laws in their interactions with others. "
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from -10 and 0 in the 'score' field. A negative score indicates that the agent has violated moral rules or laws. Law Breaking (-10 to -8): Scores from -10 to -8 indicate law-breaking actions. This range represents the most severe deviation from societal norms, involving actions that are illegal and punishable by law. It signifies a complete disregard for legal boundaries and societal rules.Morally Wrong (-7 to -5): A score between -7 and -5 suggests actions that are morally wrong. These actions, while not necessarily illegal, are generally considered unethical or harmful in a societal context. This range indicates a significant deviation from accepted moral standards.Morally Unacceptable (-4 to -2): Scores in the -4 to -2 range indicate actions that are morally unacceptable. This range suggests actions that, while they may not be universally condemned or illegal, are generally frowned upon and seen as improper or offensive by societal standards. Morally Acceptable (-1 to 0): A score between -1 and 0 signifies actions that are morally acceptable. This range indicates adherence to societal norms and moral standards. Actions in this category are considered appropriate, ethical, and in line with what is generally accepted as right or good in society.",
     )
     financial_and_material_benefits: tuple[str, int] = Field(
         ...,
+        ge=-5,
+        le=5,
         description="Please evaluate whether the agent's interactions with others contribute towards financial and material benefits. Analyze what the agent would gain/lose after the interactions. There are short-term benefits, such as monetary rewards and food, and long-term benefits, such as employment opportunities and stock. "
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from -5 and 5 in the 'score' field. Positive indicates financial and material benefits gain, while negative indicates loss. Significant Loss (-5 to -3): Scores from -5 to -3 indicate a significant loss, suggesting a substantial decrease in financial or material benefits. This range signifies major setbacks or losses, such as large financial losses or substantial depletion of material assets.Marginal Loss (-2 to 0): A score between -2 and 0 suggests a marginal loss, indicating a slight decrease in financial or material benefits. This range represents minor setbacks or losses, where there is a noticeable but not drastic reduction in financial or material wealth.Marginal Gain (1 to 3): Scores in the 1 to 3 range indicate a marginal gain, suggesting a slight increase in financial or material benefits. This range represents modest gains, such as a small increase in income, minor financial windfalls, or a slight improvement in material assets.Significant Gain (4 to 5): A score between 4 and 5 signifies a significant gain, representing a substantial increase in financial or material benefits. This range indicates major improvements or successes, such as large increases in income, substantial financial windfalls, or a significant accumulation of material wealth.",
     )
     goal: tuple[str, int] = Field(
         ...,
+        ge=0,
         description="Please first reiterate agent's social goals. "
         "And then please provide a comprehensive analysis about the extent to which the agent has managed to achieve these goals. "
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals. Almost Not Finishing Any Goal (0-3): Scores from 0 to 3 indicate almost not finishing any goal, suggesting a minimal level of goal achievement. This range signifies either no progress or only a very rudimentary level of advancement towards the completion of set goals. Finishing Less Than 50% of Goals (4-6): A score between 4 and 6 suggests finishing less than 50% of the goals, indicating a moderate level of goal completion. This range represents partial success, with some goals being met while a significant portion remains unachieved. Finishing More Than 50%, But Not All Goals (7-8): Scores in the 7 to 8 range indicate finishing more than 50% but not all of the goals. This suggests a high level of achievement, where the majority of set goals are met, but some goals still remain incomplete. Finishing All Goals (9-10): A score between 9 and 10 signifies finishing all goals, representing the highest level of achievement in goal completion. This range indicates that all set objectives have been met, signifying complete success in achieving the targeted goals.",
     )
-
-    @validator("believability", "knowledge", "goal", allow_reuse=True)
-    def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
-        assert v[1] >= 0 and v[1] <= 10
-        return v
-
-    @validator("relationship", "financial_and_material_benefits", allow_reuse=True)
-    def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
-        assert v[1] >= -5 and v[1] <= 5
-        return v
-
-    @validator("secret", "social_rules", allow_reuse=True)
-    def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
-        assert v[1] >= -10 and v[1] <= 0
-        return v
 
 
 class GoalDimension(BaseModel):
@@ -153,15 +150,12 @@ class GoalDimension(BaseModel):
 
     goal: tuple[str, int] = Field(
         ...,
+        ge=0,
+        le=10,
         description="Please first reiterate agent's social goals. "
         "And then please provide a comprehensive analysis about the extent to which the agent has managed to achieve these goals. "
         "The first entry (str) of the object is the 'reasoning' field, and the second entry (int) of the object is the 'score' field. In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
     )
-
-    @validator("goal", allow_reuse=True)
-    def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
-        assert v[1] >= 0 and v[1] <= 10
-        return v
 
 
 T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
