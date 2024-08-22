@@ -3,8 +3,6 @@ import logging
 from collections import defaultdict
 from typing import Generic, TypeVar
 
-from pydantic.generics import GenericModel
-
 import gin
 from beartype import beartype
 from langchain.output_parsers import PydanticOutputParser
@@ -169,7 +167,7 @@ class GoalDimension(BaseModel):
 T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
 
-class EvaluationForTwoAgents(GenericModel, Generic[T_eval_dim]):
+class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
     agent_1_evaluation: T_eval_dim
     agent_2_evaluation: T_eval_dim
 
