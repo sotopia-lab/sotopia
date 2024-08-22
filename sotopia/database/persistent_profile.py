@@ -1,5 +1,10 @@
 from enum import IntEnum
-from typing import Self
+import sys
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 from pydantic import model_validator
 from redis_om import JsonModel
