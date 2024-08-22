@@ -158,7 +158,7 @@ def evaluate_evaluator(
             ]
             for valid, episode in zip(valid_episodes, re_evaluated_episodes):
                 if not valid:
-                    pk = episode.pk
+                    pk = episode.pk # type: ignore
                     assert isinstance(pk, str)
                     to_re_evaluate_list.append(pk)
 
