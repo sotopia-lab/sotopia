@@ -120,7 +120,6 @@ def mock_success_data() -> list[dict[str, str | list[str]]]:
 
 
 def mock_success() -> mock.Mock:
-    data = get_mock_episodes()[:2]
     mock_response = mock.Mock()
     mock_response.status_code = 200
     mock_response.json.return_value = mock_success_data()
