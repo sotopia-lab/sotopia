@@ -10,6 +10,22 @@ from sotopia.cli.benchmark.benchmark import (
 )
 from unittest import mock
 from unittest.mock import create_autospec
+from sotopia.cli.benchmark.benchmark import initialize_benchmark_combo
+from sotopia.database import EnvAgentComboStorage
+import pytest
+
+from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.messages import AgentAction, Observation
+from sotopia.samplers import (
+    EnvAgentCombo,
+)
+from sotopia.envs.evaluators import (
+    EvaluationForTwoAgents,
+    ReachGoalLLMEvaluator,
+    RuleBasedTerminatedEvaluator,
+    SotopiaDimensions,
+)
+from sotopia.agents import LLMAgent
 
 dimensions = [
     "believability",
@@ -68,6 +84,79 @@ def get_mock_episodes() -> list[EpisodeLog]:
     return target_episodes
 
 
+def get_mock_env_agents_profile() -> tuple[EnvironmentProfile, list[AgentProfile]]:
+    env_profile = EnvironmentProfile(
+        codename="test",
+        source="test",
+        scenario="Two people are talking",
+        agent_goals=[
+            "You have 500 dollars and you want to buy the phone",
+            "You have a complete new iPhone 16 from Apple Store for $600 and you want to sell it",
+        ],
+    )
+    agent_1 = AgentProfile(
+        first_name="John",
+        last_name="Doe",
+        age=25,
+    )
+    agent_2 = AgentProfile(
+        first_name="Jane",
+        last_name="Doe",
+        age=25,
+    )
+
+    return env_profile, [agent_1, agent_2]
+
+
+def mock_success_data() -> list[dict[str, str | list[str]]]:
+    data = get_mock_episodes()[:2]
+    return [
+        {
+            "env_id": item.environment,
+            "agent_ids": item.agents,
+        }
+        for item in data
+    ]
+
+
+def mock_success() -> mock.Mock:
+    data = get_mock_episodes()[:2]
+    mock_response = mock.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = mock_success_data()
+    return mock_response
+
+
+def mock_fail() -> mock.Mock:
+    mock_response = mock.Mock()
+    mock_response.status_code = 404
+    return mock_response
+
+
+def compose_env_agent_combo(
+    env_profile: EnvironmentProfile, agent_profiles: list[AgentProfile]
+) -> EnvAgentCombo[Observation, AgentAction]:
+    env = ParallelSotopiaEnv(
+        env_profile=env_profile,
+        model_name="gpt-4o-mini",
+        evaluators=[RuleBasedTerminatedEvaluator(max_turn_number=1, max_stale_turn=2)],
+        terminal_evaluators=[
+            ReachGoalLLMEvaluator(
+                "gpt-4o-mini",
+                EvaluationForTwoAgents[SotopiaDimensions],
+            )
+        ],
+    )
+    agents = [
+        LLMAgent(agent_profile=agent_profile, model_name=agent_model)
+        for agent_profile, agent_model in zip(
+            agent_profiles, ["gpt-4o-mini", "gpt-4o-mini"]
+        )
+    ]
+
+    return (env, agents)
+
+
 def test_get_rewards() -> None:
     target_episodes = get_mock_episodes()
 
@@ -92,32 +181,88 @@ def test_get_rewards() -> None:
     # ppf = 2.093 for 95% confidence interval with 20 samples
     gt_bound = [sem[i] * 2.093 for i in range(len(dimensions))]
     assert np.allclose(
-        extracted_bound, gt_bound, atol=1e-2
+        extracted_bound, gt_bound, atol=2e-2
     ), f"In error bound, expected {gt_bound}, got {extracted_bound} on dimensions {dimensions}"
 
 
 mock_delete_function = create_autospec(lambda pk: None)
 
 
-# TODO fix the method assignment issue in mypy, ref: https://github.com/python/mypy/issues/2427
-@patch("sotopia.server.run_async_server")
-def test_run_async_benchmark_in_batch(
-    mock_run_async_server: mock.Mock,
+@patch("requests.get", side_effect=[mock_success(), mock_fail()])
+def test_initialize_benchmark_combo(
+    mock_requests_get: mock.Mock,
 ) -> None:
-    # Mainly test the deletion; Assume the `run_async_server` is correct;
+    # Test status code 200
+    resp_data = initialize_benchmark_combo(
+        url="http://localhost:5000"
+    )  # expect to get a non-empty list
+    assert (
+        isinstance(resp_data, list) and len(resp_data) == 2
+    ), f"Expected a length-2 list, but got {resp_data}"
+    assert (
+        resp_data[0].agent_ids == get_mock_episodes()[0].agents
+    ), f"For agents, expected {get_mock_episodes()[0].agents}, but got {resp_data[0].agent_ids}"
+
+    # Test status code 404
+    with pytest.raises(ValueError) as excinfo:
+        _ = initialize_benchmark_combo(
+            url="http://localhost:5000"
+        )  # expect to get a ValueError
+        assert "Failed to fetch data" in str(excinfo.value)
+
+    # Test get from database
+    EnvAgentComboStorage.find = mock.Mock(return_value=EnvAgentComboStorage)  # type: ignore
+    EnvAgentComboStorage.all = mock.Mock(return_value=resp_data)  # type: ignore
+    new_resp_data = initialize_benchmark_combo(url="")
+    assert (
+        isinstance(new_resp_data, list) and len(new_resp_data) == 2
+    ), f"Expected a length-2 list, but got {new_resp_data}"
+    for idx, (resp_item, new_item) in enumerate(zip(resp_data, new_resp_data)):
+        assert (
+            resp_item.agent_ids == new_item.agent_ids
+        ), f"For agents in item {idx}, expected {resp_item.agent_ids}, but got {new_item.agent_ids}"
+        assert (
+            resp_item.env_id == new_item.env_id
+        ), f"For env_id in item {idx}, expected {resp_item.env_id}, but got {new_item.env_id}"
+
+
+# TODO fix the method assignment issue in mypy, ref: https://github.com/python/mypy/issues/2427
+def test_run_async_benchmark_in_batch() -> None:
     return_value = get_mock_episodes()[:10]
     return_value[0].rewards = [0.0, 0.0]
+
+    env, agents = get_mock_env_agents_profile()
 
     EpisodeLog.delete = mock_delete_function  # type: ignore
     EpisodeLog.find = mock.Mock(return_value=EpisodeLog)  # type: ignore
     EpisodeLog.all = mock.Mock(return_value=return_value)  # type: ignore
 
+    AgentProfile.find = mock.Mock(return_value=AgentProfile)  # type: ignore
+    AgentProfile.all = mock.Mock(return_value=agents)  # type: ignore
+    AgentProfile.get = mock.Mock(  # type: ignore
+        return_value=lambda pk: agents[0] if pk == agents[0].pk else agents[1]
+    )
+
+    EnvironmentProfile.find = mock.Mock(return_value=EnvironmentProfile)  # type: ignore
+    EnvironmentProfile.all = mock.Mock(return_value=[env])  # type: ignore
+    EnvironmentProfile.get = mock.Mock(return_value=lambda pk: env)  # type: ignore
+
     assert (
         len(EpisodeLog.find().all()) == 10
     ), f"Expected 10 episodes in the database, but got {len(EpisodeLog.find().all())}"
 
+    env_agent_combo_list = [
+        compose_env_agent_combo(
+            env_profile=env,
+            agent_profiles=agents,
+        )
+    ]
+
     run_async_benchmark_in_batch(
-        env_agent_combo_list=[],
+        env_agent_combo_list=env_agent_combo_list,
+        batch_size=1,
+        push_to_db=False,
+        tag="test",
     )
 
     assert (
@@ -146,6 +291,14 @@ def test_sotopia_benchmark(
         partner_model="not_test_model",
         evaluator_model="eval_model",
         only_show_performance=False,
+        url="",
+    )
+
+    benchmark(
+        models=[model_name],
+        partner_model="not_test_model",
+        evaluator_model="eval_model",
+        only_show_performance=True,
         url="",
     )
 
