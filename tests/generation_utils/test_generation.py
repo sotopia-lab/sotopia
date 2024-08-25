@@ -6,6 +6,9 @@ from sotopia.generation_utils.generate import (
     agenerate,
 )
 
+from sotopia.messages import AgentAction
+from langchain.output_parsers import PydanticOutputParser
+
 
 @pytest.mark.asyncio
 async def test_agenerate_list_integer() -> None:
@@ -60,3 +63,18 @@ async def test_logging_behavior(caplog: Any) -> None:
     # Optionally, you can print the captured log records for verification
     for record in caplog.records:
         print(f"Captured log: {record.levelname} - {record.message}")
+
+
+@pytest.mark.asyncio
+async def test_agenerate_structured_output() -> None:
+    """
+    async version of test_generate_structured_output
+    """
+    output = await agenerate(
+        "gpt-4o-2024-08-06",
+        "{format_instructions}",
+        {},
+        PydanticOutputParser(pydantic_object=AgentAction),
+        structured_output=True,
+    )
+    assert isinstance(output, AgentAction)
