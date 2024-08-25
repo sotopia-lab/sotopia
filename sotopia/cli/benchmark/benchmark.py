@@ -476,7 +476,6 @@ def benchmark(
             (env_agent_combo_storage, "0")
             for env_agent_combo_storage in benchmark_combo
         ]
-    print("------", len(env_agent_combo_storage_index_list))
     for model in models:
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."

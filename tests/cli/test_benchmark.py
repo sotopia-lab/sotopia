@@ -72,7 +72,7 @@ def test_get_rewards() -> None:
     target_episodes = get_mock_episodes()
 
     test_rewards = get_avg_reward(target_episodes, model_name)
-    print(test_rewards)
+
     # 1. check the episode count
     assert test_rewards["episode_count"][0] == len(
         target_episodes
