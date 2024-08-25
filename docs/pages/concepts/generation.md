@@ -11,13 +11,23 @@ async def agenerate(
     input_values: dict[str, str],
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
+    structured_output: bool = False,
 ) -> OutputType:
     input_variables = re.findall(r"(?<!{){([^{}]+)}(?!})", template)
 ```
 
 The `agenerate` function is versatile by taking the output_parser as an argument and returning the output in the desired format.
+<Callout type="info" emoji="ℹ️">
+  Structured output is used to return the output in a structured format, such as a dictionary or a Pydantic object.
+  Currently, the structured output is only supported for the models below:
+    * `gpt-4o-mini-2024-07-18` and later
+    * `gpt-4o-2024-08-06` and later
+
+</Callout>
 
 Here are a few examples of how to use the `agenerate` function:
+
+
 
 ### Automatically generate scenarios
 
