@@ -490,7 +490,7 @@ async def agenerate(
         instantiated_prompt = prompt_result.messages[0].content
         assert isinstance(output_parser, PydanticOutputParser)
         assert isinstance(instantiated_prompt, str)
-        completion = client.beta.chat.completions.parse(  # type: ignore[attr-defined]
+        completion = client.beta.chat.completions.parse(
             model=model_name,
             messages=[
                 {"role": "user", "content": instantiated_prompt},
