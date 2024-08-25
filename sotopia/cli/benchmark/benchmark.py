@@ -159,7 +159,7 @@ def get_avg_reward(
     return return_rewards_dict
 
 
-def initilize_benchmark_combo(url: str) -> list[EnvAgentComboStorage]:
+def initialize_benchmark_combo(url: str) -> list[EnvAgentComboStorage]:
     if url:
         response = requests.get(url)
         # Check if the request was successful
@@ -296,7 +296,7 @@ def benchmark_display(
     evaluator_model: str = "gpt-4o",
     task: str = "hard",
     output_to_jsonl: bool = False,
-) -> None:
+) -> dict[str, dict[str, tuple[float, float]]]:
     """
     Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
     Aggregate all the results for the benchmark, as described in https://github.com/sotopia-lab/sotopia-space/blob/main/data_dir/models_vs_gpt35.jsonl
@@ -314,10 +314,13 @@ def benchmark_display(
         model_rewards_dict[model] = avg_rewards
         # print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
         rich.print(model_rewards_dict)
-
-    display_in_table(model_rewards_dict)
-    if output_to_jsonl:
-        save_to_jsonl(model_rewards_dict, partner_model)
+    if model_rewards_dict:
+        display_in_table(model_rewards_dict)
+        if output_to_jsonl:
+            save_to_jsonl(model_rewards_dict, partner_model)
+    else:
+        print("No episodes found for any model")
+    return model_rewards_dict
 
 
 def _list_all_env_agent_combo_not_in_db(
@@ -452,7 +455,7 @@ def benchmark(
 
     """A simple command-line interface example."""
     _set_up_logs(print_logs=print_logs)
-    benchmark_combo = initilize_benchmark_combo(url)
+    benchmark_combo = initialize_benchmark_combo(url)
     if task == "hard":
         hard_envs = EnvironmentList.get("01HAK34YPB1H1RWXQDASDKHSNS").environments
         agent_index = EnvironmentList.get("01HAK34YPB1H1RWXQDASDKHSNS").agent_index
@@ -464,6 +467,7 @@ def benchmark(
                     env_agent_combo_storage_index_list.append(
                         (env_agent_combo_storage, index)
                     )
+
     else:
         env_agent_combo_storage_index_list = [
             (env_agent_combo_storage, "1")
@@ -472,6 +476,7 @@ def benchmark(
             (env_agent_combo_storage, "0")
             for env_agent_combo_storage in benchmark_combo
         ]
+    print("------", len(env_agent_combo_storage_index_list))
     for model in models:
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
