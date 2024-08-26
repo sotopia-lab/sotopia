@@ -1,11 +1,13 @@
 import logging
 import os
 import re
-from typing import TypeVar, Any
+from typing import TypeVar, Any, cast
 
 import gin
 from beartype import beartype
 from beartype.typing import Type
+from openai import OpenAI
+
 from langchain_core.runnables.base import RunnableSerializable
 from langchain_core.messages.base import BaseMessage
 from langchain.output_parsers import PydanticOutputParser
@@ -14,6 +16,7 @@ from langchain.prompts import (
     HumanMessagePromptTemplate,
     PromptTemplate,
 )
+from langchain_core.prompt_values import ChatPromptValue
 from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from pydantic import BaseModel, Field
@@ -50,6 +53,7 @@ LLM_Name = Literal[
 ]
 
 OutputType = TypeVar("OutputType", bound=object)
+client = OpenAI()
 
 
 class EnvResponse(BaseModel):
@@ -300,16 +304,16 @@ def obtain_chain(
     """
     Using langchain to sample profiles for participants
     """
+    human_message_prompt = HumanMessagePromptTemplate(
+        prompt=PromptTemplate(
+            template=template,
+            input_variables=input_variables,
+        )
+    )
+    chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
     model_name = _return_fixed_model_version(model_name)
     if model_name.startswith("together_ai"):
         model_name = "/".join(model_name.split("/")[1:])
-        human_message_prompt = HumanMessagePromptTemplate(
-            prompt=PromptTemplate(
-                template=template,
-                input_variables=input_variables,
-            )
-        )
-        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
         chat_openai = ChatOpenAI(
             model_name=model_name,
             temperature=temperature,
@@ -321,13 +325,6 @@ def obtain_chain(
         return chain
     elif model_name.startswith("groq"):
         model_name = "/".join(model_name.split("/")[1:])
-        human_message_prompt = HumanMessagePromptTemplate(
-            prompt=PromptTemplate(
-                template=template,
-                input_variables=input_variables,
-            )
-        )
-        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
         chat_openai = ChatOpenAI(
             model_name=model_name,
             temperature=temperature,
@@ -345,13 +342,6 @@ def obtain_chain(
             azure_credentials[1],
             azure_credentials[2],
         )
-        human_message_prompt = HumanMessagePromptTemplate(
-            prompt=PromptTemplate(
-                template=template,
-                input_variables=input_variables,
-            )
-        )
-        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
         chat_azure_openai = AzureChatOpenAI(
             azure_deployment=deployment_name,
             openai_api_version=azure_version,
@@ -388,10 +378,6 @@ def obtain_chain(
             temperature=temperature,
             max_retries=max_retries,
         )
-        human_message_prompt = HumanMessagePromptTemplate(
-            prompt=PromptTemplate(template=template, input_variables=input_variables)
-        )
-        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
         chain = chat_prompt_template | chat
         return chain
 
@@ -467,6 +453,7 @@ async def agenerate(
     input_values: dict[str, str],
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
+    structured_output: bool = False,
 ) -> OutputType:
     input_variables = re.findall(
         r"(?<!{){([^{}]+)}(?!})", template
@@ -483,8 +470,37 @@ async def agenerate(
         input_variables=input_variables,
         temperature=temperature,
     )
+
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
+
+    if structured_output:
+        assert (
+            model_name == "gpt-4o-2024-08-06"
+        ), "Structured output is only supported in gpt-4o-2024-08-06"
+        human_message_prompt = HumanMessagePromptTemplate(
+            prompt=PromptTemplate(
+                template=template,
+                input_variables=input_variables,
+            )
+        )
+        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
+        prompt_result = chat_prompt_template.invoke(input_values)
+        assert isinstance(prompt_result, ChatPromptValue)
+        instantiated_prompt = prompt_result.messages[0].content
+        assert isinstance(output_parser, PydanticOutputParser)
+        assert isinstance(instantiated_prompt, str)
+        completion = client.beta.chat.completions.parse(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": instantiated_prompt},
+            ],
+            response_format=output_parser.pydantic_object,
+        )
+        result = completion.choices[0].message.parsed
+        casted_result = cast(OutputType, result)
+        return casted_result
+
     result = await chain.ainvoke(input_values, config={"callbacks": [logging_handler]})
     try:
         parsed_result = output_parser.invoke(result)
