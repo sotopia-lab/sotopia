@@ -109,7 +109,7 @@ def test_get_agent_by_name(
     _test_create_episode_log_setup_and_tear_down: Any,
 ) -> None:
     agent_profile = AgentProfile.find(AgentProfile.first_name == "John").all()
-    assert any([profile.pk == "tmppk_agent1" for profile in agent_profile])
+    assert agent_profile[0].pk == "tmppk_agent1"
 
 
 def test_create_episode_log(

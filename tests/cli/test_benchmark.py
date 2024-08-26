@@ -337,7 +337,7 @@ def test_sotopia_benchmark_display() -> None:
 
         benchmark_file = "/tmp/models_vs_not_test_model.jsonl"
         recovered_data = [json.loads(line) for line in open(benchmark_file, "r")]
-        all_numbers = [v for k, v in recovered_data[0].items() if k != "model_name"]
-        assert all_numbers == [
-            7.0 for _ in range(len(dimensions))
-        ], f"Expected {7.0} for all dimensions, but got {all_numbers}"
+        target_content = '{"model_name": "test_model", "SOC [-10, 0]": 7.0, "SEC [-10, 0]": 7.0, "FIN [-5, 5]": 7.0, "REL [-5, 5]": 7.0, "KNO [0, 10]": 7.0, "GOAL [0, 10]": 7.0, "BEL [0, 10]": 7.0}'
+        assert (
+            str(recovered_data[0]).replace("'", '"') == target_content
+        ), f"Expected {target_content}, but got {recovered_data[0]}"
