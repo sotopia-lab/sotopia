@@ -42,6 +42,7 @@ from sotopia.server import run_async_server
 import typer
 from pathlib import Path
 from ..app import app
+import os
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -296,6 +297,7 @@ def benchmark_display(
     evaluator_model: str = "gpt-4o",
     task: str = "hard",
     output_to_jsonl: bool = False,
+    save_dir: str = ".",
 ) -> dict[str, dict[str, tuple[float, float]]]:
     """
     Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
@@ -317,7 +319,7 @@ def benchmark_display(
     if model_rewards_dict:
         display_in_table(model_rewards_dict)
         if output_to_jsonl:
-            save_to_jsonl(model_rewards_dict, partner_model)
+            save_to_jsonl(model_rewards_dict, partner_model, save_dir)
     else:
         print("No episodes found for any model")
     return model_rewards_dict
@@ -407,9 +409,10 @@ def display_in_table(
 def save_to_jsonl(
     model_rewards_dict: dict[str, dict[str, tuple[float, float]]],
     partner_model: str,
+    save_dir: str,
 ) -> None:
     simplified_model_name = partner_model.split("/")[-1]
-    output_fn = f"./models_vs_{simplified_model_name}.jsonl"
+    output_fn = os.path.join(save_dir, f"models_vs_{simplified_model_name}.jsonl")
     outputs: list[str] = []
     for model, rewards in model_rewards_dict.items():
         formatted_reward = OrderedDict(
@@ -448,9 +451,12 @@ def benchmark(
     only_show_performance: bool = typer.Option(False, help="Only show performance."),
     output_to_jsonl: bool = typer.Option(False, help="Output to jsonl."),
     push_to_db: bool = typer.Option(False, help="Push to db."),
+    save_dir: str = typer.Option(".", help="The directory to save the output."),
 ) -> None:
     if only_show_performance:
-        benchmark_display(models, partner_model, evaluator_model, task, output_to_jsonl)
+        benchmark_display(
+            models, partner_model, evaluator_model, task, output_to_jsonl, save_dir
+        )
         return
 
     """A simple command-line interface example."""

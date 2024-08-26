@@ -1,6 +1,8 @@
 from sotopia.cli.benchmark.benchmark import get_avg_reward
 from sotopia.database import EpisodeLog, AgentProfile, EnvironmentProfile
 import numpy as np
+import json
+
 from unittest.mock import patch
 
 from sotopia.cli.benchmark.benchmark import (
@@ -267,11 +269,14 @@ def test_run_async_benchmark_in_batch() -> None:
         ), f"Expected 1 call to delete, but got {mock_delete_function.call_count}"
 
 
-@patch("sotopia.cli.benchmark.benchmark.run_async_benchmark_in_batch")
+mock_initialize = create_autospec(lambda: [])
+
+
 @patch("sotopia.cli.benchmark.benchmark.initialize_benchmark_combo")
+@patch("sotopia.cli.benchmark.benchmark.run_async_benchmark_in_batch")
 def test_sotopia_benchmark(
-    mock_initialize_benchmark_combo: mock.Mock,
     mock_run_async_benchmark_in_batch: mock.Mock,
+    mock_initialize_benchmark_combo: mock.Mock = mock_initialize,
 ) -> None:
     # Mainly test the benchmark workflow; Assume the benchmark_combo is correct
 
@@ -281,23 +286,29 @@ def test_sotopia_benchmark(
         assert (
             len(EpisodeLog.find().all()) == 20
         ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
-        mock_initialize_benchmark_combo.return_value = []
 
+        # `output_to_jsonl` will be tested in the next test, `push_to_db` has been tested elsewhere, so only test `only_show_performance`
         benchmark(
             models=[model_name],
             partner_model="not_test_model",
             evaluator_model="eval_model",
+            url="",
             only_show_performance=False,
-            url="",
+            output_to_jsonl=False,
+            push_to_db=False,
         )
+        mock_initialize_benchmark_combo.assert_called_once_with("")
 
         benchmark(
             models=[model_name],
             partner_model="not_test_model",
             evaluator_model="eval_model",
-            only_show_performance=True,
             url="",
+            only_show_performance=True,
+            output_to_jsonl=False,
+            push_to_db=False,
         )
+        mock_initialize_benchmark_combo.assert_called_once_with("")
 
 
 def test_sotopia_benchmark_display() -> None:
@@ -313,6 +324,8 @@ def test_sotopia_benchmark_display() -> None:
             model_list=[model_name],
             partner_model="not_test_model",
             evaluator_model="eval_model",
+            output_to_jsonl=True,
+            save_dir="/tmp",
         )
 
         target_believability = (7.0, 3.4462887784189147)
@@ -321,3 +334,10 @@ def test_sotopia_benchmark_display() -> None:
             target_believability,
             atol=0.02,
         ), f"Got {displayed_stats['test_model']['believability']}, expected {target_believability}"
+
+        benchmark_file = "/tmp/models_vs_not_test_model.jsonl"
+        recovered_data = [json.loads(line) for line in open(benchmark_file, "r")]
+        all_numbers = [v for k, v in recovered_data[0].items() if k != "model_name"]
+        assert all_numbers == [
+            7.0 for _ in range(len(dimensions))
+        ], f"Expected {7.0} for all dimensions, but got {all_numbers}"
