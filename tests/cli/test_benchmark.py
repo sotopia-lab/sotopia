@@ -232,41 +232,39 @@ def test_run_async_benchmark_in_batch() -> None:
 
     env, agents = get_mock_env_agents_profile()
 
-    EpisodeLog.delete = mock_delete_function  # type: ignore
-    EpisodeLog.find = mock.Mock(return_value=EpisodeLog)  # type: ignore
-    EpisodeLog.all = mock.Mock(return_value=return_value)  # type: ignore
+    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
+        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
+    ), patch("sotopia.database.EpisodeLog.all", return_value=return_value), patch(
+        "sotopia.database.AgentProfile.find", return_value=AgentProfile
+    ), patch("sotopia.database.AgentProfile.all", return_value=agents), patch(
+        "sotopia.database.AgentProfile.get",
+        return_value=lambda pk: agents[0] if pk == agents[0].pk else agents[1],
+    ), patch(
+        "sotopia.database.EnvironmentProfile.find", return_value=EnvironmentProfile
+    ), patch("sotopia.database.EnvironmentProfile.all", return_value=[env]), patch(
+        "sotopia.database.EnvironmentProfile.get", return_value=lambda pk: env
+    ):
+        assert (
+            len(EpisodeLog.find().all()) == 10
+        ), f"Expected 10 episodes in the database, but got {len(EpisodeLog.find().all())}"
 
-    AgentProfile.find = mock.Mock(return_value=AgentProfile)  # type: ignore
-    AgentProfile.all = mock.Mock(return_value=agents)  # type: ignore
-    AgentProfile.get = mock.Mock(  # type: ignore
-        return_value=lambda pk: agents[0] if pk == agents[0].pk else agents[1]
-    )
+        env_agent_combo_list = [
+            compose_env_agent_combo(
+                env_profile=env,
+                agent_profiles=agents,
+            )
+        ]
 
-    EnvironmentProfile.find = mock.Mock(return_value=EnvironmentProfile)  # type: ignore
-    EnvironmentProfile.all = mock.Mock(return_value=[env])  # type: ignore
-    EnvironmentProfile.get = mock.Mock(return_value=lambda pk: env)  # type: ignore
-
-    assert (
-        len(EpisodeLog.find().all()) == 10
-    ), f"Expected 10 episodes in the database, but got {len(EpisodeLog.find().all())}"
-
-    env_agent_combo_list = [
-        compose_env_agent_combo(
-            env_profile=env,
-            agent_profiles=agents,
+        run_async_benchmark_in_batch(
+            env_agent_combo_list=env_agent_combo_list,
+            batch_size=1,
+            push_to_db=False,
+            tag="test",
         )
-    ]
 
-    run_async_benchmark_in_batch(
-        env_agent_combo_list=env_agent_combo_list,
-        batch_size=1,
-        push_to_db=False,
-        tag="test",
-    )
-
-    assert (
-        mock_delete_function.call_count == 1
-    ), f"Expected 1 call to delete, but got {mock_delete_function.call_count}"
+        assert (
+            mock_delete_function.call_count == 1
+        ), f"Expected 1 call to delete, but got {mock_delete_function.call_count}"
 
 
 @patch("sotopia.cli.benchmark.benchmark.run_async_benchmark_in_batch")
@@ -276,47 +274,50 @@ def test_sotopia_benchmark(
     mock_run_async_benchmark_in_batch: mock.Mock,
 ) -> None:
     # Mainly test the benchmark workflow; Assume the benchmark_combo is correct
-    EpisodeLog.find = mock.Mock(return_value=EpisodeLog)  # type: ignore
-    EpisodeLog.all = mock.Mock(return_value=get_mock_episodes())  # type: ignore
-    EpisodeLog.delete = mock_delete_function  # type: ignore
 
-    assert (
-        len(EpisodeLog.find().all()) == 20
-    ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
-    mock_initialize_benchmark_combo.return_value = []
+    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
+        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
+    ), patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()):
+        assert (
+            len(EpisodeLog.find().all()) == 20
+        ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
+        mock_initialize_benchmark_combo.return_value = []
 
-    benchmark(
-        models=[model_name],
-        partner_model="not_test_model",
-        evaluator_model="eval_model",
-        only_show_performance=False,
-        url="",
-    )
+        benchmark(
+            models=[model_name],
+            partner_model="not_test_model",
+            evaluator_model="eval_model",
+            only_show_performance=False,
+            url="",
+        )
 
-    benchmark(
-        models=[model_name],
-        partner_model="not_test_model",
-        evaluator_model="eval_model",
-        only_show_performance=True,
-        url="",
-    )
+        benchmark(
+            models=[model_name],
+            partner_model="not_test_model",
+            evaluator_model="eval_model",
+            only_show_performance=True,
+            url="",
+        )
 
 
 def test_sotopia_benchmark_display() -> None:
     # Mainly test the average reward calculation (similar to previous get_avg_rewards test)
-    EpisodeLog.find = mock.Mock(return_value=EpisodeLog)  # type: ignore
-    EpisodeLog.all = mock.Mock(return_value=get_mock_episodes())  # type: ignore
 
-    assert (
-        len(EpisodeLog.find().all()) == 20
-    ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
-    displayed_stats = benchmark_display(
-        model_list=[model_name],
-        partner_model="not_test_model",
-        evaluator_model="eval_model",
-    )
+    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
+        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
+    ), patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()):
+        assert (
+            len(EpisodeLog.find().all()) == 20
+        ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
+        displayed_stats = benchmark_display(
+            model_list=[model_name],
+            partner_model="not_test_model",
+            evaluator_model="eval_model",
+        )
 
-    target_believability = (7.0, 3.4462887784189147)
-    assert np.allclose(
-        displayed_stats["test_model"]["believability"], target_believability, atol=0.02
-    ), f"Got {displayed_stats['test_model']['believability']}, expected {target_believability}"
+        target_believability = (7.0, 3.4462887784189147)
+        assert np.allclose(
+            displayed_stats["test_model"]["believability"],
+            target_believability,
+            atol=0.02,
+        ), f"Got {displayed_stats['test_model']['believability']}, expected {target_believability}"
