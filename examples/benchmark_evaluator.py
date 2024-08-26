@@ -25,8 +25,8 @@ def get_human_annotations(
     target_model_patterns: list[list[str]],
 ) -> list[AnnotationForEpisode]:
     episodes_with_human_annotation: list[AnnotationForEpisode] = []
-    for pk in AnnotationForEpisode.all_pks():
-        episode_human = AnnotationForEpisode.get(pk)
+    human_annotated_episodes = AnnotationForEpisode.all()
+    for episode_human in human_annotated_episodes:
         episode_model = EpisodeLog.get(episode_human.episode)
         if episode_model.models in target_model_patterns:
             episodes_with_human_annotation.append(episode_human)
@@ -58,7 +58,9 @@ def get_dimension_correlation(
         int(not isinstance(relevant_episode.rewards[0], float))
         for relevant_episode in machine_annotations
     ]
-    assert sum(episodes_with_valid_rewards) == len(human_annotations), "Data is missing"
+    assert (
+        sum(episodes_with_valid_rewards) == len(human_annotations)
+    ), f"Data is missing, episodes with valid rewards: {sum(episodes_with_valid_rewards)}, human annotations: {len(human_annotations)}"
     overall = dimension == "overall"
     dimension_scores_agent1_human = get_dimension_scores(
         0, human_annotations, dimension, overall
@@ -116,6 +118,9 @@ def evaluate_evaluator(
         EpisodeLog.tag == tag
     ).all()  # type: ignore
     if len(re_evaluated_episodes) < len(to_re_evaluate_list):
+        print(
+            f"Existing data: {len(re_evaluated_episodes)}, expected: {len(to_re_evaluate_list)}, running evaluation"
+        )
         run_async_server_in_batch_aevaluate(
             tag=tag,
             model=model,  # type: ignore
@@ -143,6 +148,8 @@ def evaluate_evaluator(
                 verbose=verbose,
                 reeval_list=to_re_evaluate_list,
             )
+            for pk in to_re_evaluate_list:
+                EpisodeLog.delete(pk)
             to_re_evaluate_list = []
             re_evaluated_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()  # type: ignore
             valid_episodes = [
@@ -151,9 +158,8 @@ def evaluate_evaluator(
             ]
             for valid, episode in zip(valid_episodes, re_evaluated_episodes):
                 if not valid:
-                    pk = episode.pk
+                    pk = episode.pk  # type: ignore
                     assert isinstance(pk, str)
-                    EpisodeLog.delete(pk)
                     to_re_evaluate_list.append(pk)
 
     correlation_list = []

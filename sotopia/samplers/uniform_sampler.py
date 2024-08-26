@@ -46,32 +46,19 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
 
         assert replacement, "Uniform sampling without replacement is not supported yet"
 
+        if self.env_candidates is None:
+            self.env_candidates = EnvironmentProfile.all()
+
+        if self.agent_candidates is None:
+            self.agent_candidates = AgentProfile.all()
+
         for _ in range(size):
-            if self.env_candidates:
-                env_profile = random.choice(self.env_candidates)
-                if isinstance(env_profile, str):
-                    env_profile = EnvironmentProfile.get(env_profile)
-            else:
-                env_profile_id = random.choice(list(EnvironmentProfile.all_pks()))
-                env_profile = EnvironmentProfile.get(env_profile_id)
+            env_profile = random.choice(self.env_candidates)
+            if isinstance(env_profile, str):
+                env_profile = EnvironmentProfile.get(env_profile)
             env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
-            if self.agent_candidates:
-                agent_profile_candidates = self.agent_candidates
-                if len(agent_profile_candidates) < n_agent:
-                    raise ValueError(
-                        f"Number of agent candidates ({len(agent_profile_candidates)}) is less than number of agents ({n_agent})"
-                    )
-            else:
-                agent_profile_candidates_keys = list(AgentProfile.all_pks())
-                if len(agent_profile_candidates_keys) < n_agent:
-                    raise ValueError(
-                        f"Number of agent profile candidates ({len(agent_profile_candidates_keys)}) in database is less than number of agents ({n_agent})"
-                    )
-                agent_profile_candidates = [
-                    AgentProfile.get(pk=pk) for pk in agent_profile_candidates_keys
-                ]
-
+            agent_profile_candidates = self.agent_candidates
             if len(agent_profile_candidates) == n_agent:
                 agent_profiles_maybe_id = agent_profile_candidates
             else:

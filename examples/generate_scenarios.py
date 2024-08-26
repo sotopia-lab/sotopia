@@ -53,7 +53,7 @@ def check_existing_envs(
 
 def generate_newenv_profile(
     num: int,
-    gen_model: LLM_Name = "gpt-4-turbo",
+    gen_model: LLM_Name = "gpt-4-turbo-2024-04-09",
     temperature: float = 0.5,
     type: str = "craigslist_bargains",
 ) -> pd.DataFrame:

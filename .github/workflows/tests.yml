@@ -38,7 +38,6 @@ jobs:
       uses: abatilo/actions-poetry@v2
     - name: Install dependencies
       run: |
-        poetry lock
         poetry install --with test -E chat
     - name: Test with pytest
       env: # Or as an environment variable

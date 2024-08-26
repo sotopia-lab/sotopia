@@ -1,6 +1,9 @@
 import abc
 import logging
 from collections import defaultdict
+from typing import Generic, TypeVar
+
+from pydantic.generics import GenericModel
 
 import gin
 from beartype import beartype
@@ -17,7 +20,9 @@ from sotopia.messages import (
 log = logging.getLogger("evaluators")
 
 
-class EvaluationBySocialDimensions(BaseModel):
+class SotopiaDimensions(BaseModel):
+    """The social dimensions used in Sotopia paper (ICLR 2024)"""
+
     believability: tuple[str, int] = Field(
         ...,
         description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? c. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
@@ -64,23 +69,25 @@ class EvaluationBySocialDimensions(BaseModel):
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
     )
 
-    @validator("believability", "knowledge", "goal")
+    @validator("believability", "knowledge", "goal", allow_reuse=True)
     def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= 0 and v[1] <= 10
         return v
 
-    @validator("relationship", "financial_and_material_benefits")
+    @validator("relationship", "financial_and_material_benefits", allow_reuse=True)
     def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -5 and v[1] <= 5
         return v
 
-    @validator("secret", "social_rules")
+    @validator("secret", "social_rules", allow_reuse=True)
     def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -10 and v[1] <= 0
         return v
 
 
-class EvaluationBySocialDimensionsPlus(BaseModel):
+class SotopiaDimensionsPlus(BaseModel):
+    """Updated SotopiaDimensions with more detailed instructions"""
+
     believability: tuple[str, int] = Field(
         ...,
         description="Reasoning requirement: 1. Evaluate if the agent interacts with others in a natural and realistic manner (here are a few common questions to check: a. whether the agent is confusing with its own identity? b. whether the agent repeats others' words/actions without any reason? c. whether the agent is being overly polite considering the context?). Start the analysis with tag <naturalness> "
@@ -127,30 +134,44 @@ class EvaluationBySocialDimensionsPlus(BaseModel):
         "In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals. Almost Not Finishing Any Goal (0-3): Scores from 0 to 3 indicate almost not finishing any goal, suggesting a minimal level of goal achievement. This range signifies either no progress or only a very rudimentary level of advancement towards the completion of set goals. Finishing Less Than 50% of Goals (4-6): A score between 4 and 6 suggests finishing less than 50% of the goals, indicating a moderate level of goal completion. This range represents partial success, with some goals being met while a significant portion remains unachieved. Finishing More Than 50%, But Not All Goals (7-8): Scores in the 7 to 8 range indicate finishing more than 50% but not all of the goals. This suggests a high level of achievement, where the majority of set goals are met, but some goals still remain incomplete. Finishing All Goals (9-10): A score between 9 and 10 signifies finishing all goals, representing the highest level of achievement in goal completion. This range indicates that all set objectives have been met, signifying complete success in achieving the targeted goals.",
     )
 
-    @validator("believability", "knowledge", "goal")
+    @validator("believability", "knowledge", "goal", allow_reuse=True)
     def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= 0 and v[1] <= 10
         return v
 
-    @validator("relationship", "financial_and_material_benefits")
+    @validator("relationship", "financial_and_material_benefits", allow_reuse=True)
     def minus_five_to_five_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -5 and v[1] <= 5
         return v
 
-    @validator("secret", "social_rules")
+    @validator("secret", "social_rules", allow_reuse=True)
     def minus_ten_to_zero_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
         assert v[1] >= -10 and v[1] <= 0
         return v
 
 
-class EnvResponse(BaseModel):
-    agent_1_evaluation: EvaluationBySocialDimensions
-    agent_2_evaluation: EvaluationBySocialDimensions
+class GoalDimension(BaseModel):
+    """Goal only evaluation"""
+
+    goal: tuple[str, int] = Field(
+        ...,
+        description="Please first reiterate agent's social goals. "
+        "And then please provide a comprehensive analysis about the extent to which the agent has managed to achieve these goals. "
+        "The first entry (str) of the object is the 'reasoning' field, and the second entry (int) of the object is the 'score' field. In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. 0 represents minimal goals achievement, 10 represents complete goal achievement, and a higher score indicates that the agent is making progress towards their social goals.",
+    )
+
+    @validator("goal", allow_reuse=True)
+    def zero_to_ten_validator(cls, v: tuple[str, int]) -> tuple[str, int]:
+        assert v[1] >= 0 and v[1] <= 10
+        return v
 
 
-class EnvResponsePlus(BaseModel):
-    agent_1_evaluation: EvaluationBySocialDimensionsPlus
-    agent_2_evaluation: EvaluationBySocialDimensionsPlus
+T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
+
+
+class EvaluationForTwoAgents(GenericModel, Generic[T_eval_dim]):
+    agent_1_evaluation: T_eval_dim
+    agent_2_evaluation: T_eval_dim
 
 
 class Evaluator(abc.ABC):
@@ -180,7 +201,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # Rule 1: If the conversation is too long, terminate the conversation
-        conversation_too_long = turn_number > self.max_turn_number
+        conversation_too_long = turn_number >= self.max_turn_number
         # Rule 2: If one of the players leaves, terminate the conversation
         p1_leaving = (
             len(messages) > 1
@@ -225,12 +246,16 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         return self(turn_number, messages)
 
 
-class ReachGoalLLMEvaluator(Evaluator):
+class ReachGoalLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     @beartype
-    def __init__(self, model_name: str, response_format: str = "basic") -> None:
+    def __init__(
+        self,
+        model_name: str,
+        response_format_class: type[EvaluationForTwoAgents[T_eval_dim]],
+    ) -> None:
         self.model_name = model_name
         self.prompt = ""
-        self.response_format = response_format
+        self.response_format_class = response_format_class
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
@@ -265,15 +290,9 @@ class ReachGoalLLMEvaluator(Evaluator):
                     for x, y in messages_filtered
                 ]
             )
-        response_format_class = (
-            EnvResponsePlus if self.response_format == "plus" else EnvResponse
-        )
 
         try:
-            response: (
-                EnvResponsePlus | EnvResponse
-            )  # fix type error from langchain 0.0.264. we don't need this line for langchain 0.0.263
-            response = await agenerate(
+            response: EvaluationForTwoAgents[T_eval_dim] = await agenerate(
                 model_name=self.model_name,
                 template="""{history},
                     Based on previous interactions, evaluate how well participants achieve their goals.
@@ -281,8 +300,8 @@ class ReachGoalLLMEvaluator(Evaluator):
                     {format_instructions}
                 """,
                 input_values=dict(history=history),
-                output_parser=PydanticOutputParser[EnvResponsePlus | EnvResponse](
-                    pydantic_object=response_format_class
+                output_parser=PydanticOutputParser[self.response_format_class](  # type: ignore[name-defined]
+                    pydantic_object=self.response_format_class
                 ),
                 temperature=temperature,
             )

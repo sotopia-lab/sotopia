@@ -27,6 +27,8 @@ from sotopia.envs.evaluators import (
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.server import arun_one_episode
 
+from sotopia.envs.evaluators import SotopiaDimensions, EvaluationForTwoAgents
+
 process = subprocess.Popen(
     ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
 )
@@ -62,7 +64,7 @@ async def _start_server_with_two_session_ids_and_agent_env_combo(
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator("gpt-4"),
+            ReachGoalLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
         ],
     )
     random.shuffle(session_ids)
@@ -95,7 +97,7 @@ async def _start_server_with_one_session_id_and_agent_env_combo(
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator("gpt-4"),
+            ReachGoalLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
         ],
     )
 
