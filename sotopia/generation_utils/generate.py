@@ -391,7 +391,7 @@ def format_bad_output_for_script(
     ill_formed_output: str,
     format_instructions: str,
     agents: list[str],
-    model_name: str = "gpt-3.5-turbo",
+    model_name: str = "gpt-4o-mini",
 ) -> BaseMessage:
     template = """
     Given the string that can not be parsed by a parser, reformat it to a string that can be parsed by the parser which uses the following format instructions. Do not add or delete any information.
@@ -425,7 +425,7 @@ def format_bad_output_for_script(
 def format_bad_output(
     ill_formed_output: BaseMessage,
     format_instructions: str,
-    model_name: str = "gpt-3.5-turbo",
+    model_name: str = "gpt-4o-mini",
 ) -> BaseMessage:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
