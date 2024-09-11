@@ -12,6 +12,10 @@
         "title": "Concepts",
         "type": "page"
     },
+    "python_API": {
+        "title": "Python API",
+        "type": "page"
+    },
     "examples": {
         "title": "Examples",
         "type": "page"
