@@ -21,7 +21,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
             uuid_str or agent_profile object is provided during instantiation. It
             stores information about the agent, including their name and identifier.
         agent_name (str|None): Populated from one of three sources:
-            
+
             * When `agent_profile` is provided, it is set to a string concatenating
             the agent's first name and last name.
             * When `uuid_str` is provided, it attempts to fetch the corresponding
@@ -37,6 +37,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
             storing the name of the agent's model.
 
     """
+
     def __init__(
         self,
         agent_name: str | None = None,
