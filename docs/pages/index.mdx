@@ -6,27 +6,6 @@ import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "..
 import { Steps, Callout } from 'nextra/components'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 
-Train and deploy AI agents that interact with humans and other AI agents with <span className="font-display text-xl">Sotopia</span>.
-
-## Features
-
-* Enables human-AI interaction
-  - use `LLMAgent` to create LLM-based social agents,
-  - REST API-based interface for humans.
-* Preset social tasks, characters, and interactions
-  - more than 200 social tasks, 40 characters, and 10k interaction episodes,
-  - interactions between agents backed by both closed-source and open-source LLMs, and human participants,
-  - evaluation of the performance based on multiple social dimensions.
-* Realistic social interaction
-  - agents can talk, do non-verbal communication and performance physical actions,
-  - characters have different personalities, backgrounds, and relationships,
-  - agents can have different goals and motivations.
-* Create your own
-  - modular design for easy extension,
-  - subclass `BaseAgent`, `ParallelSotopiaEnv`, `Evaluator` to create your own agents, environments, and evaluators,
-  - add your customized social tasks and characters.
-
-## Installation
 
 <Callout>
 
@@ -37,15 +16,68 @@ Train and deploy AI agents that interact with humans and other AI agents with <s
 <span className='font-bold'> for a quick tutorial </span>
 </div>
 
-This package supports Python 3.10 and above.
 </Callout>
 
-There are two ways to setup the package: automatic installation and manual setup.
+Train, deploy, and evaluate AI agents
+with <span className="font-display text-xl">Sotopia</span>
+to interact with humans and other AI agents
 
-### Automatic Installation
+## Features
+
+{/* Use accordian for the following */}
+
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="item-1">
+      <AccordionTrigger> Enables human-AI interaction </AccordionTrigger>
+      <AccordionContent>
+        <ul>
+          <li>Use `LLMAgent` to create LLM-based social agents, REST API-based interface for humans.</li>
+          <li>RESTful API-based interface for humans.</li>
+        </ul>
+      </AccordionContent>
+  </AccordionItem>
+  <AccordionItem value="item-2">
+      <AccordionTrigger> Preset social tasks, characters, and interactions </AccordionTrigger>
+      <AccordionContent>
+        <ul>
+        <li>More than 200 social tasks, 40 characters, and 10k interaction episodes.</li>
+        <li>Interactions between agents backed by both closed-source and open-source LLMs, and human participants.</li>
+        <li>Evaluation of the performance based on multiple social dimensions.</li>
+        </ul>
+      </AccordionContent>
+  </AccordionItem>
+  <AccordionItem value="item-3">
+      <AccordionTrigger> Realistic social interaction </AccordionTrigger>
+      <AccordionContent>
+        <ul>
+          <li>Agents can talk, do non-verbal communication and performance physical actions.</li>
+          <li>Characters have different personalities, backgrounds, and relationships.</li>
+          <li>Agents can have different goals and motivations.</li>
+        </ul>
+      </AccordionContent>
+  </AccordionItem>
+  <AccordionItem value="item-4">
+      <AccordionTrigger> Create your own </AccordionTrigger>
+      <AccordionContent>
+        <ul>
+          <li>Modular design for easy extension.</li>
+          <li>Subclass `BaseAgent`, `ParallelSotopiaEnv`, `Evaluator` to create your own agents, environments, and evaluators.</li>
+          <li>Add your customized social tasks and characters.</li>
+        </ul>
+      </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+
+
+## Installation
+This package supports Python 3.10 and above. There are two ways to setup the package:
+automatic installation with an interactive installer and manual installation from source.
+
+### Interactive Installer
 ```bash
 pip install sotopia
-sotopia install # an interative installer
+sotopia install
 export REDIS_OM_URL="redis://localhost:6379"
 ```
 
@@ -58,17 +90,6 @@ export REDIS_OM_URL="redis://localhost:6379"
         conda create -n sotopia python=3.11;
         conda activate sotopia;
         ```
-        </AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="item-2">
-        <AccordionTrigger>Want to use the nightly version?</AccordionTrigger>
-        <AccordionContent>
-          <p>Install the nightly version with:</p>
-          ```bash
-          git clone git@github.com:sotopia-lab/sotopia.git;
-          curl -sSL https://install.python-poetry.org | python3;
-          poetry install;
-          ```
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-3">
@@ -96,7 +117,7 @@ export REDIS_OM_URL="redis://localhost:6379"
       </AccordionItem>
 </Accordion>
 
-### Manual Setup
+### Or if you want to install from source
 
 #### Clone the repo and install the package
 ```bash
