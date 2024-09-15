@@ -306,7 +306,7 @@ def obtain_chain(
     input_variables: list[str],
     temperature: float = 0.7,
     max_retries: int = 6,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> RunnableSerializable[dict[Any, Any], BaseMessage]:
     """
     Using langchain to sample profiles for participants
@@ -396,7 +396,7 @@ def format_bad_output_for_script(
     format_instructions: str,
     agents: list[str],
     model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
     Given the string that can not be parsed by a parser, reformat it to a string that can be parsed by the parser which uses the following format instructions. Do not add or delete any information.
@@ -415,7 +415,7 @@ def format_bad_output_for_script(
         model_name=model_name,
         template=template,
         input_variables=re.findall(r"{(.*?)}", template),
-        use_fixed_model_version=use_fixed_model_version
+        use_fixed_model_version=use_fixed_model_version,
     )
     input_values = {
         "ill_formed_output": ill_formed_output,
@@ -432,7 +432,7 @@ def format_bad_output(
     ill_formed_output: BaseMessage,
     format_instructions: str,
     model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
@@ -446,7 +446,7 @@ def format_bad_output(
         model_name=model_name,
         template=template,
         input_variables=re.findall(r"{(.*?)}", template),
-        use_fixed_model_version=use_fixed_model_version
+        use_fixed_model_version=use_fixed_model_version,
     )
     input_values = {
         "ill_formed_output": ill_formed_output.content,
@@ -467,7 +467,7 @@ async def agenerate(
     temperature: float = 0.7,
     structured_output: bool = False,
     bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> OutputType:
     input_variables = re.findall(
         r"(?<!{){([^{}]+)}(?!})", template
@@ -483,7 +483,7 @@ async def agenerate(
         template=template,
         input_variables=input_variables,
         temperature=temperature,
-        use_fixed_model_version=use_fixed_model_version
+        use_fixed_model_version=use_fixed_model_version,
     )
 
     if "format_instructions" not in input_values:
@@ -527,9 +527,10 @@ async def agenerate(
             extra={"markup": True},
         )
         reformat_parsed_result = format_bad_output(
-            result, format_instructions=output_parser.get_format_instructions(),
+            result,
+            format_instructions=output_parser.get_format_instructions(),
             model_name=bad_output_process_model,
-            use_fixed_model_version=use_fixed_model_version
+            use_fixed_model_version=use_fixed_model_version,
         )
         parsed_result = output_parser.invoke(reformat_parsed_result)
     log.info(f"Generated result: {parsed_result}")
@@ -544,7 +545,7 @@ async def agenerate_env_profile(
     examples: str = "",
     temperature: float = 0.7,
     bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> tuple[EnvironmentProfile, str]:
     """
     Using langchain to generate the background
@@ -565,7 +566,7 @@ async def agenerate_env_profile(
         output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
         temperature=temperature,
         bad_output_process_model=bad_output_process_model,
-        use_fixed_model_version=use_fixed_model_version
+        use_fixed_model_version=use_fixed_model_version,
     )
 
 
@@ -574,7 +575,7 @@ async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
     bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> tuple[RelationshipProfile, str]:
     """
     Using langchain to generate the background
@@ -592,7 +593,7 @@ async def agenerate_relationship_profile(
         ),
         output_parser=PydanticOutputParser(pydantic_object=RelationshipProfile),
         bad_output_process_model=bad_output_process_model,
-        use_fixed_model_version=use_fixed_model_version
+        use_fixed_model_version=use_fixed_model_version,
     )
 
 
@@ -608,7 +609,7 @@ async def agenerate_action(
     temperature: float = 0.7,
     script_like: bool = False,
     bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -659,7 +660,7 @@ async def agenerate_action(
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
-            use_fixed_model_version=use_fixed_model_version
+            use_fixed_model_version=use_fixed_model_version,
         )
     except Exception:
         return AgentAction(action_type="none", argument="")
@@ -676,7 +677,7 @@ async def agenerate_script(
     history: str = "",
     single_step: bool = False,
     bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
-    use_fixed_model_version: bool = True
+    use_fixed_model_version: bool = True,
 ) -> tuple[ScriptInteractionReturnType, str]:
     """
     Using langchain to generate an the script interactions between two agent
@@ -711,7 +712,7 @@ async def agenerate_script(
                 ),
                 temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
-                use_fixed_model_version=use_fixed_model_version
+                use_fixed_model_version=use_fixed_model_version,
             )
 
         else:
@@ -735,7 +736,7 @@ async def agenerate_script(
                 ),
                 temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
-                use_fixed_model_version=use_fixed_model_version
+                use_fixed_model_version=use_fixed_model_version,
             )
     except Exception as e:
         # TODO raise(e) # Maybe we do not want to return anything?
@@ -764,7 +765,12 @@ def process_history(
 
 
 @beartype
-async def agenerate_init_profile(model_name: str, basic_info: dict[str, str], bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL, use_fixed_model_version: bool = True) -> str:
+async def agenerate_init_profile(
+    model_name: str,
+    basic_info: dict[str, str],
+    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    use_fixed_model_version: bool = True,
+) -> str:
     """
     Using langchain to generate the background
     """
@@ -799,12 +805,18 @@ async def agenerate_init_profile(model_name: str, basic_info: dict[str, str], ba
         ),
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
-        use_fixed_model_version=use_fixed_model_version
+        use_fixed_model_version=use_fixed_model_version,
     )
 
 
 @beartype
-async def convert_narratives(model_name: str, narrative: str, text: str, bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL, use_fixed_model_version: bool = True) -> str:
+async def convert_narratives(
+    model_name: str,
+    narrative: str,
+    text: str,
+    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    use_fixed_model_version: bool = True,
+) -> str:
     if narrative == "first":
         return await agenerate(
             model_name=model_name,
@@ -814,7 +826,7 @@ async def convert_narratives(model_name: str, narrative: str, text: str, bad_out
             input_values=dict(text=text),
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
-            use_fixed_model_version=use_fixed_model_version
+            use_fixed_model_version=use_fixed_model_version,
         )
     elif narrative == "second":
         return await agenerate(
@@ -825,14 +837,19 @@ async def convert_narratives(model_name: str, narrative: str, text: str, bad_out
             input_values=dict(text=text),
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
-            use_fixed_model_version=use_fixed_model_version
+            use_fixed_model_version=use_fixed_model_version,
         )
     else:
         raise ValueError(f"Narrative {narrative} is not supported.")
 
 
 @beartype
-async def agenerate_goal(model_name: str, background: str, bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL, use_fixed_model_version: bool = True) -> str:
+async def agenerate_goal(
+    model_name: str,
+    background: str,
+    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    use_fixed_model_version: bool = True,
+) -> str:
     """
     Using langchain to generate the background
     """
@@ -844,5 +861,5 @@ async def agenerate_goal(model_name: str, background: str, bad_output_process_mo
         input_values=dict(background=background),
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
-        use_fixed_model_version=use_fixed_model_version
+        use_fixed_model_version=use_fixed_model_version,
     )
