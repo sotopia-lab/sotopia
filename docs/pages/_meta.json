@@ -1,12 +1,10 @@
 {
     "index": {
         "title": "Introduction",
+        "type": "page",
         "theme": {
             "breadcrumb": true
         }
-    },
-    "---": {
-        "type": "separator"
     },
     "concepts": {
         "title": "Concepts",
