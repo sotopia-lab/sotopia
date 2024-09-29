@@ -1,3 +1,5 @@
+## Overview
+
 Agent is a concept in Sotopia to represent decision-making entities that can interact with each other in a social environment. Agents can be human participants, AI models, or other entities.  No matter which type of agent, they have the same interface to interact with the environment: the input is an [`Observation`](/python_API/messages/message_classes#observation) and the output is an [`AgentAction`](/python_API/messages/message_classes#agentaction), each of which is a subclass of [`Message`](/python_API/messages/message_classes#message). You can think of the environment and the agents are sending messages to each other, while the message from the environment is the observation for the agents, and the message from each of the agents is the action that they want to take in the environment. In Sotopia, we are simulating the interaction between agents with social roles, which includes both human characters and various AI assistants, which are defined as profiles [`AgentProfile`](/python_API/database/persistant_profile#agentprofile-class).
 
 ### Actions of agents
@@ -5,8 +7,8 @@ The types of action is defined by the `ActionType` type alias, which is a litera
 
 Apart from the type of action, the content of the action, e.g. the utterance, the concrete action, etc., is a free-form string in the `argument` attribute of the `AgentAction` class.
 
-### Profile of agents
-The profile of agents are passed in as either of two argument of [the constructor of agents](/python_API/agents/base_agent_api_docs#constructor): `uuid_str` or `agent_profile`. The `uuid_str` is used together with the Redis database to retrieve an agent profile, while the `agent_profile` is a Pydantic `AgentProfile` object.
+### Profiles of agents
+The profiles of agents are passed in as either of two argument of [the constructor of agents](/python_API/agents/base_agent_api_docs#constructor): `uuid_str` or `agent_profile`. The `uuid_str` is used together with the Redis database to retrieve an agent profile, while the `agent_profile` is a Pydantic `AgentProfile` object.
 We strong recommend to use `uuid_str`, as it can more easily be used with other sotopia tools.
 
 ### Built-in agents
