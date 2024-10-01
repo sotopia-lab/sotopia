@@ -9,7 +9,7 @@ PUSH_TO_DB=False
 OMNISCIENT=False
 
 server.run_async_server:
-    model_dict={"env": "gpt-4", "agent1": "gpt-3.5-turbo", "agent2": "gpt-3.5-turbo"}
+    model_dict={"env": "gpt-4", "agent1": "gpt-4o-mini", "agent2": "gpt-3.5-turbo"}
     action_order=%ACTION_ORDER
     push_to_db=%PUSH_TO_DB
     using_async=True

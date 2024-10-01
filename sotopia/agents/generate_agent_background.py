@@ -20,13 +20,13 @@ async def generate_background(
     else:
         initial_profile = str(basic_info)
         profile = await agenerate_init_profile(
-            model_name="gpt-3.5-turbo", basic_info=basic_info
+            model_name="gpt-4o-mini", basic_info=basic_info
         )
         first_narrative = convert_narratives(
-            model_name="gpt-3.5-turbo", narrative="first", text=profile
+            model_name="gpt-4o-mini", narrative="first", text=profile
         )
         second_narrative = convert_narratives(
-            model_name="gpt-3.5-turbo", narrative="second", text=profile
+            model_name="gpt-4o-mini", narrative="second", text=profile
         )
         previous_messages = []
     return (
@@ -67,8 +67,8 @@ def generate_background_conversation(
         json.dump(background_dict, f, indent=4)
 
     model_names: dict[str, str] = {
-        "env": "gpt-3.5-turbo",
-        "agent2": "gpt-3.5-turbo",
+        "env": "gpt-4o-mini",
+        "agent2": "gpt-4o-mini",
         "agent1": "gpt-4",
     }
 

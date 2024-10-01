@@ -130,7 +130,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             ["none", "speak", "non-verbal communication", "action", "leave"]
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
-        model_name: str = "gpt-3.5-turbo",
+        model_name: str = "gpt-4o-mini",
         evaluators: list[Evaluator] = [],
         terminal_evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,

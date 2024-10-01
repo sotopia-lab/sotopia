@@ -43,7 +43,7 @@ LLM_Name = Literal[
     "together_ai/meta-llama/Llama-3-8b-chat-hf",
     "together_ai/meta-llama/Llama-3-70b-chat-hf",
     "together_ai/meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-    "gpt-3.5-turbo",
+    "gpt-4o-mini",
     "gpt-3.5-turbo-16k-0613",
     "gpt-3.5-turbo-finetuned",
     "gpt-3.5-turbo-ft-MF",
@@ -281,7 +281,7 @@ f. Oliver Thompson left the conversation"""
 
 def _return_fixed_model_version(model_name: str) -> str:
     if model_name in [
-        "gpt-3.5-turbo",
+        "gpt-4o-mini",
         "gpt-3.5-turbo-finetuned",
         "gpt-3.5-turbo-ft-MF",
         "gpt-4",
