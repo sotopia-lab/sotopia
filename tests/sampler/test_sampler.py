@@ -77,7 +77,7 @@ def test_uniform_sampler() -> None:
         ],
     )
     env_params = {
-        "model_name": "gpt-3.5-turbo",
+        "model_name": "gpt-4o-mini",
         "action_order": "random",
         "evaluators": [
             RuleBasedTerminatedEvaluator(),
@@ -88,7 +88,7 @@ def test_uniform_sampler() -> None:
             agent_classes=[LLMAgent] * n_agent,
             n_agent=n_agent,
             env_params=env_params,
-            agents_params=[{"model_name": "gpt-3.5-turbo"}] * n_agent,
+            agents_params=[{"model_name": "gpt-4o-mini"}] * n_agent,
         )
     )
     agents = Agents({agent.agent_name: agent for agent in agent_list})
@@ -105,7 +105,7 @@ def test_constrain_sampler() -> None:
         env_candidates=[str(borrow_money.pk)]
     )
     env_params = {
-        "model_name": "gpt-3.5-turbo",
+        "model_name": "gpt-4o-mini",
         "action_order": "random",
         "evaluators": [
             RuleBasedTerminatedEvaluator(),
@@ -118,7 +118,7 @@ def test_constrain_sampler() -> None:
             replacement=False,
             size=2,
             env_params=env_params,
-            agents_params=[{"model_name": "gpt-3.5-turbo"}] * n_agent,
+            agents_params=[{"model_name": "gpt-4o-mini"}] * n_agent,
         )
     )
     agents = Agents({agent.agent_name: agent for agent in agent_list})
@@ -130,7 +130,7 @@ def test_constrain_sampler() -> None:
             replacement=True,
             size=2,
             env_params=env_params,
-            agents_params=[{"model_name": "gpt-3.5-turbo"}] * n_agent,
+            agents_params=[{"model_name": "gpt-4o-mini"}] * n_agent,
         )
     )
     agents = Agents({agent.agent_name: agent for agent in agent_list})

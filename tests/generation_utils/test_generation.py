@@ -17,7 +17,7 @@ async def test_agenerate_list_integer() -> None:
     """
     length, lower, upper = 5, -10, 10
     list_of_int = await agenerate(
-        "gpt-3.5-turbo",
+        "gpt-4o-mini",
         "{format_instructions}",
         {},
         ListOfIntOutputParser(length, (lower, upper)),
@@ -52,7 +52,7 @@ async def test_logging_behavior(caplog: Any) -> None:
     # Call the function under test
     caplog.set_level(15)
     await agenerate(
-        "gpt-3.5-turbo",
+        "gpt-4o-mini",
         "{format_instructions}",
         {},
         ListOfIntOutputParser(5, (-10, 10)),

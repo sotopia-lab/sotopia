@@ -12,6 +12,8 @@ async def agenerate(
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
     structured_output: bool = False,
+    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    use_fixed_model_version: bool = True
 ) -> OutputType:
     input_variables = re.findall(r"(?<!{){([^{}]+)}(?!})", template)
 ```
@@ -22,6 +24,12 @@ The `agenerate` function is versatile by taking the output_parser as an argument
   Currently, the structured output is only supported for the models below:
     * `gpt-4o-mini-2024-07-18` and later
     * `gpt-4o-2024-08-06` and later
+
+The `bad_output_process_model` is used to process the bad output. `DEFAULT_BAD_OUTPUT_PROCESS_MODEL` is set to be `gpt-4o-mini` (At the publication time of Sotopia, we used `gpt-3.5-turbo-0613`. However this model has been taken off the shelf by OpenAI.).
+
+The `use_fixed_model_version` is used to determine whether to use the fixed model version. If set to `True`, the model version will be fixed to the version that was used in Sotopia paper. If set to `False`, the model version will be the latest version available.
+
+Warning: As some fixed model versions might not be available in the OpenAI API, setting `use_fixed_model_version = True` might result in an error.
 
 </Callout>
 
@@ -37,6 +45,8 @@ async def agenerate_env_profile(
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
     temperature: float = 0.7,
+    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    use_fixed_model_version: bool = True
 ) -> tuple[EnvironmentProfile, str]:
     """
     Using langchain to generate the background
@@ -56,6 +66,8 @@ async def agenerate_env_profile(
         ),
         output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
         temperature=temperature,
+        bad_output_process_model=bad_output_process_model,
+        use_fixed_model_version=use_fixed_model_version
     )
 ```
 ### Other generation functions
@@ -66,6 +78,8 @@ Similarly, there are other utility functions that builds upon the `agenerate` fu
 async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
+    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    use_fixed_model_version: bool = True
 ) -> tuple[RelationshipProfile, str]
 ```
 
@@ -78,5 +92,7 @@ async def agenerate_script(
     agent_name: str = "",
     history: str = "",
     single_step: bool = False,
+    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    use_fixed_model_version: bool = True
 ) -> tuple[ScriptInteractionReturnType, str]
 ```
