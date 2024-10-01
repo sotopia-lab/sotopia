@@ -281,7 +281,7 @@ f. Oliver Thompson left the conversation"""
 
 def _return_fixed_model_version(model_name: str) -> str:
     if model_name in [
-        "gpt-4o-mini",
+        "gpt-3.5-turbo",
         "gpt-3.5-turbo-finetuned",
         "gpt-3.5-turbo-ft-MF",
         "gpt-4",
