@@ -1,4 +1,4 @@
-from pydantic import validator
+from pydantic import field_validator
 from redis_om import EmbeddedJsonModel, JsonModel
 from redis_om.model.model import Field
 
@@ -30,7 +30,7 @@ class SessionTransaction(AutoExpireMixin, JsonModel):
     """
     )
 
-    @validator("message_list")
+    @field_validator("message_list")
     def validate_message_list(
         cls, v: list[MessageTransaction]
     ) -> list[MessageTransaction]:

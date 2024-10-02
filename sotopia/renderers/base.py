@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class RenderContext(BaseModel):
@@ -17,7 +17,7 @@ class RenderContext(BaseModel):
         default=[], description="The special tags to render."
     )
 
-    @validator("viewer")
+    @field_validator("viewer")
     def viewer_must_be_valid(cls, v: str) -> str:
         if v.startswith("agent_"):
             try:

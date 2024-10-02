@@ -20,6 +20,7 @@ from langchain_core.prompt_values import ChatPromptValue
 from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from pydantic import BaseModel, Field
+from pydantic.v1 import SecretStr
 from rich import print
 from typing_extensions import Literal
 
@@ -71,7 +72,7 @@ class EnvResponse(BaseModel):
 
 
 class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
-    def __init__(self, pydantic_object: Type[BaseModel] = EnvResponse) -> None:
+    def __init__(self, pydantic_object: Type[EnvResponse] = EnvResponse) -> None:
         super(EnvResponsePydanticOutputParser, self).__init__(
             pydantic_object=pydantic_object
         )
@@ -322,23 +323,29 @@ def obtain_chain(
         model_name = _return_fixed_model_version(model_name)
     if model_name.startswith("together_ai"):
         model_name = "/".join(model_name.split("/")[1:])
+        assert (
+            TOGETHER_API_KEY := os.environ.get("TOGETHER_API_KEY")
+        ), "TOGETHER_API_KEY is not set"
         chat_openai = ChatOpenAI(
-            model_name=model_name,
+            name=model_name,
             temperature=temperature,
             max_retries=max_retries,
-            openai_api_base="https://api.together.xyz/v1",
-            openai_api_key=os.environ.get("TOGETHER_API_KEY"),
+            base_url="https://api.together.xyz/v1",
+            api_key=SecretStr(TOGETHER_API_KEY),
         )
         chain = chat_prompt_template | chat_openai
         return chain
     elif model_name.startswith("groq"):
         model_name = "/".join(model_name.split("/")[1:])
+        assert (
+            GROQ_API_KEY := os.environ.get("GROQ_API_KEY")
+        ), "GROQ_API_KEY is not set"
         chat_openai = ChatOpenAI(
-            model_name=model_name,
+            name=model_name,
             temperature=temperature,
             max_retries=max_retries,
-            openai_api_base="https://api.groq.com/openai/v1",
-            openai_api_key=os.environ.get("GROQ_API_KEY"),
+            base_url="https://api.groq.com/openai/v1",
+            api_key=SecretStr(GROQ_API_KEY),
         )
         chain = chat_prompt_template | chat_openai
         return chain
@@ -352,7 +359,7 @@ def obtain_chain(
         )
         chat_azure_openai = AzureChatOpenAI(
             azure_deployment=deployment_name,
-            openai_api_version=azure_version,
+            api_version=azure_version,
             azure_endpoint=f"https://{resource_name}.openai.azure.com",
             temperature=temperature,
             max_retries=max_retries,
@@ -369,9 +376,11 @@ def obtain_chain(
             model=custom_model_name,
             temperature=temperature,
             max_retries=max_retries,
-            api_key=os.environ.get("CUSTOM_API_KEY")
-            if os.environ.get("CUSTOM_API_KEY")
-            else "EMPTY",
+            api_key=SecretStr(
+                CUSTOM_API_KEY
+                if (CUSTOM_API_KEY := os.environ.get("CUSTOM_API_KEY"))
+                else "EMPTY"
+            ),
             base_url=model_base_url,
         )
         human_message_prompt = HumanMessagePromptTemplate(
