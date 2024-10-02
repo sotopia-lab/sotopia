@@ -11,7 +11,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         agent_name: str | None = None,
         uuid_str: str | None = None,
         agent_profile: AgentProfile | None = None,
-        model_name: str = "gpt-3.5-turbo",
+        model_name: str = "gpt-4o-mini",
         script_like: bool = False,
     ) -> None:
 ```
@@ -26,7 +26,7 @@ class ScriptWritingAgent(LLMAgent):
         agent_name: str | None = None,
         uuid_str: str | None = None,
         agent_profile: AgentProfile | None = None,
-        model_name: str = "gpt-3.5-turbo",
+        model_name: str = "gpt-4o-mini",
         agent_names: list[str] = [],
         background: ScriptBackground | None = None,
     ) -> None:

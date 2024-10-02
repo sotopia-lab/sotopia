@@ -170,8 +170,8 @@ def run_async_server_in_batch(
     batch_size: int = 1,
     model_names: dict[str, LLM_Name] = {
         "env": "gpt-4",
-        "agent1": "gpt-3.5-turbo",
-        "agent2": "gpt-3.5-turbo",
+        "agent1": "gpt-4o-mini",
+        "agent2": "gpt-4o-mini",
     },
     tag: str | None = None,
     verbose: bool = False,

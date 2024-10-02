@@ -175,7 +175,7 @@ def full_freeform(
 def run_async_server_in_batch_script(
     *,
     batch_size: int = 10,
-    model: LLM_Name = "gpt-3.5-turbo",
+    model: LLM_Name = "gpt-4o-mini",
     tag: str | None = None,
     push_to_db: bool = True,
     json_in_script: bool = False,

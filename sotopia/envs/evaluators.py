@@ -212,7 +212,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # Rule 1: If the conversation is too long, terminate the conversation
-        conversation_too_long = turn_number > self.max_turn_number
+        conversation_too_long = turn_number >= self.max_turn_number
         # Rule 2: If one of the players leaves, terminate the conversation
         p1_leaving = (
             len(messages) > 1

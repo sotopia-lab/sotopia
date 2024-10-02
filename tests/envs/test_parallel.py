@@ -21,14 +21,14 @@ async def test_parallel_sotopia_env() -> None:
         {
             "agent1": LLMAgent(
                 "agent1",
-                model_name="gpt-3.5-turbo",
+                model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
                     **{"first_name": "John", "last_name": "Doe"}
                 ),
             ),
             "agent2": LLMAgent(
                 "agent2",
-                model_name="gpt-3.5-turbo",
+                model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
                     **{"first_name": "Jane", "last_name": "Doe"}
                 ),
@@ -66,7 +66,7 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
         {
             "agent1": LLMAgent(
                 "agent1",
-                model_name="gpt-3.5-turbo",
+                model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
                     **{"first_name": "John", "last_name": "Doe"}
                 ),
@@ -74,7 +74,7 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
             ),
             "agent2": LLMAgent(
                 "agent2",
-                model_name="gpt-3.5-turbo",
+                model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
                     **{"first_name": "Jane", "last_name": "Doe"}
                 ),
