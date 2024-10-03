@@ -1,7 +1,8 @@
 from typing import AbstractSet, Any, Dict, Mapping, Optional, Union
 
-from pydantic.fields import Undefined, UndefinedType
-from pydantic.typing import NoArgAnyCallable
+from pydantic_core import PydanticUndefined as Undefined
+from pydantic_core import PydanticUndefinedType as UndefinedType
+from pydantic.v1.typing import NoArgAnyCallable
 from redis_om import JsonModel
 
 class NotFoundError(Exception):

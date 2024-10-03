@@ -15,8 +15,8 @@ app = Typer()
 
 target_model_patterns: list[list[str]] = [
     ["gpt-4", "gpt-4", "gpt-3.5-turbo"],
-    ["gpt-4", "gpt-3.5-turbo", "gpt-4"],
-    ["gpt-4", "gpt-3.5-turbo", "togethercomputer/llama-2-70b-chat"],
+    ["gpt-4", "gpt-4o-mini", "gpt-4"],
+    ["gpt-4", "gpt-4o-mini", "togethercomputer/llama-2-70b-chat"],
     ["gpt-4", "togethercomputer/llama-2-70b-chat", "gpt-3.5-turbo"],
 ]
 

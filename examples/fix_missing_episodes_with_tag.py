@@ -350,8 +350,8 @@ def re_run_missing_episodes(
     env_agent_ids: List[Tuple[str, str, str]] = [],
     model_names: dict[str, LLM_Name] = {
         "env": "gpt-4",
-        "agent1": "gpt-3.5-turbo",
-        "agent2": "gpt-3.5-turbo",
+        "agent1": "gpt-4o-mini",
+        "agent2": "gpt-4o-mini",
     },
     batch_size: int = 5,
     rerun_tag: str = "missing_episodes",

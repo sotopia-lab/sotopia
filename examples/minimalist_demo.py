@@ -28,8 +28,8 @@ asyncio.run(
     run_async_server(
         model_dict={
             "env": "gpt-4",
-            "agent1": "gpt-3.5-turbo",
-            "agent2": "gpt-3.5-turbo",
+            "agent1": "gpt-4o-mini",
+            "agent2": "gpt-4o-mini",
         },
         sampler=UniformSampler(),
     )

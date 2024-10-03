@@ -141,9 +141,9 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     return AgentAction(action_type="leave", argument="")
             action_string = sorted_message_list[-1][2]
             try:
-                action = AgentAction.parse_raw(action_string)
+                action = AgentAction.model_validate_json(action_string)
                 return action
-            except pydantic.error_wrappers.ValidationError:
+            except pydantic.ValidationError:
                 logging.warn(
                     "Failed to parse action string {}. Fall back to speak".format(
                         action_string

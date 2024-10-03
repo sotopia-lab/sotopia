@@ -1,7 +1,12 @@
 from enum import IntEnum
-from typing import Any
+import sys
 
-from pydantic import root_validator
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
+from pydantic import model_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
@@ -87,15 +92,15 @@ class EnvironmentList(JsonModel):
     agent_index: list[str] | None = Field(default_factory=lambda: None)
 
     # validate the length of agent_index should be same as environments
-    @root_validator
-    def the_length_agent_index_matches_environments(cls, values: Any) -> Any:
+    @model_validator(mode="after")
+    def the_length_agent_index_matches_environments(self) -> Self:
         environments, agent_index = (
-            values.get("environments"),
-            values.get("agent_index"),
+            self.environments,
+            self.agent_index,
         )
         if agent_index is None:
-            return values
+            return self
         assert (
             len(environments) == len(agent_index)
         ), f"Number of environments {len(environments)} and agent_index {len(agent_index)} do not match"
-        return values
+        return self
