@@ -87,10 +87,16 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
         agents_which_fit_scenario: list[list[str]] = []
 
         if self.env_candidates is None:
-            self.env_candidates = EnvironmentProfile.all()
+            env_candidates = EnvironmentProfile.all()
+            if not env_candidates:
+                raise ValueError("No environment candidates available for sampling.")
+            self.env_candidates = env_candidates
 
         if self.agent_candidates is None:
-            self.agent_candidates = AgentProfile.all()
+            agent_candidates = AgentProfile.all()
+            if not agent_candidates:
+                raise ValueError("No agent candidates available for sampling.")
+            self.agent_candidates = agent_candidates
 
         agent_candidate_ids: set[str] | None = None
         if self.agent_candidates:
