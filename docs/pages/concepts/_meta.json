@@ -1,0 +1,17 @@
+{
+    "agents": {
+        "title": "Agents"
+    },
+    "environments": {
+        "title": "Environments"
+    },
+    "database": {
+        "title": "Database"
+    },
+    "generation": {
+        "title": "Generation Utilities"
+    },
+    "renderers": {
+        "title": "Renderers"
+    }
+}

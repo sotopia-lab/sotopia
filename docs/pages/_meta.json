@@ -1,15 +1,17 @@
 {
     "index": {
         "title": "Introduction",
+        "type": "page",
         "theme": {
             "breadcrumb": true
         }
     },
-    "---": {
-        "type": "separator"
-    },
     "concepts": {
         "title": "Concepts",
+        "type": "page"
+    },
+    "python_API": {
+        "title": "Python API",
         "type": "page"
     },
     "examples": {

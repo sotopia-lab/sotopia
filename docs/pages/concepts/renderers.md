@@ -21,3 +21,8 @@ Here is how the `viewer` determines the visibility of the text:
 > The input to the xml render should be valid xml strings. Currently, we automatically fix the following two issues:
 > - The `xml_string` is not a tree (e.g. `<a></a><b></b>`). We will automatically wrap the string with `<root></root>` if it is not wrapped.
 > - The `xml_string` is not escaped properly. We only escape `&`. Quotations, `<` and `>` are not escaped by us.
+
+Currently, we support the following tags:
+<extra_info>Put your extra information here</extra_info>
+<clarification_hint>Put your clarification hint here, to avoid the LLM from confusing the output</clarification_hint>
+<strategy_hint>Put your strategy hint here, to guide the LLM to generate the output strategically in various social contexts</strategy_hint>
