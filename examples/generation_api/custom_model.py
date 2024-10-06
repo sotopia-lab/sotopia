@@ -1,4 +1,4 @@
-# Example: Generate n random numbers using Llama3.2 model served by ollama
+# Example: Generate (2~7) random numbers using Llama3.2 model served by ollama
 # To run this example, you can either
 # 1. Use the sotopia devcontainer and run the following command in the terminal:
 #        poetry run python examples/generation_api/custom_model.py
@@ -9,7 +9,7 @@
 #    and then change the model_name of `agenerate` to point to your desired model.
 #    Finally:
 #        python examples/generation_api/custom_model.py
-# Expected output: a bunch of logs and an output [6, 8, 3, 9, 7]
+# Expected output for (1 and 2): a bunch of logs and an output [[14, 67], [6, 8, 3], [6, 8, 3, 9], [6, 8, 3, 9, 7], [7, 9, 6, 8, 4, 1]]
 
 from sotopia.generation_utils.generate import ListOfIntOutputParser, agenerate
 import logging
@@ -28,9 +28,14 @@ async def generate_n_random_numbers(n: int) -> list[int]:
     )
 
 
+async def main() -> None:
+    random_numbers = await asyncio.gather(
+        *[generate_n_random_numbers(n) for n in range(2, 7)]
+    )
+    print(random_numbers)
+
+
 if __name__ == "__main__":
     import asyncio
 
-    n = 5
-    random_numbers = asyncio.run(generate_n_random_numbers(n))
-    print(random_numbers)
+    asyncio.run(main())
