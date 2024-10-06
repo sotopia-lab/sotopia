@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import re
@@ -107,14 +106,14 @@ class ListOfIntOutputParser(BaseOutputParser[list[int]]):
         self.range_of_int = range_of_int
 
     def _get_description_text(self) -> str:
-        return f"a list of {' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''}. No code block is needed."
+        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by spaces. Don't output anything else. Format example: 1 2 3 4 5"
 
     def get_format_instructions(self) -> str:
         return "Please output " + self._get_description_text()
 
     def parse(self, output: str) -> list[int]:
         try:
-            output_loaded = json.loads(output)
+            output_loaded = output.split(" ")
             result = [int(x) for x in output_loaded]
             if self.number_of_int and len(result) != self.number_of_int:
                 msg = f"Expect {self.number_of_int} integers, got {len(result)}"

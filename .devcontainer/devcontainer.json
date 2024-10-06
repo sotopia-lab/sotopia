@@ -7,7 +7,7 @@
 	"features": {
 		"ghcr.io/itsmechlark/features/redis-server:1": {},
 		"ghcr.io/prulloac/devcontainer-features/ollama:1": {}
-	}
+	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -16,7 +16,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "pip3 install --user -r requirements.txt",
+	"postCreateCommand": "pipx install poetry; poetry install; ollama pull llama3.2:1b"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
