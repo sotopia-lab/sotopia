@@ -257,18 +257,9 @@ f. Oliver Thompson left the conversation"""
             )
             return parsed_interaction
         except Exception as e:
-            print(f"Exception {e}: the output format is not correct. Reformatting ")
-            reformat_parsed_result = format_bad_output_for_script(
-                ill_formed_output=output,
-                format_instructions=self.get_format_instructions(),
-                agents=agent_names,
+            raise OutputParserException(
+                f"Failed to parse the output: {output}. Encounter Exception {e}"
             )
-            print("Reformatted output: ", reformat_parsed_result)
-            interaction = ScriptInteraction(interactions=reformat_parsed_result)
-            parsed_interaction = interaction.parse(
-                agent_names=agent_names, background=self.background
-            )
-            return parsed_interaction
 
     @property
     def _type(self) -> str:
