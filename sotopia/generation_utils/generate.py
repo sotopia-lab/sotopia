@@ -61,7 +61,6 @@ LLM_Name = Literal[
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 OutputType = TypeVar("OutputType", bound=object)
-client = OpenAI()
 
 
 class EnvResponse(BaseModel):
@@ -514,6 +513,7 @@ async def agenerate(
         instantiated_prompt = prompt_result.messages[0].content
         assert isinstance(output_parser, PydanticOutputParser)
         assert isinstance(instantiated_prompt, str)
+        client = OpenAI()
         completion = client.beta.chat.completions.parse(
             model=model_name,
             messages=[
