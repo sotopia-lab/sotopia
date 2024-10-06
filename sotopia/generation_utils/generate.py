@@ -56,8 +56,6 @@ LLM_Name = Literal[
     "redis",
     "groq/llama3-70b-8192",
 ]
-# subject to future OpenAI changes
-DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 OutputType = TypeVar("OutputType", bound=object)
 
@@ -402,7 +400,7 @@ def format_bad_output_for_script(
     ill_formed_output: str,
     format_instructions: str,
     agents: list[str],
-    model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    model_name: str,
     use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
@@ -438,7 +436,7 @@ def format_bad_output_for_script(
 def format_bad_output(
     ill_formed_output: BaseMessage,
     format_instructions: str,
-    model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    model_name: str,
     use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
@@ -473,7 +471,7 @@ async def agenerate(
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
     structured_output: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> OutputType:
     input_variables = re.findall(
@@ -537,7 +535,7 @@ async def agenerate(
         reformat_parsed_result = format_bad_output(
             result,
             format_instructions=output_parser.get_format_instructions(),
-            model_name=bad_output_process_model,
+            model_name=bad_output_process_model or model_name,
             use_fixed_model_version=use_fixed_model_version,
         )
         parsed_result = output_parser.invoke(reformat_parsed_result)
@@ -552,7 +550,7 @@ async def agenerate_env_profile(
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
     temperature: float = 0.7,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[EnvironmentProfile, str]:
     """
@@ -582,7 +580,7 @@ async def agenerate_env_profile(
 async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[RelationshipProfile, str]:
     """
@@ -616,7 +614,7 @@ async def agenerate_action(
     goal: str,
     temperature: float = 0.7,
     script_like: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> AgentAction:
     """
@@ -684,7 +682,7 @@ async def agenerate_script(
     agent_name: str = "",
     history: str = "",
     single_step: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[ScriptInteractionReturnType, str]:
     """
@@ -776,7 +774,7 @@ def process_history(
 async def agenerate_init_profile(
     model_name: str,
     basic_info: dict[str, str],
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     """
@@ -822,7 +820,7 @@ async def convert_narratives(
     model_name: str,
     narrative: str,
     text: str,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     if narrative == "first":
@@ -855,7 +853,7 @@ async def convert_narratives(
 async def agenerate_goal(
     model_name: str,
     background: str,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     """
