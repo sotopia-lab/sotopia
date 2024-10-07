@@ -33,12 +33,10 @@ jobs:
       run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
       run: |
-        curl -sSL https://install.python-poetry.org | python3
-        poetry install --with test -E chat
+        python -m pip install --upgrade pip
+        python -m pip install uv
+        uv sync --extra test --extra mypy
     - name: Type-checking package with mypy
       run: |
         # Run this mypy instance against our main package.
-        poetry run pip install types-protobuf==4.24.0.4
-        poetry run mypy --install-types --non-interactive sotopia
-        poetry run mypy --install-types --non-interactive sotopia-chat
-        poetry run mypy --strict .
+        uv run mypy --strict .

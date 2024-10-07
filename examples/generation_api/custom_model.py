@@ -1,7 +1,7 @@
 # Example: Generate (2~7) random numbers using Llama3.2 model served by ollama
 # To run this example, you can either
 # 1. Use the sotopia devcontainer and run the following command in the terminal:
-#        poetry run python examples/generation_api/custom_model.py
+#        uv run python examples/generation_api/custom_model.py
 #    This example can also serve a sanity check for your devcontainer setup.
 # OR 2. after installing sotopia, install ollama, and then:
 #        ollama pull llama3.2:1b; python examples/generation_api/custom_model.py
