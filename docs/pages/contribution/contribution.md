@@ -60,16 +60,20 @@ git push origin main
 
 ### 4. Set up the Development Environment
 
-We recommend using DevContainers to set up your development environment.
+We recommend using Dev Containers to set up your development environment, but note that Docker is required for install Dev Containers.
 
 #### Using VSCode
 
-If you use VSCode, you can install the DevContainers extension, and then in Commend Pallette, run `Dev Containers: Open Folder in Container`.
-After the container is built, you have a Redis server and local Llama server running.
+If you use VSCode, you can install the Dev Containers extension, and then in [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette), run `Dev Containers: Open Folder in Container`.
+After the container is built (the first time it may take 10+ minutes to build), you have a Redis server and local Llama server running.
 
 #### Other IDEs or Editors
 
 Please refer to [Dev Containers](https://containers.dev/supporting#editors) to see how to set up DevContainers in other editors.
+
+#### Without Dev Containers
+
+You can also set up the development environment without Dev Containers. Please manually install Redis, and if you want to use a local model, you can use Ollama, Llama.cpp,  vLLM or many others which support OpenAI compatible endpoints.
 
 
 ### 5. Write Code and Commit It
