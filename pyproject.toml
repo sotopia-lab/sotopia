@@ -44,6 +44,8 @@ nbmake = "*"
 types-setuptools = "*"
 types-requests = "*"
 types-tqdm = "*"
+lxml-stubs = "*"
+pandas-stubs = "*"
 ruff = "*"
 
 [tool.poetry.group.test.dependencies]

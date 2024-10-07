@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import re
@@ -57,11 +56,8 @@ LLM_Name = Literal[
     "redis",
     "groq/llama3-70b-8192",
 ]
-# subject to future OpenAI changes
-DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 OutputType = TypeVar("OutputType", bound=object)
-client = OpenAI()
 
 
 class EnvResponse(BaseModel):
@@ -108,14 +104,14 @@ class ListOfIntOutputParser(BaseOutputParser[list[int]]):
         self.range_of_int = range_of_int
 
     def _get_description_text(self) -> str:
-        return f"a list of {' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''}. No code block is needed."
+        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by spaces. Don't output anything else. Format example: 1 2 3 4 5"
 
     def get_format_instructions(self) -> str:
         return "Please output " + self._get_description_text()
 
     def parse(self, output: str) -> list[int]:
         try:
-            output_loaded = json.loads(output)
+            output_loaded = output.split(" ")
             result = [int(x) for x in output_loaded]
             if self.number_of_int and len(result) != self.number_of_int:
                 msg = f"Expect {self.number_of_int} integers, got {len(result)}"
@@ -261,18 +257,9 @@ f. Oliver Thompson left the conversation"""
             )
             return parsed_interaction
         except Exception as e:
-            print(f"Exception {e}: the output format is not correct. Reformatting ")
-            reformat_parsed_result = format_bad_output_for_script(
-                ill_formed_output=output,
-                format_instructions=self.get_format_instructions(),
-                agents=agent_names,
+            raise OutputParserException(
+                f"Failed to parse the output: {output}. Encounter Exception {e}"
             )
-            print("Reformatted output: ", reformat_parsed_result)
-            interaction = ScriptInteraction(interactions=reformat_parsed_result)
-            parsed_interaction = interaction.parse(
-                agent_names=agent_names, background=self.background
-            )
-            return parsed_interaction
 
     @property
     def _type(self) -> str:
@@ -404,7 +391,7 @@ def format_bad_output_for_script(
     ill_formed_output: str,
     format_instructions: str,
     agents: list[str],
-    model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    model_name: str,
     use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
@@ -440,7 +427,7 @@ def format_bad_output_for_script(
 def format_bad_output(
     ill_formed_output: BaseMessage,
     format_instructions: str,
-    model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    model_name: str,
     use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
@@ -475,7 +462,7 @@ async def agenerate(
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
     structured_output: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> OutputType:
     input_variables = re.findall(
@@ -514,6 +501,7 @@ async def agenerate(
         instantiated_prompt = prompt_result.messages[0].content
         assert isinstance(output_parser, PydanticOutputParser)
         assert isinstance(instantiated_prompt, str)
+        client = OpenAI()
         completion = client.beta.chat.completions.parse(
             model=model_name,
             messages=[
@@ -538,7 +526,7 @@ async def agenerate(
         reformat_parsed_result = format_bad_output(
             result,
             format_instructions=output_parser.get_format_instructions(),
-            model_name=bad_output_process_model,
+            model_name=bad_output_process_model or model_name,
             use_fixed_model_version=use_fixed_model_version,
         )
         parsed_result = output_parser.invoke(reformat_parsed_result)
@@ -553,7 +541,7 @@ async def agenerate_env_profile(
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
     temperature: float = 0.7,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[EnvironmentProfile, str]:
     """
@@ -583,7 +571,7 @@ async def agenerate_env_profile(
 async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[RelationshipProfile, str]:
     """
@@ -617,7 +605,7 @@ async def agenerate_action(
     goal: str,
     temperature: float = 0.7,
     script_like: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> AgentAction:
     """
@@ -685,7 +673,7 @@ async def agenerate_script(
     agent_name: str = "",
     history: str = "",
     single_step: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[ScriptInteractionReturnType, str]:
     """
@@ -777,7 +765,7 @@ def process_history(
 async def agenerate_init_profile(
     model_name: str,
     basic_info: dict[str, str],
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     """
@@ -823,7 +811,7 @@ async def convert_narratives(
     model_name: str,
     narrative: str,
     text: str,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     if narrative == "first":
@@ -856,7 +844,7 @@ async def convert_narratives(
 async def agenerate_goal(
     model_name: str,
     background: str,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     """
