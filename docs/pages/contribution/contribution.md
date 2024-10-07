@@ -64,7 +64,7 @@ We recommend using DevContainers to set up your development environment.
 
 #### Using VSCode
 
-If you use VSCode, you can install the DevContainers extension, and then in Commend Pallette, run `Dev Containers: Open Folder in Container`.
+If you use VSCode, you can install the DevContainers extension, and then in [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette), run `Dev Containers: Open Folder in Container`.
 After the container is built, you have a Redis server and local Llama server running.
 
 #### Other IDEs or Editors
