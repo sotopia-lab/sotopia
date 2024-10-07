@@ -60,7 +60,17 @@ git push origin main
 
 ### 4. Set up the Development Environment
 
-?? @ProKil
+We recommend using DevContainers to set up your development environment.
+
+#### Using VSCode
+
+If you use VSCode, you can install the DevContainers extension, and then in Commend Pallette, run `Dev Containers: Open Folder in Container`.
+After the container is built, you have a Redis server and local Llama server running.
+
+#### Other IDEs or Editors
+
+Please refer to [Dev Containers](https://containers.dev/supporting#editors) to see how to set up DevContainers in other editors.
+
 
 ### 5. Write Code and Commit It
 

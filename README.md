@@ -48,7 +48,7 @@ See [documentation](https://docs.sotopia.world) for more details.
 ## Get started
 
 ### Install locally
-We recommend using a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia; curl -sSL https://install.python-poetry.org | python3`.
+We recommend using a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia;`.
 
 Then:
 `python -m pip install sotopia; sotopia install`

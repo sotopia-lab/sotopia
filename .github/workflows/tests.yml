@@ -10,7 +10,7 @@ on:
       - main
       - release
       - dev
-  pull_request_target:
+  pull_request:
     branches:
       - main
       - release
@@ -34,18 +34,18 @@ jobs:
       if: runner.os == 'ubuntu-latest'
       uses: docker-practice/actions-setup-docker@master
       timeout-minutes: 12
-    - name: Install Poetry
-      uses: abatilo/actions-poetry@v2
     - name: Install dependencies
       run: |
-        poetry install --with test -E chat
+          python -m pip install --upgrade pip
+          python -m pip install uv
+          uv sync --extra test --extra chat
     - name: Test with pytest
       env: # Or as an environment variable
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         REDIS_OM_URL: ${{ secrets.REDIS_OM_URL }}
         TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
       run: |
-        poetry run pytest --cov=. --cov-report=xml
+        uv run pytest --cov=. --cov-report=xml
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
