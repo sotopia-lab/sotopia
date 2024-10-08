@@ -32,7 +32,7 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
         self.shutdown_event.set()
         return await super().__aexit__(exc_type, exc_value, traceback)
 
-    async def aact(self, observation: T_agent_observation) -> T_agent_action:
+    async def aact(self, observation: T_agent_observation) -> T_agent_action | None:
         raise NotImplementedError
 
     async def event_handler(
@@ -54,6 +54,7 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
     async def _task_scheduler(self) -> None:
         while not self.shutdown_event.is_set():
             observation = await self.observation_queue.get()
-            action = await self.aact(observation)
-            await self.send(action)
+            action_or_none = await self.aact(observation)
+            if action_or_none is not None:
+                await self.send(action_or_none)
             self.observation_queue.task_done()
