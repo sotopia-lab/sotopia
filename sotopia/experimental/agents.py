@@ -1,5 +1,12 @@
 import asyncio
-from typing import Any, AsyncIterator, Self, TypeVar
+import sys
+
+if sys.version_info < (3, 11):
+    from typing_extensions import Self
+else:
+    from typing import Self
+
+from typing import Any, AsyncIterator, TypeVar
 from aact import Node
 from aact.messages import DataModel, Message
 
