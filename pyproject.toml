@@ -23,7 +23,7 @@ dependencies = [
     "pydantic>=2.5.0,<3.0.0",
     "beartype>=0.14.0,<0.15.0",
     "langchain-openai>=0.1.8,<0.2.0",
-    "litellm>=1.23.12,<1.41.0",
+    "litellm>=1.23.12,<1.49.0",
     "hiredis>=3.0.0"
 ]
 
