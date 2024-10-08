@@ -6,7 +6,7 @@ node_name = "Jack"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_frequency = 5
+query_interval = 5
 output_channel = "Jack"
 input_text_channels = ["Jane", "John"]
 input_tick_channel = "tick/secs/1"
@@ -19,7 +19,7 @@ node_name = "Jane"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_frequency = 7
+query_interval = 7
 output_channel = "Jane"
 input_text_channels = ["Jack", "John"]
 input_tick_channel = "tick/secs/1"
@@ -32,7 +32,7 @@ node_name = "John"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_frequency = 10
+query_interval = 10
 output_channel = "John"
 input_text_channels = ["Jack", "Jane"]
 input_tick_channel = "tick/secs/1"

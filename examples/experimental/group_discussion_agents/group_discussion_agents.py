@@ -48,7 +48,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
         input_text_channels: list[str],
         input_tick_channel: str,
         output_channel: str,
-        query_frequency: int,
+        query_interval: int,
         agent_name: str,
         goal: str,
         model_name: str,
@@ -66,7 +66,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
             redis_url,
         )
         self.output_channel = output_channel
-        self.query_frequency = query_frequency
+        self.query_interval = query_interval
         self.count_ticks = 0
         self.message_history: list[tuple[str, str]] = []
         self.name = agent_name
@@ -84,7 +84,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
         match message:
             case Tick():
                 self.count_ticks += 1
-                if self.count_ticks % self.query_frequency == 0:
+                if self.count_ticks % self.query_interval == 0:
                     agent_action: str = await agenerate(
                         model_name=self.model_name,
                         template="Imagine that you are a friend of the other persons. Here is the "
