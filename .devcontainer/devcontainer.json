@@ -16,11 +16,12 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pipx install poetry; poetry install --all-extras; ollama pull llama3.2:1b"
+	"postCreateCommand":
+       "pip install uv; uv venv /workspaces/.venv; export UV_PROJECT_ENVIRONMENT=/workspaces/.venv; echo export UV_PROJECT_ENVIRONMENT=/workspaces/.venv >> /root/.bashrc; uv sync --all-extras; ollama pull llama3.2:1b",
 
 	// Configure tool-specific properties.
 	// "customizations": {},
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	"remoteUser": "root"
 }

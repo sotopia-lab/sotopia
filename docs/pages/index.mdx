@@ -110,9 +110,9 @@ export REDIS_OM_URL="redis://localhost:6379"
           ```bash
           pip install sotopia[examples, chat]
           ```
-          if you are using poetry, you can install the package with:
+          if you are developing Sotopia using uv, you can sync your dependency with
           ```bash
-          poetry install -E examples -E chat
+          uv sync --extra examples --extra chat
           ```
         </AccordionContent>
       </AccordionItem>
@@ -123,8 +123,7 @@ export REDIS_OM_URL="redis://localhost:6379"
 #### Clone the repo and install the package
 ```bash
 git clone git@github.com:sotopia-lab/sotopia.git;
-curl -sSL https://install.python-poetry.org | python3;
-poetry install # or pip install -e .
+pip install -e .
 ```
 
 #### Set up Redis stack

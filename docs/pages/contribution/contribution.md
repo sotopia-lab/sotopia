@@ -73,7 +73,11 @@ Please refer to [Dev Containers](https://containers.dev/supporting#editors) to s
 
 #### Without Dev Containers
 
-You can also set up the development environment without Dev Containers. Please manually install Redis, and if you want to use a local model, you can use Ollama, Llama.cpp,  vLLM or many others which support OpenAI compatible endpoints.
+You can also set up the development environment without Dev Containers. There are three things you will need to set up manually:
+
+- Python and uv: Please start from an environment supporting Python 3.10+ and install uv using `pip install uv; uv sync --all-extra`.
+- Redis: Please refer to introduction page for the set up of Redis.
+- Local LLM (optional): If you don't have access to model endpoints (e.g. OpenAI, Anthropic or others), you can use a local model. You can use Ollama, Llama.cpp,  vLLM or many others which support OpenAI compatible endpoints.
 
 
 ### 5. Write Code and Commit It
