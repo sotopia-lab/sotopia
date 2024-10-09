@@ -1,31 +1,29 @@
 services:
   devcontainer:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: "ghcr.io/sotopia-lab/sotopia:latest"
+    depends_on:
+      ollama:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ../..:/workspaces:cached
     command: sleep infinity
     network_mode: "host"
 
   ollama:
-    # image: ollama/ollama:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.ollama  # Use the custom Dockerfile
+    image: "ghcr.io/sotopia-lab/ollama:latest"
     ports:
       - 11434:11434
     container_name: ollama
     pull_policy: always
-    tty: true
     restart: always
-    # environment:
-    #   - OLLAMA_KEEP_ALIVE=24h
-    #   - OLLAMA_HOST=0.0.0.0
-    # entrypoint: /bin/bash  # Override the entrypoint to use bash
-    # command: >
-    #   -c "ollama serve & sleep 5 && ollama run llama3.2:1b && wait"
     network_mode: "host"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis/redis-stack-server:7.2.0-v6

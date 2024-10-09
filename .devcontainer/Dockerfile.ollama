@@ -1,14 +1,47 @@
 # Use the base Ollama image
 FROM ollama/ollama:latest
 
-# Set environment variables (if required)
+# Install curl and other necessary utilities
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set environment variables
 ENV OLLAMA_KEEP_ALIVE=24h
 ENV OLLAMA_HOST=0.0.0.0
 
 # Expose necessary ports
 EXPOSE 11434
 
-# Start the default serve command
-# ENTRYPOINT ["ollama", "serve"]
-ENTRYPOINT ["/bin/bash"]
-CMD ["-c", "ollama serve & sleep 5 && ollama run llama3.2:1b && wait"]
+# Create a script to download the model during build
+COPY <<EOF /download-model.sh
+#!/bin/bash
+# Start ollama server
+ollama serve &
+
+# Wait for ollama server to be ready
+timeout=30
+counter=0
+echo "Waiting for Ollama server to be ready..."
+until curl -s http://localhost:11434/api/version > /dev/null; do
+    sleep 1
+    counter=$((counter + 1))
+    if [ "$counter" -gt "$timeout" ]; then
+        echo "Timeout waiting for Ollama server"
+        exit 1
+    fi
+done
+
+# Pull the model
+echo "Pulling llama3.2:1b model..."
+ollama pull llama3.2:1b
+
+# Stop ollama server
+pkill ollama
+EOF
+
+# Make the script executable and run it during build
+RUN chmod +x /download-model.sh && /download-model.sh
+
+# Set the entrypoint to start ollama serve
+ENTRYPOINT ["ollama", "serve"]
