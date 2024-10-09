@@ -5,5 +5,3 @@ RUN curl -fsSL https://ollama.com/install.sh | sh\
    && uv venv /workspaces/.venv\
    && export UV_PROJECT_ENVIRONMENT=/workspaces/.venv\
    && echo export UV_PROJECT_ENVIRONMENT=/workspaces/.venv >> /root/.bashrc
-RUN ollama serve &
-RUN ollama pull llama3.2:1b

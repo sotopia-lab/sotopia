@@ -1,0 +1,14 @@
+# Use the base Ollama image
+FROM ollama/ollama:latest
+
+# Set environment variables (if required)
+ENV OLLAMA_KEEP_ALIVE=24h
+ENV OLLAMA_HOST=0.0.0.0
+
+# Expose necessary ports
+EXPOSE 11434
+
+# Start the default serve command
+# ENTRYPOINT ["ollama", "serve"]
+ENTRYPOINT ["/bin/bash"]
+CMD ["-c", "ollama serve & sleep 5 && ollama run llama3.2:1b && wait"]

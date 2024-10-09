@@ -6,8 +6,26 @@ services:
     volumes:
       - ../..:/workspaces:cached
     command: sleep infinity
-    networks:
-      - sotopia
+    network_mode: "host"
+
+  ollama:
+    # image: ollama/ollama:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama  # Use the custom Dockerfile
+    ports:
+      - 11434:11434
+    container_name: ollama
+    pull_policy: always
+    tty: true
+    restart: always
+    # environment:
+    #   - OLLAMA_KEEP_ALIVE=24h
+    #   - OLLAMA_HOST=0.0.0.0
+    # entrypoint: /bin/bash  # Override the entrypoint to use bash
+    # command: >
+    #   -c "ollama serve & sleep 5 && ollama run llama3.2:1b && wait"
+    network_mode: "host"
 
   redis:
     image: redis/redis-stack-server:7.2.0-v6
@@ -17,8 +35,7 @@ services:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
     volumes:
       - redis_data:/data
-    networks:
-      - sotopia
+    network_mode: "host"
 
 networks:
   sotopia:
