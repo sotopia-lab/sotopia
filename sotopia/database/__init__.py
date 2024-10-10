@@ -31,6 +31,10 @@ from .session_transaction import MessageTransaction, SessionTransaction
 from .waiting_room import MatchingInWaitingRoom
 from .aggregate_annotations import map_human_annotations_to_episode_logs
 
+from logging import Logger
+
+logger = Logger("sotopia.database")
+
 __all__ = [
     "AgentProfile",
     "EnvironmentProfile",
@@ -72,4 +76,9 @@ def _json_model_all(cls: type[InheritedJsonModel]) -> list[InheritedJsonModel]:
 
 JsonModel.all = classmethod(_json_model_all)  # type: ignore[assignment,method-assign]
 
-Migrator().run()
+try:
+    Migrator().run()
+except Exception as e:
+    logger.debug(
+        f"Error running migrations: {e} This is expected if you have not set up redis yet."
+    )
