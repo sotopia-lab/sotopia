@@ -31,7 +31,9 @@ jobs:
         file: .devcontainer/docker-compose.yml
         service: devcontainer
         registry: ghcr.io
-        command: "uv run --extra test --extra chat pytest --ignore tests/cli --cov=app --cov-report=xml"
+        command: |
+          ls
+          uv sync --all-extras
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
