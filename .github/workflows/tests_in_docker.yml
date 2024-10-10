@@ -1,0 +1,35 @@
+name: Pytest in docker
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+on:
+  push:
+    branches:
+      - main
+      - release
+      - dev
+  pull_request:
+    branches:
+      - main
+      - release
+
+jobs:
+  Pytest:
+    strategy:
+      max-parallel: 5
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Docker Compose
+      run: docker compose -f .devcontainer/docker-compose.yml up -d
+    - name: Run tests
+      run: docker compose -f .devcontainer/docker-compose.yml run --rm -u root -v /home/runner/work/sotopia/sotopia:/workspaces/sotopia devcontainer /bin/sh -c "cd /workspaces/sotopia; ls; uv sync --extra test --extra chat; uv run pytest --ignore tests/cli --cov=. --cov-report=xml"
+    - name: Upload coverage report to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}

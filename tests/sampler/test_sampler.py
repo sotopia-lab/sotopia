@@ -1,14 +1,48 @@
 import random
+from typing import Any, Generator
+
+import pytest
 
 from sotopia.agents import LLMAgent
 from sotopia.agents.llm_agent import Agents
 from sotopia.database.persistent_profile import (
     AgentProfile,
     EnvironmentProfile,
+    RelationshipProfile,
 )
 from sotopia.envs.evaluators import RuleBasedTerminatedEvaluator
 from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import ConstraintBasedSampler, UniformSampler
+
+
+@pytest.fixture
+def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None]:
+    AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
+    AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
+    AgentProfile(first_name="Jack", last_name="Doe", pk="tmppk_agent3").save()
+    EnvironmentProfile(
+        pk="tmppk_environment",
+        codename="borrow_money",
+        source="hand-craft",
+        scenario="Conversation between two friends at a tea party",
+        agent_goals=[
+            "Borrow money (<extra_info>Extra information: you need $3000 to support life.</extra_info>)",
+            "Maintain financial stability while maintaining friendship (<extra_info>Extra information: you only have $2000 available right now. <clarification_hint>Hint: you can not lend all $2000 since you still need to maintain your financial stability.</clarification_hint></extra_info>)",
+        ],
+        relationship=2,
+        age_constraint="[(18, 70), (18, 70)]",
+    ).save()
+    RelationshipProfile(
+        agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent2", relationship=2
+    ).save()
+    RelationshipProfile(
+        agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent3", relationship=2
+    ).save()
+    yield
+    AgentProfile.delete("tmppk_agent1")
+    AgentProfile.delete("tmppk_agent2")
+    AgentProfile.delete("tmppk_agent3")
+    EnvironmentProfile.delete("tmppk_environment")
 
 
 def _generate_name() -> str:
@@ -95,7 +129,9 @@ def test_uniform_sampler() -> None:
     env.reset(agents=agents)
 
 
-def test_constrain_sampler() -> None:
+def test_constrain_sampler(
+    _test_create_episode_log_setup_and_tear_down: Any,
+) -> None:
     n_agent = 2
     borrow_money = EnvironmentProfile.find(
         EnvironmentProfile.codename == "borrow_money"

@@ -17,29 +17,11 @@ async def test_agenerate_list_integer() -> None:
     """
     length, lower, upper = 5, -10, 10
     list_of_int = await agenerate(
-        "gpt-4o-mini",
+        "custom/llama3.2:1b@http://localhost:8000/v1",
         "{format_instructions}",
         {},
         ListOfIntOutputParser(length, (lower, upper)),
-    )
-    assert isinstance(list_of_int, list)
-    assert len(list_of_int) == length
-    assert all(isinstance(i, int) for i in list_of_int)
-    assert all(lower <= i <= upper for i in list_of_int)
-
-
-@pytest.mark.skip(reason="togethercompute out of credit")
-@pytest.mark.asyncio
-async def test_agenerate_list_integer_together() -> None:
-    """
-    async version of test_generate_list_integer
-    """
-    length, lower, upper = 5, -10, 10
-    list_of_int = await agenerate(
-        "togethercomputer/llama-2-70b-chat",
-        "{format_instructions}",
-        {},
-        ListOfIntOutputParser(length, (lower, upper)),
+        temperature=0.0,
     )
     assert isinstance(list_of_int, list)
     assert len(list_of_int) == length
@@ -52,10 +34,11 @@ async def test_logging_behavior(caplog: Any) -> None:
     # Call the function under test
     caplog.set_level(15)
     await agenerate(
-        "gpt-4o-mini",
+        "custom/llama3.2:1b@http://localhost:8000/v1",
         "{format_instructions}",
         {},
         ListOfIntOutputParser(5, (-10, 10)),
+        temperature=0.0,
     )
     # Check if any log records were captured
     assert len(caplog.records) > 0, "No log records captured"
@@ -71,7 +54,7 @@ async def test_agenerate_structured_output() -> None:
     async version of test_generate_structured_output
     """
     output = await agenerate(
-        "gpt-4o-2024-08-06",
+        "custom/llama3.2:1b@http://localhost:8000/v1",
         "{format_instructions}",
         {},
         PydanticOutputParser(pydantic_object=AgentAction),

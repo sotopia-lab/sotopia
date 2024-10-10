@@ -1,0 +1,31 @@
+redis_url = "redis://localhost:6379"
+extra_modules = ["examples.experimental.tick_and_echo_agents.tick_and_echo_agents"]
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
+
+[[nodes]]
+node_name = "tick_agent"
+node_class = "simple_tick_agent"
+
+[nodes.node_args]
+input_channel = "tick/secs/1"
+output_channel = "tick"
+
+[[nodes]]
+node_name = "echo_agent"
+node_class = "simple_echo_agent"
+
+[nodes.node_args]
+input_channel = "tick"
+output_channel = "echo_tick"
+
+[[nodes]]
+node_name = "print"
+node_class = "print"
+
+[nodes.node_args.print_channel_types]
+"tick/secs/1" = "tick"
+"tick" = "text"
+"echo_tick" = "text"
