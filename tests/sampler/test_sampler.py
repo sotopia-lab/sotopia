@@ -19,6 +19,7 @@ from sotopia.samplers import ConstraintBasedSampler, UniformSampler
 def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None]:
     AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
     AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
+    AgentProfile(first_name="Jack", last_name="Doe", pk="tmppk_agent3").save()
     EnvironmentProfile(
         pk="tmppk_environment",
         codename="borrow_money",
@@ -34,9 +35,13 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None
     RelationshipProfile(
         agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent2", relationship=2
     ).save()
+    RelationshipProfile(
+        agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent3", relationship=2
+    ).save()
     yield
     AgentProfile.delete("tmppk_agent1")
     AgentProfile.delete("tmppk_agent2")
+    AgentProfile.delete("tmppk_agent3")
     EnvironmentProfile.delete("tmppk_environment")
 
 

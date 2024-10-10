@@ -24,12 +24,8 @@ services:
     image: redis/redis-stack-server:latest
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-    volumes:
-      - redis_data:/data
     network_mode: "host"
 
 networks:
   sotopia:
     external: false
-volumes:
-  redis_data:
