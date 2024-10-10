@@ -25,16 +25,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Set up Docker
-      if: runner.os == 'ubuntu-latest'
-      uses: docker-practice/actions-setup-docker@master
-      timeout-minutes: 12
-    - name: Docker compose up
+    - name: Run docker-compose
+      uses: hoverkraft-tech/compose-action@v2.0.1
+      with:
+        compose-file: "./devcontainer/docker-compose.yml"
+    - name: Execute tests in the running services
       run: |
-        docker-compose -f .devcontainer/docker-compose.yml up -d
-    - name: Test with pytest
-      run: |
-        docker compose -f .devcontainer/docker-compose.yml  run --rm -u root -v ./:/workspaces/sotopia devcontainer /bin/sh -c "export UV_PROJECT_ENVIRONMENT=/workspaces/.venv; cd /workspaces/sotopia; uv run --extra test --extra chat pytest --ignore tests/cli --cov=app --cov-report=xml"
+        docker-compose exec /bin/sh -c "export UV_PROJECT_ENVIRONMENT=/workspaces/.venv; cd /workspaces/sotopia; uv run --extra test --extra chat pytest --ignore tests/cli --cov=app --cov-report=xml"
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
