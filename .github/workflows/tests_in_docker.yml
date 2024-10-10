@@ -31,7 +31,7 @@ jobs:
         file: .devcontainer/docker-compose.yml
         service: devcontainer
         registry: ghcr.io
-        command: uv sync --all-extras
+        command: .github/workflows/tests.sh
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
