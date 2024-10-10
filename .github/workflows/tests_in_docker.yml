@@ -20,7 +20,7 @@ jobs:
     strategy:
       max-parallel: 5
 
-    runs-on: macos-15-arm64
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
