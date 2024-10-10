@@ -28,7 +28,7 @@ jobs:
     - name: Docker Compose
       run: docker compose -f .devcontainer/docker-compose.yml up -d
     - name: Run tests
-      run: docker compose -f .devcontainer/docker-compose.yml run -rm -u root -v ./:/workspaces/sotopia devcontainer /bin/sh -c "cd /workspaces/sotopia; uv run --extra test --extra chat pytest --ignore tests/cli --cov=. --cov-report=xml"
+      run: docker compose -f .devcontainer/docker-compose.yml run --rm -u root -v ./:/workspaces/sotopia devcontainer /bin/sh -c "cd /workspaces/sotopia; uv run --extra test --extra chat pytest --ignore tests/cli --cov=. --cov-report=xml"
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
