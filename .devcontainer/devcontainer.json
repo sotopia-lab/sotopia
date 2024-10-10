@@ -3,11 +3,10 @@
 {
 	"name": "Sotopia Place",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
-	"features": {
-		"ghcr.io/itsmechlark/features/redis-server:1": {},
-		"ghcr.io/prulloac/devcontainer-features/ollama:1": {}
-	},
+
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "devcontainer",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -16,8 +15,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand":
-       "pip install uv; uv venv /workspaces/.venv; export UV_PROJECT_ENVIRONMENT=/workspaces/.venv; echo export UV_PROJECT_ENVIRONMENT=/workspaces/.venv >> /root/.bashrc; uv sync --all-extras; ollama pull llama3.2:1b",
+	"postCreateCommand": "uv sync --all-extras",
 
 	// Configure tool-specific properties.
 	// "customizations": {},
