@@ -315,7 +315,7 @@ class ReachGoalLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     pydantic_object=self.response_format_class
                 ),
                 temperature=temperature,
-                structured_output=self.model_name.startswith("custom"),
+                structured_output=self.model_name.startswith("custom/structured/"),
             )
             response_list = []
             # TODO: multiple agents

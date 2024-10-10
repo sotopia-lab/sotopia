@@ -135,7 +135,7 @@ class _ReachGoal(BaseModel):
 @pytest.mark.asyncio
 async def test_reach_goal_llm_evaluator_async() -> None:
     evaluator = ReachGoalLLMEvaluator(
-        "custom/llama3.2:1b@http://localhost:8000/v1",
+        "custom/structured@http://localhost:8000/v1",
         response_format_class=EvaluationForTwoAgents[_ReachGoal],
     )
     background = ScriptBackground(
