@@ -1,0 +1,31 @@
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      llamacpp:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    network_mode: "host"
+
+  llamacpp:
+    build:
+      context: .
+      dockerfile: Dockerfile.llamacpp
+    container_name: llamacpp
+    network_mode: "host"
+
+  redis:
+    image: redis/redis-stack-server:latest
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+    network_mode: "host"
+
+networks:
+  sotopia:
+    external: false

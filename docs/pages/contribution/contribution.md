@@ -79,7 +79,6 @@ You can also set up the development environment without Dev Containers. There ar
 - Redis: Please refer to introduction page for the set up of Redis.
 - Local LLM (optional): If you don't have access to model endpoints (e.g. OpenAI, Anthropic or others), you can use a local model. You can use Ollama, Llama.cpp,  vLLM or many others which support OpenAI compatible endpoints.
 
-
 ### 5. Write Code and Commit It
 
 Once you have done this, you can write code, test it, and commit it to a branch (replace `my_branch` with an appropriate name):
@@ -91,7 +90,20 @@ git commit
 git push origin my_branch
 ```
 
-### 6. Open a Pull Request
+### 6. Test Your Code
+
+Sotopia provides a docker environment for testing. You can run the following command to test your code:
+
+```shell
+# Starting from your local sotopia repository
+# Requires Docker
+bash tests/tests.sh
+```
+
+The above command will run all tests in the `tests` folder except for `tests/cli`. If you are not changing the installation CLI, you don't need to worry about it.
+
+
+### 7. Open a Pull Request
 
 * On GitHub, go to the page of your forked repository, and create a Pull Request:
    - Click on `Branches`
