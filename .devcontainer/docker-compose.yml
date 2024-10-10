@@ -1,6 +1,8 @@
 services:
   devcontainer:
-    image: "ghcr.io/sotopia-lab/sotopia:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       llamacpp:
         condition: service_started
@@ -12,7 +14,9 @@ services:
     network_mode: "host"
 
   llamacpp:
-    image: "ghcr.io/sotopia-lab/llamacpp:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile.llamacpp
     container_name: llamacpp
     network_mode: "host"
 
