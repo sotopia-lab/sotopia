@@ -1,5 +1,5 @@
 from typing import TypeVar
-from redis_om import JsonModel
+from redis_om import JsonModel, Migrator
 from .annotators import Annotator
 from .env_agent_combo_storage import EnvAgentComboStorage
 from .logs import AnnotationForEpisode, EpisodeLog
@@ -71,3 +71,5 @@ def _json_model_all(cls: type[InheritedJsonModel]) -> list[InheritedJsonModel]:
 
 
 JsonModel.all = classmethod(_json_model_all)  # type: ignore[assignment,method-assign]
+
+Migrator().run()

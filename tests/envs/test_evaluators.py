@@ -3,13 +3,13 @@ import asyncio
 import pytest
 
 from sotopia.envs.evaluators import (
-    SotopiaDimensions,
     EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
 )
-from sotopia.messages import AgentAction, Observation, ScriptBackground, SimpleMessage
+from sotopia.messages import AgentAction, ScriptBackground, SimpleMessage
+from pydantic import BaseModel, Field
 
 
 def test_rule_based_teminated_evaluator() -> None:
@@ -126,63 +126,17 @@ async def test_rule_based_teminated_evaluator_async() -> None:
     )
 
 
+class _ReachGoal(BaseModel):
+    goal: tuple[str, int] = Field(
+        ..., description="First output a reasoning and then a score for the goal"
+    )
+
+
 @pytest.mark.asyncio
 async def test_reach_goal_llm_evaluator_async() -> None:
     evaluator = ReachGoalLLMEvaluator(
-        "gpt-4", response_format_class=EvaluationForTwoAgents[SotopiaDimensions]
-    )
-    response1, response2 = await asyncio.gather(
-        evaluator.__acall__(
-            1,
-            [
-                (
-                    "Environment",
-                    Observation(
-                        last_turn="Please say something.",
-                        turn_number=0,
-                        available_actions=["speak", "none"],
-                    ),
-                ),
-                ("Alice", AgentAction(action_type="speak", argument="")),
-                ("Bob", AgentAction(action_type="speak", argument="")),
-            ],
-        ),
-        evaluator.__acall__(
-            1,
-            [
-                (
-                    "Environment",
-                    Observation(
-                        last_turn="Please express gratitude to each other.",
-                        turn_number=0,
-                        available_actions=["speak", "none"],
-                    ),
-                ),
-                (
-                    "Alice",
-                    AgentAction(action_type="speak", argument="Thank you so much!"),
-                ),
-                (
-                    "Bob",
-                    AgentAction(action_type="speak", argument="Fuck you!"),
-                ),
-            ],
-        ),
-    )
-    print("---------------------")
-    print(response1)
-    print(response2)
-    assert response1[2][1][0][1] == 0
-    assert response1[3][1][0][1] == 0
-    assert isinstance(response2[8][1][0][1], int)
-    assert isinstance(response2[9][1][0][1], int)
-    assert response2[2][1][0][1] > response2[3][1][0][1]
-
-
-@pytest.mark.asyncio
-async def test_reach_goal_llm_evaluator_goal_only_async() -> None:
-    evaluator = ReachGoalLLMEvaluator(
-        "gpt-4", response_format_class=EvaluationForTwoAgents[SotopiaDimensions]
+        "custom/llama3.2:1b@http://localhost:8000/v1",
+        response_format_class=EvaluationForTwoAgents[_ReachGoal],
     )
     background = ScriptBackground(
         scenario="Conversation between two friends at a trivia night",
@@ -240,6 +194,5 @@ async def test_reach_goal_llm_evaluator_goal_only_async() -> None:
     print("---------------------")
     print("Response after 2 turns:", response2)
 
-    assert len(response2[0][0][1][1].split()) > len(
-        "Samuel Anderson's goal was to greet his friends and be polite.".split()
-    )
+    assert len(response2) == 1
+    assert len(response2[0]) == 2

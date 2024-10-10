@@ -315,6 +315,7 @@ class ReachGoalLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     pydantic_object=self.response_format_class
                 ),
                 temperature=temperature,
+                structured_output=self.model_name.startswith("custom"),
             )
             response_list = []
             # TODO: multiple agents
@@ -345,6 +346,7 @@ class ReachGoalLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 )
             return response_list
         except Exception as e:
+            print(e)
             log.debug(f"[red] Failed to generate environment response. {e}")
             return []
 

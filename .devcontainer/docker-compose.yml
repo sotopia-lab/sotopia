@@ -2,8 +2,8 @@ services:
   devcontainer:
     image: "ghcr.io/sotopia-lab/sotopia:latest"
     depends_on:
-      ollama:
-        condition: service_healthy
+      llamacpp:
+        condition: service_started
       redis:
         condition: service_healthy
     volumes:
@@ -11,22 +11,15 @@ services:
     command: sleep infinity
     network_mode: "host"
 
-  ollama:
-    image: "ghcr.io/sotopia-lab/ollama:latest"
+  llamacpp:
+    image: "ghcr.io/sotopia-lab/llamacpp:latest"
     ports:
-      - 11434:11434
-    container_name: ollama
-    pull_policy: always
-    restart: always
+      - 8000:8000
+    container_name: llamacpp
     network_mode: "host"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   redis:
-    image: redis/redis-stack-server:7.2.0-v6
+    image: redis/redis-stack-server:latest
     ports:
       - 6379:6379
     healthcheck:
