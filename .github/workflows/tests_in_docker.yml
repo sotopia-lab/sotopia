@@ -25,13 +25,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Tests
-      uses: cloudposse/github-action-docker-compose-test-run@main
-      with:
-        file: .devcontainer/docker-compose.yml
-        service: devcontainer
-        registry: ghcr.io
-        command: .github/workflows/tests.sh
+    - name: Docker Compose
+      run: docker compose -f .devcontainer/docker-compose.yml up -d
+    - name: Run tests
+      run: docker compose run -f .devcontainer/docker-compose.yml exec devcontainer .github/workflows/tests.sh
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
