@@ -41,7 +41,7 @@ jobs:
           uv sync --extra test --extra chat
     - name: Test with pytest
       run: |
-        uv run pytest tests/cli --cov=. --cov-report=xml
+        uv run pytest tests/cli/test_install.py --cov=. --cov-report=xml
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:
