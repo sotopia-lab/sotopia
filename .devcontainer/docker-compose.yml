@@ -13,15 +13,11 @@ services:
 
   llamacpp:
     image: "ghcr.io/sotopia-lab/llamacpp:latest"
-    ports:
-      - 8000:8000
     container_name: llamacpp
     network_mode: "host"
 
   redis:
     image: redis/redis-stack-server:latest
-    ports:
-      - 6379:6379
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
     volumes:
