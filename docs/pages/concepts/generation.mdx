@@ -42,3 +42,9 @@ The input to `agenerate` are the following:
 - `output_parser`: The output parser to use. The output parser should be a subclass of `BaseOutputParser`.
 
 In this example, we generate a list of the first `n` prime numbers with the `gpt-4o` model. The `ListOfIntOutputParser` is used to parse the output into a list of integers.
+
+### Using custom models
+
+Apart from using api endpoints from LLM providers like OpenAI, Together AI, Azure, etc., you can also use custom model with OpenAI compatible endpoints.
+You will need to set the model name to `custom/<model_name>@url`, and CUSTOM_API_KEY to the API key of the custom model.
+For an example, check out `examples/generation_api/custom_model.py`.
