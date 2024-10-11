@@ -37,6 +37,8 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.shutdown_event.set()
+        if self.task_scheduler is not None:
+            self.task_scheduler.cancel()
         return await super().__aexit__(exc_type, exc_value, traceback)
 
     async def aact(self, observation: T_agent_observation) -> T_agent_action | None:
