@@ -17,7 +17,7 @@ class ReturnPlusOneAgent(BaseAgent[Tick, Tick]):
 
 
 @pytest.mark.asyncio
-async def test_return_plus_one_agent() -> None:
+async def test_base_agent() -> None:
     async with ReturnPlusOneAgent(
         input_channel_types=[("input", Tick)],
         output_channel_types=[("output", Tick)],
@@ -32,16 +32,15 @@ async def test_return_plus_one_agent() -> None:
             r = redis.pubsub()
             await r.subscribe("final")
 
-            asyncio.create_task(agent1.event_loop())
-            asyncio.create_task(agent2.event_loop())
+            task_agent_1 = asyncio.create_task(agent1.event_loop())
+            task_agent_2 = asyncio.create_task(agent2.event_loop())
 
             await redis.publish(
                 "input", Message[Tick](data=Tick(tick=1)).model_dump_json()
             )
 
-            async with asyncio.timeout(5):
+            async def _() -> None:
                 async for message in r.listen():
-                    print(message)
                     if message["type"] == "message":
                         assert message["channel"] == b"final"
                         assert message["data"] == Message[Tick](
@@ -49,4 +48,10 @@ async def test_return_plus_one_agent() -> None:
                         ).model_dump_json().encode("utf-8")
                         return
 
-            assert False, "Timeout reached"
+            try:
+                await asyncio.wait_for(_(), timeout=1)
+            finally:
+                task_agent_1.cancel()
+                task_agent_2.cancel()
+                await r.unsubscribe("final")
+                await redis.close()
