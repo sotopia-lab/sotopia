@@ -47,8 +47,17 @@ model_name = "test_model"
 
 def get_mock_episodes() -> list[EpisodeLog]:
     # all_episodes = EpisodeLog.find().all()
-    environment = EnvironmentProfile.find().all()[0]
-    agent = AgentProfile.find().all()[0]
+    environment = EnvironmentProfile(
+        codename="test",
+        source="test",
+        scenario="Two people are talking",
+        agent_goals=[
+            "You have 500 dollars and you want to buy the phone",
+            "You have a complete new iPhone 16 from Apple Store for $600 and you want to sell it",
+        ],
+    )
+
+    agent = AgentProfile(first_name="John", last_name="Doe", age=25, pk="John")
 
     agent1_rewards = [float(i) for i, _ in enumerate(dimensions)]
     agent2_rewards = [14.0 - reward for reward in agent1_rewards]
@@ -96,16 +105,8 @@ def get_mock_env_agents_profile() -> tuple[EnvironmentProfile, list[AgentProfile
             "You have a complete new iPhone 16 from Apple Store for $600 and you want to sell it",
         ],
     )
-    agent_1 = AgentProfile(
-        first_name="John",
-        last_name="Doe",
-        age=25,
-    )
-    agent_2 = AgentProfile(
-        first_name="Jane",
-        last_name="Doe",
-        age=25,
-    )
+    agent_1 = AgentProfile(first_name="John", last_name="Doe", age=25, pk="John")
+    agent_2 = AgentProfile(first_name="Jane", last_name="Doe", age=25, pk="Jane")
 
     return env_profile, [agent_1, agent_2]
 

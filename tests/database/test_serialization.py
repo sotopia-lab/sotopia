@@ -1,3 +1,5 @@
+from typing import Generator
+import pytest
 from sotopia.database import (
     AgentProfile,
     RelationshipProfile,
@@ -24,11 +26,34 @@ from sotopia.database import (
 import csv
 
 
-def test_episode_log_serialization() -> None:
+@pytest.fixture
+def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None]:
+    AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
+    AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
+    EnvironmentProfile(
+        pk="tmppk_environment",
+        codename="borrow_money",
+        source="hand-craft",
+        scenario="Conversation between two friends at a tea party",
+        agent_goals=[
+            "Borrow money (<extra_info>Extra information: you need $3000 to support life.</extra_info>)",
+            "Maintain financial stability while maintaining friendship (<extra_info>Extra information: you only have $2000 available right now. <clarification_hint>Hint: you can not lend all $2000 since you still need to maintain your financial stability.</clarification_hint></extra_info>)",
+        ],
+    ).save()
+    yield
+    AgentProfile.delete("tmppk_agent1")
+    AgentProfile.delete("tmppk_agent2")
+    EnvironmentProfile.delete("tmppk_environment")
+    EpisodeLog.delete("tmppk_episode_log")
+
+
+def test_episode_log_serialization(
+    _test_create_episode_log_setup_and_tear_down: None,
+) -> None:
     episode_log = EpisodeLog(
         pk="01H9FG15A2NDTNH8K6F2T5MZN3",
-        environment="01H7VFHNN7XTR99319DS8KZCQM",
-        agents=["01H5TNE5PAZABGW79HJ07TACCZ", "01H5TNE5P83CZ1TDBVN74NGEEJ"],
+        environment="tmppk_environment",
+        agents=["tmppk_agent1", "tmppk_agent2"],
         tag="togethercomputer/mpt-30b-chat_togethercomputer/llama-2-70b-chat_v0.0.1_clean",
         models=[
             "gpt-4",
