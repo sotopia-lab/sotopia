@@ -291,6 +291,7 @@ async def run_async_server(
                 for model_name in agents_model_dict.values()
             ],
         )
+    print("Episodes starting...")
     episode_futures = [
         arun_one_episode(
             env=env_agent_combo[0],
@@ -303,6 +304,8 @@ async def run_async_server(
         )
         for env_agent_combo in env_agent_combo_iter
     ]
+    print("Episodes finished.")
+    print("Episode futures: ", episode_futures)
 
     batch_results = (
         await asyncio.gather(*episode_futures)

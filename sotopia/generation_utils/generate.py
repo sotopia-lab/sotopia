@@ -381,6 +381,7 @@ def obtain_chain(
             model=model_name,
             temperature=temperature,
             max_retries=max_retries,
+            base_url="http://tiger.lti.cs.cmu.edu:4000/",
         )
         chain = chat_prompt_template | chat
         return chain
