@@ -1,0 +1,63 @@
+{
+  "name": "@nextui-org/switch",
+  "version": "2.0.34",
+  "description": "A switch is similar to a checkbox, but represents on/off values as opposed to selection.",
+  "keywords": [
+    "switch"
+  ],
+  "author": "Junior Garcia <jrgarciadev@gmail.com>",
+  "homepage": "https://nextui.org",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nextui-org/nextui.git",
+    "directory": "packages/components/switch"
+  },
+  "bugs": {
+    "url": "https://github.com/nextui-org/nextui/issues"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "@nextui-org/theme": ">=2.1.0",
+    "@nextui-org/system": ">=2.0.0"
+  },
+  "dependencies": {
+    "@react-aria/focus": "3.17.1",
+    "@react-aria/interactions": "3.21.3",
+    "@react-aria/switch": "3.6.4",
+    "@react-aria/utils": "3.24.1",
+    "@react-aria/visually-hidden": "3.8.12",
+    "@react-stately/toggle": "3.7.4",
+    "@react-types/shared": "3.23.1",
+    "@nextui-org/shared-utils": "2.0.8",
+    "@nextui-org/react-utils": "2.0.17",
+    "@nextui-org/use-safe-layout-effect": "2.0.6"
+  },
+  "clean-package": "../../../clean-package.config.json",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup src --dts",
+    "build:fast": "tsup src",
+    "dev": "pnpm build:fast --watch",
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  }
+}

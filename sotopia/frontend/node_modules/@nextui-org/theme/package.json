@@ -1,0 +1,102 @@
+{
+  "name": "@nextui-org/theme",
+  "version": "2.2.11",
+  "description": "The default theme for NextUI components",
+  "keywords": [
+    "theme",
+    "theming",
+    "design",
+    "ui",
+    "components",
+    "classNames",
+    "css"
+  ],
+  "author": "Junior Garcia <jrgarciadev@gmail.com>",
+  "homepage": "https://nextui.org",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "config.js",
+    "config.d.ts",
+    "plugin.js",
+    "plugin.d.ts",
+    "colors.js",
+    "colors.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nextui-org/nextui.git",
+    "directory": "packages/core/theme"
+  },
+  "bugs": {
+    "url": "https://github.com/nextui-org/nextui/issues"
+  },
+  "dependencies": {
+    "color": "^4.2.3",
+    "color2k": "^2.0.2",
+    "deepmerge": "4.3.1",
+    "flat": "^5.0.2",
+    "lodash.foreach": "^4.5.0",
+    "lodash.get": "^4.4.2",
+    "lodash.kebabcase": "^4.1.1",
+    "lodash.mapkeys": "^4.6.0",
+    "lodash.omit": "^4.5.0",
+    "clsx": "^1.2.1",
+    "tailwind-variants": "^0.1.20",
+    "tailwind-merge": "^1.14.0"
+  },
+  "peerDependencies": {
+    "tailwindcss": ">=3.4.0"
+  },
+  "devDependencies": {
+    "@types/color": "^3.0.3",
+    "@types/flat": "^5.0.2",
+    "@types/lodash.foreach": "^4.5.7",
+    "@types/lodash.get": "^4.4.7",
+    "@types/lodash.kebabcase": "^4.1.7",
+    "@types/lodash.mapkeys": "^4.6.7",
+    "@types/lodash.omit": "^4.5.7",
+    "tailwindcss": "^3.4.0",
+    "clean-package": "2.2.0"
+  },
+  "tsup": {
+    "clean": true,
+    "target": "es2019",
+    "format": [
+      "cjs",
+      "esm"
+    ]
+  },
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.mjs",
+      "require": "./dist/plugin.js"
+    },
+    "./colors": {
+      "types": "./dist/colors.d.ts",
+      "import": "./dist/colors.mjs",
+      "require": "./dist/colors.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup src --dts",
+    "build:fast": "tsup src",
+    "dev": "pnpm build:fast --watch",
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  }
+}

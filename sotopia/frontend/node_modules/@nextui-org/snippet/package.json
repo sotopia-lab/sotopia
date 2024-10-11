@@ -1,0 +1,62 @@
+{
+  "name": "@nextui-org/snippet",
+  "version": "2.0.43",
+  "description": "Display a snippet of copyable code for the command line.",
+  "keywords": [
+    "snippet"
+  ],
+  "author": "Junior Garcia <jrgarciadev@gmail.com>",
+  "homepage": "https://nextui.org",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nextui-org/nextui.git",
+    "directory": "packages/components/snippet"
+  },
+  "bugs": {
+    "url": "https://github.com/nextui-org/nextui/issues"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "framer-motion": ">=10.17.0",
+    "@nextui-org/theme": ">=2.1.0",
+    "@nextui-org/system": ">=2.0.0"
+  },
+  "dependencies": {
+    "@react-aria/focus": "3.17.1",
+    "@react-aria/utils": "3.24.1",
+    "@nextui-org/button": "2.0.38",
+    "@nextui-org/shared-utils": "2.0.8",
+    "@nextui-org/shared-icons": "2.0.9",
+    "@nextui-org/react-utils": "2.0.17",
+    "@nextui-org/use-clipboard": "2.0.7",
+    "@nextui-org/tooltip": "2.0.41"
+  },
+  "clean-package": "../../../clean-package.config.json",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup src --dts",
+    "dev": "pnpm build:fast --watch",
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build:fast": "tsup src"
+  }
+}

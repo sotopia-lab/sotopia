@@ -1,0 +1,92 @@
+{
+  "name": "magicast",
+  "version": "0.3.4",
+  "description": "Modify a JS/TS file and write back magically just like JSON!",
+  "repository": "unjs/magicast",
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./helpers": {
+      "types": "./helpers.d.ts",
+      "import": "./dist/helpers.mjs",
+      "require": "./dist/helpers.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "*.d.ts"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "prepare": "esno ./scripts/vendor.ts",
+    "dev": "vitest dev",
+    "dev:ui": "vitest dev --ui",
+    "lint": "eslint --cache --ext .ts,.js,.mjs,.cjs . && prettier -c src test",
+    "lint:fix": "eslint --cache --ext .ts,.js,.mjs,.cjs . --fix && prettier -c src test -w",
+    "prepack": "pnpm run build",
+    "typecheck": "tsc --noEmit",
+    "release": "pnpm run test run && changelogen --release && npm publish && git push --follow-tags",
+    "test": "vitest",
+    "test:build": "TEST_BUILD=true vitest",
+    "test:full": "pnpm run test --run && pnpm run build && pnpm run test:build --run"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.24.4",
+    "@babel/types": "^7.24.0",
+    "source-map-js": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@vitest/coverage-v8": "^1.5.0",
+    "@vitest/ui": "^1.5.0",
+    "ast-types": "^0.16.1",
+    "changelogen": "^0.5.5",
+    "eslint": "^8.57.0",
+    "eslint-config-unjs": "^0.2.1",
+    "esno": "^4.7.0",
+    "giget": "^1.2.3",
+    "lint-staged": "^15.2.2",
+    "magicast": "workspace:*",
+    "prettier": "^3.2.5",
+    "recast": "^0.23.6",
+    "simple-git-hooks": "^2.11.1",
+    "source-map": "npm:source-map-js@latest",
+    "typescript": "^5.4.5",
+    "unbuild": "^2.0.0",
+    "vitest": "^1.5.0"
+  },
+  "resolutions": {
+    "source-map": "npm:source-map-js@latest"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier -w"
+    ]
+  },
+  "packageManager": "pnpm@8.15.6",
+  "pnpm": {
+    "overrides": {
+      "array-includes": "npm:@nolyfill/array-includes@latest",
+      "array.prototype.findlastindex": "npm:@nolyfill/array.prototype.findlastindex@latest",
+      "array.prototype.flat": "npm:@nolyfill/array.prototype.flat@latest",
+      "array.prototype.flatmap": "npm:@nolyfill/array.prototype.flatmap@latest",
+      "hasown": "npm:@nolyfill/hasown@latest",
+      "object.fromentries": "npm:@nolyfill/object.fromentries@latest",
+      "object.groupby": "npm:@nolyfill/object.groupby@latest",
+      "object.values": "npm:@nolyfill/object.values@latest"
+    }
+  }
+}

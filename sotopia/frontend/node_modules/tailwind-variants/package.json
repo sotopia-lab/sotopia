@@ -1,0 +1,107 @@
+{
+  "name": "tailwind-variants",
+  "version": "0.1.20",
+  "description": "🦄 Tailwindcss first-class variant API",
+  "author": "Junior Garcia <jrgarciadev@gmail.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nextui-org/tailwind-variants"
+  },
+  "bugs": {
+    "url": "https://github.com/nextui-org/tailwind-variants/issues"
+  },
+  "type": "module",
+  "main": "dist/index.cjs",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "transformer.js",
+    "transformer.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup && node copy-types.cjs",
+    "typecheck": "tsc --noEmit",
+    "prepack": "clean-package",
+    "benchmark": "node benchmark.js",
+    "postpack": "clean-package restore",
+    "lint": "eslint -c .eslintrc.json ./src/**/*.{ts,tsx}",
+    "lint:fix": "eslint --fix -c .eslintrc.json ./src/**/*.{ts,tsx}",
+    "test": "jest --verbose"
+  },
+  "dependencies": {
+    "tailwind-merge": "^1.14.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.2.0",
+    "@commitlint/config-conventional": "^17.2.0",
+    "@jest/globals": "^29.7.0",
+    "@swc-node/jest": "^1.5.2",
+    "@swc/cli": "0.1.57",
+    "@swc/core": "1.2.198",
+    "@swc/helpers": "^0.4.14",
+    "@types/jest": "28.1.1",
+    "@types/node": "^18.11.18",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "benchmark": "2.1.4",
+    "clean-package": "2.1.1",
+    "eslint": "^7.29.0",
+    "eslint-config-prettier": "^8.2.0",
+    "eslint-config-ts-lambdas": "^1.2.3",
+    "eslint-import-resolver-typescript": "^2.4.0",
+    "eslint-loader": "^4.0.2",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-jest": "^24.3.6",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "expect": "^29.7.0",
+    "jest": "28.1.1",
+    "prettier": "^2.2.1",
+    "prettier-eslint": "^12.0.0",
+    "prettier-eslint-cli": "^5.0.1",
+    "tailwindcss": "^3.2.7",
+    "ts-node": "^10.9.1",
+    "tslib": "^2.4.1",
+    "tsup": "6.6.3",
+    "typescript": "5.1.3",
+    "webpack": "^5.53.0"
+  },
+  "peerDependencies": {
+    "tailwindcss": "*"
+  },
+  "keywords": [
+    "tailwindcss",
+    "classes",
+    "responsive",
+    "variants",
+    "styled",
+    "styles"
+  ],
+  "engines": {
+    "node": ">=16.x",
+    "pnpm": ">=7.x"
+  },
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js",
+      "types": "./types/index.d.ts"
+    },
+    "./dist/*": "./dist/*",
+    "./transformer": {
+      "require": "./dist/transformer.cjs",
+      "types": "./dist/transformer.d.ts",
+      "default": "./dist/transformer.js"
+    },
+    "./package.json": "./package.json"
+  }
+}

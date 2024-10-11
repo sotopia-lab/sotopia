@@ -1,0 +1,64 @@
+{
+  "name": "@nextui-org/dropdown",
+  "version": "2.1.31",
+  "description": "A dropdown displays a list of actions or options that a user can choose.",
+  "keywords": [
+    "dropdown"
+  ],
+  "author": "Junior Garcia <jrgarciadev@gmail.com>",
+  "homepage": "https://nextui.org",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nextui-org/nextui.git",
+    "directory": "packages/components/dropdown"
+  },
+  "bugs": {
+    "url": "https://github.com/nextui-org/nextui/issues"
+  },
+  "peerDependencies": {
+    "@nextui-org/system": ">=2.0.0",
+    "@nextui-org/theme": ">=2.1.0",
+    "framer-motion": ">=10.17.0",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "@react-aria/focus": "3.17.1",
+    "@react-aria/menu": "3.14.1",
+    "@react-aria/utils": "3.24.1",
+    "@react-stately/menu": "3.7.1",
+    "@react-types/menu": "3.9.9",
+    "@nextui-org/aria-utils": "2.0.26",
+    "@nextui-org/menu": "2.0.30",
+    "@nextui-org/popover": "2.1.29",
+    "@nextui-org/react-utils": "2.0.17",
+    "@nextui-org/shared-utils": "2.0.8"
+  },
+  "clean-package": "../../../clean-package.config.json",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup src --dts",
+    "build:fast": "tsup src",
+    "dev": "pnpm build:fast --watch",
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  }
+}

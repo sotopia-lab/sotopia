@@ -6,6 +6,12 @@ from typing import Any, Literal, Optional, Type, TypeVar
 
 from beartype import beartype
 from gin import configurable
+import gymnasium as gym
+# import browsergym.core
+
+import redis
+from itertools import cycle
+
 from gymnasium.spaces.dict import Dict
 from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
@@ -31,7 +37,7 @@ from sotopia.renderers import RenderContext, XMLRenderer
 from .evaluators import Evaluator, unweighted_aggregate_evaluate
 
 TBackground = TypeVar("TBackground", bound=ScriptBackground)
-
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     action_str = ""
@@ -167,6 +173,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
         self.terminal_evaluators = terminal_evaluators
+        # self.browser_env = BrowserEnv()
 
         # if an environment profile is provided, use it
         assert (
@@ -424,7 +431,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
     @beartype
     async def astep(
-        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]], session_id: str | None = None
     ) -> tuple[
         dict[str, Observation],
         dict[str, float],
@@ -434,6 +441,22 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
     ]:
         # Time step ++
         self.turn_number += 1
+        
+        agent_names = cycle(["agent-1", "agent-2"])
+
+        # Create a dictionary to store the mapping of actual names to generic agent names
+        name_mapping = {}
+        for sender, action in actions.items():
+            # If we haven't seen this sender before, assign them the next agent name
+            if sender not in name_mapping:
+                name_mapping[sender] = next(agent_names)
+            
+            generic_name = name_mapping[sender]
+            
+            if action.action_type == 'speak':
+                message = action.argument
+                # print(f"Extracted - Sender: {sender} ({generic_name}), Message: {message}")
+                redis_client.publish(f"chat:{session_id}", f"{generic_name}:{message}")
 
         # For action sampled from action space, it needs to be converted into AgentAction
         complied_actions: dict[str, AgentAction] = {}
@@ -570,3 +593,41 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
     def close(self) -> None:
         pass
+
+
+
+class BrowserEnv:
+    def __init__(self, eval_mode: bool = False):
+        self.eval_mode = eval_mode
+        self.env = self.initialize_env()
+
+    def initialize_env(self):
+        if self.eval_mode:
+            # For evaluation mode, you might want to use a specific environment
+            # This is just a placeholder, adjust as needed
+            return gym.make('browsergym/miniwob')
+        else:
+            return gym.make(
+                'browsergym/openended',
+                task_kwargs={'start_url': 'about:blank', 'goal': 'PLACEHOLDER_GOAL'},
+                wait_for_user_message=False,
+                headless=True,
+                disable_env_checker=True,
+            )
+
+    def step(self, action: str) -> gym.spaces.dict.Dict:
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        return {
+            'observation': obs,
+            'reward': reward,
+            'terminated': terminated,
+            'truncated': truncated,
+            'info': info
+        }
+
+    def reset(self) -> gym.spaces.dict.Dict:
+        obs, info = self.env.reset()
+        return {'observation': obs, 'info': info}
+
+    def close(self):
+        self.env.close()

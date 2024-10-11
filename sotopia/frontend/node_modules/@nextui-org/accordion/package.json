@@ -1,0 +1,74 @@
+{
+  "name": "@nextui-org/accordion",
+  "version": "2.0.40",
+  "description": "Collapse display a list of high-level options that can expand/collapse to reveal more information.",
+  "keywords": [
+    "react",
+    "accordion",
+    "collapse",
+    "display",
+    "list",
+    "expand",
+    "tree view"
+  ],
+  "author": "Junior Garcia <jrgarciadev@gmail.com>",
+  "homepage": "https://nextui.org",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nextui-org/nextui.git",
+    "directory": "packages/components/accordion"
+  },
+  "bugs": {
+    "url": "https://github.com/nextui-org/nextui/issues"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "framer-motion": ">=10.17.0",
+    "@nextui-org/theme": ">=2.1.0",
+    "@nextui-org/system": ">=2.0.0"
+  },
+  "dependencies": {
+    "@react-aria/interactions": "3.21.3",
+    "@react-aria/focus": "3.17.1",
+    "@react-aria/utils": "3.24.1",
+    "@react-stately/tree": "3.8.1",
+    "@react-aria/button": "3.9.5",
+    "@react-types/accordion": "3.0.0-alpha.21",
+    "@react-types/shared": "3.23.1",
+    "@nextui-org/aria-utils": "2.0.26",
+    "@nextui-org/shared-icons": "2.0.9",
+    "@nextui-org/shared-utils": "2.0.8",
+    "@nextui-org/react-utils": "2.0.17",
+    "@nextui-org/framer-utils": "2.0.25",
+    "@nextui-org/divider": "2.0.32",
+    "@nextui-org/use-aria-accordion": "2.0.7"
+  },
+  "clean-package": "../../../clean-package.config.json",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup src --dts",
+    "build:fast": "tsup src",
+    "dev": "pnpm build:fast --watch",
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit"
+  }
+}

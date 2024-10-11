@@ -113,6 +113,7 @@ async def arun_one_episode(
     json_in_script: bool = False,
     tag: str | None = None,
     push_to_db: bool = False,
+    session_id: str | None = None,
 ) -> list[tuple[str, str, Message]]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     environment_messages = env.reset(agents=agents, omniscient=omniscient)
@@ -166,7 +167,7 @@ async def arun_one_episode(
             terminated,
             ___,
             info,
-        ) = await env.astep(agent_messages)
+        ) = await env.astep(agent_messages, session_id)
         messages.append(
             [
                 ("Environment", agent_name, environment_messages[agent_name])
@@ -224,6 +225,7 @@ async def run_async_server(
     tag: str | None = None,
     push_to_db: bool = False,
     using_async: bool = True,
+    session_id: str | None = None,
 ) -> list[list[tuple[str, str, Message]]]:
     """
     Doc incomplete
@@ -291,7 +293,6 @@ async def run_async_server(
                 for model_name in agents_model_dict.values()
             ],
         )
-    print("Episodes starting...")
     episode_futures = [
         arun_one_episode(
             env=env_agent_combo[0],
@@ -301,11 +302,10 @@ async def run_async_server(
             json_in_script=json_in_script,
             tag=tag,
             push_to_db=push_to_db,
+            session_id=session_id,
         )
         for env_agent_combo in env_agent_combo_iter
     ]
-    print("Episodes finished.")
-    print("Episode futures: ", episode_futures)
 
     batch_results = (
         await asyncio.gather(*episode_futures)
