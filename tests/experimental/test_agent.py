@@ -1,7 +1,7 @@
 import asyncio
 
 from aact import Message
-from sotopia.experimental.agents import BaseAgent
+from sotopia.experimental import BaseAgent
 
 from aact.messages import Tick
 
