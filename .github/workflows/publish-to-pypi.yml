@@ -31,12 +31,10 @@ jobs:
         python-version: 3.11.2
     - name: Install dependencies
       run: |
-        curl -sSL https://install.python-poetry.org | python3
-
-    - name: Get release version
-      run: echo "RELEASE_VERSION=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
+        python -m pip install --upgrade pip
+        python -m pip install uv
 
     - name: Build and publish Python package
-      run: poetry publish --build
-      env:
-        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+      run: |
+          uv build
+          uv publish

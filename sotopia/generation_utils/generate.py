@@ -20,6 +20,7 @@ from langchain_core.prompt_values import ChatPromptValue
 from langchain.schema import BaseOutputParser, OutputParserException
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from pydantic import BaseModel, Field
+from pydantic.v1 import SecretStr
 from rich import print
 from typing_extensions import Literal
 
@@ -59,7 +60,6 @@ LLM_Name = Literal[
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 OutputType = TypeVar("OutputType", bound=object)
-client = OpenAI()
 
 
 class EnvResponse(BaseModel):
@@ -71,7 +71,7 @@ class EnvResponse(BaseModel):
 
 
 class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
-    def __init__(self, pydantic_object: Type[BaseModel] = EnvResponse) -> None:
+    def __init__(self, pydantic_object: Type[EnvResponse] = EnvResponse) -> None:
         super(EnvResponsePydanticOutputParser, self).__init__(
             pydantic_object=pydantic_object
         )
@@ -106,16 +106,15 @@ class ListOfIntOutputParser(BaseOutputParser[list[int]]):
         self.range_of_int = range_of_int
 
     def _get_description_text(self) -> str:
-        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by space"
+        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by spaces. Don't output anything else. Format example: 1 2 3 4 5"
 
     def get_format_instructions(self) -> str:
         return "Please output " + self._get_description_text()
 
     def parse(self, output: str) -> list[int]:
         try:
-            if ":" in output:
-                output = output.split(":")[1]
-            result = [int(x) for x in output.split(" ") if x]
+            output_loaded = output.split(" ")
+            result = [int(x) for x in output_loaded]
             if self.number_of_int and len(result) != self.number_of_int:
                 msg = f"Expect {self.number_of_int} integers, got {len(result)}"
                 raise OutputParserException(msg)
@@ -260,18 +259,9 @@ f. Oliver Thompson left the conversation"""
             )
             return parsed_interaction
         except Exception as e:
-            print(f"Exception {e}: the output format is not correct. Reformatting ")
-            reformat_parsed_result = format_bad_output_for_script(
-                ill_formed_output=output,
-                format_instructions=self.get_format_instructions(),
-                agents=agent_names,
+            raise OutputParserException(
+                f"Failed to parse the output: {output}. Encounter Exception {e}"
             )
-            print("Reformatted output: ", reformat_parsed_result)
-            interaction = ScriptInteraction(interactions=reformat_parsed_result)
-            parsed_interaction = interaction.parse(
-                agent_names=agent_names, background=self.background
-            )
-            return parsed_interaction
 
     @property
     def _type(self) -> str:
@@ -322,23 +312,29 @@ def obtain_chain(
         model_name = _return_fixed_model_version(model_name)
     if model_name.startswith("together_ai"):
         model_name = "/".join(model_name.split("/")[1:])
+        assert (
+            TOGETHER_API_KEY := os.environ.get("TOGETHER_API_KEY")
+        ), "TOGETHER_API_KEY is not set"
         chat_openai = ChatOpenAI(
-            model_name=model_name,
+            name=model_name,
             temperature=temperature,
             max_retries=max_retries,
-            openai_api_base="https://api.together.xyz/v1",
-            openai_api_key=os.environ.get("TOGETHER_API_KEY"),
+            base_url="https://api.together.xyz/v1",
+            api_key=SecretStr(TOGETHER_API_KEY),
         )
         chain = chat_prompt_template | chat_openai
         return chain
     elif model_name.startswith("groq"):
         model_name = "/".join(model_name.split("/")[1:])
+        assert (
+            GROQ_API_KEY := os.environ.get("GROQ_API_KEY")
+        ), "GROQ_API_KEY is not set"
         chat_openai = ChatOpenAI(
-            model_name=model_name,
+            name=model_name,
             temperature=temperature,
             max_retries=max_retries,
-            openai_api_base="https://api.groq.com/openai/v1",
-            openai_api_key=os.environ.get("GROQ_API_KEY"),
+            base_url="https://api.groq.com/openai/v1",
+            api_key=SecretStr(GROQ_API_KEY),
         )
         chain = chat_prompt_template | chat_openai
         return chain
@@ -352,7 +348,7 @@ def obtain_chain(
         )
         chat_azure_openai = AzureChatOpenAI(
             azure_deployment=deployment_name,
-            openai_api_version=azure_version,
+            api_version=azure_version,
             azure_endpoint=f"https://{resource_name}.openai.azure.com",
             temperature=temperature,
             max_retries=max_retries,
@@ -369,9 +365,11 @@ def obtain_chain(
             model=custom_model_name,
             temperature=temperature,
             max_retries=max_retries,
-            api_key=os.environ.get("CUSTOM_API_KEY")
-            if os.environ.get("CUSTOM_API_KEY")
-            else "EMPTY",
+            api_key=SecretStr(
+                CUSTOM_API_KEY
+                if (CUSTOM_API_KEY := os.environ.get("CUSTOM_API_KEY"))
+                else "EMPTY"
+            ),
             base_url=model_base_url,
         )
         human_message_prompt = HumanMessagePromptTemplate(
@@ -395,7 +393,7 @@ def format_bad_output_for_script(
     ill_formed_output: str,
     format_instructions: str,
     agents: list[str],
-    model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    model_name: str,
     use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
@@ -431,7 +429,7 @@ def format_bad_output_for_script(
 def format_bad_output(
     ill_formed_output: BaseMessage,
     format_instructions: str,
-    model_name: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    model_name: str,
     use_fixed_model_version: bool = True,
 ) -> BaseMessage:
     template = """
@@ -466,7 +464,7 @@ async def agenerate(
     output_parser: BaseOutputParser[OutputType],
     temperature: float = 0.7,
     structured_output: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> OutputType:
     input_variables = re.findall(
@@ -490,9 +488,9 @@ async def agenerate(
         input_values["format_instructions"] = output_parser.get_format_instructions()
 
     if structured_output:
-        assert (
-            model_name == "gpt-4o-2024-08-06"
-        ), "Structured output is only supported in gpt-4o-2024-08-06"
+        assert model_name == "gpt-4o-2024-08-06" or model_name.startswith(
+            "custom"
+        ), "Structured output is only supported in gpt-4o-2024-08-06 or custom models"
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
                 template=template,
@@ -505,6 +503,15 @@ async def agenerate(
         instantiated_prompt = prompt_result.messages[0].content
         assert isinstance(output_parser, PydanticOutputParser)
         assert isinstance(instantiated_prompt, str)
+        if model_name.startswith("custom"):
+            client = OpenAI(
+                base_url=model_name.split("@")[1],
+                api_key=os.environ.get("CUSTOM_API_KEY") or "EMPTY",
+            )
+            model_name = model_name.split("@")[0].split("/")[1]
+        else:
+            client = OpenAI()
+
         completion = client.beta.chat.completions.parse(
             model=model_name,
             messages=[
@@ -529,7 +536,7 @@ async def agenerate(
         reformat_parsed_result = format_bad_output(
             result,
             format_instructions=output_parser.get_format_instructions(),
-            model_name=bad_output_process_model,
+            model_name=bad_output_process_model or model_name,
             use_fixed_model_version=use_fixed_model_version,
         )
         parsed_result = output_parser.invoke(reformat_parsed_result)
@@ -544,7 +551,7 @@ async def agenerate_env_profile(
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
     temperature: float = 0.7,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[EnvironmentProfile, str]:
     """
@@ -574,7 +581,7 @@ async def agenerate_env_profile(
 async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[RelationshipProfile, str]:
     """
@@ -608,7 +615,7 @@ async def agenerate_action(
     goal: str,
     temperature: float = 0.7,
     script_like: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> AgentAction:
     """
@@ -676,7 +683,7 @@ async def agenerate_script(
     agent_name: str = "",
     history: str = "",
     single_step: bool = False,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> tuple[ScriptInteractionReturnType, str]:
     """
@@ -768,7 +775,7 @@ def process_history(
 async def agenerate_init_profile(
     model_name: str,
     basic_info: dict[str, str],
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     """
@@ -814,7 +821,7 @@ async def convert_narratives(
     model_name: str,
     narrative: str,
     text: str,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     if narrative == "first":
@@ -847,7 +854,7 @@ async def convert_narratives(
 async def agenerate_goal(
     model_name: str,
     background: str,
-    bad_output_process_model: str = DEFAULT_BAD_OUTPUT_PROCESS_MODEL,
+    bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
     """

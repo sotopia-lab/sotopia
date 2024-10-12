@@ -2,7 +2,8 @@ import csv
 import json
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from redis_om.model.model import Field
 
 from .env_agent_combo_storage import EnvAgentComboStorage
 from .logs import EpisodeLog
@@ -14,66 +15,66 @@ from .persistent_profile import (
 
 
 class TwoAgentEpisodeWithScenarioBackgroundGoals(BaseModel):
-    episode_id: str = Field(required=True)
-    environment_id: str = Field(required=True)
-    agent_ids: list[str] = Field(required=True)
-    experiment_tag: str = Field(required=True)
-    experiment_model_name_pairs: list[str] = Field(required=True)
-    raw_messages: list[list[tuple[str, str, str]]] = Field(required=True)
-    raw_rewards: list[tuple[float, dict[str, float]] | float] = Field(required=True)
-    raw_rewards_prompt: str = Field(required=True)
-    scenario: str = Field(required=True)
-    codename: str = Field(required=True)
-    agents_background: dict[str, str] = Field(required=True)
-    social_goals: dict[str, str] = Field(required=True)
-    social_interactions: str = Field(required=True)
-    reasoning: str = Field(required=False)
-    rewards: list[tuple[float, dict[str, float]]] = Field(required=False)
+    episode_id: str = Field()
+    environment_id: str = Field()
+    agent_ids: list[str] = Field()
+    experiment_tag: str = Field()
+    experiment_model_name_pairs: list[str] = Field()
+    raw_messages: list[list[tuple[str, str, str]]] = Field()
+    raw_rewards: list[tuple[float, dict[str, float]] | float] = Field()
+    raw_rewards_prompt: str = Field()
+    scenario: str = Field()
+    codename: str = Field()
+    agents_background: dict[str, str] = Field()
+    social_goals: dict[str, str] = Field()
+    social_interactions: str = Field()
+    reasoning: str = Field()
+    rewards: list[tuple[float, dict[str, float]]] = Field()
 
 
 class AgentProfileWithPersonalInformation(BaseModel):
-    agent_id: str = Field(required=True)
-    first_name: str = Field(required=True)
-    last_name: str = Field(required=True)
-    age: int = Field(required=True)
-    occupation: str = Field(required=True)
-    gender: str = Field(required=True)
-    gender_pronoun: str = Field(required=True)
-    public_info: str = Field(required=True)
-    big_five: str = Field(required=True)
-    moral_values: list[str] = Field(required=True)
-    schwartz_personal_values: list[str] = Field(required=True)
-    personality_and_values: str = Field(required=True)
-    decision_making_style: str = Field(required=True)
-    secret: str = Field(required=True)
-    mbti: str = Field(required=True)
-    model_id: str = Field(required=True)
+    agent_id: str = Field()
+    first_name: str = Field()
+    last_name: str = Field()
+    age: int = Field()
+    occupation: str = Field()
+    gender: str = Field()
+    gender_pronoun: str = Field()
+    public_info: str = Field()
+    big_five: str = Field()
+    moral_values: list[str] = Field()
+    schwartz_personal_values: list[str] = Field()
+    personality_and_values: str = Field()
+    decision_making_style: str = Field()
+    secret: str = Field()
+    mbti: str = Field()
+    model_id: str = Field()
 
 
 class EnvironmentProfileWithTwoAgentRequirements(BaseModel):
-    env_id: str = Field(required=True)
-    codename: str = Field(required=True)
-    source: str = Field(required=True)
-    scenario: str = Field(required=True)
-    agent_goals: list[str] = Field(required=True)
-    relationship: str = Field(required=True)
-    age_constraint: str = Field(required=True)
-    occupation_constraint: str = Field(required=True)
-    agent_constraint: str | None = Field(required=False)
+    env_id: str = Field()
+    codename: str = Field()
+    source: str = Field()
+    scenario: str = Field()
+    agent_goals: list[str] = Field()
+    relationship: str = Field()
+    age_constraint: str = Field()
+    occupation_constraint: str = Field()
+    agent_constraint: str | None = Field()
 
 
 class RelationshipProfileBetweenTwoAgents(BaseModel):
-    relationship_id: str = Field(required=True)
-    agent1_id: str = Field(required=True)
-    agent2_id: str = Field(required=True)
-    relationship: str = Field(required=True)
-    background_story: str = Field(required=True)
+    relationship_id: str = Field()
+    agent1_id: str = Field()
+    agent2_id: str = Field()
+    relationship: str = Field()
+    background_story: str = Field()
 
 
 class EnvAgentComboStorageWithID(BaseModel):
-    combo_id: str = Field(default_factory=lambda: "", index=True)
-    env_id: str = Field(default_factory=lambda: "", index=True)
-    agent_ids: list[str] = Field(default_factory=lambda: [], index=True)
+    combo_id: str = Field(default="", index=True)
+    env_id: str = Field(default="", index=True)
+    agent_ids: list[str] = Field(default=[], index=True)
 
 
 def _map_gender_to_adj(gender: str) -> str:

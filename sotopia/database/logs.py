@@ -1,6 +1,11 @@
-from typing import Any
+import sys
 
-from pydantic import root_validator
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
+from pydantic import model_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
@@ -14,29 +19,21 @@ class EpisodeLog(JsonModel):
 
     environment: str = Field(index=True)
     agents: list[str] = Field(index=True)
-    tag: str | None = Field(index=True)
-    models: list[str] | None = Field(index=True)
+    tag: str | None = Field(index=True, default="")
+    models: list[str] | None = Field(index=True, default=[])
     messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
     reasoning: str
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
     rewards_prompt: str
 
-    @root_validator(skip_on_failure=True)
-    def agent_number_message_number_reward_number_turn_number_match(
-        cls, values: Any
-    ) -> Any:
-        agents, _, _reasoning, rewards = (
-            values.get("agents"),
-            values.get("messages"),
-            values.get("reasoning"),
-            values.get("rewards"),
-        )
-        agent_number = len(agents)
+    @model_validator(mode="after")
+    def agent_number_message_number_reward_number_turn_number_match(self) -> Self:
+        agent_number = len(self.agents)
 
         assert (
-            len(rewards) == agent_number
-        ), f"Number of agents in rewards {len(rewards)} and agents {agent_number} do not match"
-        return values
+            len(self.rewards) == agent_number
+        ), f"Number of agents in rewards {len(self.rewards)} and agents {agent_number} do not match"
+        return self
 
     def render_for_humans(self) -> tuple[list[AgentProfile], list[str]]:
         """Generate a human readable version of the episode log.

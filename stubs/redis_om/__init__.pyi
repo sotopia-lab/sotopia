@@ -1,8 +1,9 @@
 import abc
 from typing import Any, Generator, TypeVar
 
-from pydantic import BaseModel, Field
-from pydantic.main import ModelMetaclass
+from pydantic import BaseModel
+from redis_om.model.model import Field
+from pydantic._internal._model_construction import ModelMetaclass
 from redis_om.model.model import FindQuery
 
 InheritedJsonModel = TypeVar("InheritedJsonModel", bound="JsonModel")

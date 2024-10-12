@@ -1,0 +1,118 @@
+import { Steps, Callout } from 'nextra/components'
+
+## Overview
+
+Sotopia uses [Redis](https://redis.io) for two uses cases:
+1. To store data including agent profiles, environment profiles, relationship profiles, and all of the interaction logs. This is useful for reproducibility and analysis.
+2. To serve as a message broker between the [Redis agent](/concepts/agents#built-in-agents) and frontend. This is useful for human user interface and other agents.
+
+We mainly use [Redis-OM](https://github.com/redis/redis-om-python) together with [Pydantic](https://docs.pydantic.dev) to interact with the Redis database, but also sometimes directly use the [Redis-py](https://github.com/redis/redis-py) library for performance-critical tasks.
+Despite that Redis is 3rd party software, which is not included in the Sotopia package, we do realize that it is useful to include a short introduction to Redis in this documentation.
+
+### A 1-minute introduction to Redis
+<Callout type="info" emoji="ℹ️">
+<a href="/concepts/database#built-in-data-strcutures-in-sotopia">Skip this section</a> if you are already familiar with Redis.
+</Callout>
+
+Redis is a key-value database, meaning that you can use it like a global Python dict.
+For example,
+```python
+import redis
+
+r = redis.Redis()
+r.set("key", "value")
+print(r.get("key")) # b'value'
+```
+
+Redis-OM, OM standing for Object Mapping, is a library that helps you easily use more complex
+data structures. For example, you can use it to store a person's profile like this:
+```python
+from redis_om import JsonModel, Field
+
+class Person(JsonModel):
+    name: str = Field(index=True)
+    age: int = Field(index=True, default_factory=lambda: 0)
+
+# create a person profile
+person = Person(name="Alice", age=30)
+
+# save the person to the database
+person.save()
+```
+
+You can then query the database like this:
+```python
+# find all of the people in the database
+for person in Person.find().all():
+    print(person.name, person.age)
+# find all of the people with the name "Alice"
+for person in Person.find(name="Alice").all():
+    print(person.name, person.age)
+```
+where `JsonModel` is a subclass of `pydantic.BaseModel`. If you are familiar with Pydantic,
+you should feel right at home with Redis-OM. Even if you are not, this is a very natural way
+to define data structures in Python.
+
+### Built-in data strcutures in Sotopia
+In Sotopia, we have several built-in data structures that are used to store profiles, episodes,
+and other data, which you can used to interact with the Redis database. These include:
+
+- [`AgentProfile`](/python_API/database/persistant_profile#agentprofile-class)
+- [`RelationshipProfile`](/python_API/database/persistant_profile#relationshipprofile-class)
+- [`EnvironmentProfile`](/python_API/database/persistant_profile#environmentprofile-class)
+- [`EpisodeLog`](/python_API/database/logs#episodelog-class)
+- [`AnnotationForEpisode`](/python_API/database/logs#annotationforepisode-class)
+- [`EnvAgentComboStorage`](https://github.com/sotopia-lab/sotopia/blob/2a51167fdaf6271e34a76faa30da7205c8e43899/sotopia/database/env_agent_combo_storage.py#L5)
+
+The data structures for message passing are:
+
+- [`MessageTransaction`](https://github.com/sotopia-lab/sotopia/blob/2a51167fdaf6271e34a76faa30da7205c8e43899/sotopia/database/session_transaction.py#L8)
+- [`SessionTransaction`](https://github.com/sotopia-lab/sotopia/blob/2a51167fdaf6271e34a76faa30da7205c8e43899/sotopia/database/session_transaction.py#L21)
+
+
+
+## Serialization and Deserialization
+
+It is very easy to serialize any database structures to JSON or CSV.
+
+#### Serialize simulated episodes
+```python
+from sotopia.database import episodes_to_jsonl, EpisodeLog
+
+episodes: list[EpisodeLog] = EpisodeLog.all()
+
+episodes_to_jsonl(episodes, "episodes.jsonl")
+```
+
+
+#### Serialize env/agent profiles
+```python
+from sotopia.database import environmentprofiles_to_jsonl, agentprofiles_to_jsonl
+
+agent_profiles: list[AgentProfile] = AgentProfile.all()
+
+environment_profiles: list[EnvironmentProfile] = EnvironmentProfile.all()
+
+agentprofiles_to_jsonl(agent_profiles, "agent_profiles.jsonl")
+environmentprofiles_to_jsonl(environment_profiles, "environment_profiles.jsonl")
+```
+
+#### Other utilities
+| Function Name | Description | Arguments | Return Type |
+|---------------|-------------|-----------|-------------|
+| `agentprofiles_to_csv` | Saves agent profiles to a CSV file. | `agent_profiles: list[AgentProfile]`, `csv_file_path: str = "agent_profiles.csv"` | `None` |
+| `agentprofiles_to_jsonl` | Saves agent profiles to a JSONL file. | `agent_profiles: list[AgentProfile]`, `jsonl_file_path: str = "agent_profiles.jsonl"` | `None` |
+| `envagnetcombostorage_to_csv` | Saves environment-agent combo storages to a CSV file. | `env_agent_combo_storages: list[EnvAgentComboStorage]`, `csv_file_path: str = "env_agent_combo_storages.csv"` | `None` |
+| `envagnetcombostorage_to_jsonl` | Saves environment-agent combo storages to a JSONL file. | `env_agent_combo_storages: list[EnvAgentComboStorage]`, `jsonl_file_path: str = "env_agent_combo_storages.jsonl"` | `None` |
+| `environmentprofiles_to_csv` | Saves environment profiles to a CSV file. | `environment_profiles: list[EnvironmentProfile]`, `csv_file_path: str = "environment_profiles.csv"` | `None` |
+| `environmentprofiles_to_jsonl` | Saves environment profiles to a JSONL file. | `environment_profiles: list[EnvironmentProfile]`, `jsonl_file_path: str = "environment_profiles.jsonl"` | `None` |
+| `episodes_to_csv` | Saves episodes to a CSV file. | `episodes: list[EpisodeLog]`, `csv_file_path: str = "episodes.csv"` | `None` |
+| `episodes_to_jsonl` | Saves episodes to a JSONL file. | `episodes: list[EpisodeLog]`, `jsonl_file_path: str = "episodes.jsonl"` | `None` |
+| `get_rewards_from_episode` | Retrieves rewards from an episode. | `episode: EpisodeLog` | `list[tuple[float, dict[str, float]]]` |
+| `jsonl_to_agentprofiles` | Loads agent profiles from a JSONL file. | `jsonl_file_path: str` | `list[AgentProfile]` |
+| `jsonl_to_envagnetcombostorage` | Loads environment-agent combo storages from a JSONL file. | `jsonl_file_path: str` | `list[EnvAgentComboStorage]` |
+| `jsonl_to_environmentprofiles` | Loads environment profiles from a JSONL file. | `jsonl_file_path: str` | `list[EnvironmentProfile]` |
+| `jsonl_to_episodes` | Loads episodes from a JSONL file. | `jsonl_file_path: str` | `list[EpisodeLog]` |
+| `jsonl_to_relationshipprofiles` | Loads relationship profiles from a JSONL file. | `jsonl_file_path: str` | `list[RelationshipProfile]` |
+| `relationshipprofiles_to_csv` | Saves relationship profiles to a CSV file. | `relationship_profiles: list[RelationshipProfile]`, `csv_file_path: str = "relationship_profiles.csv"` | `None` |
+| `relationshipprofiles_to_jsonl` | Saves relationship profiles to a JSONL file. | `relationship_profiles: list[RelationshipProfile]`, `jsonl_file_path: str = "relationship_profiles.jsonl"` | `None` |

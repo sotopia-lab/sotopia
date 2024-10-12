@@ -1,0 +1,50 @@
+import { Callout } from "nextra/components"
+
+# Overview
+
+The core of generating agent action and environment observation lies in the [`agenerate`](/python_API/generation_utils/generate#ageneratemodel_name-str-template-str-input_values-dictstr-str-output_parser-baseoutputparseroutputtype-temperature-float--07-structured_output-bool--false---outputtype) function,  which is versatile by taking the `output_parser` as an argument and returning the output in the desired format.
+
+<Callout type="info" emoji="ℹ️">
+  Structured output is used to return the output in a structured format, such as a dictionary or a Pydantic object.
+  Currently, the structured output is only supported for the models below:
+    * `gpt-4o-mini-2024-07-18` and later
+    * `gpt-4o-2024-08-06` and later
+
+The `bad_output_process_model` is used to process the bad output. `DEFAULT_BAD_OUTPUT_PROCESS_MODEL` is set to be `gpt-4o-mini` (At the publication time of Sotopia, we used `gpt-3.5-turbo-0613`. However this model has been taken off the shelf by OpenAI.).
+
+The `use_fixed_model_version` is used to determine whether to use the fixed model version. If set to `True`, the model version will be fixed to the version that was used in Sotopia paper. If set to `False`, the model version will be the latest version available.
+
+Warning: As some fixed model versions might not be available in the OpenAI API, setting `use_fixed_model_version = True` might result in an error.
+
+</Callout>
+
+Here is an example of how to use the `agenerate` function:
+
+### Generate the first N prime numbers
+
+```python
+from sotopia.generation_utils.generate import ListOfIntOutputParser, agenerate
+
+async def generate_first_N_prime_numbers(n: int) -> list[int]:
+    return await agenerate(
+        model_name="gpt-4o",
+        template="Generate the first {n} prime numbers.",
+        input_values={"n": str(n)},
+        output_parser=ListOfIntOutputParser(n),
+    )
+```
+
+The input to `agenerate` are the following:
+
+- `model_name`: The name of the model to use.
+- `template`: The template to use. You can use `{}` to add the input variables.
+- `input_values`: The input values to the template. The keys should be the same as the variables in the template.
+- `output_parser`: The output parser to use. The output parser should be a subclass of `BaseOutputParser`.
+
+In this example, we generate a list of the first `n` prime numbers with the `gpt-4o` model. The `ListOfIntOutputParser` is used to parse the output into a list of integers.
+
+### Using custom models
+
+Apart from using api endpoints from LLM providers like OpenAI, Together AI, Azure, etc., you can also use custom model with OpenAI compatible endpoints.
+You will need to set the model name to `custom/<model_name>@url`, and CUSTOM_API_KEY to the API key of the custom model.
+For an example, check out `examples/generation_api/custom_model.py`.
