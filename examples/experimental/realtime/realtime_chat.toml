@@ -1,0 +1,27 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.realtime.realtime_websocket", "examples.experimental.realtime.input_node"]
+
+[[nodes]]
+node_name = "speaker"
+node_class = "speaker"
+
+[nodes.node_args]
+rate = 24000
+input_channel = "audio_output"
+
+
+[[nodes]]
+node_name = "listener"
+node_class = "input"
+
+[nodes.node_args]
+output_channel = "text_input"
+
+
+[[nodes]]
+node_name = "openai_realtime"
+node_class = "openai_realtime"
+
+[nodes.node_args]
+input_channel = "text_input"
+output_channel = "audio_output"
