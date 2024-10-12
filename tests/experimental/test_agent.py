@@ -28,6 +28,21 @@ async def test_base_agent() -> None:
             output_channel_types=[("final", Tick)],
             redis_url="redis://localhost:6379/0",
         ) as agent2:
+            try:
+                await super(ReturnPlusOneAgent, agent1).aact(Tick(tick=1))
+                assert False, "Should raise NotImplementedError"
+            except NotImplementedError:
+                pass
+
+            try:
+                async for _ in agent1.event_handler(
+                    "output", Message[Tick](data=Tick(tick=2))
+                ):
+                    pass
+                assert False, "Should raise ValueError"
+            except ValueError:
+                pass
+
             redis = Redis()
             r = redis.pubsub()
             await r.subscribe("final")
