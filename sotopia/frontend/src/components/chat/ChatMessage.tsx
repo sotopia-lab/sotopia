@@ -42,8 +42,14 @@ function ChatMessage({
 
   const className = twMerge(
     "markdown-body",
-    "p-3 text-white max-w-[90%] overflow-y-auto rounded-lg relative",
-    message.sender === "user" ? "bg-neutral-700 self-end" : "bg-neutral-500",
+    "p-3 max-w-[90%] overflow-y-auto rounded-lg relative",
+    message.sender === "user" 
+      ? "bg-neutral-700 self-end text-white" 
+      : message.sender === "agent-1"
+        ? "bg-gray-500 text-white"
+        : message.sender === "agent-2"
+          ? "bg-blue-500 text-white"
+          : "bg-neutral-500 text-white",
   );
 
   const copyToClipboard = async () => {
