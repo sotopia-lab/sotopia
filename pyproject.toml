@@ -39,6 +39,10 @@ google-generativeai = ["google-generativeai"]
 examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 chat = ["fastapi"]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
+realtime = [
+    "websockets>=13.1,<14.0",
+    "pyaudio>=0.2.14,<0.3.0",
+]
 
 [tool.uv]
 dev-dependencies = [
@@ -48,6 +52,7 @@ dev-dependencies = [
     "types-requests",
     "types-tqdm",
     "types-protobuf==4.24.0.4",
+    "types-pyaudio",
     "lxml-stubs",
     "pandas-stubs",
     "ruff",
