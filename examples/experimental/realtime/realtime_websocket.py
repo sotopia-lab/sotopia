@@ -20,7 +20,9 @@ URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01
 
 @NodeFactory.register("openai_realtime")
 class OpenAIRealtimeNode(Node[Audio, Audio]):
-    def __init__(self, input_channel: str, output_channel: str, redis_url: str) -> None:
+    def __init__(
+        self, input_channel: str, output_channel: str, instruction: str, redis_url: str
+    ) -> None:
         super().__init__(
             input_channel_types=[(input_channel, Audio)],
             output_channel_types=[(output_channel, Audio)],
@@ -28,6 +30,7 @@ class OpenAIRealtimeNode(Node[Audio, Audio]):
         )
         self.input_channel = input_channel
         self.output_channel = output_channel
+        self.instruction = instruction
         self.websocket: ClientConnection | None = None
         self.task: asyncio.Task[None] | None = None
 
@@ -56,10 +59,23 @@ class OpenAIRealtimeNode(Node[Audio, Audio]):
         await self.websocket.send(
             json.dumps(
                 {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": self.instruction}],
+                    },
+                }
+            )
+        )
+        await self.websocket.send(
+            json.dumps(
+                {
                     "type": "response.create",
                     "response": {
                         "modalities": ["audio", "text"],
-                        "instructions": "You are in a conversation with the person on the other end of the line. You want to play poker today with them.",
+                        "voice": "alloy" if self.output_channel == "Jane" else "echo",
+                        "instructions": self.instruction,
                     },
                 }
             )

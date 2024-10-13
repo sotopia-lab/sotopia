@@ -13,7 +13,7 @@ resolution-markers = [
 
 [[package]]
 name = "aact"
-version = "0.0.5"
+version = "0.0.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -26,9 +26,9 @@ dependencies = [
     { name = "tomlkit", marker = "python_full_version < '3.11'" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/93/f4b67c7c8c90764db9079170d5cafd1818ca971d128a37d54137a5442faf/aact-0.0.5.tar.gz", hash = "sha256:b2a882bbefdcf7fbdd2763298852c9bddf93ed11e4960f970d18933d9c310842", size = 106883 }
+sdist = { url = "https://files.pythonhosted.org/packages/23/3c/b8e66847ce02b55fc2c0ea5f504a2f7a57a75fc466044c15b88936f2fe7f/aact-0.0.6.tar.gz", hash = "sha256:c5b0dd65d4fedb800585e90a09421d7d4879d3b5ce04a5d3a63c1510a12ab508", size = 106922 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/19/df/b81db530929773912addbbcc8b8e567cc1121c6c56ed23c81aaab2489cff/aact-0.0.5-py3-none-any.whl", hash = "sha256:81a43407dd0f17eff11e262a65a27644ca544fcb804ab3c99f97432365a947eb", size = 23434 },
+    { url = "https://files.pythonhosted.org/packages/10/eb/3252d955669daecfe90aee3c4b5cf223ff66482905857e60ed47a5e2254c/aact-0.0.6-py3-none-any.whl", hash = "sha256:ac1f792c44abac247c0356041197b1c9db6bee3a237c65b5ccf76ef4dae4bc5f", size = 23467 },
 ]
 
 [[package]]
@@ -3767,7 +3767,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aact" },
+    { name = "aact", specifier = ">=0.0.6" },
     { name = "absl-py", specifier = ">=2.0.0,<3.0.0" },
     { name = "anthropic", marker = "extra == 'anthropic'" },
     { name = "beartype", specifier = ">=0.14.0,<0.20.0" },

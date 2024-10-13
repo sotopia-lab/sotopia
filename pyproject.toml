@@ -24,7 +24,7 @@ dependencies = [
     "beartype>=0.14.0,<0.20.0",
     "langchain-openai>=0.1.8,<0.3.0",
     "hiredis>=3.0.0",
-    "aact"
+    "aact>=0.0.6"
 ]
 
 [build-system]
