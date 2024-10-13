@@ -10,7 +10,7 @@ else:
 
 from typing import Any, AsyncIterator
 from aact import Message, Node, NodeFactory
-from aact.messages import Audio, Text
+from aact.messages import Audio
 from websockets.asyncio.client import connect, ClientConnection
 
 import base64
@@ -19,10 +19,10 @@ URL = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01
 
 
 @NodeFactory.register("openai_realtime")
-class OpenAIRealtimeNode(Node[Text, Audio]):
+class OpenAIRealtimeNode(Node[Audio, Audio]):
     def __init__(self, input_channel: str, output_channel: str, redis_url: str) -> None:
         super().__init__(
-            input_channel_types=[(input_channel, Text)],
+            input_channel_types=[(input_channel, Audio)],
             output_channel_types=[(output_channel, Audio)],
             redis_url=redis_url,
         )
@@ -41,6 +41,8 @@ class OpenAIRealtimeNode(Node[Text, Audio]):
                     self.output_channel,
                     Message[Audio](data=Audio(audio=delta)).model_dump_json(),
                 )
+            elif data["type"] == "error":
+                print(data["error"]["message"])
 
     async def __aenter__(self) -> Self:
         self.websocket = await connect(
@@ -57,7 +59,7 @@ class OpenAIRealtimeNode(Node[Text, Audio]):
                     "type": "response.create",
                     "response": {
                         "modalities": ["audio", "text"],
-                        "instructions": "Answer the users' questions.",
+                        "instructions": "You are in a conversation with the person on the other end of the line. You want to play poker today with them.",
                     },
                 }
             )
@@ -73,25 +75,33 @@ class OpenAIRealtimeNode(Node[Text, Audio]):
         await super().__aexit__(exc_type, exc_value, traceback)
 
     async def event_handler(
-        self, channel: str, message: Message[Text]
+        self, channel: str, message: Message[Audio]
     ) -> AsyncIterator[tuple[str, Message[Audio]]]:
         if channel == self.input_channel:
             assert self.websocket is not None, "Websocket is not initialized"
+            # await self.websocket.send(
+            #     json.dumps(
+            #         {
+            #             "type": "conversation.item.create",
+            #             "item": {
+            #                 "type": "message",
+            #                 "role": "user",
+            #                 "content": [
+            #                    {"type": "input_text", "text": message.data.text}
+            #                 ],
+            #             },
+            #         }
+            #     )
+            # )
+            # await self.websocket.send(json.dumps({"type": "response.create"}))
             await self.websocket.send(
                 json.dumps(
                     {
-                        "type": "conversation.item.create",
-                        "item": {
-                            "type": "message",
-                            "role": "user",
-                            "content": [
-                                {"type": "input_text", "text": message.data.text}
-                            ],
-                        },
+                        "type": "input_audio_buffer.append",
+                        "audio": base64.b64encode(message.data.audio).decode(),
                     }
                 )
             )
-            await self.websocket.send(json.dumps({"type": "response.create"}))
 
         else:
             raise ValueError(f"Unexpected channel: {channel}")
