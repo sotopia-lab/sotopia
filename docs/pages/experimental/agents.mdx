@@ -35,8 +35,9 @@ class SimpleEchoAgent(BaseAgent[Text, Text]):
 ```
 
 Let me break this down for you:
-1. `NodeFactory` is a decorator that registers the agent so that it can be used in the dataflow. dataflow is a concept in `aact` that defines how `nodes` are interacting with each other.
-2. Inherit the `BaseAgent` class and specify the input and output channel types in the constructor.
-3. Implement the `aact` method that takes an `Observation` object as input and returns an `AgentAction` object as output. In this case, the agent always says "Hello, ..."
+1. `NodeFactory` is a decorator that registers the agent so that it can be used in the dataflow. Dataflow is a concept in `aact` that defines how `nodes` are interacting with each other.
+2. `channel` is a concept in `redis` pubsub and `aact`. A node can send messages to many channels, and receive messages many channels as well. To subclass `BaseAgent`, you will need to feed two lists of channel-message type pairs to `input_channel_types` and `output_channel_types` respectively.
+3. Inherit the `BaseAgent` class and specify the input and output channel types in the constructor.
+4. Implement the `aact` method that takes an `Observation` object as input and returns an `AgentAction` object as output. In this case, the agent always says "Hello, ..."
 
 For a running example, try out `examples/experimental/tick_and_echo_agents`.
