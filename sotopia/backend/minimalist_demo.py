@@ -33,7 +33,7 @@ async def run_simulation(session_id):
         model_dict={
             "env": "gpt-4o-mini",
             "agent1": "gpt-4o-mini",
-            "agent2": "gpt-4o-mini",
+            "agent2": "human",
         },
         sampler=UniformSampler(),
         session_id=session_id,

@@ -71,7 +71,7 @@ function ChatInterface() {
         dispatch(addAssistantMessage(message));
       } else {
         dispatch(addAssistantMessage(message));
-        // dispatch(addUserMessage(message));
+        dispatch(addUserMessage(message));
       }
     };
 
@@ -191,9 +191,9 @@ function ChatInterface() {
       </div>
 
       <ChatInput
-        disabled={
-          curAgentState === AgentState.LOADING ||
-          curAgentState === AgentState.AWAITING_USER_CONFIRMATION
+        disabled={false
+          // curAgentState === AgentState.LOADING ||
+          // curAgentState === AgentState.AWAITING_USER_CONFIRMATION
         }
         onSendMessage={handleSendMessage}
       />

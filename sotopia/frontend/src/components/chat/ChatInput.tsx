@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { VscArrowUp, VscFileMedia } from "react-icons/vsc";
 import { twMerge } from "tailwind-merge";
 import { I18nKey } from "#/i18n/declaration";
+import { useWebSocket } from "#/hooks/useWebSocket";
 
 interface ChatInputProps {
   disabled?: boolean;
@@ -17,6 +18,7 @@ function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
   const [files, setFiles] = React.useState<File[]>([]);
   // This is true when the user is typing in an IME (e.g., Chinese, Japanese)
   const [isComposing, setIsComposing] = React.useState(false);
+  const { sendMessage } = useWebSocket();
 
   const convertImageToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -36,6 +38,13 @@ function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
           files.map((file) => convertImageToBase64(file)),
         );
       }
+
+      // Send the message via WebSocket
+      sendMessage(JSON.stringify({
+        action_type: "speak",
+        argument: message,
+      }));
+
       onSendMessage(message, base64images);
       setMessage("");
       setFiles([]);
