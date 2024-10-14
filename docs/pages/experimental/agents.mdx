@@ -1,0 +1,43 @@
+import { Callout } from "nextra/components"
+
+<Callout type="warning">
+This part of the documentation is for experimental features. The APIs and functionalities are subject to frequent change.
+</Callout>
+
+<Callout type="warning">
+The Agent API implemented here conflicts with stable Agent API in Sotopia.
+</Callout>
+
+Agent is a concept in Sotopia to represent decision-making entities that can interact with each other in a social environment. Agents can be human participants, AI models, or other entities.
+No matter which type of agent, they have the same interface to interact with the environment:
+the input and output are of derived types of `aact.messages.DataModel`.
+
+### Creating your own agents
+To create your own agents, you need to subclass the `BaseAgent` class
+and implement the asynchronous `aact` method.
+The `aact` method takes an `Observation` object as input and returns an `AgentAction` object as output. Here is an example of a simple agent that always says "Hello, world!":
+
+```python
+from aact import NodeFactory
+from aact.messages import Text
+from sotopia.experimental import BaseAgent
+
+@NodeFactory.register("simple_echo_agent")  # Register the agent so that it can be used in the dataflow
+class SimpleEchoAgent(BaseAgent[Text, Text]):
+    def __init__(self, input_channel: str, output_channel: str, redis_url: str) -> None:
+        super().__init__( # call the constructor of the base class
+            input_channel_types=[(input_channel, Text)],
+            output_channel_types=[(output_channel, Text)],
+        )
+
+    async def aact(self, observation: Text) -> Text: # major agent reactive function
+        return Text(text=f"Hello, {observation.text}!")
+```
+
+Let me break this down for you:
+1. `NodeFactory` is a decorator that registers the agent so that it can be used in the dataflow. Dataflow is a concept in `aact` that defines how `nodes` are interacting with each other.
+2. `channel` is a concept in `redis` pubsub and `aact`. A node can send messages to many channels, and receive messages many channels as well. To subclass `BaseAgent`, you will need to feed two lists of channel-message type pairs to `input_channel_types` and `output_channel_types` respectively.
+3. Inherit the `BaseAgent` class and specify the input and output channel types in the constructor.
+4. Implement the `aact` method that takes an `Observation` object as input and returns an `AgentAction` object as output. In this case, the agent always says "Hello, ..."
+
+For a running example, try out `examples/experimental/tick_and_echo_agents`.

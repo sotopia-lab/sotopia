@@ -422,7 +422,6 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             },
         )
 
-    @beartype
     async def astep(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> tuple[

@@ -1,0 +1,25 @@
+import { Callout } from "nextra/components"
+
+<Callout type="warning">
+This part of the documentation is for experimental features. The APIs and functionalities are subject to frequent change.
+</Callout>
+
+The experimental APIs of Sotopia are intended for quickly prototyping and experimenting with new functionalities,
+without breaking the existing stable APIs. But we will still maintain the quality of the code for these features.
+Feel free to raise an issue if you find any bugs or wants more features in the experimental APIs.
+
+# Experimetal APIs
+The experimental APIs are in different states:
+
+- *scheduled*: the APIs will be merged into next minor releases.
+- *implemented*: the APIs are implemented and can be used, which might be merged into the stable APIs in the next few minor releases.
+- *planned*: the APIs are planned and will be implemented in the future.
+- *idealized*: the APIs are idealized and might be implemented in the future.
+
+Here are the experimental APIs:
+- [Agents](/experimental/agents) (*implemented*): aact-based asynchronous agents that don't follow OpenAI Gym's turn-based formulation.
+- Engines (*planned*): aact-based asynchronous environment engines. This would include
+    - [Orchestrator](https://github.com/sotopia-lab/sotopia/issues/231): an engine base class for engines that dictates the orders and turns of the agents.
+    - [Evaluator](https://github.com/sotopia-lab/sotopia/issues/232): an engine base class for engines that evaluates the agents' performance.
+    - API Engine: an engine that interacts with REST APIs.
+- Generation APIs (*planned*): experimental generation APIs

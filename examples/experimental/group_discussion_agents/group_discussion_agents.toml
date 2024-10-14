@@ -1,0 +1,57 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.group_discussion_agents.group_discussion_agents"]
+
+[[nodes]]
+node_name = "Jack"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 5
+output_channel = "Jack"
+input_text_channels = ["Jane", "John"]
+input_tick_channel = "tick/secs/1"
+goal = "want to play pocker with your friends tonight"
+model_name = "gpt-4o-mini"
+agent_name = "Jack"
+
+[[nodes]]
+node_name = "Jane"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 7
+output_channel = "Jane"
+input_text_channels = ["Jack", "John"]
+input_tick_channel = "tick/secs/1"
+goal = "want to play soccer with your friends tonight"
+model_name = "gpt-4o-mini"
+agent_name = "Jane"
+
+[[nodes]]
+node_name = "John"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 10
+output_channel = "John"
+input_text_channels = ["Jack", "Jane"]
+input_tick_channel = "tick/secs/1"
+goal = "want to go to concert with your friends tonight"
+model_name = "gpt-4o-mini"
+agent_name = "John"
+
+[[nodes]]
+node_name = "record"
+node_class = "record"
+
+[nodes.node_args]
+jsonl_file_path = "log.jsonl"
+
+[nodes.node_args.record_channel_types]
+"Jack" = "agent_action"
+"Jane" = "agent_action"
+"John" = "agent_action"
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
