@@ -20,10 +20,8 @@ def _render_xml(xml_node: etree._Element | str, context: RenderContext) -> str:
                     f"./node()[@viewer='{context.viewer}'] | ./node()[not(@viewer)]"
                 )
                 assert is_bearable(all_visible_children, list[etree._Element | str])
-                cast(list[etree._Element | str], all_visible_children)
                 return "".join(
-                    _render_xml(child, context)
-                    for child in all_visible_children  # type: ignore[attr-defined]
+                    _render_xml(child, context) for child in all_visible_children
                 )
             elif context.viewer == "human":
                 # For human, we render the raw xml

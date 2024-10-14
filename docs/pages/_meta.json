@@ -18,6 +18,10 @@
         "title": "Examples",
         "type": "page"
     },
+    "experimental": {
+        "title": "Experimental",
+        "type": "page"
+    },
     "contribution": {
         "title": "Contribution",
         "type": "page"
