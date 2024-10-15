@@ -169,7 +169,7 @@ def install(
 
     if use_docker:
         try:
-            subprocess.check_output("command -v docker", shell=True)
+            subprocess.check_output("docker --version", shell=True)
         except subprocess.CalledProcessError:
             if system == "Darwin":
                 console.log(

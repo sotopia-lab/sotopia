@@ -56,6 +56,8 @@ LLM_Name = Literal[
     "redis",
     "groq/llama3-70b-8192",
 ]
+# subject to future OpenAI changes
+DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 OutputType = TypeVar("OutputType", bound=object)
 
