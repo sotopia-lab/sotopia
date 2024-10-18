@@ -1,5 +1,5 @@
 import { useDisclosure } from "@nextui-org/react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import { IoLockClosed } from "react-icons/io5";
 import CogTooth from "#/assets/cog-tooth";
@@ -18,6 +18,7 @@ import Session from "#/services/session";
 import { getToken } from "#/services/auth";
 import { getSettings, settingsAreUpToDate } from "#/services/settings";
 import Security from "./components/modals/security/Security";
+import { useWebSocket } from "#/hooks/useWebSocket";
 
 interface Props {
   setSettingOpen: (isOpen: boolean) => void;
@@ -65,6 +66,65 @@ function Controls({
 let initOnce = false;
 
 function App(): JSX.Element {
+
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const newSessionId = Math.random().toString(36).substring(7);
+    setSessionId(newSessionId);
+  }, []);
+
+  const { socket, sendMessage } = useWebSocket(sessionId);
+
+  // useEffect(() => {
+  //   if (!socket) return;
+
+  //   socket.onmessage = (event) => {
+  //     console.log('WebSocket message received:', event.data);
+  //     // Handle incoming messages here
+  //   };
+
+  //   return () => {
+  //     socket.close();
+  //   };
+  // }, [socket]);
+
+  // useEffect(() => {
+  //   const [sessionId, setSessionId] = useState<string | null>(null);
+  //   setSessionId(newSessionId);
+
+  //   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  //   const wsUrl = `${protocol}//localhost:8000/ws/${newSessionId}`;
+  //   console.log('Attempting to connect to WebSocket:', wsUrl);
+  //   const websocket = new WebSocket(wsUrl);
+
+  //   websocket.onopen = () => {
+  //     console.log('WebSocket connected successfully: ', newSessionId);
+  //   };
+
+  //   websocket.onmessage = (event) => {
+  //     console.log('WebSocket message received:', event.data);
+  //     // Handle incoming messages here or pass a handler to ChatInterface
+  //   };
+
+  //   websocket.onerror = (error) => {
+  //     console.error('WebSocket error:', error);
+  //   };
+
+  //   websocket.onclose = (event) => {
+  //     console.log('WebSocket closed:', event);
+  //   };
+
+  //   setWs(websocket);
+
+  //   return () => {
+  //     websocket.close();
+  //   };
+  // }, []);
+
+
+
+
   const {
     isOpen: settingsModalIsOpen,
     onOpen: onSettingsModalOpen,
@@ -107,20 +167,20 @@ function App(): JSX.Element {
           orientation={Orientation.HORIZONTAL}
           className="grow h-full min-h-0 min-w-0 px-3 pt-3"
           initialSize={500}
-          firstChild={<ChatInterface />}
+          firstChild={<ChatInterface ws={socket} sessionId={sessionId} sendMessage={sendMessage} />}
           firstClassName="rounded-xl overflow-hidden border border-neutral-600"
-          // secondChild={
-          //   <Container
-          //     orientation={Orientation.VERTICAL}
-          //     className="h-full min-h-0 min-w-0"
-          //     initialSize={window.innerHeight - 300}
-          //     firstChild={<Workspace />}
-          //     firstClassName="rounded-xl border border-neutral-600 bg-neutral-800 flex flex-col overflow-hidden"
-          //     secondChild={<Terminal />}
-          //     secondClassName="rounded-xl border border-neutral-600 bg-neutral-800"
-          //   />
-          // }
-          secondChild={null}  
+          secondChild={
+            <Container
+              orientation={Orientation.VERTICAL}
+              className="h-full min-h-0 min-w-0"
+              initialSize={window.innerHeight - 300}
+              firstChild={<Workspace />}
+              firstClassName="rounded-xl border border-neutral-600 bg-neutral-800 flex flex-col overflow-hidden"
+              // secondChild={null}
+              secondChild={<Terminal />}
+              secondClassName="rounded-xl border border-neutral-600 bg-neutral-800"
+            />
+          }
           secondClassName="flex flex-col overflow-hidden"
         />
       </div>

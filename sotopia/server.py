@@ -139,7 +139,7 @@ async def arun_one_episode(
         agent_messages: dict[str, AgentAction] = dict()
         actions = await asyncio.gather(
             *[
-                agents[agent_name].aact(environment_messages[agent_name])
+                agents[agent_name].aact(environment_messages[agent_name], session_id=session_id)
                 for agent_name in env.agents
             ]
         )

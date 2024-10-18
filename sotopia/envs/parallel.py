@@ -7,7 +7,7 @@ from typing import Any, Literal, Optional, Type, TypeVar
 from beartype import beartype
 from gin import configurable
 import gymnasium as gym
-# import browsergym.core
+import browsergym.core
 
 import redis
 from itertools import cycle
@@ -133,7 +133,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
-            ["none", "speak", "non-verbal communication", "action", "leave"]
+            ["none", "speak", "non-verbal communication", "action", "leave", "browse"]
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
         model_name: str = "gpt-4o-mini",
@@ -173,7 +173,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
         self.terminal_evaluators = terminal_evaluators
-        # self.browser_env = BrowserEnv()
+        self.browser_env = BrowserEnv()
 
         # if an environment profile is provided, use it
         assert (
@@ -447,7 +447,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Create a dictionary to store the mapping of actual names to generic agent names
         name_mapping = {}
         for sender, action in actions.items():
-            # If we haven't seen this sender before, assign them the next agent name
+            # If we haven't seen this sender before, assign them the next agent name TODO improve this 
             if sender not in name_mapping:
                 name_mapping[sender] = next(agent_names)
             

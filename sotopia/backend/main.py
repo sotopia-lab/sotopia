@@ -11,25 +11,47 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Be cautious with this in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],  # Be cautious with this in production
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 # Add this line to enable WebSocket CORS
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+# from fastapi.middleware.trustedhost import TrustedHostMiddleware
+# app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+async def process_messages(pubsub, session_id):
+    logging.info(f"Starting to process messages for session: {session_id}")
+    while True:
+        try:
+            message = pubsub.get_message(ignore_subscribe_messages=True)
+            if message:
+                data = message['data'].decode('utf-8').split(':', 1)
+                logging.info(f"Received Redis message: {data}")
+                # Process the message as needed
+                break  # Exit the loop after processing a message
+            else:
+                logging.debug("No message received, waiting...")
+            await asyncio.sleep(0.1)  # Sleep briefly to avoid busy-waiting
+        except Exception as e:
+            logging.error(f"Error processing Redis message: {str(e)}")
+            break
+
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     logging.debug(f"Attempting to accept WebSocket connection for session: {session_id}")
-    await websocket.accept()
-    logging.info(f"WebSocket connection accepted for session: {session_id}")
+    try:
+        await websocket.accept()
+        logging.info(f"WebSocket connection accepted for session: {session_id}")
+    except WebSocketException as e:
+        logging.error(f"WebSocket accept error: {str(e)}")
+        return
     
     # Start the simulation in the background
     # simulation_task = asyncio.create_task(run_simulation(session_id))
@@ -43,20 +65,15 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         while True:
             try:
                 # Increase timeout to 1 second
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
-                logging.info(f"Received data: {data}")
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=5)
+                logging.info(f"Received data: {data}, chat:{session_id}")
                 if data:
                     message = json.loads(data)
                     action = AgentAction(action_type=message['action_type'], argument=message['argument'])
                     redis_client.publish(f"human_input:{session_id}", json.dumps(action.__dict__))
                     logging.info(f"Published action to Redis: {action}")
                     
-                    # Send a confirmation message back to the client
-                    await websocket.send_json({
-                        "sender": "server",
-                        "content": f"Received action: {action.action_type} with argument: {action.argument}",
-                        "timestamp": str(redis_client.time()[0])
-                    })
+                    # await process_messages(pubsub, session_id)
             except asyncio.TimeoutError:
                 # Instead of continuing silently, check Redis for any messages
                 message = pubsub.get_message(ignore_subscribe_messages=True)

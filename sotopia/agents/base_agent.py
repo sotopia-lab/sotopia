@@ -48,7 +48,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
     def act(self, obs: ObsType) -> ActType:
         raise NotImplementedError
 
-    async def aact(self, obs: ObsType) -> ActType:
+    async def aact(self, obs: ObsType, session_id: str | None = None) -> ActType:
         raise NotImplementedError
 
     def reset(self) -> None:

@@ -1,4 +1,5 @@
 import asyncio
+import redis
 from concurrent.futures import ThreadPoolExecutor
 from typing import cast
 
@@ -20,7 +21,8 @@ async def ainput(prompt: str = "") -> str:
             await asyncio.get_event_loop().run_in_executor(executor, input, prompt)
         ).rstrip()
 
-
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+import json
 class LLMAgent(BaseAgent[Observation, AgentAction]):
     def __init__(
         self,
@@ -55,7 +57,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     ) -> AgentAction:
         raise Exception("Sync act method is deprecated. Use aact instead.")
 
-    async def aact(self, obs: Observation) -> AgentAction:
+    async def aact(self, obs: Observation, session_id) -> AgentAction:
         self.recv_message("Environment", obs)
 
         if self._goal is None:
@@ -172,33 +174,69 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
 
         return AgentAction(action_type=action_type, argument=argument)
 
-    async def aact(self, obs: Observation) -> AgentAction:
+    async def aact(self, obs: Observation, session_id) -> AgentAction:
         self.recv_message("Environment", obs)
+        pubsub = redis_client.pubsub()
+        pubsub.subscribe(f"chat:{session_id}")
 
         print("Available actions:")
         for i, action in enumerate(obs.available_actions):
             print(f"{i}: {action}")
+        print(session_id)
 
-        if obs.available_actions != ["none"]:
-            action_type_number = await ainput(
-                "Action type (Please only input the number): "
-            )
-            try:
-                action_type_number = int(action_type_number)  # type: ignore
-            except TypeError:
-                print("Please input a number.")
-                action_type_number = await ainput(
-                    "Action type (Please only input the number): "
-                )
-                action_type_number = int(action_type_number)  # type: ignore
-            assert isinstance(action_type_number, int), "Please input a number."
-            action_type = obs.available_actions[action_type_number]
-        else:
-            action_type = "none"
-        if action_type in ["speak", "non-verbal communication"]:
-            argument = await ainput("Argument: ")
-        else:
-            argument = ""
+        # Wait for a message from the Redis channel
+        action_type = 'none'
+        argument = ''
+        while True:
+            message = pubsub.get_message(ignore_subscribe_messages=True)
+            print("Waiting for user input ....")
+            if message:
+                print(f"Received message from Redis: {message['data']}")
+                try:
+                    # Decode the message and parse it as JSON
+                    data = json.loads(message['data'].decode('utf-8'))
+                    action_type = data.get('action_type', 'none')
+                    argument = data.get('argument', '')
+                    # Break the loop if a valid action is received
+                    if action_type in obs.available_actions:
+                        break
+                except json.JSONDecodeError as e:
+                    print(f"Error decoding JSON: {e}")
+            await asyncio.sleep(0.1)  # Sleep briefly to avoid busy-waiting
+
+        # If no valid action is received, default to a predefined action
+        if action_type not in obs.available_actions:
+            action_type = 'none'
+            argument = ''
+            
+            
+            
+            
+            
+        # print(session_id)
+        # message = pubsub.get_message()
+        # if message:
+        #     print(f"This is being tested Received message: {message['data']}")
+        # if obs.available_actions != ["none"]:
+        #     action_type_number = await ainput(
+        #         "Action type (Please only input the number): "
+        #     )
+        #     try:
+        #         action_type_number = int(action_type_number)  # type: ignore
+        #     except TypeError:
+        #         print("Please input a number.")
+        #         action_type_number = await ainput(
+        #             "Action type (Please only input the number): "
+        #         )
+        #         action_type_number = int(action_type_number)  # type: ignore
+        #     assert isinstance(action_type_number, int), "Please input a number."
+        #     action_type = obs.available_actions[action_type_number]
+        # else:
+        #     action_type = "none"
+        # if action_type in ["speak", "non-verbal communication"]:
+        #     argument = await ainput("Argument: ")
+        # else:
+        #     argument = ""
 
         return AgentAction(action_type=action_type, argument=argument)
 

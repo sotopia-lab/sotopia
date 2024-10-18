@@ -9,16 +9,18 @@ import { useWebSocket } from "#/hooks/useWebSocket";
 interface ChatInputProps {
   disabled?: boolean;
   onSendMessage: (message: string, image_urls: string[]) => void;
+  sessionId: string | null; // Add sessionId to props
+  sendMessage: (message: string) => void;
 }
 
-function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
+function ChatInput({ disabled = false, onSendMessage, sessionId, sendMessage}: ChatInputProps) {
   const { t } = useTranslation();
 
   const [message, setMessage] = React.useState("");
   const [files, setFiles] = React.useState<File[]>([]);
   // This is true when the user is typing in an IME (e.g., Chinese, Japanese)
   const [isComposing, setIsComposing] = React.useState(false);
-  const { sendMessage } = useWebSocket();
+  // const { sendMessage } = useWebSocket(sessionId);
 
   const convertImageToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -38,12 +40,12 @@ function ChatInput({ disabled = false, onSendMessage }: ChatInputProps) {
           files.map((file) => convertImageToBase64(file)),
         );
       }
-
-      // Send the message via WebSocket
-      sendMessage(JSON.stringify({
-        action_type: "speak",
+      let payload = JSON.stringify({
+        action_type: "speak", // TODO: allow users to do another actions in chat input
         argument: message,
-      }));
+      });
+      // Send the message via WebSocket
+      sendMessage(payload);
 
       onSendMessage(message, base64images);
       setMessage("");

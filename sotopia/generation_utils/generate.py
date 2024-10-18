@@ -475,6 +475,7 @@ async def agenerate(
     ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
     # process template
     template = format_docstring(template)
+    print('template: ', template)
     chain = obtain_chain(
         model_name=model_name,
         template=template,
@@ -482,9 +483,16 @@ async def agenerate(
         temperature=temperature,
         use_fixed_model_version=use_fixed_model_version,
     )
+    print('chain: ', chain)
+    print('model_name: ', model_name)
+    print('template: ', template)
+    print('input_variables: ', input_variables)
+    print('temperature: ', temperature)
+    print('use_fixed_model_version: ', use_fixed_model_version)
 
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
+    print('structured_output: ', structured_output)
 
     if structured_output:
         assert (

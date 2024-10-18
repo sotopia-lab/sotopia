@@ -43,13 +43,18 @@ function ChatMessage({
   const className = twMerge(
     "markdown-body",
     "p-3 max-w-[90%] overflow-y-auto rounded-lg relative",
-    message.sender === "user" 
-      ? "bg-neutral-700 self-end text-white" 
-      : message.sender === "agent-1"
-        ? "bg-gray-500 text-white"
-        : message.sender === "agent-2"
-          ? "bg-blue-500 text-white"
-          : "bg-neutral-500 text-white",
+    (() => {
+      switch (message.sender) {
+        case "user":
+          return "bg-neutral-700 self-end text-white";
+        case "agent-1":
+          return "bg-gray-500 text-white";
+        case "agent-2":
+          return "bg-blue-500 text-white";
+        default:
+          return "bg-neutral-500 text-white"; // Default case
+      }
+    })()
   );
 
   const copyToClipboard = async () => {

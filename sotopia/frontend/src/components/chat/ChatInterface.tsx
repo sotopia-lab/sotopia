@@ -25,6 +25,12 @@ interface ScrollButtonProps {
   disabled?: boolean;
 }
 
+interface ChatInterfaceProps {
+  ws: WebSocket | null;
+  sessionId: string | null;
+  sendMessage: (message: string) => void;
+}
+
 function ScrollButton({
   onClick,
   icon,
@@ -45,48 +51,33 @@ function ScrollButton({
   );
 }
 
-function ChatInterface() {
+function ChatInterface({ ws, sessionId, sendMessage }: ChatInterfaceProps) {
   const dispatch = useDispatch();
   const { messages } = useSelector((state: RootState) => state.chat);
   const { curAgentState } = useSelector((state: RootState) => state.agent);
-  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    const newSessionId = Math.random().toString(36).substring(7);
-    setSessionId(newSessionId);
+    if (ws) {
+      ws.onmessage = (event) => {
+        console.log('WebSocket message received:', event.data);
+        const message = JSON.parse(event.data);
+        if (message.sender === 'agent-1' || message.sender === 'agent-2') {
+          dispatch(addAssistantMessage(message));
+        } else {
+          // dispatch(addAssistantMessage(message));
+          dispatch(addUserMessage(message));
+        }
+      };
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//localhost:8000/ws/${newSessionId}`;
-    console.log('Attempting to connect to WebSocket:', wsUrl);
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log('WebSocket connected successfully');
-    };
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
 
-    ws.onmessage = (event) => {
-      console.log('WebSocket message received:', event.data);
-      const message = JSON.parse(event.data);
-      if (message.sender === 'agent-1') {
-        dispatch(addAssistantMessage(message));
-      } else {
-        dispatch(addAssistantMessage(message));
-        dispatch(addUserMessage(message));
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = (event) => {
-      console.log('WebSocket closed:', event);
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [dispatch]);
+      ws.onclose = (event) => {
+        console.log('WebSocket closed:', event);
+      };
+    }
+  }, [ws, dispatch]);
 
   const [feedbackPolarity, setFeedbackPolarity] = React.useState<
     "positive" | "negative"
@@ -196,6 +187,8 @@ function ChatInterface() {
           // curAgentState === AgentState.AWAITING_USER_CONFIRMATION
         }
         onSendMessage={handleSendMessage}
+        sessionId={sessionId}
+        sendMessage={sendMessage}
       />
       <FeedbackModal
         polarity={feedbackPolarity}
