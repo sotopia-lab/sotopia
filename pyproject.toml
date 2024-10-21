@@ -36,7 +36,7 @@ anthropic = ["anthropic"]
 groq = ["groq"]
 cohere = ["cohere"]
 google-generativeai = ["google-generativeai"]
-examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
+examples = ["datasets", "scipy", "torch", "pandas"]
 chat = ["fastapi"]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 
@@ -61,10 +61,6 @@ plugins = [
     "pydantic.mypy",
     "pydantic.v1.mypy"
 ]
-
-[[tool.mypy.overrides]]
-module = "transformers.*"
-ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
