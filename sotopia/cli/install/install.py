@@ -333,7 +333,7 @@ def install(
                 subprocess.run(
                     "brew tap redis-stack/redis-stack", shell=True, check=True
                 )
-                subprocess.run("brew install redis-stack", shell=True, check=True)
+                subprocess.run("brew install redis-stack-server", shell=True, check=True)
                 if load_database:
                     if Path("/opt/homebrew/var/db/redis-stack/dump.rdb").exists():
                         cover_existing = (
