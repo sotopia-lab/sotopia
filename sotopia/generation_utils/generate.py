@@ -56,6 +56,8 @@ LLM_Name = Literal[
     "redis",
     "groq/llama3-70b-8192",
 ]
+# subject to future OpenAI changes
+DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 OutputType = TypeVar("OutputType", bound=object)
 
@@ -486,9 +488,9 @@ async def agenerate(
         input_values["format_instructions"] = output_parser.get_format_instructions()
 
     if structured_output:
-        assert (
-            model_name == "gpt-4o-2024-08-06"
-        ), "Structured output is only supported in gpt-4o-2024-08-06"
+        assert model_name == "gpt-4o-2024-08-06" or model_name.startswith(
+            "custom"
+        ), "Structured output is only supported in gpt-4o-2024-08-06 or custom models"
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
                 template=template,
@@ -501,7 +503,15 @@ async def agenerate(
         instantiated_prompt = prompt_result.messages[0].content
         assert isinstance(output_parser, PydanticOutputParser)
         assert isinstance(instantiated_prompt, str)
-        client = OpenAI()
+        if model_name.startswith("custom"):
+            client = OpenAI(
+                base_url=model_name.split("@")[1],
+                api_key=os.environ.get("CUSTOM_API_KEY") or "EMPTY",
+            )
+            model_name = model_name.split("@")[0].split("/")[1]
+        else:
+            client = OpenAI()
+
         completion = client.beta.chat.completions.parse(
             model=model_name,
             messages=[

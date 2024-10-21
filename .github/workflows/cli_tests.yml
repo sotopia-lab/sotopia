@@ -1,4 +1,4 @@
-name: Pytest
+name: Pytest (Installation)
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,7 +20,7 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        os: [ubuntu-latest, macos-13]
+        os: [ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -40,12 +40,8 @@ jobs:
           python -m pip install uv
           uv sync --extra test --extra chat
     - name: Test with pytest
-      env: # Or as an environment variable
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        REDIS_OM_URL: ${{ secrets.REDIS_OM_URL }}
-        TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
       run: |
-        uv run pytest --cov=. --cov-report=xml
+        uv run pytest tests/cli/test_install.py --cov=. --cov-report=xml
     - name: Upload coverage report to Codecov
       uses: codecov/codecov-action@v4.0.1
       with:

@@ -1,6 +1,6 @@
 [project]
 name = "sotopia"
-version = "0.1.0-rc.5"
+version = "0.1.2"
 description = "A platform for simulating and evaluating social interaction."
 authors = [
     { name = "Hao Zhu", email = "prokilchu@gmail.com" },
@@ -13,18 +13,18 @@ readme = "README.md"
 dependencies = [
     "lxml>=4.9.3,<6.0.0",
     "openai>=1.11.0,<2.0.0",
-    "langchain>=0.2.5,<0.3.0",
+    "langchain>=0.2.5,<0.4.0",
     "rich>=13.6.0,<14.0.0",
     "PettingZoo==1.24.3",
     "redis-om>=0.3.0,<0.4.0",
     "gin-config>=0.5.0,<0.6.0",
     "absl-py>=2.0.0,<3.0.0",
-    "together>=0.2.4,<0.3.0",
+    "together>=0.2.4,<1.4.0",
     "pydantic>=2.5.0,<3.0.0",
-    "beartype>=0.14.0,<0.15.0",
-    "langchain-openai>=0.1.8,<0.2.0",
-    "litellm>=1.23.12,<1.41.0",
-    "hiredis>=3.0.0"
+    "beartype>=0.14.0,<0.20.0",
+    "langchain-openai>=0.1.8,<0.3.0",
+    "hiredis>=3.0.0",
+    "aact"
 ]
 
 [build-system]
