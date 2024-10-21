@@ -1,0 +1,40 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.realtime.audio_mixer"]
+
+[[nodes]]
+node_name = "speaker"
+node_class = "speaker"
+
+
+[nodes.node_args]
+input_channel = "audio_output"
+rate = 24000
+
+[[nodes]]
+node_name = "listener"
+node_class = "listener"
+
+
+[nodes.node_args]
+output_channel = "audio_input"
+rate = 24000
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
+
+[[nodes]]
+node_name = "audio_mixer"
+node_class = "audio_mixer"
+
+[nodes.node_args]
+input_channels = ["audio_input"]
+tick_input_channel = "tick/millis/20"
+output_channel = "audio_output"
+buffer_size = 960 # 20ms * 24000Hz * 2 bytes per frame
+
+# [[nodes]]
+# node_name = "print"
+# node_class = "print"
+
+# [nodes.node_args.print_channel_types]

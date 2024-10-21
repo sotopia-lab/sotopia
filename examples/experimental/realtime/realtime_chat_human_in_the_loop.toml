@@ -1,0 +1,74 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = [
+    "examples.experimental.realtime.realtime_websocket",
+    "examples.experimental.realtime.input_node",
+    "examples.experimental.realtime.audio_mixer"
+]
+
+[[nodes]]
+node_name = "speaker"
+node_class = "speaker"
+
+[nodes.node_args]
+rate = 24000
+input_channel = "Eve"
+
+[[nodes]]
+node_name = "speaker2"
+node_class = "speaker"
+
+[nodes.node_args]
+rate = 24000
+input_channel = "Jane"
+
+[[nodes]]
+node_name = "listener"
+node_class = "listener"
+
+[nodes.node_args]
+rate = 24000
+output_channel = "Jack"
+
+
+[[nodes]]
+node_name = "Eve"
+node_class = "openai_realtime"
+
+[nodes.node_args]
+input_channel = "Jane_mixed"
+output_channel = "Eve"
+instruction = "Your name is Eve, you are talking to your friend Jane and Jack. You want to convince them to play poker with you tonight. Please start every sentence with \"Jane,\" or \"Jack,\""
+
+
+[[nodes]]
+node_name = "Jane"
+node_class = "openai_realtime"
+
+[nodes.node_args]
+input_channel = "Eve_mixed"
+output_channel = "Jane"
+instruction = "Your name is Jane, you are talking to your friend Eve and Jack. You want to convince them to play soccer with you tonight. Please let him say the first sentence. Please start every sentence with \"Eve,\" or \"Jack,\""
+
+[[nodes]]
+node_name = "audio_mixer_Jane"
+node_class = "audio_mixer"
+
+[nodes.node_args]
+input_channels = ["Jane", "Jack"]
+tick_input_channel = "tick/millis/20"
+output_channel = "Jane_mixed"
+buffer_size = 960
+
+[[nodes]]
+node_name = "audio_mixer_Eve"
+node_class = "audio_mixer"
+
+[nodes.node_args]
+input_channels = ["Eve", "Jack"]
+tick_input_channel = "tick/millis/20"
+output_channel = "Eve_mixed"
+buffer_size = 960
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
