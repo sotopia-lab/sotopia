@@ -64,7 +64,7 @@ def _format_message_history(message_history: list[tuple[str, str]]) -> str:
             
             
 @NodeFactory.register("llm_agent")
-class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
+class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
     def __init__(
         self,
         input_text_channels: list[str],
@@ -108,7 +108,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
 
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
         match message:
-            case Text(text):
+            case Text(text=text):
                 self.message_history.append((self.name, text))
                 return AgentAction(
                     agent_name=self.name, action_type="none", argument=""

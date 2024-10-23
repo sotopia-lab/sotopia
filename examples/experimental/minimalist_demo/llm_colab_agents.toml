@@ -45,13 +45,23 @@ node_name = "tick"
 node_class = "tick"
 
 [[nodes]]
-node_name = "scenario_context"
+node_name = "JaneScene"
 node_class = "scenario_context"
 
 [nodes.node_args]
 input_tick_channel = "tick/secs/1"
-output_channels = ["Scene:Jane", "Scene:Jack"]
-env_scenario = "There are 2 agents: Jack and Jane. They are talking to each other. Each agent has a goal and they are trying to achieve that goal."
+output_channels = ["Scene:Jane"]
+env_scenario = "There are 2 agents: Jack and Jane. You are Jane and you are talking to Jack. Try to achieve your goal while being respectful of Jack."
+
+[[nodes]]
+node_name = "JackScene"
+node_class = "scenario_context"
+
+[nodes.node_args]
+input_tick_channel = "tick/secs/1"
+output_channels = ["Scene:Jack"]
+env_scenario = "There are 2 agents: Jack and Jane. You are Jack and you are talking to Jane. Try to achieve your goal while being respectful of Jane."
+
 
 [[nodes]]
 node_name = "chat_print"
@@ -61,3 +71,15 @@ node_class = "chat_print"
 # "tick/secs/1" = "tick"
 "Jane:Jack" = "agent_action"
 "Jack:Jane" = "agent_action"
+
+# [[nodes]]
+# node_name = "print"
+# node_class = "print"
+
+# [nodes.node_args.print_channel_types]
+# "tick/secs/1" = "tick"
+# "Jane:Jack" = "agent_action"
+# "Jack:Jane" = "agent_action"
+# "Scene:Jake" = "text"
+# "Scene:Jane" = "text"
+
