@@ -1,4 +1,3 @@
-import asyncio
 from typing import AsyncIterator
 from aact import Message, NodeFactory, Node
 from aact.messages import Text, Tick, DataModel, DataModelFactory, Zero
@@ -13,17 +12,14 @@ from sotopia.messages import ActionType
 from pydantic import Field
 import logging
 from rich.logging import RichHandler
-from aiofiles import stdout
-from aiofiles.threadpool.text import AsyncTextIndirectIOWrapper
 import json
-   
+
 import sys
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
-from typing import Any, AsyncIterator
 
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 logging.basicConfig(
@@ -32,6 +28,7 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[RichHandler()],
 )
+
 
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
@@ -61,8 +58,8 @@ def _format_message_history(message_history: list[tuple[str, str]]) -> str:
     return "\n".join(
         (f"{speaker} said {message}") for speaker, message in message_history
     )
-            
-            
+
+
 @NodeFactory.register("llm_agent")
 class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
     def __init__(
@@ -85,9 +82,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             + [
                 (input_tick_channel, Tick),
             ]
-            + [
-                (input_env_channel, Text)
-            ],
+            + [(input_env_channel, Text)],
             [(output_channel, AgentAction)],
             redis_url,
         )
@@ -164,7 +159,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 raise ValueError(f"Unexpected message type: {type(message)}")
 
 
-
 @NodeFactory.register("human_agent")
 class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
     def __init__(
@@ -211,8 +205,10 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 if self.count_ticks % self.query_interval == 0:
                     argument = await ainput("Argument: ")
 
-                    return AgentAction(agent_name=self.name, action_type="speak", argument=argument)
-  
+                    return AgentAction(
+                        agent_name=self.name, action_type="speak", argument=argument
+                    )
+
             case AgentAction(
                 agent_name=agent_name, action_type=action_type, argument=text
             ):
@@ -223,20 +219,22 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 )
             case _:
                 raise ValueError(f"Unexpected message type: {type(message)}")
-            
+
 
 @NodeFactory.register("scenario_context")
 class ScenarioContext(Node[DataModel, Text]):
     def __init__(
-        self, 
-        input_tick_channel: str, 
-        output_channels: list[str], 
+        self,
+        input_tick_channel: str,
+        output_channels: list[str],
         env_scenario: str,
-        redis_url: str = "redis://localhost:6379/0"
+        redis_url: str = "redis://localhost:6379/0",
     ):
         super().__init__(
-            input_channel_types = [(input_tick_channel, Tick)],
-            output_channel_types=[(output_channel, Text) for output_channel in output_channels],
+            input_channel_types=[(input_tick_channel, Tick)],
+            output_channel_types=[
+                (output_channel, Text) for output_channel in output_channels
+            ],
             redis_url=redis_url,
         )
         self.env_scenario = env_scenario
@@ -246,7 +244,8 @@ class ScenarioContext(Node[DataModel, Text]):
         # Send env_scenario to all output channels
         for output_channel in self.output_channels:
             await self.r.publish(
-                output_channel, Message[Text](data=Text(text=self.env_scenario)).model_dump_json()
+                output_channel,
+                Message[Text](data=Text(text=self.env_scenario)).model_dump_json(),
             )
 
     async def event_loop(self) -> None:
@@ -260,27 +259,26 @@ class ScenarioContext(Node[DataModel, Text]):
         self, _: str, __: Message[Zero]
     ) -> AsyncIterator[tuple[str, Message[Tick]]]:
         raise NotImplementedError("ScenarioContext does not have an event handler.")
-        yield "", Message[Text](data=Text(text==self.env_scenario))
-        
-@NodeFactory.register("chat_print")     
+        yield "", Message[Text](data=Text(text == self.env_scenario))
+
+
+@NodeFactory.register("chat_print")
 class ChatPrint(PrintNode):
     async def write_to_screen(self) -> None:
         while self.output:
             data_entry = await self.write_queue.get()
-            
+
             # Parse the JSON data
             data = json.loads(data_entry.model_dump_json())
-            
+
             # Extract agent_name and argument
-            agent_name = data['data']['agent_name']
-            argument = data['data']['argument']
-            
+            agent_name = data["data"]["agent_name"]
+            argument = data["data"]["argument"]
+
             # Format the output
             output = f"{agent_name} says: {argument}"
-            
+
             # Write to output
             await self.output.write(output + "\n")
             await self.output.flush()
             self.write_queue.task_done()
-
-    
