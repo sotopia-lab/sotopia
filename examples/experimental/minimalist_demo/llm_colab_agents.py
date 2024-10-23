@@ -69,7 +69,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
         self,
         input_text_channels: list[str],
         input_tick_channel: str,
-        # input_env_channel: str,
+        input_env_channel: str,
         output_channel: str,
         query_interval: int,
         agent_name: str,
@@ -84,10 +84,10 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
             ]
             + [
                 (input_tick_channel, Tick),
+            ]
+            + [
+                (input_env_channel, Text)
             ],
-            # + [
-            #     (input_env_channel, Text)
-            # ],
             [(output_channel, AgentAction)],
             redis_url,
         )
@@ -229,9 +229,9 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
 class ScenarioContext(Node[DataModel, Text]):
     def __init__(
         self, 
-        input_tick_channel = str, 
-        output_channels = list[str], 
-        env_scenario = str,
+        input_tick_channel: str, 
+        output_channels: list[str], 
+        env_scenario: str,
         redis_url: str = "redis://localhost:6379/0"
     ):
         super().__init__(
