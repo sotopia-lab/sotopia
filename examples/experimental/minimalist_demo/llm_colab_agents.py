@@ -69,6 +69,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
         self,
         input_text_channels: list[str],
         input_tick_channel: str,
+        # input_env_channel: str,
         output_channel: str,
         query_interval: int,
         agent_name: str,
@@ -84,6 +85,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
             + [
                 (input_tick_channel, Tick),
             ],
+            # + [
+            #     (input_env_channel, Text)
+            # ],
             [(output_channel, AgentAction)],
             redis_url,
         )
@@ -102,8 +106,13 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 Message[AgentAction](data=message).model_dump_json(),
             )
 
-    async def aact(self, message: AgentAction) -> AgentAction:
+    async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
         match message:
+            case Text(text):
+                self.message_history.append((self.name, text))
+                return AgentAction(
+                    agent_name=self.name, action_type="none", argument=""
+                )
             case Tick():
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
@@ -197,8 +206,6 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
 
     async def aact(self, message: AgentAction) -> AgentAction:
         match message:
-            case Text(text):
-                self.message_history.append((self.name, text))
             case Tick():
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
@@ -219,7 +226,7 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
             
 
 @NodeFactory.register("scenario_context")
-class ScenarioContext(Node[Zero, Text]):
+class ScenarioContext(Node[DataModel, Text]):
     def __init__(
         self, 
         input_tick_channel = str, 
@@ -254,5 +261,26 @@ class ScenarioContext(Node[Zero, Text]):
     ) -> AsyncIterator[tuple[str, Message[Tick]]]:
         raise NotImplementedError("ScenarioContext does not have an event handler.")
         yield "", Message[Text](data=Text(text==self.env_scenario))
+        
+@NodeFactory.register("chat_print")     
+class ChatPrint(PrintNode):
+    async def write_to_screen(self) -> None:
+        while self.output:
+            data_entry = await self.write_queue.get()
+            
+            # Parse the JSON data
+            data = json.loads(data_entry.model_dump_json())
+            
+            # Extract agent_name and argument
+            agent_name = data['data']['agent_name']
+            argument = data['data']['argument']
+            
+            # Format the output
+            output = f"{agent_name} says: {argument}"
+            
+            # Write to output
+            await self.output.write(output + "\n")
+            await self.output.flush()
+            self.write_queue.task_done()
 
     

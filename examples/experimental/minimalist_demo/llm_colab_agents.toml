@@ -8,7 +8,8 @@ node_class = "llm_agent"
 [nodes.node_args]
 query_interval = 6
 output_channel = "Jack:Jane"
-input_text_channels = ["Jane:Jack", "Scene:Jack"]
+input_text_channels = ["Jane:Jack"]
+# input_env_channel = "Scene:Jack"
 input_tick_channel = "tick/secs/1"
 goal = "Wants to secretly marry Jane"
 model_name = "gpt-4o-mini"
@@ -21,7 +22,8 @@ node_class = "llm_agent"
 [nodes.node_args]
 query_interval = 7
 output_channel = "Jane:Jack"
-input_text_channels = ["Jack:Jane", "Scene:Jane"]
+input_text_channels = ["Jack:Jane"]
+# input_env_channel = "Scene:Jane"
 input_tick_channel = "tick/secs/1"
 goal = "Wants to go to paris with Jake"
 model_name = "gpt-4o-mini"
@@ -42,18 +44,18 @@ jsonl_file_path = "log.jsonl"
 node_name = "tick"
 node_class = "tick"
 
-[[nodes]]
-node_name = "scenario_context"
-node_class = "scenario_context"
+# [[nodes]]
+# node_name = "scenario_context"
+# node_class = "scenario_context"
 
-[nodes.node_args]
-input_tick_channel = "tick/secs/1"
-output_channels = ["Scene:Jane", "Scene:Jack"]
-env_scenario = "There are 2 agents: Jack and Jane. They are talking to each other. Each agent has a goal and they are trying to achieve that goal."
+# [nodes.node_args]
+# input_tick_channel = "tick/secs/1"
+# output_channels = ["Scene:Jane", "Scene:Jack"]
+# env_scenario = "There are 2 agents: Jack and Jane. They are talking to each other. Each agent has a goal and they are trying to achieve that goal."
 
 [[nodes]]
-node_name = "print"
-node_class = "print"
+node_name = "chat_print"
+node_class = "chat_print"
 
 [nodes.node_args.print_channel_types]
 # "tick/secs/1" = "tick"
