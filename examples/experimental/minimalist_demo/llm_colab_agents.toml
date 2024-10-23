@@ -1,0 +1,84 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.minimalist_demo.llm_colab_agents"]
+
+[[nodes]]
+node_name = "Jack"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 6
+output_channel = "Jack:Jane"
+input_text_channels = ["Jane:Jack"]
+input_env_channel = "Scene:Jack"
+input_tick_channel = "tick/secs/1"
+goal = "Wants to secretly marry Jane"
+model_name = "gpt-4o-mini"
+agent_name = "Jack"
+
+[[nodes]]
+node_name = "Jane"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 7
+output_channel = "Jane:Jack"
+input_text_channels = ["Jack:Jane"]
+input_env_channel = "Scene:Jane"
+input_tick_channel = "tick/secs/1"
+goal = "Wants to go to paris with Jake"
+model_name = "gpt-4o-mini"
+agent_name = "Jane"
+
+[[nodes]]
+node_name = "record"
+node_class = "record"
+
+[nodes.node_args]
+jsonl_file_path = "log.jsonl"
+
+[nodes.node_args.record_channel_types]
+"Jack:Jane" = "agent_action"
+"Jane:Jack" = "agent_action"
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
+
+[[nodes]]
+node_name = "JaneScene"
+node_class = "scenario_context"
+
+[nodes.node_args]
+input_tick_channel = "tick/secs/1"
+output_channels = ["Scene:Jane"]
+env_scenario = "There are 2 agents: Jack and Jane. You are Jane and you are talking to Jack. Try to achieve your goal while being respectful of Jack."
+
+[[nodes]]
+node_name = "JackScene"
+node_class = "scenario_context"
+
+[nodes.node_args]
+input_tick_channel = "tick/secs/1"
+output_channels = ["Scene:Jack"]
+env_scenario = "There are 2 agents: Jack and Jane. You are Jack and you are talking to Jane. Try to achieve your goal while being respectful of Jane."
+
+
+[[nodes]]
+node_name = "chat_print"
+node_class = "chat_print"
+
+[nodes.node_args.print_channel_types]
+# "tick/secs/1" = "tick"
+"Jane:Jack" = "agent_action"
+"Jack:Jane" = "agent_action"
+
+# [[nodes]]
+# node_name = "print"
+# node_class = "print"
+
+# [nodes.node_args.print_channel_types]
+# "tick/secs/1" = "tick"
+# "Jane:Jack" = "agent_action"
+# "Jack:Jane" = "agent_action"
+# "Scene:Jake" = "text"
+# "Scene:Jane" = "text"
