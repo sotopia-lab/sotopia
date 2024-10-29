@@ -38,6 +38,7 @@ cohere = ["cohere"]
 google-generativeai = ["google-generativeai"]
 examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 chat = ["fastapi"]
+ui = ["streamlit"]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 
 [tool.uv]
