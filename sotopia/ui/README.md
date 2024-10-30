@@ -1,51 +1,141 @@
-<!-- ![TITLE](figs/title.png) -->
-# SocialStream
+# Sotopia UI
 
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3109/)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
+## FastAPI Server
 
+The API server is a FastAPI application that is used to connect the Sotopia UI to the Sotopia backend.
+This could also help with other projects that need to connect to the Sotopia backend through HTTP requests.
 
-## Get started
+Here are some initial design of the API server:
 
-This package supports Python 3.11 and above. We recommend using a virtual environment to install this package, e.g.,
+### Getting Data from the API Server
 
-```
-conda create -n socialstream python=3.11; conda activate socialstream;  curl -sSL https://install.python-poetry.org | python3
-poetry install
-```
+#### GET /get/scenarios/{scenario_id}
 
+Get scenarios by scenario_id.
+parameters:
+- scenario_id: str
 
-## Usage
-streamlit run app.py
-
-Before that you should specify a Redis database by `conda env config vars set REDIS_OM_URL={YOUR_URL}`. You can also 1. Specify a new database in the sidebar, or 2. Include your temporary scenario in data with suffix `_agents.json` and `_scenarios.json`.
+returns:
+- scenarios: EnvironmentProfile
 
 
-### Chat
-First choose the agents (two agents cannot be the same), scenarios and the agent you are going to be, then click `start` to start interaction. When you want to leave and get evaluated, click `stop` to start evaluation.
+#### GET /get/scenarios
+
+Get all scenarios.
+
+returns:
+- scenarios: list[EnvironmentProfile]
+
+#### GET /get/scenarios/{sceanrio_tag}
+
+Get scenarios by scenario_tag.
+parameters:
+- scenario_tag: str
+(This scenario tag could be a keyword; so people can search for scenarios by keywords)
+
+returns:
+- scenarios: list[EnvironmentProfile]
+
+#### GET /get/agents
+
+Get all agents.
+
+returns:
+- agents: list[AgentProfile]
+
+#### GET /get/agents/{agent_id}
+
+Get agent by agent_id.
+parameters:
+- agent_id: str
+
+returns:
+- agent: AgentProfile
+
+#### GET /get/agents/{agent_gender}
+
+Get agents by agent_gender.
+parameters:
+- agent_gender: Literal["male", "female"]
+
+returns:
+- agents: list[AgentProfile]
+
+#### GET /get/agents/{agent_occupation}
+
+Get agents by agent_occupation.
+parameters:
+- agent_occupation: str
+
+returns:
+- agents: list[AgentProfile]
 
 
-## Contribution
-### Install dev options
-```bash
-mypy --install-types --non-interactive socialstream
-pip install pre-commit
-pre-commit install
-```
-### New branch for each feature
-`git checkout -b feature/feature-name` and PR to `main` branch.
-### Before committing
-Run `pre-commit run --all-files` to run all checks
-<!-- Run `pytest` to make sure all tests pass (this will ensure dynamic typing passed with beartype) and `mypy --strict --exclude haicosystem/tools  --exclude haicosystem/grounding_engine/llm_engine_legacy.py .` to check static typing.
-(You can also run `pre-commit run --all-files` to run all checks) -->
-### Check github action result
-Check the github action result to make sure all tests pass. If not, fix the errors and push again.
+#### GET /get/episodes
 
-### About Callbacks in Streamlit
-From [Streamlit documentation on session state](https://docs.streamlit.io/develop/api-reference/caching-and-state/st.session_state).
-> "When updating Session state in response to events, a callback function gets executed first, and then the app is executed from top to bottom."
+Get all episodes.
+
+returns:
+- episodes: list[Episode]
+
+#### GET /get/episodes/{episode_tag}
+
+Get episode by episode_tag.
+parameters:
+- episode_tag: str
+
+returns:
+- episode: list[Episode]
+
+#### GET /get/episodes/{episode_id}
+
+Get episode by episode_id.
+parameters:
+- episode_id: str
+
+returns:
+- episode: Episode
 
 
-In this code, we utilize callbacks to handle the clickability of buttons and ensure that any edited information is promptly and accurately updated.
+### Sending Data to the API Server
+
+#### POST /post/agents/
+
+Send agent profile to the API server.
+Request Body:
+AgentProfile
+
+returns:
+- agent_id: str
+
+#### POST /post/scenarios/
+
+Send scenario profile to the API server.
+Request Body:
+EnvironmentProfile
+
+returns:
+- scenario_id: str
+
+### Initiating a new simulation episode
+
+Not sure what's the best way to do this.
+But maybe we would need a pydantic object to initiate a new episode
+
+class SimulationEpisodeInitiation:
+    scenario_id: str
+    agent_ids: list[str]
+    episode_tag: str
+    models: list[str]
+
+#### POST /post/episodes/
+
+Send episode profile to the API server.
+Request Body:
+SimulationEpisodeInitiation
+
+returns:
+- episode_id: str
+
+
+@ProKil: I think you mentioned that in the new design, message transactions are through the redis queue. So I think we should utilize there.

@@ -2,7 +2,7 @@ import json
 
 import streamlit as st
 
-from socialstream.chat.callbacks import (
+from sotopia.ui.socialstream.chat.callbacks import (
     agent_edit_callback_finegrained,
     edit_callback,
     other_choice_callback,
