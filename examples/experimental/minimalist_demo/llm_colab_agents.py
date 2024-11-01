@@ -113,15 +113,32 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 if self.count_ticks % self.query_interval == 0:
                     agent_action: str = await agenerate(
                         model_name=self.model_name,
-                        template="Imagine that you are a friend of the other persons. Here is the "
-                        "conversation between you and them.\n"
-                        "You are {agent_name} in the conversation.\n"
-                        "{message_history}\n"
-                        "and you plan to {goal}.\n"
-                        "You can choose to interrupt the other person "
-                        "by saying something or not to interrupt by outputting nothing. What would you say? "
-                        "Please only output a sentence or not outputting anything."
-                        "{format_instructions}",
+                        template="""Imagine that you are a work colleague of the other persons. 
+                        Here is the conversation between you and them.\n
+                        You are {agent_name} in the conversation.\n
+                        {message_history}\nand you plan to {goal}.
+                        ## Action
+                        What is your next thought or action? Your response must be in JSON format.
+
+                        It must be an object, and it must contain two fields:
+                        * `action`, which is one of the actions below
+                        * `args`, which is a map of key-value pairs, specifying the arguments for that action
+                        
+                        You can choose one of these 3 actions:
+                        [1] `speak` - you can talk to the other agnets to share information or ask them something. Arguments:
+                            * `content` - the message to send to the other agents (should be short)           
+                        [2] `thought` - make a plan, set a goal, record your thoughts. Arguments:
+                            * `content` - the message you send yourself to organize your thoughts (should be short)
+                        [3] `none` - you can choose not to take an action if you are waiting for some data or you have nothing to say to the other agent right now
+                        [4] `browse` - opens a web page. Arguments:
+                            * `url` - the URL to open, when you browse the web wait until you get some infomation back.
+                            
+                        [5] `finish` - if ALL of your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the finish action to stop working.
+                        
+
+                        You MUST take time to think in between read, write, run, and browse actions--do this with the `message` action.
+                        You should never act twice in a row without thinking. But if your last several
+                        actions are all `message` actions, you should consider taking a different action. Again, you must reply with JSON, and only with JSON.""",
                         input_values={
                             "message_history": _format_message_history(
                                 self.message_history
@@ -132,6 +149,8 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         temperature=0.7,
                         output_parser=StrOutputParser(),
                     )
+                    print(agent_action)
+                    print(type(agent_action))
                     if agent_action != "none" and agent_action != "":
                         self.message_history.append((self.name, agent_action))
                         return AgentAction(
@@ -282,3 +301,25 @@ class ChatPrint(PrintNode):
             await self.output.write(output + "\n")
             await self.output.flush()
             self.write_queue.task_done()
+            
+            
+# ###################################################################
+# import os
+# sys.path.append(os.path.abspath("/Users/arpan/Desktop/sotopia/examples/experimental/minimalist_demo/openhands"))
+# print(sys.path)
+
+
+# openhands_path = "/Users/arpan/Desktop/sotopia/examples/experimental/minimalist_demo/openhands"
+# print("Contents of openhands directory:", os.listdir(openhands_path))
+# from openhands.core.config import (
+#     AgentConfig,
+#     AppConfig,
+#     SandboxConfig,
+#     get_llm_config_arg,
+#     get_parser,
+# )
+            
+            
+            
+            
+            

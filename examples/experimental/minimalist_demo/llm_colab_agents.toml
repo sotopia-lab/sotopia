@@ -11,7 +11,7 @@ output_channel = "Jack:Jane"
 input_text_channels = ["Jane:Jack"]
 input_env_channel = "Scene:Jack"
 input_tick_channel = "tick/secs/1"
-goal = "Wants to secretly marry Jane"
+goal = "Your goal is to convince Jane that Donald Trump is the president of the United States using verified sources from the web."
 model_name = "gpt-4o-mini"
 agent_name = "Jack"
 
@@ -25,7 +25,7 @@ output_channel = "Jane:Jack"
 input_text_channels = ["Jack:Jane"]
 input_env_channel = "Scene:Jane"
 input_tick_channel = "tick/secs/1"
-goal = "Wants to go to paris with Jake"
+goal = "Your goal is to convince Jack that Donald Trump is not the president of the United States using verified sources from the web."
 model_name = "gpt-4o-mini"
 agent_name = "Jane"
 
@@ -51,7 +51,9 @@ node_class = "scenario_context"
 [nodes.node_args]
 input_tick_channel = "tick/secs/1"
 output_channels = ["Scene:Jane"]
-env_scenario = "There are 2 agents: Jack and Jane. You are Jane and you are talking to Jack. Try to achieve your goal while being respectful of Jack."
+env_scenario = """
+You are Jane, an intern on a team in a large software company. You are having a fact-checking debate with Jack, a senior engineer on the team. The topic is whether Donald Trump is currently the president of the United States. Your goal is to gather information from reliable sources to argue that Donald Trump is not the president.
+"""
 
 [[nodes]]
 node_name = "JackScene"
@@ -60,7 +62,9 @@ node_class = "scenario_context"
 [nodes.node_args]
 input_tick_channel = "tick/secs/1"
 output_channels = ["Scene:Jack"]
-env_scenario = "There are 2 agents: Jack and Jane. You are Jack and you are talking to Jane. Try to achieve your goal while being respectful of Jane."
+env_scenario = """
+You are Jack, a senior engineer in a large software company. You are having a fact-checking debate with Jane, an intern on your team. The topic is whether Donald Trump is currently the president of the United States. Your goal is to gather information from reliable sources to argue that Donald Trump is the president.
+"""
 
 
 [[nodes]]
