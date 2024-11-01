@@ -11,7 +11,7 @@ from openhands.core.main import create_runtime, run_controller
 from openhands.events.action import CmdRunAction, MessageAction, BrowseURLAction
 
 from openhands.utils.async_utils import call_async_from_sync
-
+from openhands.runtime.base import Runtime
 from typing import Any, AsyncIterator, TypeVar
 from aact import Message, NodeFactory, Node
 from aact.messages import Text, Tick, DataModel, DataModelFactory, Zero
@@ -29,6 +29,7 @@ from rich.logging import RichHandler
 import json
 import os
 import sys
+from typing import Optional
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -47,7 +48,7 @@ base_container_image = "docker.all-hands.dev/all-hands-ai/runtime:0.11-nikolaik"
 
 
 @NodeFactory.register("openhands_node")
-class OpenHandsNode(Node[DataModel, Text]):
+class OpenHandsNode(Node[Text, Text]):
     def __init__(
         self,
         input_channels: list[str],
@@ -60,7 +61,7 @@ class OpenHandsNode(Node[DataModel, Text]):
             redis_url=redis_url,
         )
         self.observation_queue: asyncio.Queue[Text] = asyncio.Queue()
-        self.runtime = None
+        self.runtime: Optional[Runtime] = None
         self.task_scheduler: asyncio.Task[None] | None = None
         self.shutdown_event: asyncio.Event = asyncio.Event()
 
@@ -71,8 +72,8 @@ class OpenHandsNode(Node[DataModel, Text]):
             run_as_openhands=False,
             max_iterations=3,
             runtime='modal',
-            modal_api_token_id = os.environ.get('MODAL_API_TOKEN_ID'),
-            modal_api_token_secret = os.environ.get('MODAL_API_TOKEN_SECRET'),
+            modal_api_token_id = os.environ.get('MODAL_API_TOKEN_ID', ""),
+            modal_api_token_secret = os.environ.get('MODAL_API_TOKEN_SECRET', ""),
             sandbox=SandboxConfig(
                 base_container_image=base_container_image,
                 enable_auto_lint=True,
@@ -82,7 +83,7 @@ class OpenHandsNode(Node[DataModel, Text]):
                 # Add platform to the sandbox config to solve issue 4401
                 platform='linux/amd64',
                 api_key=os.environ.get('ALLHANDS_API_KEY', None),
-                remote_runtime_api_url=os.environ.get('SANDBOX_REMOTE_RUNTIME_API_URL'),
+                remote_runtime_api_url=os.environ.get('SANDBOX_REMOTE_RUNTIME_API_URL', ""),
                 keep_remote_runtime_alive=False,
             ),
             # do not mount workspace
@@ -96,11 +97,12 @@ class OpenHandsNode(Node[DataModel, Text]):
         )
         config.set_agent_config(agent_config)
         self.runtime = create_runtime(config)
-        call_async_from_sync(self.runtime.connect)
+        if self.runtime:
+            call_async_from_sync(self.runtime.connect)
 
-        logger.info('-' * 30)
-        logger.info('BEGIN Runtime Initialization Fn')
-        logger.info('-' * 30)
+            logger.info('-' * 30)
+            logger.info('BEGIN Runtime Initialization Fn')
+            logger.info('-' * 30)
 
     async def __aenter__(self) -> Self:
         self.task = asyncio.create_task(self.init_runtime())
@@ -109,7 +111,8 @@ class OpenHandsNode(Node[DataModel, Text]):
         return await super().__aenter__()
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        self.runtime.close()
+        if self.runtime:
+            self.runtime.close()
         self.shutdown_event.set()
         if self.task_scheduler is not None:
             self.task_scheduler.cancel()
@@ -117,13 +120,15 @@ class OpenHandsNode(Node[DataModel, Text]):
         return await super().__aexit__(exc_type, exc_value, traceback)
     
     async def aact(self, observation: Text) -> Text | None:
-        logger.info("Running aact")
-        action = BrowseURLAction(url=observation.text)
-        action.timeout = 600
-        logger.info(action, extra={'msg_type': 'ACTION'})
-        obs = runtime.run_action(action)
-        logger.info(obs, extra={'msg_type': 'OBSERVATION'})
-        return "testing"
+        if self.runtime:
+            logger.info("Running aact")
+            action = BrowseURLAction(url=observation.text)
+            action.timeout = 600
+            logger.info(action, extra={'msg_type': 'ACTION'})
+            obs = self.runtime.run_action(action)
+            logger.info(obs, extra={'msg_type': 'OBSERVATION'})
+            return Text(text="testing")
+        return None
 
     async def event_handler(
         self, channel: str, message: Message[Text]
@@ -134,7 +139,8 @@ class OpenHandsNode(Node[DataModel, Text]):
             await self.observation_queue.put(message.data)
         else:
             raise ValueError(f"Invalid channel: {channel}")
-        print("self.observation_queue: ", self.observation_queue)
+            yield "", self.output_type()
+        print("self.observation_queue: ", self.observation_queue) 
         
     async def send(self, action: Text) -> None:
         print("Sending action: ", action)
