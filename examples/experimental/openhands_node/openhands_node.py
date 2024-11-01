@@ -3,30 +3,20 @@ from openhands.core.config import (
     AgentConfig,
     AppConfig,
     SandboxConfig,
-    get_llm_config_arg,
-    get_parser,
 )
 from openhands.core.logger import openhands_logger as logger
-from openhands.core.main import create_runtime, run_controller
-from openhands.events.action import CmdRunAction, MessageAction, BrowseURLAction
+from openhands.core.main import create_runtime
+from openhands.events.action import BrowseURLAction
 
 from openhands.utils.async_utils import call_async_from_sync
 from openhands.runtime.base import Runtime
 from typing import Any, AsyncIterator, TypeVar
 from aact import Message, NodeFactory, Node
-from aact.messages import Text, Tick, DataModel, DataModelFactory, Zero
-from sotopia.agents.llm_agent import ainput
-from sotopia.experimental.agents import BaseAgent
-from aact.nodes import PrintNode
+from aact.messages import Text, DataModel
 
-from sotopia.generation_utils import agenerate
-from sotopia.generation_utils.generate import StrOutputParser
-from sotopia.messages import ActionType
 
-from pydantic import Field
 import logging
 from rich.logging import RichHandler
-import json
 import os
 import sys
 from typing import Optional
@@ -56,8 +46,12 @@ class OpenHandsNode(Node[Text, Text]):
         redis_url: str = "redis://localhost:6379/0",
     ):
         super().__init__(
-            input_channel_types=[(input_channel, Text) for input_channel in input_channels],
-            output_channel_types=[(output_channel, Text) for output_channel in output_channels],
+            input_channel_types=[
+                (input_channel, Text) for input_channel in input_channels
+            ],
+            output_channel_types=[
+                (output_channel, Text) for output_channel in output_channels
+            ],
             redis_url=redis_url,
         )
         self.observation_queue: asyncio.Queue[Text] = asyncio.Queue()
@@ -65,15 +59,14 @@ class OpenHandsNode(Node[Text, Text]):
         self.task_scheduler: asyncio.Task[None] | None = None
         self.shutdown_event: asyncio.Event = asyncio.Event()
 
-    
     async def init_runtime(self) -> None:
         config = AppConfig(
             default_agent="CodeActAgent",
             run_as_openhands=False,
             max_iterations=3,
-            runtime='modal',
-            modal_api_token_id = os.environ.get('MODAL_API_TOKEN_ID', ""),
-            modal_api_token_secret = os.environ.get('MODAL_API_TOKEN_SECRET', ""),
+            runtime="modal",
+            modal_api_token_id=os.environ.get("MODAL_API_TOKEN_ID", ""),
+            modal_api_token_secret=os.environ.get("MODAL_API_TOKEN_SECRET", ""),
             sandbox=SandboxConfig(
                 base_container_image=base_container_image,
                 enable_auto_lint=True,
@@ -89,7 +82,7 @@ class OpenHandsNode(Node[Text, Text]):
             # do not mount workspace
             workspace_base=None,
             workspace_mount_path=None,
-        )        
+        )
         agent_config = AgentConfig(
             codeact_enable_jupyter=True,
             codeact_enable_browsing_delegate=True,
@@ -118,7 +111,7 @@ class OpenHandsNode(Node[Text, Text]):
             self.task_scheduler.cancel()
         logger.info("Closed runtime")
         return await super().__aexit__(exc_type, exc_value, traceback)
-    
+
     async def aact(self, observation: Text) -> Text | None:
         if self.runtime:
             logger.info("Running aact")
@@ -152,7 +145,7 @@ class OpenHandsNode(Node[Text, Text]):
 
     async def _task_scheduler(self) -> None:
         logger.info("_task_scheduler")
-        
+
         while not self.shutdown_event.is_set():
             observation = await self.observation_queue.get()
             logger.info("observation: ", observation)
@@ -163,19 +156,9 @@ class OpenHandsNode(Node[Text, Text]):
             self.observation_queue.task_done()
 
 
-
-
-
-
-
-
-
 # base_container_image = "nikolaik/python-nodejs:python3.12-nodejs22"
 
 
-
-
-    
 # while True:
 #     user_command = input("Enter a command to run (or 'exit' to quit): ")
 #     if user_command.lower() == 'exit':
