@@ -10,9 +10,9 @@ from openhands.events.action import BrowseURLAction
 
 from openhands.utils.async_utils import call_async_from_sync
 from openhands.runtime.base import Runtime
-from typing import Any, AsyncIterator, TypeVar
+from typing import Any, AsyncIterator
 from aact import Message, NodeFactory, Node
-from aact.messages import Text, DataModel
+from aact.messages import Text
 
 
 import logging
@@ -74,9 +74,11 @@ class OpenHandsNode(Node[Text, Text]):
                 # large enough timeout, since some testcases take very long to run
                 timeout=300,
                 # Add platform to the sandbox config to solve issue 4401
-                platform='linux/amd64',
-                api_key=os.environ.get('ALLHANDS_API_KEY', None),
-                remote_runtime_api_url=os.environ.get('SANDBOX_REMOTE_RUNTIME_API_URL', ""),
+                platform="linux/amd64",
+                api_key=os.environ.get("ALLHANDS_API_KEY", None),
+                remote_runtime_api_url=os.environ.get(
+                    "SANDBOX_REMOTE_RUNTIME_API_URL", ""
+                ),
                 keep_remote_runtime_alive=False,
             ),
             # do not mount workspace
@@ -93,9 +95,9 @@ class OpenHandsNode(Node[Text, Text]):
         if self.runtime:
             call_async_from_sync(self.runtime.connect)
 
-            logger.info('-' * 30)
-            logger.info('BEGIN Runtime Initialization Fn')
-            logger.info('-' * 30)
+            logger.info("-" * 30)
+            logger.info("BEGIN Runtime Initialization Fn")
+            logger.info("-" * 30)
 
     async def __aenter__(self) -> Self:
         self.task = asyncio.create_task(self.init_runtime())
@@ -117,9 +119,9 @@ class OpenHandsNode(Node[Text, Text]):
             logger.info("Running aact")
             action = BrowseURLAction(url=observation.text)
             action.timeout = 600
-            logger.info(action, extra={'msg_type': 'ACTION'})
+            logger.info(action, extra={"msg_type": "ACTION"})
             obs = self.runtime.run_action(action)
-            logger.info(obs, extra={'msg_type': 'OBSERVATION'})
+            logger.info(obs, extra={"msg_type": "OBSERVATION"})
             return Text(text="testing")
         return None
 
@@ -133,8 +135,8 @@ class OpenHandsNode(Node[Text, Text]):
         else:
             raise ValueError(f"Invalid channel: {channel}")
             yield "", self.output_type()
-        print("self.observation_queue: ", self.observation_queue) 
-        
+        print("self.observation_queue: ", self.observation_queue)
+
     async def send(self, action: Text) -> None:
         print("Sending action: ", action)
         for output_channel, output_channel_type in self.output_channel_types.items():
