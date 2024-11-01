@@ -1,0 +1,11 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.openhands_node.openhands_node"]
+
+
+[[nodes]]
+node_name = "runtime"
+node_class = "openhands_node"
+
+[nodes.node_args]
+input_channels = ["Agent:Runtime"]
+output_channels = ["Runtime:Agent"]
