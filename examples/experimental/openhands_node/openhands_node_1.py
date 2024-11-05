@@ -7,8 +7,7 @@ from openhands.core.config import (
 from datetime import datetime
 from openhands.core.logger import openhands_logger as logger
 from openhands.core.main import create_runtime
-from openhands.events.action import BrowseURLAction, FileReadAction, FileWriteAction, CmdRunAction
-from openhands.events.observation import BrowserOutputObservation
+from openhands.events.action import BrowseURLAction, FileWriteAction, CmdRunAction
 
 from openhands.utils.async_utils import call_async_from_sync
 from openhands.runtime.base import Runtime
@@ -46,6 +45,7 @@ from sotopia.messages.message_classes import ActionType
 
 from pydantic import Field
 
+
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
     agent_name: str = Field(description="the name of the agent")
@@ -55,9 +55,7 @@ class AgentAction(DataModel):
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
-    path: str | None = Field(
-        description="path of file"
-    )
+    path: str | None = Field(description="path of file")
 
     def to_natural_language(self) -> str:
         match self.action_type:
@@ -75,7 +73,8 @@ class AgentAction(DataModel):
                 return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
-            
+
+
 @NodeFactory.register("openhands")
 class OpenHands(Node[DataModel, Text]):
     def __init__(
@@ -87,7 +86,7 @@ class OpenHands(Node[DataModel, Text]):
         add_datetime: bool = False,
     ):
         input_channel_types: list[tuple[str, type[DataModel]]] = []
-        
+
         for channel, channel_type_string in record_channel_types.items():
             input_channel_types.append(
                 (channel, DataModelFactory.registry[channel_type_string])
@@ -113,7 +112,6 @@ class OpenHands(Node[DataModel, Text]):
         self.write_queue: asyncio.Queue[DataEntry[DataModel]] = asyncio.Queue()
         self.write_task: asyncio.Task[None] | None = None
         self.runtime: Optional[Runtime] = None
-
 
     async def init_runtime(self) -> None:
         config = AppConfig(
@@ -155,9 +153,7 @@ class OpenHands(Node[DataModel, Text]):
             logger.info("BEGIN Runtime Initialization Fn")
             logger.info("-" * 30)
         return
-    
-    
-    
+
     async def __aenter__(self) -> Self:
         self.task = asyncio.create_task(self.init_runtime())
         self.aioContextManager = open(self.jsonl_file_path, "w")
@@ -184,7 +180,9 @@ class OpenHands(Node[DataModel, Text]):
             elif observation.data.action_type == "run":
                 action = CmdRunAction(command=observation.data.argument)
             elif observation.data.action_type == "write":
-                action = FileWriteAction(path=observation.data.path, content=observation.data.argument)
+                action = FileWriteAction(
+                    path=observation.data.path, content=observation.data.argument
+                )
             elif observation.data.action_type == "read":
                 action = FileWriteAction(path=observation.data.path)
             action.timeout = 600
@@ -193,17 +191,17 @@ class OpenHands(Node[DataModel, Text]):
             logger.info(obs, extra={"msg_type": "OBSERVATION"})
             # if isinstance(obs, BrowserOutputObservation):
             #     obs = obs.get_agent_obs_text()
-            #     print("obs: ", obs)   
+            #     print("obs: ", obs)
             return Text(text=str(obs))
         return None
-    
+
     async def send(self, action: Text) -> None:
         for output_channel, output_channel_type in self.output_channel_types.items():
             await self.r.publish(
                 output_channel,
                 Message[output_channel_type](data=action).model_dump_json(),  # type: ignore[valid-type]
             )
-            
+
     async def write_to_file(self) -> None:
         while self.json_file:
             logger.info("Entering loop")

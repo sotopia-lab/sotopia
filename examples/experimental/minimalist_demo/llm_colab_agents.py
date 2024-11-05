@@ -29,7 +29,7 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
-from typing import Literal, Optional
+from typing import Optional
 
 
 @DataModelFactory.register("agent_action")
@@ -41,9 +41,7 @@ class AgentAction(DataModel):
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
-    path: Optional[str] = Field(
-        description="path of file"
-    )
+    path: Optional[str] = Field(description="path of file")
 
     def to_natural_language(self) -> str:
         match self.action_type:
@@ -72,7 +70,8 @@ class AgentAction(DataModel):
 def _format_message_history(message_history: list[tuple[str, str]]) -> str:
     ## TODO: akhatua Fix the mapping of action to be gramatically correct
     return "\n".join(
-        (f"{speaker} {action} {message}") for speaker, action, message in message_history
+        (f"{speaker} {action} {message}")
+        for speaker, action, message in message_history
     )
 
 
@@ -125,7 +124,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
 
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
         print("entered aact: ", message)
-        
+
         match message:
             case Text(text=text):
                 self.message_history.append((self.name, "observation data", text))
@@ -169,7 +168,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             * `command` - the command to run
 
                         [8] `finish` - if ALL of your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the finish action to stop working.
-                        
+
                         You can use the `speak` action to engage with the other agents. Again, you must reply with JSON, and only with JSON.""",
                         input_values={
                             "message_history": _format_message_history(
@@ -181,85 +180,97 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         temperature=0.7,
                         output_parser=StrOutputParser(),
                     )
-                    agent_action = agent_action.replace('```', '').replace('json', '').strip('"').strip()
-                    
+                    agent_action = (
+                        agent_action.replace("```", "")
+                        .replace("json", "")
+                        .strip('"')
+                        .strip()
+                    )
+
                     try:
                         data = json.loads(agent_action)
-                        action = data['action']
+                        action = data["action"]
                         print(data)
 
                         # Handle different cases based on the action
                         if action == "thought":
-                            content = data['args']['content']
+                            content = data["args"]["content"]
                             # print(f"Action: {action}")
                             # print(f"Content: {content}")
-                            
+
                             self.message_history.append((self.name, action, content))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type="thought",
-                                argument=content, path=""
+                                argument=content,
+                                path="",
                             )
-                            
+
                         elif action == "speak":
-                            content = data['args']['content']
+                            content = data["args"]["content"]
                             # print(f"Action: {action}")
                             # print(f"Content: {content}")
-                            
+
                             self.message_history.append((self.name, action, content))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type="speak",
-                                argument=content, path=""
+                                argument=content,
+                                path="",
                             )
-                            
+
                         elif action == "browse":
-                            url = data['args']['url']
+                            url = data["args"]["url"]
 
                             self.message_history.append((self.name, action, url))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
-                                argument=url, path=""
+                                argument=url,
+                                path="",
                             )
-                            
+
                         elif action == "run":
-                            command = data['args']['command']
+                            command = data["args"]["command"]
 
                             self.message_history.append((self.name, action, command))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
-                                argument=command, path=""
+                                argument=command,
+                                path="",
                             )
-                            
+
                         elif action == "write":
-                            path = data['args']['path']
-                            content = data['args']['content']
+                            path = data["args"]["path"]
+                            content = data["args"]["content"]
 
                             self.message_history.append((self.name, action, content))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
                                 argument=content,
-                                path=path
+                                path=path,
                             )
-                            
+
                         elif action == "read":
-                            path = data['args']['path']
+                            path = data["args"]["path"]
 
                             self.message_history.append((self.name, action, path))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
                                 argument="Nan",
-                                path=path
+                                path=path,
                             )
-                            
+
                         elif action == "none":
                             # print("Agent did nothing")
                             return AgentAction(
-                                agent_name=self.name, action_type="none", argument="", path = ""
+                                agent_name=self.name,
+                                action_type="none",
+                                argument="",
+                                path="",
                             )
                         else:
                             print(f"Unknown action: {action}")
