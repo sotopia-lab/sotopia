@@ -123,8 +123,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             )
 
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
-        
-        
         print("entered aact: ", message)
 
         match message:
@@ -261,7 +259,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             * `command` - the command to run
 
                         [8] `finish` - if ALL of your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the finish action to stop working.
-                        
+
                         You can use the `speak` action to engage with the other agents. Again, you must reply with JSON, and only with JSON.""",
                         input_values={
                             "message_history": _format_message_history(
@@ -282,7 +280,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
 
                     try:
                         data = json.loads(agent_action)
-                        action = data['action']
+                        action = data["action"]
                         print(data)
 
                         # Handle different cases based on the action
@@ -290,7 +288,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             content = data["args"]["content"]
                             # print(f"Action: {action}")
                             # print(f"Content: {content}")
-                            
+
                             self.message_history.append((self.name, action, content))
                             return AgentAction(
                                 agent_name=self.name,
@@ -322,7 +320,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 argument=url,
                                 path="",
                             )
-                            
+
                         elif action == "run":
                             command = data["args"]["command"]
 
@@ -367,7 +365,13 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             )
                         else:
                             print(f"Unknown action: {action}")
-                            self.message_history.append((self.name, action, """Unknown action. Try {'action': 'browse_action', 'args': {'command': "fill('71', 'Jack')"}"""))
+                            self.message_history.append(
+                                (
+                                    self.name,
+                                    action,
+                                    """Unknown action. Try {'action': 'browse_action', 'args': {'command': "fill('71', 'Jack')"}""",
+                                )
+                            )
                     except json.JSONDecodeError as e:
                         print(f"Error decoding JSON: {e}")
                 else:

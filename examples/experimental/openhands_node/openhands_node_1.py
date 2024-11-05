@@ -7,8 +7,12 @@ from openhands.core.config import (
 from datetime import datetime
 from openhands.core.logger import openhands_logger as logger
 from openhands.core.main import create_runtime
-from openhands.events.action import BrowseURLAction, FileReadAction, FileWriteAction, CmdRunAction, BrowseInteractiveAction
-from openhands.events.observation import BrowserOutputObservation
+from openhands.events.action import (
+    BrowseURLAction,
+    FileWriteAction,
+    CmdRunAction,
+    BrowseInteractiveAction,
+)
 
 from openhands.utils.async_utils import call_async_from_sync
 from openhands.runtime.base import Runtime
@@ -177,7 +181,9 @@ class OpenHands(Node[DataModel, Text]):
             if observation.data.action_type == "browse":
                 action = BrowseURLAction(url=observation.data.argument)
             elif observation.data.action_type == "browse_action":
-                action = BrowseInteractiveAction(browser_actions=observation.data.argument)
+                action = BrowseInteractiveAction(
+                    browser_actions=observation.data.argument
+                )
             elif observation.data.action_type == "run":
                 action = CmdRunAction(command=observation.data.argument)
             elif observation.data.action_type == "write":
