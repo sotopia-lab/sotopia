@@ -99,7 +99,7 @@ returns:
 
 ### Sending Data to the API Server
 
-#### POST /post/agents/
+w#### POST /post/agents/
 
 Send agent profile to the API server.
 Request Body:
@@ -111,6 +111,27 @@ returns:
 #### POST /post/scenarios/
 
 Send scenario profile to the API server.
+Request Body:
+EnvironmentProfile
+
+returns:
+- scenario_id: str
+
+### Updating Data in the API Server
+
+#### PUT /put/agents/{agent_id}
+
+Update agent profile in the API server.
+Request Body:
+AgentProfile
+
+returns:
+- agent_id: str
+
+
+#### PUT /put/scenarios/{scenario_id}
+
+Update scenario profile in the API server.
 Request Body:
 EnvironmentProfile
 
