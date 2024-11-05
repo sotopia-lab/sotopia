@@ -6,54 +6,54 @@ node_name = "Jack"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 6
+query_interval = 13
 output_channel = "Jack:Jane"
-input_text_channels = ["Jane:Jack"]
-input_env_channel = "Scene:Jack"
+input_text_channels = []
+input_env_channels = ["Scene:Jack", "Runtime:Agent"]
 input_tick_channel = "tick/secs/1"
-goal = "Your goal is to convince Jane that Donald Trump is the president of the United States using verified sources from the web."
+goal = "Your goal is to find multiple web sources (try wikipedia first) and write an article title diyi_yang.txt in about 500 words with sources."
 model_name = "gpt-4o-mini"
 agent_name = "Jack"
 
-[[nodes]]
-node_name = "Jane"
-node_class = "llm_agent"
+# [[nodes]]
+# node_name = "Jane"
+# node_class = "llm_agent"
 
-[nodes.node_args]
-query_interval = 7
-output_channel = "Jane:Jack"
-input_text_channels = ["Jack:Jane"]
-input_env_channel = "Scene:Jane"
-input_tick_channel = "tick/secs/1"
-goal = "Your goal is to convince Jack that Donald Trump is not the president of the United States using verified sources from the web."
-model_name = "gpt-4o-mini"
-agent_name = "Jane"
+# [nodes.node_args]
+# query_interval = 3
+# output_channel = "Jane:Jack"
+# input_text_channels = ["Jack:Jane"]
+# input_env_channel = "Scene:Jane"
+# input_tick_channel = "tick/secs/1"
+# goal = "Your goal is to convince Jack that Donald Trump is not the president of the United States using verified sources from the web."
+# model_name = "gpt-4o-mini"
+# agent_name = "Jane"
 
-[[nodes]]
-node_name = "record"
-node_class = "record"
+# [[nodes]]
+# node_name = "record"
+# node_class = "record"
 
-[nodes.node_args]
-jsonl_file_path = "log.jsonl"
+# [nodes.node_args]
+# jsonl_file_path = "log.jsonl"
 
-[nodes.node_args.record_channel_types]
-"Jack:Jane" = "agent_action"
-"Jane:Jack" = "agent_action"
+# [nodes.node_args.record_channel_types]
+# "Jack:Jane" = "agent_action"
+# "Jane:Jack" = "agent_action"
 
 [[nodes]]
 node_name = "tick"
 node_class = "tick"
 
-[[nodes]]
-node_name = "JaneScene"
-node_class = "scenario_context"
+# [[nodes]]
+# node_name = "JaneScene"
+# node_class = "scenario_context"
 
-[nodes.node_args]
-input_tick_channel = "tick/secs/1"
-output_channels = ["Scene:Jane"]
-env_scenario = """
-You are Jane, an intern on a team in a large software company. You are having a fact-checking debate with Jack, a senior engineer on the team. The topic is whether Donald Trump is currently the president of the United States. Your goal is to gather information from reliable sources to argue that Donald Trump is not the president.
-"""
+# [nodes.node_args]
+# input_tick_channel = "tick/secs/1"
+# output_channels = ["Scene:Jane"]
+# env_scenario = """
+# You are Jane, an intern on a team in a large software company. You are having a fact-checking debate with Jack, a senior engineer on the team. The topic is whether Donald Trump is currently the president of the United States. Your goal is to gather information from reliable sources to argue that Donald Trump is not the president.
+# """
 
 [[nodes]]
 node_name = "JackScene"
@@ -63,18 +63,18 @@ node_class = "scenario_context"
 input_tick_channel = "tick/secs/1"
 output_channels = ["Scene:Jack"]
 env_scenario = """
-You are Jack, a senior engineer in a large software company. You are having a fact-checking debate with Jane, an intern on your team. The topic is whether Donald Trump is currently the president of the United States. Your goal is to gather information from reliable sources to argue that Donald Trump is the president.
+You are Jack. You're working on a article about Diyi Yang.
 """
 
 
-[[nodes]]
-node_name = "chat_print"
-node_class = "chat_print"
+# [[nodes]]
+# node_name = "chat_print"
+# node_class = "chat_print"
 
-[nodes.node_args.print_channel_types]
-# "tick/secs/1" = "tick"
-"Jane:Jack" = "agent_action"
-"Jack:Jane" = "agent_action"
+# [nodes.node_args.print_channel_types]
+# # "tick/secs/1" = "tick"
+# # "Jane:Jack" = "agent_action"
+# "Jack:Jane" = "agent_action"
 
 # [[nodes]]
 # node_name = "print"

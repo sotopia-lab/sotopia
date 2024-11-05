@@ -98,9 +98,10 @@ class OpenHandsNode(Node[Text, Text]):
             logger.info("-" * 30)
             logger.info("BEGIN Runtime Initialization Fn")
             logger.info("-" * 30)
+        return
 
     async def __aenter__(self) -> Self:
-        self.task = asyncio.create_task(self.init_runtime())
+        # self.task = asyncio.create_task(self.init_runtime())
         self.task_scheduler = asyncio.create_task(self._task_scheduler())
         logger.info("Started runtime")
         return await super().__aenter__()
@@ -115,6 +116,7 @@ class OpenHandsNode(Node[Text, Text]):
         return await super().__aexit__(exc_type, exc_value, traceback)
 
     async def aact(self, observation: Text) -> Text | None:
+        logger.info("Entering aact")
         if self.runtime:
             logger.info("Running aact")
             action = BrowseURLAction(url=observation.text)
@@ -147,8 +149,9 @@ class OpenHandsNode(Node[Text, Text]):
 
     async def _task_scheduler(self) -> None:
         logger.info("_task_scheduler")
+        logger.info("self.shutdown_event: ", self.shutdown_event)
 
-        while not self.shutdown_event.is_set():
+        while True:
             observation = await self.observation_queue.get()
             logger.info("observation: ", observation)
             action_or_none = await self.aact(observation)
