@@ -196,9 +196,6 @@ class OpenHands(Node[DataModel, Text]):
             logger.info(action, extra={"msg_type": "ACTION"})
             obs = self.runtime.run_action(action)
             logger.info(obs, extra={"msg_type": "OBSERVATION"})
-            # if isinstance(obs, BrowserOutputObservation):
-            #     obs = obs.get_agent_obs_text()
-            #     print("obs: ", obs)
             return Text(text=str(obs))
         return None
 
