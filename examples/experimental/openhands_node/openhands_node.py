@@ -3,12 +3,8 @@ import logging
 import time
 import os
 import sys
-from datetime import datetime
 from typing import Any, AsyncIterator, Optional, Literal
 
-from aiofiles import open
-from aiofiles.base import AiofilesContextManager
-from aiofiles.threadpool.text import AsyncTextIOWrapper
 from rich.logging import RichHandler
 
 from pydantic import Field
@@ -46,17 +42,33 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
-ActionType = Literal[ "none", "speak", "non-verbal communication", "action", "leave", "thought", "browse", "browse_action",  "read", "write", "run"]
+ActionType = Literal[
+    "none",
+    "speak",
+    "non-verbal communication",
+    "action",
+    "leave",
+    "thought",
+    "browse",
+    "browse_action",
+    "read",
+    "write",
+    "run",
+]
+
 
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
     """
     Represents an action performed by an agent, including its type, content, and optional file path.
     """
+
     agent_name: str = Field(description="The name of the agent.")
     action_type: ActionType = Field(description="The type of action to perform.")
     argument: str = Field(description="The content of the action.")
-    path: Optional[str] = Field(default=None, description="Path of the file, if applicable.")
+    path: Optional[str] = Field(
+        default=None, description="Path of the file, if applicable."
+    )
 
     def to_natural_language(self) -> str:
         """
@@ -72,14 +84,14 @@ class AgentAction(DataModel):
             "browse": f'browsed: "{self.argument}"',
             "non-verbal communication": f"[{self.action_type}] {self.argument}",
             "action": f"[{self.action_type}] {self.argument}",
-            "leave": "left the conversation"
+            "leave": "left the conversation",
         }
-        
+
         description = action_descriptions.get(self.action_type)
         if description is None:
             logger.warning(f"Unknown action type: {self.action_type}")
             return "performed an unknown action"
-        
+
         return description
 
 
@@ -92,7 +104,9 @@ class OpenHands(Node[DataModel, Text]):
         redis_url: str,
     ):
         super().__init__(
-            input_channel_types=[(input_channel, AgentAction) for input_channel in input_channels],
+            input_channel_types=[
+                (input_channel, AgentAction) for input_channel in input_channels
+            ],
             output_channel_types=[
                 (output_channel, Text) for output_channel in output_channels
             ],
@@ -110,7 +124,9 @@ class OpenHands(Node[DataModel, Text]):
         modal_api_token_id = os.environ.get("MODAL_API_TOKEN_ID", "")
         modal_api_token_secret = os.environ.get("MODAL_API_TOKEN_SECRET", "")
         allhands_api_key = os.environ.get("ALLHANDS_API_KEY", None)
-        sandbox_remote_runtime_api_url = os.environ.get("SANDBOX_REMOTE_RUNTIME_API_URL", "")
+        sandbox_remote_runtime_api_url = os.environ.get(
+            "SANDBOX_REMOTE_RUNTIME_API_URL", ""
+        )
 
         if not modal_api_token_id or not modal_api_token_secret:
             logger.warning("Modal API tokens are not set. Check environment variables.")
@@ -184,7 +200,10 @@ class OpenHands(Node[DataModel, Text]):
             action.timeout = 45
             logger.info(f"Executing action: {action}", extra={"msg_type": "ACTION"})
             obs = self.runtime.run_action(action)
-            logger.info(f"Received observation: {str(obs).splitlines()[:2]}", extra={"msg_type": "OBSERVATION"})
+            logger.info(
+                f"Received observation: {str(obs).splitlines()[:2]}",
+                extra={"msg_type": "OBSERVATION"},
+            )
             return Text(text=str(obs))
         except Exception as e:
             logger.error(f"Error executing action: {e}")
@@ -225,12 +244,15 @@ class OpenHands(Node[DataModel, Text]):
             action (Text): The action to be sent.
         """
         try:
-            for output_channel, output_channel_type in self.output_channel_types.items():
+            for (
+                output_channel,
+                output_channel_type,
+            ) in self.output_channel_types.items():
                 message = Message[output_channel_type](data=action).model_dump_json()
                 await self.r.publish(output_channel, message)  # type: ignore[valid-type]
         except Exception as e:
             logger.error(f"Error sending action: {e}")
-            
+
     async def run_action(self) -> None:
         """
         Continuously processes actions from the queue.
@@ -244,7 +266,7 @@ class OpenHands(Node[DataModel, Text]):
                 self.queue.task_done()
             except Exception as e:
                 logger.error(f"Error processing action: {e}")
-            
+
     async def event_handler(
         self, input_channel: str, input_message: Message[DataModel]
     ) -> AsyncIterator[tuple[str, Message[Zero]]]:
