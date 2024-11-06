@@ -124,7 +124,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
 
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
         print("entered aact: ", message)
-        
+
         match message:
             case Text(text=text):
                 self.message_history.append((self.name, "observation data", text))
@@ -331,7 +331,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 argument=command,
                                 path="",
                             )
-                            
+
                         elif action == "run":
                             command = data["args"]["command"]
 
