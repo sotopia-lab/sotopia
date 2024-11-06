@@ -1,31 +1,43 @@
 import asyncio
-from openhands.core.config import (
-    AgentConfig,
-    AppConfig,
-    SandboxConfig,
-)
-from openhands.core.logger import openhands_logger as logger
-from openhands.core.main import create_runtime
-from openhands.events.action import BrowseURLAction
-
-from openhands.utils.async_utils import call_async_from_sync
-from openhands.runtime.base import Runtime
-from typing import Any, AsyncIterator
-from aact import Message, NodeFactory, Node
-from aact.messages import Text
-
-
 import logging
-from rich.logging import RichHandler
+import time
 import os
 import sys
-from typing import Optional
+from datetime import datetime
+from typing import Any, AsyncIterator, Optional, Literal
+
+from aiofiles import open
+from aiofiles.base import AiofilesContextManager
+from aiofiles.threadpool.text import AsyncTextIOWrapper
+from rich.logging import RichHandler
+
+from pydantic import Field
+
+from aact import Message, NodeFactory, Node
+from aact.messages import Text, DataModel, Zero
+from aact.messages.commons import DataEntry
+from aact.messages.registry import DataModelFactory
+
+from openhands.core.config import AgentConfig, AppConfig, SandboxConfig
+from openhands.core.logger import openhands_logger as logger
+from openhands.core.main import create_runtime
+from openhands.events.action import (
+    BrowseURLAction,
+    CmdRunAction,
+    FileWriteAction,
+    BrowseInteractiveAction,
+)
+from openhands.runtime.base import Runtime
+from openhands.utils.async_utils import call_async_from_sync
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
+BASE_CONTAINER_IMAGE = "docker.all-hands.dev/all-hands-ai/runtime:0.11-nikolaik"
+
+# Configuration for logging
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 logging.basicConfig(
     level=logging.WARNING,
@@ -34,143 +46,226 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
-base_container_image = "docker.all-hands.dev/all-hands-ai/runtime:0.11-nikolaik"
+ActionType = Literal[ "none", "speak", "non-verbal communication", "action", "leave", "thought", "browse", "browse_action",  "read", "write", "run"]
+
+@DataModelFactory.register("agent_action")
+class AgentAction(DataModel):
+    """
+    Represents an action performed by an agent, including its type, content, and optional file path.
+    """
+    agent_name: str = Field(description="The name of the agent.")
+    action_type: ActionType = Field(description="The type of action to perform.")
+    argument: str = Field(description="The content of the action.")
+    path: Optional[str] = Field(default=None, description="Path of the file, if applicable.")
+
+    def to_natural_language(self) -> str:
+        """
+        Converts the action to a natural language description.
+
+        Returns:
+            str: A natural language description of the action.
+        """
+        action_descriptions = {
+            "none": "did nothing",
+            "speak": f'said: "{self.argument}"',
+            "thought": f'thought: "{self.argument}"',
+            "browse": f'browsed: "{self.argument}"',
+            "non-verbal communication": f"[{self.action_type}] {self.argument}",
+            "action": f"[{self.action_type}] {self.argument}",
+            "leave": "left the conversation"
+        }
+        
+        description = action_descriptions.get(self.action_type)
+        if description is None:
+            logger.warning(f"Unknown action type: {self.action_type}")
+            return "performed an unknown action"
+        
+        return description
 
 
-@NodeFactory.register("openhands_node")
-class OpenHandsNode(Node[Text, Text]):
+@NodeFactory.register("openhands")
+class OpenHands(Node[DataModel, Text]):
     def __init__(
         self,
         input_channels: list[str],
         output_channels: list[str],
-        redis_url: str = "redis://localhost:6379/0",
+        redis_url: str,
     ):
         super().__init__(
-            input_channel_types=[
-                (input_channel, Text) for input_channel in input_channels
-            ],
+            input_channel_types=[(input_channel, AgentAction) for input_channel in input_channels],
             output_channel_types=[
                 (output_channel, Text) for output_channel in output_channels
             ],
             redis_url=redis_url,
         )
-        self.observation_queue: asyncio.Queue[Text] = asyncio.Queue()
+        self.queue: asyncio.Queue[DataEntry[DataModel]] = asyncio.Queue()
+        self.task: asyncio.Task[None] | None = None
         self.runtime: Optional[Runtime] = None
-        self.task_scheduler: asyncio.Task[None] | None = None
-        self.shutdown_event: asyncio.Event = asyncio.Event()
 
     async def init_runtime(self) -> None:
+        """
+        Initializes the runtime environment with the specified configuration.
+        """
+        start_time = time.time()
+        modal_api_token_id = os.environ.get("MODAL_API_TOKEN_ID", "")
+        modal_api_token_secret = os.environ.get("MODAL_API_TOKEN_SECRET", "")
+        allhands_api_key = os.environ.get("ALLHANDS_API_KEY", None)
+        sandbox_remote_runtime_api_url = os.environ.get("SANDBOX_REMOTE_RUNTIME_API_URL", "")
+
+        if not modal_api_token_id or not modal_api_token_secret:
+            logger.warning("Modal API tokens are not set. Check environment variables.")
+
         config = AppConfig(
             default_agent="CodeActAgent",
             run_as_openhands=False,
             max_iterations=3,
             runtime="modal",
-            modal_api_token_id=os.environ.get("MODAL_API_TOKEN_ID", ""),
-            modal_api_token_secret=os.environ.get("MODAL_API_TOKEN_SECRET", ""),
+            modal_api_token_id=modal_api_token_id,
+            modal_api_token_secret=modal_api_token_secret,
             sandbox=SandboxConfig(
-                base_container_image=base_container_image,
+                base_container_image=BASE_CONTAINER_IMAGE,
                 enable_auto_lint=True,
                 use_host_network=False,
-                # large enough timeout, since some testcases take very long to run
-                timeout=300,
-                # Add platform to the sandbox config to solve issue 4401
+                timeout=50,
                 platform="linux/amd64",
-                api_key=os.environ.get("ALLHANDS_API_KEY", None),
-                remote_runtime_api_url=os.environ.get(
-                    "SANDBOX_REMOTE_RUNTIME_API_URL", ""
-                ),
+                api_key=allhands_api_key,
+                remote_runtime_api_url=sandbox_remote_runtime_api_url,
                 keep_remote_runtime_alive=False,
             ),
-            # do not mount workspace
             workspace_base=None,
             workspace_mount_path=None,
         )
+
         agent_config = AgentConfig(
             codeact_enable_jupyter=True,
-            codeact_enable_browsing_delegate=True,
+            codeact_enable_browsing=True,
             codeact_enable_llm_editor=True,
         )
         config.set_agent_config(agent_config)
+
         self.runtime = create_runtime(config)
         if self.runtime:
             call_async_from_sync(self.runtime.connect)
-
-            logger.info("-" * 30)
-            logger.info("BEGIN Runtime Initialization Fn")
-            logger.info("-" * 30)
-        return
+            logger.info("-" * 20)
+            logger.info("RUNTIME CONNECTED")
+            logger.info("-" * 20)
+        else:
+            logger.error("Failed to initialize runtime.")
+        end_time = time.time()  # End timing
+        elapsed_time = end_time - start_time
+        logger.info(f"Runtime initialization took {elapsed_time:.2f} seconds.")
 
     async def __aenter__(self) -> Self:
-        # self.task = asyncio.create_task(self.init_runtime())
-        self.task_scheduler = asyncio.create_task(self._task_scheduler())
-        logger.info("Started runtime")
+        self.runtime_init_task = asyncio.create_task(self.init_runtime())
+        self.task = asyncio.create_task(self.run_action())
         return await super().__aenter__()
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         if self.runtime:
             self.runtime.close()
-        self.shutdown_event.set()
-        if self.task_scheduler is not None:
-            self.task_scheduler.cancel()
-        logger.info("Closed runtime")
         return await super().__aexit__(exc_type, exc_value, traceback)
 
-    async def aact(self, observation: Text) -> Text | None:
-        logger.info("Entering aact")
-        if self.runtime:
-            logger.info("Running aact")
-            action = BrowseURLAction(url=observation.text)
-            action.timeout = 600
-            logger.info(action, extra={"msg_type": "ACTION"})
-            obs = self.runtime.run_action(action)
-            logger.info(obs, extra={"msg_type": "OBSERVATION"})
-            return Text(text="testing")
-        return None
+    async def aact(self, action: AgentAction) -> Optional[Text]:
+        """
+        Executes an action based on the observation and returns the result as Text.
 
-    async def event_handler(
-        self, channel: str, message: Message[Text]
-    ) -> AsyncIterator[tuple[str, Message[Text]]]:
-        logger.info(channel)
-        logger.info(message)
-        if channel in self.input_channel_types:
-            await self.observation_queue.put(message.data)
+        Args:
+            observation (AgentAction): The action to be executed.
+
+        Returns:
+            Optional[Text]: The result of the action, or None if the runtime is not available.
+        """
+        if not self.runtime:
+            logger.warning("Runtime is not initialized.")
+            return None
+
+        try:
+            action = self._create_action(action)
+            action.timeout = 45
+            logger.info(f"Executing action: {action}", extra={"msg_type": "ACTION"})
+            obs = self.runtime.run_action(action)
+            logger.info(f"Received observation: {str(obs).splitlines()[:2]}", extra={"msg_type": "OBSERVATION"})
+            return Text(text=str(obs))
+        except Exception as e:
+            logger.error(f"Error executing action: {e}")
+            return None
+
+    def _create_action(self, observation: AgentAction) -> Any:
+        """
+        Creates an action based on the observation's action type.
+
+        Args:
+            observation (AgentAction): The observation containing the action type and arguments.
+
+        Returns:
+            Any: The created action.
+        """
+        action_type = observation.data.action_type
+        argument = observation.data.argument
+        path = observation.data.path
+
+        if action_type == "browse":
+            return BrowseURLAction(url=argument)
+        elif action_type == "browse_action":
+            return BrowseInteractiveAction(browser_actions=argument)
+        elif action_type == "run":
+            return CmdRunAction(command=argument)
+        elif action_type == "write":
+            return FileWriteAction(path=path, content=argument)
+        elif action_type == "read":
+            return FileWriteAction(path=path)
         else:
-            raise ValueError(f"Invalid channel: {channel}")
-            yield "", self.output_type()
-        print("self.observation_queue: ", self.observation_queue)
+            raise ValueError(f"Unsupported action type: {action_type}")
 
     async def send(self, action: Text) -> None:
-        print("Sending action: ", action)
-        for output_channel, output_channel_type in self.output_channel_types.items():
-            await self.r.publish(
-                output_channel,
-                Message[output_channel_type](data=action).model_dump_json(),  # type: ignore[valid-type]
-            )
+        """
+        Sends the action to all output channels.
 
-    async def _task_scheduler(self) -> None:
-        logger.info("_task_scheduler")
-        logger.info("self.shutdown_event: ", self.shutdown_event)
+        Args:
+            action (Text): The action to be sent.
+        """
+        try:
+            for output_channel, output_channel_type in self.output_channel_types.items():
+                message = Message[output_channel_type](data=action).model_dump_json()
+                await self.r.publish(output_channel, message)  # type: ignore[valid-type]
+        except Exception as e:
+            logger.error(f"Error sending action: {e}")
+            
+    async def run_action(self) -> None:
+        """
+        Continuously processes actions from the queue.
+        """
+        while self.task:
+            try:
+                action = await self.queue.get()
+                obs = await self.aact(action)
+                if obs is not None:
+                    await self.send(obs)
+                self.queue.task_done()
+            except Exception as e:
+                logger.error(f"Error processing action: {e}")
+            
+    async def event_handler(
+        self, input_channel: str, input_message: Message[DataModel]
+    ) -> AsyncIterator[tuple[str, Message[Zero]]]:
+        """
+        Handles incoming events and adds them to the processing queue.
 
-        while True:
-            observation = await self.observation_queue.get()
-            logger.info("observation: ", observation)
-            action_or_none = await self.aact(observation)
-            logger.info("action_or_none: ", action_or_none)
-            if action_or_none is not None:
-                await self.send(action_or_none)
-            self.observation_queue.task_done()
+        Args:
+            input_channel (str): The channel from which the message was received.
+            input_message (Message[DataModel]): The incoming message.
 
-
-# base_container_image = "nikolaik/python-nodejs:python3.12-nodejs22"
-
-
-# while True:
-#     user_command = input("Enter a command to run (or 'exit' to quit): ")
-#     if user_command.lower() == 'exit':
-#         break
-
-#     action = CmdRunAction(command=user_command)
-#     action.timeout = 600
-#     logger.info(action, extra={'msg_type': 'ACTION'})
-#     obs = runtime.run_action(action)
-#     logger.info(obs, extra={'msg_type': 'OBSERVATION'})
+        Yields:
+            Tuple[str, Message[Zero]]: A tuple containing the channel and a zero message if the channel is not recognized.
+        """
+        try:
+            if input_channel in self.input_channel_types:
+                data_entry = DataEntry[self.input_channel_types[input_channel]](
+                    channel=input_channel, data=input_message.data
+                )
+                await self.queue.put(data_entry)
+            else:
+                logger.warning(f"Unrecognized input channel: {input_channel}")
+                yield input_channel, Message[Zero](data=Zero())
+        except Exception as e:
+            logger.error(f"Error handling event: {e}")

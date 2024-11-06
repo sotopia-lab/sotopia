@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.openhands_node.openhands_node_1"]
+extra_modules = ["examples.experimental.openhands_node.openhands_node"]
 
 
 [[nodes]]
@@ -7,8 +7,5 @@ node_name = "runtime"
 node_class = "openhands"
 
 [nodes.node_args]
-jsonl_file_path = 'text.jsonl'
 output_channels = ['Runtime:Agent']
-
-[nodes.node_args.record_channel_types]
-"Agent:Runtime" = 'agent_action'
+input_channels = ['Agent:Runtime']
