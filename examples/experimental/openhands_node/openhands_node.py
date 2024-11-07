@@ -4,7 +4,7 @@ import time
 import os
 import sys
 from enum import Enum
-from typing import Any, AsyncIterator, Optional, Literal
+from typing import Any, AsyncIterator, Optional
 
 from rich.logging import RichHandler
 
@@ -42,6 +42,7 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[RichHandler()],
 )
+
 
 class ActionType(Enum):
     NONE = "none"
