@@ -138,25 +138,23 @@ EnvironmentProfile
 returns:
 - scenario_id: str
 
-### Initiating a new simulation episode
+### Initiating a new non-streaming simulation episode
 
-Not sure what's the best way to do this.
-But maybe we would need a pydantic object to initiate a new episode
+#### POST /post/episodes/
 
-class SimulationEpisodeInitiation:
+```python
+class SimulationEpisodeInitiation(BaseModel):
     scenario_id: str
     agent_ids: list[str]
     episode_tag: str
     models: list[str]
-
-#### POST /post/episodes/
+```
 
 Send episode profile to the API server.
 Request Body:
 SimulationEpisodeInitiation
 
 returns:
-- episode_id: str
+- episode_id: str (This is the id of the episode that will be used to get the episode data, saved in the redis database)
 
-
-@ProKil: I think you mentioned that in the new design, message transactions are through the redis queue. So I think we should utilize there.
+### Initiating a new interactive streaming simulation episode (this operation will open a websocket connection)
