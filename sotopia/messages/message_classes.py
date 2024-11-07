@@ -5,9 +5,7 @@ from pydantic import BaseModel, Field
 
 from sotopia.utils import format_docstring
 
-ActionType = Literal[
-    "none", "speak", "non-verbal communication", "action", "leave", "thought", "browse"
-]
+ActionType = Literal["none", "speak", "non-verbal communication", "action", "leave"]
 
 
 class Message(BaseModel):
