@@ -3,6 +3,7 @@ import logging
 import time
 import os
 import sys
+from enum import Enum
 from typing import Any, AsyncIterator, Optional, Literal
 
 from rich.logging import RichHandler
@@ -42,19 +43,17 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
-ActionType = Literal[
-    "none",
-    "speak",
-    "non-verbal communication",
-    "action",
-    "leave",
-    "thought",
-    "browse",
-    "browse_action",
-    "read",
-    "write",
-    "run",
-]
+class ActionType(Enum):
+    NONE = "none"
+    SPEAK = "speak"
+    NON_VERBAL_COMMUNICATION = "non-verbal communication"
+    LEAVE = "leave"
+    THOUGHT = "thought"
+    BROWSE = "browse"
+    BROWSE_ACTION = "browse_action"
+    READ = "read"
+    WRITE = "write"
+    RUN = "run"
 
 
 @DataModelFactory.register("agent_action")
@@ -78,13 +77,12 @@ class AgentAction(DataModel):
             str: A natural language description of the action.
         """
         action_descriptions = {
-            "none": "did nothing",
-            "speak": f'said: "{self.argument}"',
-            "thought": f'thought: "{self.argument}"',
-            "browse": f'browsed: "{self.argument}"',
-            "non-verbal communication": f"[{self.action_type}] {self.argument}",
-            "action": f"[{self.action_type}] {self.argument}",
-            "leave": "left the conversation",
+            ActionType.NONE: "did nothing",
+            ActionType.SPEAK: f'said: "{self.argument}"',
+            ActionType.THOUGHT: f'thought: "{self.argument}"',
+            ActionType.BROWSE: f'browsed: "{self.argument}"',
+            ActionType.NON_VERBAL_COMMUNICATION: f"[{self.action_type}] {self.argument}",
+            ActionType.LEAVE: "left the conversation",
         }
 
         description = action_descriptions.get(self.action_type)
@@ -223,15 +221,15 @@ class OpenHands(Node[DataModel, Text]):
         argument = observation.data.argument
         path = observation.data.path
 
-        if action_type == "browse":
+        if action_type == ActionType.BROWSE:
             return BrowseURLAction(url=argument)
-        elif action_type == "browse_action":
+        elif action_type == ActionType.BROWSE_ACTION:
             return BrowseInteractiveAction(browser_actions=argument)
-        elif action_type == "run":
+        elif action_type == ActionType.RUN:
             return CmdRunAction(command=argument)
-        elif action_type == "write":
+        elif action_type == ActionType.WRITE:
             return FileWriteAction(path=path, content=argument)
-        elif action_type == "read":
+        elif action_type == ActionType.READ:
             return FileWriteAction(path=path)
         else:
             raise ValueError(f"Unsupported action type: {action_type}")
