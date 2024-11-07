@@ -1,7 +1,5 @@
-from typing import AsyncIterator
-from aact import Message, NodeFactory, Node
-from aact.messages import Text, Tick, DataModel, Zero
-from sotopia.agents.llm_agent import ainput
+from aact import Message, NodeFactory
+from aact.messages import Text, Tick
 from sotopia.experimental.agents import BaseAgent, AgentAction, ActionType
 from aact.nodes import PrintNode
 
@@ -15,9 +13,9 @@ import json
 import sys
 
 if sys.version_info >= (3, 11):
-    from typing import Self
+    pass
 else:
-    from typing_extensions import Self
+    pass
 
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 logging.basicConfig(
@@ -81,7 +79,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             (f"{speaker} {action} {message}")
             for speaker, action, message in message_history
         )
-        
+
     def get_action_template(selected_actions: list[ActionType]) -> str:
         """
         Returns the action template string with selected actions.
@@ -209,16 +207,21 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 * `content` - the content to write to the file""",
             ActionType.RUN: """`run` - runs a command on the command line in a Linux shell. Arguments:
                 * `command` - the command to run""",
-            ActionType.LEAVE: """`leave` - if your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the leave action to stop working."""
+            ActionType.LEAVE: """`leave` - if your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the leave action to stop working.""",
         }
 
         selected_action_descriptions = "\n\n".join(
-            f"[{i+1}] {action_descriptions[action]}" for i, action in enumerate(selected_actions) if action in action_descriptions
+            f"[{i+1}] {action_descriptions[action]}"
+            for i, action in enumerate(selected_actions)
+            if action in action_descriptions
         )
 
-        return base_template + selected_action_descriptions + """
+        return (
+            base_template
+            + selected_action_descriptions
+            + """
         You can use the `speak` action to engage with the other agents. Again, you must reply with JSON, and only with JSON."""
-
+        )
 
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
         match message:
@@ -230,7 +233,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             case Tick():
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
-                    template = self.get_action_template([action for action in ActionType])
+                    template = self.get_action_template(
+                        [action for action in ActionType]
+                    )
                     agent_action = await agenerate(
                         model_name=self.model_name,
                         template=template,
@@ -244,7 +249,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         temperature=0.7,
                         output_parser=StrOutputParser(),
                     )
-                    
+
                     agent_action = (
                         agent_action.replace("```", "")
                         .replace("json", "")
@@ -354,7 +359,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 )
             case _:
                 raise ValueError(f"Unexpected message type: {type(message)}")
-
 
 
 @NodeFactory.register("chat_print")

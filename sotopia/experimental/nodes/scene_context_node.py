@@ -10,6 +10,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
+
 @NodeFactory.register("scenario_context")
 class ScenarioContext(Node[DataModel, Text]):
     def __init__(

@@ -12,7 +12,7 @@ else:
 from typing import Any, AsyncIterator, TypeVar, Optional
 
 from aact import Message, Node
-from aact.messages import DataModel, DataModel, Message
+from aact.messages import DataModel, Message
 from aact.messages.registry import DataModelFactory
 
 T_agent_observation = TypeVar("T_agent_observation", bound=DataModel)
@@ -31,6 +31,7 @@ class ActionType(Enum):
     READ = "read"
     WRITE = "write"
     RUN = "run"
+
 
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):

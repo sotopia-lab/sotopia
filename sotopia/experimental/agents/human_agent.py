@@ -15,6 +15,7 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
+
 @NodeFactory.register("human_agent")
 class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
     def __init__(
@@ -84,7 +85,9 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 if self.count_ticks % self.query_interval == 0:
                     argument = await ainput("Argument: ")
                     return AgentAction(
-                        agent_name=self.name, action_type=ActionType.SPEAK, argument=argument
+                        agent_name=self.name,
+                        action_type=ActionType.SPEAK,
+                        argument=argument,
                     )
 
             case AgentAction(
@@ -97,4 +100,3 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 )
             case _:
                 raise ValueError(f"Unexpected message type: {type(message)}")
-
