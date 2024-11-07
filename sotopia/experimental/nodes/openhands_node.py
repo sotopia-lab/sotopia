@@ -3,17 +3,15 @@ import logging
 import time
 import os
 import sys
-from enum import Enum
 from typing import Any, AsyncIterator, Optional
 
 from rich.logging import RichHandler
 
-from pydantic import Field
-
 from aact import Message, NodeFactory, Node
 from aact.messages import Text, DataModel, Zero
 from aact.messages.commons import DataEntry
-from aact.messages.registry import DataModelFactory
+
+from sotopia.experimental.agents import AgentAction, ActionType
 
 from openhands.core.config import AgentConfig, AppConfig, SandboxConfig
 from openhands.core.logger import openhands_logger as logger
@@ -42,56 +40,6 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[RichHandler()],
 )
-
-
-class ActionType(Enum):
-    NONE = "none"
-    SPEAK = "speak"
-    NON_VERBAL_COMMUNICATION = "non-verbal communication"
-    LEAVE = "leave"
-    THOUGHT = "thought"
-    BROWSE = "browse"
-    BROWSE_ACTION = "browse_action"
-    READ = "read"
-    WRITE = "write"
-    RUN = "run"
-
-
-@DataModelFactory.register("agent_action")
-class AgentAction(DataModel):
-    """
-    Represents an action performed by an agent, including its type, content, and optional file path.
-    """
-
-    agent_name: str = Field(description="The name of the agent.")
-    action_type: ActionType = Field(description="The type of action to perform.")
-    argument: str = Field(description="The content of the action.")
-    path: Optional[str] = Field(
-        default=None, description="Path of the file, if applicable."
-    )
-
-    def to_natural_language(self) -> str:
-        """
-        Converts the action to a natural language description.
-
-        Returns:
-            str: A natural language description of the action.
-        """
-        action_descriptions = {
-            ActionType.NONE: "did nothing",
-            ActionType.SPEAK: f'said: "{self.argument}"',
-            ActionType.THOUGHT: f'thought: "{self.argument}"',
-            ActionType.BROWSE: f'browsed: "{self.argument}"',
-            ActionType.NON_VERBAL_COMMUNICATION: f"[{self.action_type}] {self.argument}",
-            ActionType.LEAVE: "left the conversation",
-        }
-
-        description = action_descriptions.get(self.action_type)
-        if description is None:
-            logger.warning(f"Unknown action type: {self.action_type}")
-            return "performed an unknown action"
-
-        return description
 
 
 @NodeFactory.register("openhands")
