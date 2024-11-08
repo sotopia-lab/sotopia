@@ -158,3 +158,5 @@ returns:
 - episode_id: str (This is the id of the episode that will be used to get the episode data, saved in the redis database)
 
 ### Initiating a new interactive streaming simulation episode (this operation will open a websocket connection)
+
+We use the websocket connection to send the simulation step-by-step results to the UI.
