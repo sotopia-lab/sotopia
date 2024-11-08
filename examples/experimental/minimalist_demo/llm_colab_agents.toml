@@ -1,33 +1,34 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.minimalist_demo.llm_colab_agents"]
+extra_modules = ["sotopia.experimental.agents.llm_agent", "sotopia.experimental.nodes.scene_context_node"]
+
 
 [[nodes]]
 node_name = "Jack"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 13
+query_interval = 7
 output_channel = "Jack:Jane"
-input_text_channels = []
+input_text_channels = ["Jane:Jack"]
 input_env_channels = ["Scene:Jack", "Runtime:Agent"]
 input_tick_channel = "tick/secs/1"
-goal = "Your goal is to find multiple web sources (try wikipedia first) and write an article title diyi_yang.txt in about 500 words with sources."
-model_name = "gpt-4o-mini"
+goal = "Your goal is to effectively test Jane's technical ability and finally decide if she has passed the interview."
+model_name = "gpt-4o"
 agent_name = "Jack"
 
-# [[nodes]]
-# node_name = "Jane"
-# node_class = "llm_agent"
+[[nodes]]
+node_name = "Jane"
+node_class = "llm_agent"
 
-# [nodes.node_args]
-# query_interval = 3
-# output_channel = "Jane:Jack"
-# input_text_channels = ["Jack:Jane"]
-# input_env_channel = "Scene:Jane"
-# input_tick_channel = "tick/secs/1"
-# goal = "Your goal is to convince Jack that Donald Trump is not the president of the United States using verified sources from the web."
-# model_name = "gpt-4o-mini"
-# agent_name = "Jane"
+[nodes.node_args]
+query_interval = 5
+output_channel = "Jane:Jack"
+input_text_channels = ["Jack:Jane"]
+input_env_channels = ["Scene:Jane", "Runtime:Agent"]
+input_tick_channel = "tick/secs/1"
+goal = "Your goal is to do well in the interview and be confident."
+model_name = "gpt-4o-mini"
+agent_name = "Jane"
 
 # [[nodes]]
 # node_name = "record"
@@ -44,16 +45,20 @@ agent_name = "Jack"
 node_name = "tick"
 node_class = "tick"
 
-# [[nodes]]
-# node_name = "JaneScene"
-# node_class = "scenario_context"
+[[nodes]]
+node_name = "JaneScene"
+node_class = "scenario_context"
 
-# [nodes.node_args]
-# input_tick_channel = "tick/secs/1"
-# output_channels = ["Scene:Jane"]
-# env_scenario = """
-# You are Jane, an intern on a team in a large software company. You are having a fact-checking debate with Jack, a senior engineer on the team. The topic is whether Donald Trump is currently the president of the United States. Your goal is to gather information from reliable sources to argue that Donald Trump is not the president.
-# """
+[nodes.node_args]
+input_tick_channel = "tick/secs/1"
+output_channels = ["Scene:Jane"]
+env_scenario = """
+You are Jane. You are interviewing for a internship position at Citadel. You're a little nervous but also confident to do well as you have practiced a lot.
+Confidently answer any questions Jack asks and explain your thought process clearly.
+After Jack asks a question it is important you first clarify any doubts and then think clearly while explaining your thought process to Jack.
+Then wrote out the solution in /workspace and run and print out some test cases to confirm its working.
+You have to justify and explain your code to the interviewer.
+"""
 
 [[nodes]]
 node_name = "JackScene"
@@ -63,7 +68,9 @@ node_class = "scenario_context"
 input_tick_channel = "tick/secs/1"
 output_channels = ["Scene:Jack"]
 env_scenario = """
-You are Jack. You're working on a article about Diyi Yang.
+You are Jack. You are an interviewer for Citadel. You are interviewing a college senior for a Software Engineering Intern position. 
+Your job is to ask DSA questions and test Jane's technical ability. She needs to code the answer for the questinos and you need to verify them by reading the code and also running test cases.
+You should help out Jane if she is stuck but overall she should work independently.
 """
 
 

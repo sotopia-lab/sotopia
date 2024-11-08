@@ -1,6 +1,6 @@
 from aact import Message, NodeFactory
 from aact.messages import Text, Tick
-from sotopia.experimental.agents import BaseAgent, AgentAction, ActionType
+from sotopia.experimental.agents.base_agent import BaseAgent, AgentAction, ActionType
 from aact.nodes import PrintNode
 
 from sotopia.generation_utils import agenerate
@@ -24,6 +24,16 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[RichHandler()],
 )
+
+from rich.console import Console
+from rich.json import JSON
+from rich.pretty import Pretty
+from rich.syntax import Syntax
+from rich.columns import Columns
+from rich.panel import Panel
+from rich.text import Text as RichText
+from rich.align import Align
+console = Console()
 
 
 @NodeFactory.register("llm_agent")
@@ -73,14 +83,14 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 Message[AgentAction](data=message).model_dump_json(),
             )
 
-    def _format_message_history(message_history: list[tuple[str, str]]) -> str:
+    def _format_message_history(self, message_history: list[tuple[str, str]]) -> str:
         ## TODO: akhatua Fix the mapping of action to be gramatically correct
         return "\n".join(
             (f"{speaker} {action} {message}")
             for speaker, action, message in message_history
         )
 
-    def get_action_template(selected_actions: list[ActionType]) -> str:
+    def get_action_template(self, selected_actions: list[ActionType]) -> str:
         """
         Returns the action template string with selected actions.
 
@@ -90,9 +100,8 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
         Returns:
             str: The action template with the selected actions.
         """
-        base_template = """Imagine that you are a work colleague of the other persons.
-        Here is the conversation between you and them.\n
-        You are {agent_name} in the conversation.\n
+        base_template = """ You are talking to another agent.
+        You are {agent_name}.\n
         {message_history}\nand you plan to {goal}.
         ## Action
         What is your next thought or action? Your response must be in JSON format.
@@ -220,7 +229,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             base_template
             + selected_action_descriptions
             + """
-        You can use the `speak` action to engage with the other agents. Again, you must reply with JSON, and only with JSON."""
+                You must prioritize actions that move you closer to your goal. Communicate briefly when necessary and focus on executing tasks effectively. Always consider the next actionable step to avoid unnecessary delays.
+                Again, you must reply with JSON, and only with JSON.
+            """
         )
 
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
@@ -233,22 +244,24 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             case Tick():
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
-                    template = self.get_action_template(
-                        [action for action in ActionType]
-                    )
-                    agent_action = await agenerate(
-                        model_name=self.model_name,
-                        template=template,
-                        input_values={
-                            "message_history": self._format_message_history(
-                                self.message_history
-                            ),
-                            "goal": self.goal,
-                            "agent_name": self.name,
-                        },
-                        temperature=0.7,
-                        output_parser=StrOutputParser(),
-                    )
+                    template = self.get_action_template([action for action in ActionType])
+
+                    try:
+                        agent_action = await agenerate(
+                            model_name=self.model_name,
+                            template=template,
+                            input_values={
+                                "message_history": self._format_message_history(self.message_history),
+                                "goal": self.goal,
+                                "agent_name": self.name,
+                            },
+                            temperature=0.7,
+                            output_parser=StrOutputParser(),
+                        )
+                    except Exception as e:
+                        print(f"Error during agent action generation: {e}")
+                        agent_action = None  # or some default value
+                        
 
                     agent_action = (
                         agent_action.replace("```", "")
@@ -256,11 +269,170 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         .strip('"')
                         .strip()
                     )
+                    
 
                     try:
                         data = json.loads(agent_action)
                         action = data["action"]
-                        print(data)
+
+
+                        def convert_to_sentence(data, agent_name):
+                            if isinstance(data, dict) and "action" in data:
+                                action = data['action']
+                                args = data.get('args', {})
+
+                                # Define color styles based on agent_name
+                                name_color_map = {
+                                    "Jack": ("green", "bold green"),
+                                    "Jane": ("blue", "bold blue"),
+                                    # Add more mappings as needed
+                                }
+                                panel_style, title_style = name_color_map.get(agent_name, ("white", "bold white"))
+
+                                # Determine alignment based on agent name
+                                alignment = "left" if agent_name == "Jack" else "right"
+
+                                if action == 'write' and 'content' in args:
+                                    path = args['path']
+                                    content = args['content']
+                                    syntax = determine_syntax(path, content)
+                                    combined_panel = Panel(
+                                        syntax,
+                                        title=f"{agent_name} writes to {path}",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(combined_panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                elif action == 'speak':
+                                    content = args.get('content', '')
+                                    panel_content = RichText(content, style="bold", justify="center")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} speaks",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                elif action == 'thought':
+                                    content = args.get('content', '')
+                                    panel_content = RichText(content, style="bold", justify="center")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} thinks",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                elif action == 'browse':
+                                    url = args.get('url', '')
+                                    panel_content = RichText(url, style="bold", justify="center")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} browses",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                elif action == 'browse_action':
+                                    command = args.get('command', '')
+                                    panel_content = RichText(command, style="bold", justify="center")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} executes browser command",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                elif action == 'run':
+                                    command = args.get('command', '')
+                                    panel_content = RichText(command, style="bold", justify="center")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} runs command",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                elif action == 'read':
+                                    path = args.get('path', '')
+                                    panel_content = RichText(f"Reading from {path}", style="bold", justify="center")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} reads",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                elif action == 'none':
+                                    panel_content = RichText("No action taken", style="bold", justify="center")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} does nothing",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+
+                                else:
+                                    panel_content = RichText(f"Action: {action}\n", style="bold", justify="center")
+                                    for key, value in args.items():
+                                        panel_content.append(f"{key.capitalize()}: {value}\n")
+                                    panel = Panel(
+                                        panel_content,
+                                        title=f"{agent_name} performs {action}",
+                                        expand=False,
+                                        border_style=panel_style,
+                                        title_align="center"
+                                    )
+                                    aligned_panel = Align(panel, align=alignment)
+                                    console.print(aligned_panel)
+                            else:
+                                console.print(Panel(
+                                    Text("Invalid data format", style="bold red", justify="center"),
+                                    title="Error",
+                                    expand=False,
+                                    border_style="red",
+                                    title_align="center"
+                                ))
+
+                        def determine_syntax(path, content):
+                            """Determine the appropriate syntax highlighting based on the file extension."""
+                            if path.endswith(".html"):
+                                return Syntax(content, "html", theme="monokai", line_numbers=True)
+                            elif path.endswith(".py"):
+                                return Syntax(content, "python", theme="monokai", line_numbers=True)
+                            elif path.endswith(".js"):
+                                return Syntax(content, "javascript", theme="monokai", line_numbers=True)
+                            elif path.endswith(".css"):
+                                return Syntax(content, "css", theme="monokai", line_numbers=True)
+                            else:
+                                return Syntax(content, "text", theme="monokai", line_numbers=True)
+
+
+                        convert_to_sentence(data, self.name)
 
                         # Handle different cases based on the action
                         if action == "thought":
@@ -381,20 +553,3 @@ class ChatPrint(PrintNode):
             await self.output.write(output + "\n")
             await self.output.flush()
             self.write_queue.task_done()
-
-
-# ###################################################################
-# import os
-# sys.path.append(os.path.abspath("/Users/arpan/Desktop/sotopia/examples/experimental/minimalist_demo/openhands"))
-# print(sys.path)
-
-
-# openhands_path = "/Users/arpan/Desktop/sotopia/examples/experimental/minimalist_demo/openhands"
-# print("Contents of openhands directory:", os.listdir(openhands_path))
-# from openhands.core.config import (
-#     AgentConfig,
-#     AppConfig,
-#     SandboxConfig,
-#     get_llm_config_arg,
-#     get_parser,
-# )
