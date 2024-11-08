@@ -68,7 +68,7 @@ node_class = "scenario_context"
 input_tick_channel = "tick/secs/1"
 output_channels = ["Scene:Jack"]
 env_scenario = """
-You are Jack. You are an interviewer for Citadel. You are interviewing a college senior for a Software Engineering Intern position. 
+You are Jack. You are an interviewer for Citadel. You are interviewing a college senior for a Software Engineering Intern position.
 Your job is to ask DSA questions and test Jane's technical ability. She needs to code the answer for the questinos and you need to verify them by reading the code and also running test cases.
 You should help out Jane if she is stuck but overall she should work independently.
 """

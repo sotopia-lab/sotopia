@@ -26,13 +26,11 @@ logging.basicConfig(
 )
 
 from rich.console import Console
-from rich.json import JSON
-from rich.pretty import Pretty
 from rich.syntax import Syntax
-from rich.columns import Columns
 from rich.panel import Panel
 from rich.text import Text as RichText
 from rich.align import Align
+
 console = Console()
 
 
@@ -244,14 +242,18 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             case Tick():
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
-                    template = self.get_action_template([action for action in ActionType])
+                    template = self.get_action_template(
+                        [action for action in ActionType]
+                    )
 
                     try:
                         agent_action = await agenerate(
                             model_name=self.model_name,
                             template=template,
                             input_values={
-                                "message_history": self._format_message_history(self.message_history),
+                                "message_history": self._format_message_history(
+                                    self.message_history
+                                ),
                                 "goal": self.goal,
                                 "agent_name": self.name,
                             },
@@ -261,7 +263,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                     except Exception as e:
                         print(f"Error during agent action generation: {e}")
                         agent_action = None  # or some default value
-                        
 
                     agent_action = (
                         agent_action.replace("```", "")
@@ -269,17 +270,15 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         .strip('"')
                         .strip()
                     )
-                    
 
                     try:
                         data = json.loads(agent_action)
                         action = data["action"]
 
-
                         def convert_to_sentence(data, agent_name):
                             if isinstance(data, dict) and "action" in data:
-                                action = data['action']
-                                args = data.get('args', {})
+                                action = data["action"]
+                                args = data.get("args", {})
 
                                 # Define color styles based on agent_name
                                 name_color_map = {
@@ -287,150 +286,199 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                     "Jane": ("blue", "bold blue"),
                                     # Add more mappings as needed
                                 }
-                                panel_style, title_style = name_color_map.get(agent_name, ("white", "bold white"))
+                                panel_style, title_style = name_color_map.get(
+                                    agent_name, ("white", "bold white")
+                                )
 
                                 # Determine alignment based on agent name
                                 alignment = "left" if agent_name == "Jack" else "right"
 
-                                if action == 'write' and 'content' in args:
-                                    path = args['path']
-                                    content = args['content']
+                                if action == "write" and "content" in args:
+                                    path = args["path"]
+                                    content = args["content"]
                                     syntax = determine_syntax(path, content)
                                     combined_panel = Panel(
                                         syntax,
                                         title=f"{agent_name} writes to {path}",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
-                                    aligned_panel = Align(combined_panel, align=alignment)
+                                    aligned_panel = Align(
+                                        combined_panel, align=alignment
+                                    )
                                     console.print(aligned_panel)
 
-                                elif action == 'speak':
-                                    content = args.get('content', '')
-                                    panel_content = RichText(content, style="bold", justify="center")
+                                elif action == "speak":
+                                    content = args.get("content", "")
+                                    panel_content = RichText(
+                                        content, style="bold", justify="center"
+                                    )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} speaks",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
 
-                                elif action == 'thought':
-                                    content = args.get('content', '')
-                                    panel_content = RichText(content, style="bold", justify="center")
+                                elif action == "thought":
+                                    content = args.get("content", "")
+                                    panel_content = RichText(
+                                        content, style="bold", justify="center"
+                                    )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} thinks",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
 
-                                elif action == 'browse':
-                                    url = args.get('url', '')
-                                    panel_content = RichText(url, style="bold", justify="center")
+                                elif action == "browse":
+                                    url = args.get("url", "")
+                                    panel_content = RichText(
+                                        url, style="bold", justify="center"
+                                    )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} browses",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
 
-                                elif action == 'browse_action':
-                                    command = args.get('command', '')
-                                    panel_content = RichText(command, style="bold", justify="center")
+                                elif action == "browse_action":
+                                    command = args.get("command", "")
+                                    panel_content = RichText(
+                                        command, style="bold", justify="center"
+                                    )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} executes browser command",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
 
-                                elif action == 'run':
-                                    command = args.get('command', '')
-                                    panel_content = RichText(command, style="bold", justify="center")
+                                elif action == "run":
+                                    command = args.get("command", "")
+                                    panel_content = RichText(
+                                        command, style="bold", justify="center"
+                                    )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} runs command",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
 
-                                elif action == 'read':
-                                    path = args.get('path', '')
-                                    panel_content = RichText(f"Reading from {path}", style="bold", justify="center")
+                                elif action == "read":
+                                    path = args.get("path", "")
+                                    panel_content = RichText(
+                                        f"Reading from {path}",
+                                        style="bold",
+                                        justify="center",
+                                    )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} reads",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
 
-                                elif action == 'none':
-                                    panel_content = RichText("No action taken", style="bold", justify="center")
+                                elif action == "none":
+                                    panel_content = RichText(
+                                        "No action taken",
+                                        style="bold",
+                                        justify="center",
+                                    )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} does nothing",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
 
                                 else:
-                                    panel_content = RichText(f"Action: {action}\n", style="bold", justify="center")
+                                    panel_content = RichText(
+                                        f"Action: {action}\n",
+                                        style="bold",
+                                        justify="center",
+                                    )
                                     for key, value in args.items():
-                                        panel_content.append(f"{key.capitalize()}: {value}\n")
+                                        panel_content.append(
+                                            f"{key.capitalize()}: {value}\n"
+                                        )
                                     panel = Panel(
                                         panel_content,
                                         title=f"{agent_name} performs {action}",
                                         expand=False,
                                         border_style=panel_style,
-                                        title_align="center"
+                                        title_align="center",
                                     )
                                     aligned_panel = Align(panel, align=alignment)
                                     console.print(aligned_panel)
                             else:
-                                console.print(Panel(
-                                    Text("Invalid data format", style="bold red", justify="center"),
-                                    title="Error",
-                                    expand=False,
-                                    border_style="red",
-                                    title_align="center"
-                                ))
+                                console.print(
+                                    Panel(
+                                        Text(
+                                            "Invalid data format",
+                                            style="bold red",
+                                            justify="center",
+                                        ),
+                                        title="Error",
+                                        expand=False,
+                                        border_style="red",
+                                        title_align="center",
+                                    )
+                                )
 
                         def determine_syntax(path, content):
                             """Determine the appropriate syntax highlighting based on the file extension."""
                             if path.endswith(".html"):
-                                return Syntax(content, "html", theme="monokai", line_numbers=True)
+                                return Syntax(
+                                    content, "html", theme="monokai", line_numbers=True
+                                )
                             elif path.endswith(".py"):
-                                return Syntax(content, "python", theme="monokai", line_numbers=True)
+                                return Syntax(
+                                    content,
+                                    "python",
+                                    theme="monokai",
+                                    line_numbers=True,
+                                )
                             elif path.endswith(".js"):
-                                return Syntax(content, "javascript", theme="monokai", line_numbers=True)
+                                return Syntax(
+                                    content,
+                                    "javascript",
+                                    theme="monokai",
+                                    line_numbers=True,
+                                )
                             elif path.endswith(".css"):
-                                return Syntax(content, "css", theme="monokai", line_numbers=True)
+                                return Syntax(
+                                    content, "css", theme="monokai", line_numbers=True
+                                )
                             else:
-                                return Syntax(content, "text", theme="monokai", line_numbers=True)
-
+                                return Syntax(
+                                    content, "text", theme="monokai", line_numbers=True
+                                )
 
                         convert_to_sentence(data, self.name)
 
