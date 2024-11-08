@@ -1,4 +1,6 @@
 # Sotopia UI
+> [!CAUTION]
+> Work in progress: the API endpoints are being implemented. And will be released in the future major version.
 
 ## FastAPI Server
 
@@ -9,28 +11,19 @@ Here are some initial design of the API server:
 
 ### Getting Data from the API Server
 
-#### GET /get/scenarios/{scenario_id}
-
-Get scenarios by scenario_id.
-parameters:
-- scenario_id: str
-
-returns:
-- scenarios: EnvironmentProfile
-
-
-#### GET /get/scenarios
+#### GET /scenarios
 
 Get all scenarios.
 
 returns:
 - scenarios: list[EnvironmentProfile]
 
-#### GET /get/scenarios/{sceanrio_tag}
+#### GET /scenarios/?get_by={id|tag}/{scenario_id|scenario_tag}
 
 Get scenarios by scenario_tag.
 parameters:
-- scenario_tag: str
+- get_by: Literal["id", "tag"]
+- scenario_id: str or scenario_tag: str
 (This scenario tag could be a keyword; so people can search for scenarios by keywords)
 
 returns:
@@ -43,29 +36,12 @@ Get all agents.
 returns:
 - agents: list[AgentProfile]
 
-#### GET /get/agents/{agent_id}
+#### GET /get/agents/?get_by={id|gender|occupation}/{value}
 
-Get agent by agent_id.
+Get agents by id, gender, or occupation.
 parameters:
-- agent_id: str
-
-returns:
-- agent: AgentProfile
-
-#### GET /get/agents/{agent_gender}
-
-Get agents by agent_gender.
-parameters:
-- agent_gender: Literal["male", "female"]
-
-returns:
-- agents: list[AgentProfile]
-
-#### GET /get/agents/{agent_occupation}
-
-Get agents by agent_occupation.
-parameters:
-- agent_occupation: str
+- get_by: Literal["id", "gender", "occupation"]
+- value: str (agent_id, agent_gender, or agent_occupation)
 
 returns:
 - agents: list[AgentProfile]
@@ -78,23 +54,15 @@ Get all episodes.
 returns:
 - episodes: list[Episode]
 
-#### GET /get/episodes/{episode_tag}
+#### GET /get/episodes/?get_by={id|tag}/{episode_id|episode_tag}
 
 Get episode by episode_tag.
 parameters:
-- episode_tag: str
+- get_by: Literal["id", "tag"]
+- episode_id: str or episode_tag: str
 
 returns:
-- episode: list[Episode]
-
-#### GET /get/episodes/{episode_id}
-
-Get episode by episode_id.
-parameters:
-- episode_id: str
-
-returns:
-- episode: Episode
+- episodes: list[Episode]
 
 
 ### Sending Data to the API Server
@@ -160,3 +128,4 @@ returns:
 ### Initiating a new interactive streaming simulation episode (this operation will open a websocket connection)
 
 We use the websocket connection to send the simulation step-by-step results to the UI.
+Please see an example protocol [here](https://claude.site/artifacts/322011f6-597f-4819-8afb-bf8137dfb56a)
