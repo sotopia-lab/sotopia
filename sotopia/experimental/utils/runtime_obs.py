@@ -4,22 +4,21 @@ from pydantic import Field
 from aact.messages import DataModel
 from aact.messages.registry import DataModelFactory
 
+
 class ObservationType(Enum):
     BROWSER_OUTPUT = "BrowserOutputObservation"
     CMD_OUTPUT = "CmdOutputObservation"
     FILE_WRITE = "FileWriteObservation"
     FILE_READ = "FileReadObservation"
     ERROR = "ErrorObservation"
-    
+
 
 @DataModelFactory.register("runtime_observation")
 class RuntimeObservation(DataModel):
     observation_type: ObservationType = Field(
         description="The type of runtime observation"
     )
-    details: str = Field(
-        description="Details about the observation"
-    )
+    details: str = Field(description="Details about the observation")
 
     def to_natural_language(self) -> str:
         observation_descriptions = {
@@ -30,4 +29,6 @@ class RuntimeObservation(DataModel):
             ObservationType.ERROR: f"observed an error: {self.details}",
         }
 
-        return observation_descriptions.get(self.observation_type, "observed an unknown event")
+        return observation_descriptions.get(
+            self.observation_type, "observed an unknown event"
+        )
