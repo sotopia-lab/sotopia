@@ -1,5 +1,7 @@
 import logging
 import sys
+from enum import Enum
+
 
 from rich.logging import RichHandler
 
@@ -27,7 +29,48 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
+# Define an enum for action states
+class ActionState(Enum):
+    IDLE = "idle"
+    RUNNING = "running"
 
+class AgentSession:
+    def __init__(self):
+        # Initialize all relevant actions as idle using string values as keys
+        self.action_states = {
+            ActionType.BROWSE.value: ActionState.IDLE,
+            ActionType.BROWSE_ACTION.value: ActionState.IDLE,
+            ActionType.WRITE.value: ActionState.IDLE,
+            ActionType.READ.value: ActionState.IDLE,
+            ActionType.RUN.value: ActionState.IDLE,
+        }
+
+    def set_action_running(self, action: ActionType):
+        if action.value in self.action_states:
+            self.action_states[action.value] = ActionState.RUNNING
+
+
+    def set_action_idle(self, action: ActionType):
+        if action.value in self.action_states:
+            self.action_states[action.value] = ActionState.IDLE
+
+
+    def can_execute_action(self, action: ActionType) -> bool:
+        state = self.action_states.get(action.value)
+        if state is None:
+            self.logger.warning(f"Attempted to check undefined action {action}.")
+            return False
+        return state == ActionState.IDLE
+
+    def reset_all_actions(self):
+        for action in self.action_states:
+            self.action_states[action] = ActionState.IDLE
+
+    def print_status(self):
+        status_lines = [f"Action: {action}, State: {state.value}" for action, state in self.action_states.items()]
+        status_report = "\n".join(status_lines)
+        print("Current session status:\n" + status_report)
+        
 @NodeFactory.register("llm_agent")
 class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
     def __init__(
@@ -61,6 +104,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
         self.name = agent_name
         self.model_name = model_name
         self.goal = goal
+        self.session = AgentSession()
 
     async def send(self, message: AgentAction) -> None:
         if message.action_type == "speak":
@@ -215,7 +259,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             Examples:
                                 upload_file('572', '/home/user/my_receipt.pdf')
                                 upload_file('63', ['/home/bob/Documents/image.jpg', '/home/bob/Documents/file.zip'])""",
-            str(ActionType.READ): """`read` - reads the content of a file. Arguments:
+            str(ActionType.READ): """`read` - reads the content of a file. You should first check if a certain file exists. Arguments:
                 * `path` - the path of the file to read""",
             str(ActionType.WRITE): """`write` - writes the content to a file. Arguments:
                 * `path` - the path of the file to write
@@ -229,10 +273,11 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             ): """`leave` - if your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the leave action to stop working.""",
         }
 
+        idx = 1
         selected_action_descriptions = "\n\n".join(
-            f"[{i+1}] {action_descriptions[str(action)]}"
-            for i, action in enumerate(selected_actions)
-            if str(action) in action_descriptions
+            f"[{idx}] {action_descriptions[str(action)]}"
+            for action in selected_actions
+            if str(action) in action_descriptions and (idx := idx + 1)
         )
 
         return (
@@ -247,6 +292,29 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
         match message:
             case Text(text=text):
+                # TODO: arpandeepk - We need to move this to a different message case.
+                if "BrowserOutputObservation" in text:
+                    self.session.set_action_idle(ActionType.BROWSE)
+                    self.session.set_action_idle(ActionType.BROWSE_ACTION)
+                    self.message_history.append((self.name, "observation data", "BrowserOutputObservation received."))
+                    text = text.split("BrowserOutputObservation", 1)[1][:50]  # TODO: arpandeepk: Fix this to be smarter
+                    
+                elif "CmdOutputObservation" in text:
+                    self.session.set_action_idle(ActionType.RUN)
+                    self.message_history.append((self.name, "observation data", "CmdOutputObservation received."))
+
+                elif "FileWriteObservation" in text:
+                    self.session.set_action_idle(ActionType.WRITE)
+                    self.message_history.append((self.name, "observation data", "FileWriteObservation received."))
+
+                elif "FileReadObservation" in text:
+                    self.session.set_action_idle(ActionType.WRITE)
+                    self.message_history.append((self.name, "observation data", "FileWriteObservation received."))
+                    
+                elif "ErrorObservation" in text:
+                    self.session.reset_all_actions()
+                    self.message_history.append((self.name, "observation data", "ErrorObservation received. Try addressing this error."))
+                    
                 self.message_history.append((self.name, "observation data", text))
                 return AgentAction(
                     agent_name=self.name, action_type="none", argument="", path=""
@@ -255,9 +323,16 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
                     # print([action for action in ActionType])
-                    template = self.get_action_template(
-                        [action for action in ActionType]
-                    )
+                    try:
+                        # Filter out actions that are currently running
+                        available_actions = [
+                            action for action in ActionType
+                            if action.value not in self.session.action_states or self.session.can_execute_action(action)
+                        ]
+                        
+                        template = self.get_action_template(available_actions)
+                    except Exception as e:
+                        print(f"Error while filtering available actions or generating template: {e}")
 
                     agent_action = await agenerate(
                         model_name=self.model_name,
@@ -269,7 +344,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             "goal": self.goal,
                             "agent_name": self.name,
                         },
-                        temperature=0.7,
+                        temperature=0.0,
                         output_parser=StrOutputParser(),
                     )
 
@@ -283,19 +358,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                     try:
                         data = json.loads(agent_action)
                         action = data["action"]
-                        # print(data)
+                        print(self.name, " : ", data)
                         # Handle different cases based on the action
-                        if action == "thought":
-                            content = data["args"]["content"]
-                            self.message_history.append((self.name, action, content))
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type="thought",
-                                argument=content,
-                                path="",
-                            )
-
-                        elif action == "speak":
+                        if action == ActionType.THOUGHT.value:
                             content = data["args"]["content"]
                             self.message_history.append((self.name, action, content))
                             return AgentAction(
@@ -305,7 +370,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 path="",
                             )
 
-                        elif action == "non-verbal":
+                        elif action == ActionType.SPEAK.value:
                             content = data["args"]["content"]
                             self.message_history.append((self.name, action, content))
                             return AgentAction(
@@ -315,9 +380,22 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 path="",
                             )
 
-                        elif action == "browse":
+                        elif action == ActionType.NON_VERBAL.value:
+                            content = data["args"]["content"]
+                            self.message_history.append((self.name, action, content))
+                            return AgentAction(
+                                agent_name=self.name,
+                                action_type=action,
+                                argument=content,
+                                path="",
+                            )
+
+                        elif action == ActionType.BROWSE.value:
                             url = data["args"]["url"]
                             self.message_history.append((self.name, action, url))
+                            self.session.set_action_running(ActionType.BROWSE)
+                            self.session.set_action_running(ActionType.BROWSE_ACTION)
+                            self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
@@ -325,9 +403,12 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 path="",
                             )
 
-                        elif action == "browse_action":
+                        elif action == ActionType.BROWSE_ACTION.value:
                             command = data["args"]["command"]
                             self.message_history.append((self.name, action, command))
+                            self.session.set_action_running(ActionType.BROWSE)
+                            self.session.set_action_running(ActionType.BROWSE_ACTION)
+                            self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
@@ -335,9 +416,11 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 path="",
                             )
 
-                        elif action == "run":
+                        elif action == ActionType.RUN.value:
                             command = data["args"]["command"]
                             self.message_history.append((self.name, action, command))
+                            self.session.set_action_running(ActionType.RUN)
+                            self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
@@ -345,10 +428,12 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 path="",
                             )
 
-                        elif action == "write":
+                        elif action == ActionType.WRITE.value:
                             path = data["args"]["path"]
                             content = data["args"]["content"]
                             self.message_history.append((self.name, action, content))
+                            self.session.set_action_running(ActionType.WRITE)
+                            self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
@@ -356,20 +441,22 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 path=path,
                             )
 
-                        elif action == "read":
+                        elif action == ActionType.READ.value:
                             path = data["args"]["path"]
                             self.message_history.append((self.name, action, path))
+                            self.session.set_action_running(ActionType.READ)
+                            self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
                             return AgentAction(
                                 agent_name=self.name,
                                 action_type=action,
-                                argument="Nan",
+                                argument="",
                                 path=path,
                             )
 
-                        elif action == "none":
+                        elif action == ActionType.NONE.value:
                             return AgentAction(
                                 agent_name=self.name,
-                                action_type="none",
+                                action_type=action,
                                 argument="",
                                 path="",
                             )
