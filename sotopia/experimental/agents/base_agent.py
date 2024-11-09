@@ -22,8 +22,7 @@ T_agent_action = TypeVar("T_agent_action", bound=DataModel)
 class ActionType(Enum):
     NONE = "none"
     SPEAK = "speak"
-    NON_VERBAL_COMMUNICATION = "non-verbal communication"
-    ACTION = "action"
+    NON_VERBAL = "non-verbal"
     LEAVE = "leave"
     THOUGHT = "thought"
     BROWSE = "browse"
@@ -31,6 +30,17 @@ class ActionType(Enum):
     READ = "read"
     WRITE = "write"
     RUN = "run"
+
+    def __str__(self) -> str:
+        return self.value
+    
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ActionType):
+            return self.value == other.value
+        elif isinstance(other, str):
+            return self.value == other
+        else:
+            return NotImplemented
 
 
 @DataModelFactory.register("agent_action")
@@ -53,8 +63,7 @@ class AgentAction(DataModel):
             ActionType.RUN: f'ran: "{self.argument}"',
             ActionType.READ: f'read: "{self.argument}"',
             ActionType.WRITE: f'wrote: "{self.argument}"',
-            ActionType.NON_VERBAL_COMMUNICATION: f"[{self.action_type.value}] {self.argument}",
-            ActionType.ACTION: f"[{self.action_type.value}] {self.argument}",
+            ActionType.NON_VERBAL: f"[{self.action_type.value}] {self.argument}",
             ActionType.LEAVE: "left the conversation",
         }
 

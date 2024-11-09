@@ -1,7 +1,7 @@
 from aact import Message, NodeFactory
 from aact.messages import Tick
 from sotopia.agents.llm_agent import ainput
-from sotopia.experimental.agents import BaseAgent, AgentAction, ActionType
+from sotopia.experimental.agents.base_agent import BaseAgent, AgentAction, ActionType
 
 import logging
 from rich.logging import RichHandler
@@ -74,11 +74,10 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 Message[AgentAction](data=message).model_dump_json(),
             )
 
-    async def aact(self, message: AgentAction) -> AgentAction:
+    async def aact(self, message: AgentAction | Tick) -> AgentAction:
         """
         Processes incoming messages and performs actions based on the message type.
         """
-
         match message:
             case Tick():
                 self.count_ticks += 1
@@ -88,6 +87,7 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         agent_name=self.name,
                         action_type=ActionType.SPEAK,
                         argument=argument,
+                        path=""
                     )
 
             case AgentAction(
@@ -96,7 +96,12 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 if action_type == ActionType.SPEAK:
                     self.message_history.append((agent_name, text))
                 return AgentAction(
-                    agent_name=self.name, action_type=ActionType.NONE, argument=""
+                    agent_name=self.name, action_type=ActionType.NONE, argument="", path=""
                 )
-            case _:
-                raise ValueError(f"Unexpected message type: {type(message)}")
+                
+        return AgentAction(
+            agent_name=self.name,
+            action_type=ActionType.NONE,
+            argument="",
+            path="",  # Provide a default or appropriate path
+        )

@@ -44,7 +44,7 @@ class ScenarioContext(Node[DataModel, Text]):
         return await super().__aenter__()
 
     async def event_handler(
-        self, _: str, __: Message[Zero]
-    ) -> AsyncIterator[tuple[str, Message[Tick]]]:
+        self, _: str, __: Message[DataModel]
+    ) -> AsyncIterator[tuple[str, Message[Text]]]:
         raise NotImplementedError("ScenarioContext does not have an event handler.")
-        yield "", Message[Text](data=Text(text == self.env_scenario))
+        yield "", Message[Text](data=Text(text=self.env_scenario))

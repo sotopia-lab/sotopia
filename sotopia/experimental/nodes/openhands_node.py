@@ -11,7 +11,7 @@ from aact import Message, NodeFactory, Node
 from aact.messages import Text, DataModel, Zero
 from aact.messages.commons import DataEntry
 
-from sotopia.experimental.agents import AgentAction, ActionType
+from sotopia.experimental.agents.base_agent import AgentAction, ActionType
 
 from openhands.core.config import AgentConfig, AppConfig, SandboxConfig
 from openhands.core.logger import openhands_logger as logger
@@ -19,7 +19,8 @@ from openhands.core.main import create_runtime
 from openhands.events.action import (
     BrowseURLAction,
     CmdRunAction,
-    FileWriteAction,
+    FileWriteAction, 
+    FileReadAction,
     BrowseInteractiveAction,
 )
 from openhands.runtime.base import Runtime
@@ -59,6 +60,7 @@ class OpenHands(Node[DataModel, Text]):
             ],
             redis_url=redis_url,
         )
+        # self.input_channels_types = {input_channel: AgentAction for input_channel in input_channels}
         self.queue: asyncio.Queue[DataEntry[DataModel]] = asyncio.Queue()
         self.task: asyncio.Task[None] | None = None
         self.runtime: Optional[Runtime] = None
@@ -143,10 +145,9 @@ class OpenHands(Node[DataModel, Text]):
             return None
 
         try:
-            action = self._create_action(action)
-            action.timeout = 45
+            action_obj = self._create_action(action)
             logger.info(f"Executing action: {action}", extra={"msg_type": "ACTION"})
-            obs = self.runtime.run_action(action)
+            obs = self.runtime.run_action(action_obj)
             logger.info(
                 f"Received observation: {str(obs).splitlines()[:2]}",
                 extra={"msg_type": "OBSERVATION"},
@@ -155,7 +156,7 @@ class OpenHands(Node[DataModel, Text]):
         except Exception as e:
             logger.error(f"Error executing action: {e}")
             return None
-
+        
     def _create_action(self, observation: AgentAction) -> Any:
         """
         Creates an action based on the observation's action type.
@@ -166,9 +167,9 @@ class OpenHands(Node[DataModel, Text]):
         Returns:
             Any: The created action.
         """
-        action_type = observation.data.action_type
-        argument = observation.data.argument
-        path = observation.data.path
+        action_type = observation.action_type
+        argument = observation.argument
+        path = observation.path
 
         if action_type == ActionType.BROWSE:
             return BrowseURLAction(url=argument)
@@ -177,9 +178,13 @@ class OpenHands(Node[DataModel, Text]):
         elif action_type == ActionType.RUN:
             return CmdRunAction(command=argument)
         elif action_type == ActionType.WRITE:
+            if path is None:
+                raise ValueError("Path cannot be None for WRITE action")
             return FileWriteAction(path=path, content=argument)
         elif action_type == ActionType.READ:
-            return FileWriteAction(path=path)
+            if path is None:
+                raise ValueError("Path cannot be None for READ action")
+            return FileReadAction(path=path)
         else:
             raise ValueError(f"Unsupported action type: {action_type}")
 
@@ -191,12 +196,9 @@ class OpenHands(Node[DataModel, Text]):
             action (Text): The action to be sent.
         """
         try:
-            for (
-                output_channel,
-                output_channel_type,
-            ) in self.output_channel_types.items():
-                message = Message[output_channel_type](data=action).model_dump_json()
-                await self.r.publish(output_channel, message)  # type: ignore[valid-type]
+            for output_channel, _ in self.output_channel_types.items():
+                message = Message[Text](data=action).model_dump_json()
+                await self.r.publish(output_channel, message)
         except Exception as e:
             logger.error(f"Error sending action: {e}")
 
@@ -206,17 +208,20 @@ class OpenHands(Node[DataModel, Text]):
         """
         while self.task:
             try:
-                action = await self.queue.get()
-                obs = await self.aact(action)
-                if obs is not None:
-                    await self.send(obs)
+                data_entry = await self.queue.get()
+                if isinstance(data_entry.data, AgentAction):
+                    obs = await self.aact(data_entry.data)
+                    if obs is not None:
+                        await self.send(obs)
+                else:
+                    logger.error("Data is not of type AgentAction")
                 self.queue.task_done()
             except Exception as e:
                 logger.error(f"Error processing action: {e}")
 
     async def event_handler(
         self, input_channel: str, input_message: Message[DataModel]
-    ) -> AsyncIterator[tuple[str, Message[Zero]]]:
+    ) -> AsyncIterator[tuple[str, Message[Text]]]:
         """
         Handles incoming events and adds them to the processing queue.
 
@@ -229,12 +234,15 @@ class OpenHands(Node[DataModel, Text]):
         """
         try:
             if input_channel in self.input_channel_types:
-                data_entry = DataEntry[self.input_channel_types[input_channel]](
-                    channel=input_channel, data=input_message.data
+                # Create a DataEntry instance with the correct type
+                data_entry: DataEntry[DataModel] = DataEntry(
+                    channel=input_channel, 
+                    data=input_message.data
                 )
                 await self.queue.put(data_entry)
             else:
                 logger.warning(f"Unrecognized input channel: {input_channel}")
-                yield input_channel, Message[Zero](data=Zero())
+                yield input_channel, Message[Text](data=Text(text=""))
         except Exception as e:
             logger.error(f"Error handling event: {e}")
+

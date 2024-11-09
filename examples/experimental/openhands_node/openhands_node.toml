@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.openhands_node.openhands_node"]
+extra_modules = ["sotopia.experimental.nodes.openhands_node"]
 
 
 [[nodes]]
