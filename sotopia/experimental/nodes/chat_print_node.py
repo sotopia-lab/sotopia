@@ -1,15 +1,21 @@
+import sys
+import json
+import logging
 from typing import Dict, Any, Literal
 
-from aact import NodeFactory
-from aact.nodes import PrintNode
-
-
-import logging
+from rich.console import Console
+from rich.syntax import Syntax
+from rich.panel import Panel
+from rich.text import Text as RichText
+from rich.align import Align
 from rich.logging import RichHandler
-import json
 
-import sys
+from aact import NodeFactory
+from aact.nodes import PrintNode  # Move this import to the top
 
+console = Console()
+
+# Check Python version
 if sys.version_info >= (3, 11):
     pass
 else:
@@ -22,14 +28,6 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[RichHandler()],
 )
-
-from rich.console import Console
-from rich.syntax import Syntax
-from rich.panel import Panel
-from rich.text import Text as RichText
-from rich.align import Align
-
-console = Console()
 
 
 @NodeFactory.register("chat_print")

@@ -1,3 +1,8 @@
+import logging
+import sys
+
+from rich.logging import RichHandler
+
 from aact import Message, NodeFactory
 from aact.messages import Text, Tick
 from sotopia.experimental.agents.base_agent import BaseAgent, AgentAction, ActionType
@@ -5,17 +10,15 @@ from sotopia.experimental.agents.base_agent import BaseAgent, AgentAction, Actio
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
 
-import logging
-from rich.logging import RichHandler
 import json
 
-import sys
-
+# Check Python version
 if sys.version_info >= (3, 11):
     pass
 else:
     pass
 
+# Configure logging
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 logging.basicConfig(
     level=logging.WARNING,
@@ -23,10 +26,6 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[RichHandler()],
 )
-
-from rich.console import Console
-
-console = Console()
 
 
 @NodeFactory.register("llm_agent")
