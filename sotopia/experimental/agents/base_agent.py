@@ -33,7 +33,7 @@ class ActionType(Enum):
 
     def __str__(self) -> str:
         return self.value
-    
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, ActionType):
             return self.value == other.value

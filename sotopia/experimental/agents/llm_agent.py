@@ -1,7 +1,6 @@
 from aact import Message, NodeFactory
 from aact.messages import Text, Tick
 from sotopia.experimental.agents.base_agent import BaseAgent, AgentAction, ActionType
-from aact.nodes import PrintNode
 
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
@@ -26,10 +25,6 @@ logging.basicConfig(
 )
 
 from rich.console import Console
-from rich.syntax import Syntax
-from rich.panel import Panel
-from rich.text import Text as RichText
-from rich.align import Align
 
 console = Console()
 
@@ -81,7 +76,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 Message[AgentAction](data=message).model_dump_json(),
             )
 
-    def _format_message_history(self, message_history: list[tuple[str, str, str]]) -> str:
+    def _format_message_history(
+        self, message_history: list[tuple[str, str, str]]
+    ) -> str:
         ## TODO: akhatua Fix the mapping of action to be gramatically correct
         return "\n".join(
             (f"{speaker} {action} {message}")
@@ -108,19 +105,28 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
         * `action`, which is one of the actions below
         * `args`, which is a map of key-value pairs, specifying the arguments for that action
         """
-        
 
         action_descriptions = {
-            str(ActionType.SPEAK): """`speak` - you can talk to the other agents to share information or ask them something. Arguments:
+            str(
+                ActionType.SPEAK
+            ): """`speak` - you can talk to the other agents to share information or ask them something. Arguments:
                 * `content` - the message to send to the other agents (should be short)""",
-            str(ActionType.THOUGHT): """`thought` - only use this rarely to make a plan, set a goal, record your thoughts. Arguments:
+            str(
+                ActionType.THOUGHT
+            ): """`thought` - only use this rarely to make a plan, set a goal, record your thoughts. Arguments:
                 * `content` - the message you send yourself to organize your thoughts (should be short). You cannot think more than 2 turns.""",
-            str(ActionType.NONE): """`none` - you can choose not to take an action if you are waiting for some data""",
-            str(ActionType.NON_VERBAL): """`non-verbal` - you can choose to do a non verbal action
+            str(
+                ActionType.NONE
+            ): """`none` - you can choose not to take an action if you are waiting for some data""",
+            str(
+                ActionType.NON_VERBAL
+            ): """`non-verbal` - you can choose to do a non verbal action
                 * `content` - the non veral action you want to send to other agents. eg: smile, shrug, thumbs up""",
             str(ActionType.BROWSE): """`browse` - opens a web page. Arguments:
                 * `url` - the URL to open, when you browse the web you must use `none` action until you get some information back. When you get the information back you must summarize the article and explain the article to the other agents.""",
-            str(ActionType.BROWSE_ACTION): """`browse_action` - actions you can take on a web browser
+            str(
+                ActionType.BROWSE_ACTION
+            ): """`browse_action` - actions you can take on a web browser
                 * `command` - the command to run. You have 15 available commands. These commands must be a single string value of command
                     Options for `command`:
                         `command` = goto(url: str)
@@ -215,11 +221,15 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             str(ActionType.WRITE): """`write` - writes the content to a file. Arguments:
                 * `path` - the path of the file to write
                 * `content` - the content to write to the file""",
-            str(ActionType.RUN): """`run` - runs a command on the command line in a Linux shell. Arguments:
+            str(
+                ActionType.RUN
+            ): """`run` - runs a command on the command line in a Linux shell. Arguments:
                 * `command` - the command to run""",
-            str(ActionType.LEAVE): """`leave` - if your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the leave action to stop working.""",
+            str(
+                ActionType.LEAVE
+            ): """`leave` - if your goals have been completed or abandoned, and you're absolutely certain that you've completed your task and have tested your work, use the leave action to stop working.""",
         }
-        
+
         selected_action_descriptions = "\n\n".join(
             f"[{i+1}] {action_descriptions[str(action)]}"
             for i, action in enumerate(selected_actions)
@@ -295,7 +305,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 argument=content,
                                 path="",
                             )
-                            
+
                         elif action == "non-verbal":
                             content = data["args"]["content"]
                             self.message_history.append((self.name, action, content))
@@ -382,5 +392,3 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                     agent_name=self.name, action_type="none", argument="", path=""
                 )
         raise ValueError(f"Unexpected message type: {type(message)}")
-
-

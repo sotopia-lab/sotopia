@@ -87,7 +87,7 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         agent_name=self.name,
                         action_type=ActionType.SPEAK,
                         argument=argument,
-                        path=""
+                        path="",
                     )
 
             case AgentAction(
@@ -96,9 +96,12 @@ class HumanAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 if action_type == ActionType.SPEAK:
                     self.message_history.append((agent_name, text))
                 return AgentAction(
-                    agent_name=self.name, action_type=ActionType.NONE, argument="", path=""
+                    agent_name=self.name,
+                    action_type=ActionType.NONE,
+                    argument="",
+                    path="",
                 )
-                
+
         return AgentAction(
             agent_name=self.name,
             action_type=ActionType.NONE,

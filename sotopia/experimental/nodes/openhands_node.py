@@ -8,7 +8,7 @@ from typing import Any, AsyncIterator, Optional
 from rich.logging import RichHandler
 
 from aact import Message, NodeFactory, Node
-from aact.messages import Text, DataModel, Zero
+from aact.messages import Text, DataModel
 from aact.messages.commons import DataEntry
 
 from sotopia.experimental.agents.base_agent import AgentAction, ActionType
@@ -19,7 +19,7 @@ from openhands.core.main import create_runtime
 from openhands.events.action import (
     BrowseURLAction,
     CmdRunAction,
-    FileWriteAction, 
+    FileWriteAction,
     FileReadAction,
     BrowseInteractiveAction,
 )
@@ -156,7 +156,7 @@ class OpenHands(Node[DataModel, Text]):
         except Exception as e:
             logger.error(f"Error executing action: {e}")
             return None
-        
+
     def _create_action(self, observation: AgentAction) -> Any:
         """
         Creates an action based on the observation's action type.
@@ -236,8 +236,7 @@ class OpenHands(Node[DataModel, Text]):
             if input_channel in self.input_channel_types:
                 # Create a DataEntry instance with the correct type
                 data_entry: DataEntry[DataModel] = DataEntry(
-                    channel=input_channel, 
-                    data=input_message.data
+                    channel=input_channel, data=input_message.data
                 )
                 await self.queue.put(data_entry)
             else:
@@ -245,4 +244,3 @@ class OpenHands(Node[DataModel, Text]):
                 yield input_channel, Message[Text](data=Text(text=""))
         except Exception as e:
             logger.error(f"Error handling event: {e}")
-

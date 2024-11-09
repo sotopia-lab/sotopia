@@ -1,12 +1,8 @@
 from typing import Dict, Any, Literal
 
-from aact import Message, NodeFactory
-from aact.messages import Text, Tick
-from sotopia.experimental.agents.base_agent import BaseAgent, AgentAction, ActionType
+from aact import NodeFactory
 from aact.nodes import PrintNode
 
-from sotopia.generation_utils import agenerate
-from sotopia.generation_utils.generate import StrOutputParser
 
 import logging
 from rich.logging import RichHandler
@@ -38,7 +34,6 @@ console = Console()
 
 @NodeFactory.register("chat_print")
 class ChatPrint(PrintNode):
-    
     def __init__(self, env_agents: list[str], *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.env_agents: list[str] = env_agents
@@ -59,8 +54,10 @@ class ChatPrint(PrintNode):
             panel_style = name_color_map.get(agent_name, "white")
 
             # Determine alignment based on agent name using self.env_agents
-            alignment: Literal['left', 'center', 'right'] = "left" if agent_name == agent1 else "right"
-                
+            alignment: Literal["left", "center", "right"] = (
+                "left" if agent_name == agent1 else "right"
+            )
+
             if action == "write":
                 path = data["path"]
                 content = data["argument"]
@@ -87,7 +84,7 @@ class ChatPrint(PrintNode):
                 )
                 aligned_panel = Align(panel, align=alignment)
                 console.print(aligned_panel)
-                
+
             elif action == "non-verbal":
                 content = data["argument"]
                 panel_content = RichText(content, style="bold", justify="left")
@@ -155,7 +152,9 @@ class ChatPrint(PrintNode):
 
             elif action == "read":
                 path = data["path"]
-                panel_content = RichText(f"Reading from {path}", style="bold", justify="center")
+                panel_content = RichText(
+                    f"Reading from {path}", style="bold", justify="center"
+                )
                 panel = Panel(
                     panel_content,
                     title=f"{agent_name} reads",
@@ -170,7 +169,9 @@ class ChatPrint(PrintNode):
                 return
 
             else:
-                panel_content = RichText(f"Action: {action}\n", style="bold", justify="center")
+                panel_content = RichText(
+                    f"Action: {action}\n", style="bold", justify="center"
+                )
                 for key, value in data.items():
                     panel_content.append(f"{key.capitalize()}: {value}\n")
                 panel = Panel(
@@ -196,9 +197,7 @@ class ChatPrint(PrintNode):
     def determine_syntax(self, path: str, content: str) -> Syntax:
         """Determine the appropriate syntax highlighting based on the file extension."""
         if path.endswith(".html"):
-            return Syntax(
-                content, "html", theme="monokai", line_numbers=True
-            )
+            return Syntax(content, "html", theme="monokai", line_numbers=True)
         elif path.endswith(".py"):
             return Syntax(
                 content,
@@ -214,15 +213,10 @@ class ChatPrint(PrintNode):
                 line_numbers=True,
             )
         elif path.endswith(".css"):
-            return Syntax(
-                content, "css", theme="monokai", line_numbers=True
-            )
+            return Syntax(content, "css", theme="monokai", line_numbers=True)
         else:
-            return Syntax(
-                content, "text", theme="monokai", line_numbers=True
-            )
+            return Syntax(content, "text", theme="monokai", line_numbers=True)
 
-        
     async def write_to_screen(self) -> None:
         while self.output:
             data_entry = await self.write_queue.get()
@@ -239,4 +233,3 @@ class ChatPrint(PrintNode):
                 print("Invalid data structure:", data)
 
             await self.output.flush()
-        

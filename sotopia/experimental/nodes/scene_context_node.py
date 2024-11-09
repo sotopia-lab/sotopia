@@ -3,7 +3,7 @@ import sys
 from typing import AsyncIterator
 
 from aact import Message, NodeFactory, Node
-from aact.messages import Text, Tick, DataModel, Zero
+from aact.messages import Text, Tick, DataModel
 
 if sys.version_info >= (3, 11):
     from typing import Self
