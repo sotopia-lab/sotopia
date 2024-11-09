@@ -29,14 +29,14 @@ parameters:
 returns:
 - scenarios: list[EnvironmentProfile]
 
-#### GET /get/agents
+#### GET /agents
 
 Get all agents.
 
 returns:
 - agents: list[AgentProfile]
 
-#### GET /get/agents/?get_by={id|gender|occupation}/{value}
+#### GET /agents/?get_by={id|gender|occupation}/{value}
 
 Get agents by id, gender, or occupation.
 parameters:
@@ -47,14 +47,14 @@ returns:
 - agents: list[AgentProfile]
 
 
-#### GET /get/episodes
+#### GET /episodes
 
 Get all episodes.
 
 returns:
 - episodes: list[Episode]
 
-#### GET /get/episodes/?get_by={id|tag}/{episode_id|episode_tag}
+#### GET /episodes/?get_by={id|tag}/{episode_id|episode_tag}
 
 Get episode by episode_tag.
 parameters:
@@ -67,7 +67,7 @@ returns:
 
 ### Sending Data to the API Server
 
-w#### POST /post/agents/
+#### POST /agents/
 
 Send agent profile to the API server.
 Request Body:
@@ -76,7 +76,7 @@ AgentProfile
 returns:
 - agent_id: str
 
-#### POST /post/scenarios/
+#### POST /scenarios/
 
 Send scenario profile to the API server.
 Request Body:
@@ -87,7 +87,7 @@ returns:
 
 ### Updating Data in the API Server
 
-#### PUT /put/agents/{agent_id}
+#### PUT /agents/{agent_id}
 
 Update agent profile in the API server.
 Request Body:
@@ -97,7 +97,7 @@ returns:
 - agent_id: str
 
 
-#### PUT /put/scenarios/{scenario_id}
+#### PUT /scenarios/{scenario_id}
 
 Update scenario profile in the API server.
 Request Body:
@@ -108,7 +108,7 @@ returns:
 
 ### Initiating a new non-streaming simulation episode
 
-#### POST /post/episodes/
+#### POST /episodes/
 
 ```python
 class SimulationEpisodeInitiation(BaseModel):
