@@ -129,3 +129,34 @@ returns:
 
 We use the websocket connection to send the simulation step-by-step results to the UI.
 Please see an example protocol [here](https://claude.site/artifacts/322011f6-597f-4819-8afb-bf8137dfb56a)
+
+#### WEBSOCKET /ws/simulate/?token={token}
+
+Parameters:
+- Token: String. User authentication token. Each token maps to a unique session.
+
+returns: 
+- msg: WSMessage
+
+**WSMessage**
+```json
+{
+    "type": "WSMessageType",
+    "data": {
+        // Message-specific payload
+    }
+}
+```
+
+**WSMessageType**
+| Type | Direction   | Description |
+|-----------|--------|-------------|
+| SERVER_MSG | Server → Client | Standard message from server (payload: `messageForRendering` [here](https://github.com/sotopia-lab/sotopia-demo/blob/main/socialstream/rendering_utils.py) ) |
+| CLIENT_MSG | Client → Server | Standard message from client (payload: TBD) |
+| ERROR      | Server → Client | Error notification (payload: TBD) |
+| START_SIM  | Client → Server | Initialize simulation (payload: `SimulationEpisodeInitialization`) |
+| END_SIM    | Server → Client | Terminate simulation (payload: not needed) |
+
+**Error Type: TBD**
+
+**Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
