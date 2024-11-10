@@ -125,7 +125,7 @@ def _iterate_env_agent_combo_not_in_db(
         first_env_agent_combo_storage_to_run: EnvAgentComboStorage | None = None
 
         env_agent_combo_storage_list = sorted(
-            env_agent_combo_storage_list, key=lambda x: x.pk
+            env_agent_combo_storage_list, key=lambda x: str(x.pk)
         )
 
         for env_agent_combo_storage in env_agent_combo_storage_list:
