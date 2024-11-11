@@ -155,7 +155,8 @@ returns:
 | CLIENT_MSG | Client → Server | Standard message from client (payload: TBD) |
 | ERROR      | Server → Client | Error notification (payload: TBD) |
 | START_SIM  | Client → Server | Initialize simulation (payload: `SimulationEpisodeInitialization`) |
-| END_SIM    | Server → Client | Terminate simulation (payload: not needed) |
+| END_SIM    | Client → Server | End simulation (payload: not needed) |
+| FINISH_SIM | Server → Client | Terminate simulation (payload: not needed) |
 
 **Error Type: TBD**
 
