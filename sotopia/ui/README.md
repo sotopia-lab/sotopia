@@ -135,7 +135,7 @@ Please see an example protocol [here](https://claude.site/artifacts/322011f6-597
 Parameters:
 - Token: String. User authentication token. Each token maps to a unique session.
 
-returns: 
+returns:
 - msg: WSMessage
 
 **WSMessage**
