@@ -123,6 +123,11 @@ def _iterate_env_agent_combo_not_in_db(
             )
             assert env_agent_combo_storage_list
         first_env_agent_combo_storage_to_run: EnvAgentComboStorage | None = None
+
+        env_agent_combo_storage_list = sorted(
+            env_agent_combo_storage_list, key=lambda x: str(x.pk)
+        )
+
         for env_agent_combo_storage in env_agent_combo_storage_list:
             env_agent_combo_storage = cast(
                 EnvAgentComboStorage, env_agent_combo_storage
@@ -183,10 +188,14 @@ def run_async_server_in_batch(
         logger.removeHandler(rich_handler)
 
     # we cannot get the exact length of the generator, we just give an estimate of the length
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+        model_names=model_names, tag=tag
+    )
     env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
 
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+        model_names=model_names, tag=tag
+    )
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
 
     while True:
