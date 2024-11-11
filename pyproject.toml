@@ -38,7 +38,7 @@ cohere = ["cohere"]
 google-generativeai = ["google-generativeai"]
 examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 chat = [
-    "fastapi",
+    "fastapi[standard]",
     "websockets>=13.1",
 ]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
