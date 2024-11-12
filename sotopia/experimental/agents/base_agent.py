@@ -107,7 +107,7 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
             await self.observation_queue.put(message.data)
         else:
             raise ValueError(f"Invalid channel: {channel}")
-            yield "", self.output_type() 
+            yield "", self.output_type()
 
     async def send(self, action: T_agent_action) -> None:
         for output_channel, output_channel_type in self.output_channel_types.items():
