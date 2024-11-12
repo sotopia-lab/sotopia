@@ -11,7 +11,6 @@ from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
 
 import json
-import traceback
 
 # Check Python version
 if sys.version_info >= (3, 11):
@@ -272,7 +271,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         temperature=0.7,
                         output_parser=StrOutputParser(),
                     )
-  
+
                     agent_action = (
                         agent_action.replace("```", "")
                         .replace("json", "")
