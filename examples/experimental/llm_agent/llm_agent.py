@@ -119,7 +119,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
         self.goal = goal
 
     async def send(self, message: AgentAction) -> None:
-        if message.action_type == "speak":
+        if message.action_type in ("speak", "thought"):
             await self.r.publish(
                 self.output_channel,
                 Message[AgentAction](data=message).model_dump_json(),
