@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.interview_openhands.llm_agent", "examples.experimental.nodes.initial_message_node",]
+extra_modules = ["sotopia.experimental.agents.llm_agent", "sotopia.experimental.nodes.scene_context_node", "sotopia.experimental.nodes.chat_print_node"]
 
 
 [[nodes]]
@@ -36,10 +36,13 @@ node_class = "tick"
 
 
 [[nodes]]
-node_name = "print"
-node_class = "print"
+node_name = "chat_print"
+node_class = "chat_print"
 
 [nodes.node_args.print_channel_types]
-"tick/secs/1" = "tick"
 "Jane:Jack" = "agent_action"
 "Jack:Jane" = "agent_action"
+"Agent:Runtime" = "agent_action"
+
+[nodes.node_args]
+env_agents = ["Jack", "Jane"]
