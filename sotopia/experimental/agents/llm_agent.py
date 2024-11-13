@@ -2,13 +2,14 @@ import logging
 import sys
 from enum import Enum
 
-
+from collections import deque
 from rich.logging import RichHandler
 
 from aact import Message, NodeFactory
 from aact.messages import Text, Tick
+from langchain.output_parsers import PydanticOutputParser
 from sotopia.experimental.agents.base_agent import BaseAgent, AgentAction, ActionType
-
+from sotopia.experimental.utils.agent_session import AgentSession
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
 
@@ -28,53 +29,7 @@ logging.basicConfig(
     datefmt="[%X]",
     handlers=[RichHandler()],
 )
-
-
-# Define an enum for action states
-class ActionState(Enum):
-    IDLE = "idle"
-    RUNNING = "running"
-
-
-class AgentSession:
-    def __init__(self):
-        # Initialize all relevant actions as idle using string values as keys
-        self.action_states = {
-            ActionType.BROWSE.value: ActionState.IDLE,
-            ActionType.BROWSE_ACTION.value: ActionState.IDLE,
-            ActionType.WRITE.value: ActionState.IDLE,
-            ActionType.READ.value: ActionState.IDLE,
-            ActionType.RUN.value: ActionState.IDLE,
-        }
-
-    def set_action_running(self, action: ActionType):
-        if action.value in self.action_states:
-            self.action_states[action.value] = ActionState.RUNNING
-
-    def set_action_idle(self, action: ActionType):
-        if action.value in self.action_states:
-            self.action_states[action.value] = ActionState.IDLE
-
-    def can_execute_action(self, action: ActionType) -> bool:
-        state = self.action_states.get(action.value)
-        if state is None:
-            self.logger.warning(f"Attempted to check undefined action {action}.")
-            return False
-        return state == ActionState.IDLE
-
-    def reset_all_actions(self):
-        for action in self.action_states:
-            self.action_states[action] = ActionState.IDLE
-
-    def print_status(self):
-        status_lines = [
-            f"Action: {action}, State: {state.value}"
-            for action, state in self.action_states.items()
-        ]
-        status_report = "\n".join(status_lines)
-        print("Current session status:\n" + status_report)
-
-
+  
 @NodeFactory.register("llm_agent")
 class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
     def __init__(
@@ -296,6 +251,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
         )
 
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
+        # self.session.print_status()
         match message:
             case Text(text=text):
                 # TODO: arpandeepk - We need to move this to a different message case.
@@ -360,22 +316,8 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             case Tick():
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
-                    # print([action for action in ActionType])
-                    try:
-                        # Filter out actions that are currently running
-                        available_actions = [
-                            action
-                            for action in ActionType
-                            if action.value not in self.session.action_states
-                            or self.session.can_execute_action(action)
-                        ]
-
-                        template = self.get_action_template(available_actions)
-                    except Exception as e:
-                        print(
-                            f"Error while filtering available actions or generating template: {e}"
-                        )
-
+                    available_actions = self.session.filter_available_actions()
+                    template = self.get_action_template(available_actions)
                     agent_action = await agenerate(
                         model_name=self.model_name,
                         template=template,
@@ -388,7 +330,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         },
                         temperature=0.0,
                         output_parser=StrOutputParser(),
+                        structured_output=False,
                     )
+                    print("Action: ", self.name, " : ", str(agent_action))
 
                     agent_action = (
                         agent_action.replace("```", "")
@@ -400,140 +344,158 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                     try:
                         data = json.loads(agent_action)
                         action = data["action"]
-                        print(self.name, " : ", data)
-                        # Handle different cases based on the action
-                        if action == ActionType.THOUGHT.value:
-                            content = data["args"]["content"]
-                            self.message_history.append((self.name, action, content))
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
-                                argument=content,
-                                path="",
-                            )
 
-                        elif action == ActionType.SPEAK.value:
-                            content = data["args"]["content"]
-                            self.message_history.append((self.name, action, content))
+                        if self.session.is_repeating_action(action):
+                            print("Action repeated too many times. Choosing another action.")
+                            self.message_history.append((self.name, "status", "Avoid repeating actions. Consider a different action."))
                             return AgentAction(
                                 agent_name=self.name,
-                                action_type=action,
-                                argument=content,
-                                path="",
-                            )
-
-                        elif action == ActionType.NON_VERBAL.value:
-                            content = data["args"]["content"]
-                            self.message_history.append((self.name, action, content))
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
-                                argument=content,
-                                path="",
-                            )
-
-                        elif action == ActionType.BROWSE.value:
-                            url = data["args"]["url"]
-                            self.message_history.append((self.name, action, url))
-                            self.session.set_action_running(ActionType.BROWSE)
-                            self.session.set_action_running(ActionType.BROWSE_ACTION)
-                            self.message_history.append(
-                                (
-                                    self.name,
-                                    "status",
-                                    f"Action {action} is running. Waiting for response.",
-                                )
-                            )
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
-                                argument=url,
-                                path="",
-                            )
-
-                        elif action == ActionType.BROWSE_ACTION.value:
-                            command = data["args"]["command"]
-                            self.message_history.append((self.name, action, command))
-                            self.session.set_action_running(ActionType.BROWSE)
-                            self.session.set_action_running(ActionType.BROWSE_ACTION)
-                            self.message_history.append(
-                                (
-                                    self.name,
-                                    "status",
-                                    f"Action {action} is running. Waiting for response.",
-                                )
-                            )
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
-                                argument=command,
-                                path="",
-                            )
-
-                        elif action == ActionType.RUN.value:
-                            command = data["args"]["command"]
-                            self.message_history.append((self.name, action, command))
-                            self.session.set_action_running(ActionType.RUN)
-                            self.message_history.append(
-                                (
-                                    self.name,
-                                    "status",
-                                    f"Action {action} is running. Waiting for response.",
-                                )
-                            )
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
-                                argument=command,
-                                path="",
-                            )
-
-                        elif action == ActionType.WRITE.value:
-                            path = data["args"]["path"]
-                            content = data["args"]["content"]
-                            self.message_history.append((self.name, action, content))
-                            self.session.set_action_running(ActionType.WRITE)
-                            self.message_history.append(
-                                (
-                                    self.name,
-                                    "status",
-                                    f"Action {action} is running. Waiting for response.",
-                                )
-                            )
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
-                                argument=content,
-                                path=path,
-                            )
-
-                        elif action == ActionType.READ.value:
-                            path = data["args"]["path"]
-                            self.message_history.append((self.name, action, path))
-                            self.session.set_action_running(ActionType.READ)
-                            self.message_history.append(
-                                (
-                                    self.name,
-                                    "status",
-                                    f"Action {action} is running. Waiting for response.",
-                                )
-                            )
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
-                                argument="",
-                                path=path,
-                            )
-
-                        elif action == ActionType.NONE.value:
-                            return AgentAction(
-                                agent_name=self.name,
-                                action_type=action,
+                                action_type=ActionType.NONE.value,
                                 argument="",
                                 path="",
                             )
-                        else:
-                            print(f"Unknown action: {action}")
+                            
+                        self.session.record_action(action)
+
+                        try:
+                            if action == ActionType.THOUGHT.value:
+                                self.session.increment_consecutive_thoughts()
+                                if self.session.consecutive_thoughts > 2: 
+                                    print("Too many consecutive thoughts. Choosing another action.")
+                                    self.message_history.append((self.name, "status", "Consider acting on your thoughts to progress towards your goal."))
+                                    return AgentAction(
+                                        agent_name=self.name,
+                                        action_type=ActionType.NONE.value,
+                                        argument="",
+                                        path="",
+                                    )                                
+                                content = data["args"]["content"]
+                                self.message_history.append((self.name, action, content))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument=content,
+                                    path="",
+                                )
+
+                            elif action == ActionType.SPEAK.value:
+                                self.session.reset_consecutive_thoughts()
+                                content = data["args"]["content"]
+                                self.message_history.append((self.name, action, content))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument=content,
+                                    path="",
+                                )
+
+                            elif action == ActionType.NON_VERBAL.value:
+                                self.session.reset_consecutive_thoughts()
+                                content = data["args"]["content"]
+                                self.message_history.append((self.name, action, content))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument=content,
+                                    path="",
+                                )
+
+                            elif action == ActionType.BROWSE.value:
+                                self.session.reset_consecutive_thoughts()
+                                url = data["args"]["url"]
+                                self.message_history.append((self.name, action, url))
+                                self.session.set_action_running(ActionType.BROWSE)
+                                self.session.set_action_running(ActionType.BROWSE_ACTION)
+                                self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument=url,
+                                    path="",
+                                )
+
+                            elif action == ActionType.BROWSE_ACTION.value:
+                                self.session.reset_consecutive_thoughts()
+                                command = data["args"]["command"]
+                                self.message_history.append((self.name, action, command))
+                                self.session.set_action_running(ActionType.BROWSE)
+                                self.session.set_action_running(ActionType.BROWSE_ACTION)
+                                self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument=command,
+                                    path="",
+                                )
+
+                            elif action == ActionType.RUN.value:
+                                self.session.reset_consecutive_thoughts()
+                                command = data["args"]["command"]
+                                self.message_history.append((self.name, action, command))
+                                self.session.set_action_running(ActionType.RUN)
+                                self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument=command,
+                                    path="",
+                                )
+
+                            elif action == ActionType.WRITE.value:
+                                self.session.reset_consecutive_thoughts()
+                                path = data["args"]["path"]
+                                content = data["args"]["content"]
+                                self.message_history.append((self.name, action, content))
+                                self.session.set_action_running(ActionType.WRITE)
+                                self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument=content,
+                                    path=path,
+                                )
+
+                            elif action == ActionType.READ.value:
+                                self.session.reset_consecutive_thoughts()
+                                path = data["args"]["path"]
+                                self.message_history.append((self.name, action, path))
+                                self.session.set_action_running(ActionType.READ)
+                                self.message_history.append((self.name, "status", f"Action {action} is running. Waiting for response."))
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument="",
+                                    path=path,
+                                )
+
+                            elif action == ActionType.NONE.value:
+                                self.session.reset_consecutive_thoughts()
+                                return AgentAction(
+                                    agent_name=self.name,
+                                    action_type=action,
+                                    argument="",
+                                    path="",
+                                )
+                            else:
+                                print(f"Unknown action: {action}")
+                        except KeyError as e:
+                            print(f"Missing key in data: {e}")
+                            self.message_history.append((self.name, "error", f"Missing key in data: {e}"))
+                            return AgentAction(
+                                agent_name=self.name,
+                                action_type=ActionType.NONE.value,
+                                argument="",
+                                path="",
+                            )
+                        except Exception as e:
+                            print(f"Unexpected error: {e}")
+                            self.message_history.append((self.name, "error", f"Unexpected error: {e}"))
+                            return AgentAction(
+                                agent_name=self.name,
+                                action_type=ActionType.NONE.value,
+                                argument="",
+                                path="",
+                            )
                     except json.JSONDecodeError as e:
                         print(f"Error decoding JSON: {e}")
                 else:
@@ -544,7 +506,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 agent_name=agent_name, action_type=action_type, argument=text
             ):
                 # print(action_type, text)
-                if action_type == "speak":
+                if action_type == ActionType.SPEAK.value:
                     self.message_history.append((agent_name, str(action_type), text))
                 return AgentAction(
                     agent_name=self.name, action_type="none", argument="", path=""
