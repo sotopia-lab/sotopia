@@ -11,7 +11,7 @@ from rich.align import Align
 from rich.logging import RichHandler
 
 from aact import NodeFactory
-from aact.nodes import PrintNode 
+from aact.nodes import PrintNode
 
 console = Console()
 
@@ -72,7 +72,11 @@ class ChatPrint(PrintNode):
                 except Exception as e:
                     console.print(
                         Panel(
-                            RichText(f"Error processing write action: {e}", style="bold red", justify="center"),
+                            RichText(
+                                f"Error processing write action: {e}",
+                                style="bold red",
+                                justify="center",
+                            ),
                             title="Error",
                             expand=False,
                             border_style="red",
