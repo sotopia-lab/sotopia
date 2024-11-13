@@ -70,8 +70,13 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 Message[AgentAction](data=message).model_dump_json(),
             )
 
-        elif message.action_type in (ActionType.BROWSE.value, ActionType.BROWSE_ACTION.value,\
-            ActionType.WRITE.value, ActionType.READ.value, ActionType.RUN.value):
+        elif message.action_type in (
+            ActionType.BROWSE.value,
+            ActionType.BROWSE_ACTION.value,
+            ActionType.WRITE.value,
+            ActionType.READ.value,
+            ActionType.RUN.value,
+        ):
             await self.r.publish(
                 "Agent:Runtime",
                 Message[AgentAction](data=message).model_dump_json(),
@@ -91,7 +96,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
         Returns the action template string with selected actions.
 
         Args:
-            selected_actions (list[ActionType]): List of ActionType enum members 
+            selected_actions (list[ActionType]): List of ActionType enum members
             to include in the template.
 
         Returns:
@@ -380,9 +385,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             url = data["args"]["url"]
                             self.message_history.append((self.name, action, url))
                             self.session.set_action_running(ActionType.BROWSE)
-                            self.session.set_action_running(
-                                    ActionType.BROWSE_ACTION
-                                )
+                            self.session.set_action_running(ActionType.BROWSE_ACTION)
                             self.message_history.append(
                                 (
                                     self.name,
@@ -400,13 +403,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         elif action == ActionType.BROWSE_ACTION.value:
                             self.session.reset_consecutive_thoughts()
                             command = data["args"]["command"]
-                            self.message_history.append(
-                                (self.name, action, command)
-                            )
+                            self.message_history.append((self.name, action, command))
                             self.session.set_action_running(ActionType.BROWSE)
-                            self.session.set_action_running(
-                                ActionType.BROWSE_ACTION
-                            )
+                            self.session.set_action_running(ActionType.BROWSE_ACTION)
                             self.message_history.append(
                                 (
                                     self.name,
@@ -424,9 +423,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         elif action == ActionType.RUN.value:
                             self.session.reset_consecutive_thoughts()
                             command = data["args"]["command"]
-                            self.message_history.append(
-                                (self.name, action, command)
-                            )
+                            self.message_history.append((self.name, action, command))
                             self.session.set_action_running(ActionType.RUN)
                             self.message_history.append(
                                 (
@@ -446,9 +443,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             self.session.reset_consecutive_thoughts()
                             path = data["args"]["path"]
                             content = data["args"]["content"]
-                            self.message_history.append(
-                                (self.name, action, content)
-                            )
+                            self.message_history.append((self.name, action, content))
                             self.session.set_action_running(ActionType.WRITE)
                             self.message_history.append(
                                 (
@@ -482,7 +477,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 argument="",
                                 path=path,
                             )
-                            
+
                         elif action == ActionType.NONE.value:
                             self.session.reset_consecutive_thoughts()
                             return AgentAction(
@@ -497,7 +492,10 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                         print(f"Error decoding JSON: {e}")
                 else:
                     return AgentAction(
-                        agent_name=self.name, action_type=ActionType.NONE.value, argument="", path=""
+                        agent_name=self.name,
+                        action_type=ActionType.NONE.value,
+                        argument="",
+                        path="",
                     )
             case AgentAction(
                 agent_name=agent_name, action_type=action_type, argument=text
@@ -505,6 +503,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                 if action_type == ActionType.SPEAK.value:
                     self.message_history.append((agent_name, str(action_type), text))
                 return AgentAction(
-                    agent_name=self.name, action_type=ActionType.NONE.value, argument="", path=""
+                    agent_name=self.name,
+                    action_type=ActionType.NONE.value,
+                    argument="",
+                    path="",
                 )
         raise ValueError(f"Unexpected message type: {type(message)}")
