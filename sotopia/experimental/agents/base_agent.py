@@ -113,7 +113,7 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
         for output_channel, output_channel_type in self.output_channel_types.items():
             await self.r.publish(
                 output_channel,
-                Message[output_channel_type](data=action).model_dump_json(), # type:ignore[valid-type] 
+                Message[output_channel_type](data=action).model_dump_json(),  # type:ignore[valid-type]
             )
 
     async def _task_scheduler(self) -> None:
