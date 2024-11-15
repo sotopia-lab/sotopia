@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.agents.llm_agent", "examples.experimental.nodes.initial_message_node",]
+extra_modules = ["examples.experimental.llm_agent.llm_agent", "examples.experimental.nodes.initial_message_node",]
 
 
 [[nodes]]
@@ -10,7 +10,7 @@ node_class = "llm_agent"
 query_interval = 5
 output_channel = "Jack:Jane"
 input_text_channels = ["Jane:Jack"]
-input_env_channels = ["Runtime:Agent"]
+input_env_channels = ["Runtime:Agent", "Scene:Jack"]
 input_tick_channel = "tick/secs/1"
 goal = "Your goal is to effectively test Jane's technical ability and finally decide if she has passed the interview. Make sure to also evaluate her communication skills, problem-solving approach, and enthusiasm."
 model_name = "gpt-4o-mini"
@@ -24,7 +24,7 @@ node_class = "llm_agent"
 query_interval = 7
 output_channel = "Jane:Jack"
 input_text_channels = ["Jack:Jane"]
-input_env_channels = ["Runtime:Agent"]
+input_env_channels = ["Runtime:Agent", "Scene:Jane"]
 input_tick_channel = "tick/secs/1"
 goal = "Your goal is to do well in the interview by demonstrating your technical skills, clear communication, and enthusiasm for the position. Stay calm, ask clarifying questions when needed, and confidently explain your thought process."
 model_name = "gpt-4o-mini"
