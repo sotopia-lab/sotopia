@@ -40,6 +40,8 @@ examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 chat = [
     "fastapi",
     "websockets>=13.1",
+    "rel",
+    "uvicorn",
 ]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 

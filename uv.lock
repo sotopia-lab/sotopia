@@ -3277,6 +3277,14 @@ wheels = [
 ]
 
 [[package]]
+name = "rel"
+version = "0.4.9.19"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3e/45/a6397d9c819a39caeac08520edf19fd1c9af287c442784cdddf7c7819bf0/rel-0.4.9.19-py3-none-any.whl", hash = "sha256:dbca54cfeab89f406825208ec7bebe0ed1e104705fc5478750fc0e019822dff1", size = 15182 },
+]
+
+[[package]]
 name = "requests"
 version = "2.32.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3709,6 +3717,8 @@ anthropic = [
 ]
 chat = [
     { name = "fastapi" },
+    { name = "rel" },
+    { name = "uvicorn" },
     { name = "websockets" },
 ]
 cohere = [
@@ -3771,11 +3781,13 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
     { name = "redis-om", specifier = ">=0.3.0,<0.4.0" },
+    { name = "rel", marker = "extra == 'chat'" },
     { name = "rich", specifier = ">=13.6.0,<14.0.0" },
     { name = "scipy", marker = "extra == 'examples'" },
     { name = "together", specifier = ">=0.2.4,<1.4.0" },
     { name = "torch", marker = "extra == 'examples'" },
     { name = "transformers", marker = "extra == 'examples'" },
+    { name = "uvicorn", marker = "extra == 'chat'" },
     { name = "websockets", marker = "extra == 'chat'", specifier = ">=13.1" },
 ]
 
@@ -4286,6 +4298,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ed/63/22ba4ebfe7430b76388e7cd448d5478814d3032121827c12a2cc287e2260/urllib3-2.2.3.tar.gz", hash = "sha256:e7d814a81dad81e6caf2ec9fdedb284ecc9c73076b62654547cc64ccdcae26e9", size = 300677 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/d9/5f4c13cecde62396b0d3fe530a50ccea91e7dfc1ccf0e09c228841bb5ba8/urllib3-2.2.3-py3-none-any.whl", hash = "sha256:ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac", size = 126338 },
+]
+
+[[package]]
+name = "uvicorn"
+version = "0.32.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "h11" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/fc/1d785078eefd6945f3e5bab5c076e4230698046231eb0f3747bc5c8fa992/uvicorn-0.32.0.tar.gz", hash = "sha256:f78b36b143c16f54ccdb8190d0a26b5f1901fe5a3c777e1ab29f26391af8551e", size = 77564 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/14/78bd0e95dd2444b6caacbca2b730671d4295ccb628ef58b81bee903629df/uvicorn-0.32.0-py3-none-any.whl", hash = "sha256:60b8f3a5ac027dcd31448f411ced12b5ef452c646f76f02f8cc3f25d8d26fd82", size = 63723 },
 ]
 
 [[package]]
