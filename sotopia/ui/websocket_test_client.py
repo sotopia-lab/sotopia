@@ -4,20 +4,20 @@ import rel
 from sotopia.database import EnvironmentProfile, AgentProfile
 
 
-def on_message(ws, message) -> None:
+def on_message(ws, message) -> None:  # type: ignore
     msg = json.loads(message)
     print("\nReceived message:", json.dumps(msg, indent=2))
 
 
-def on_error(ws, error) -> None:
+def on_error(ws, error) -> None:  # type: ignore
     print("Error:", error)
 
 
-def on_close(ws, close_status_code, close_msg) -> None:
+def on_close(ws, close_status_code, close_msg) -> None:  # type: ignore
     print("Connection closed")
 
 
-def on_open(ws) -> None:
+def on_open(ws) -> None:  # type: ignore
     agent_ids = [agent.pk for agent in AgentProfile.find().all()[:2]]
     env_id = EnvironmentProfile.find().all()[0].pk
 
