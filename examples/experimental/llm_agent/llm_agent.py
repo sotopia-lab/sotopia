@@ -310,23 +310,26 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
             case Tick():
                 self.count_ticks += 1
                 if self.count_ticks % self.query_interval == 0:
-                    template = self.get_action_template(
-                        [action for action in ActionType]
-                    )
+                    try:
+                        template = self.get_action_template(
+                            [action for action in ActionType]
+                        )
 
-                    agent_action = await agenerate(
-                        model_name=self.model_name,
-                        template=template,
-                        input_values={
-                            "message_history": self._format_message_history(
-                                self.message_history
-                            ),
-                            "goal": self.goal,
-                            "agent_name": self.name,
-                        },
-                        temperature=0.7,
-                        output_parser=StrOutputParser(),
-                    )
+                        agent_action = await agenerate(
+                            model_name=self.model_name,
+                            template=template,
+                            input_values={
+                                "message_history": self._format_message_history(
+                                    self.message_history
+                                ),
+                                "goal": self.goal,
+                                "agent_name": self.name,
+                            },
+                            temperature=0.7,
+                            output_parser=StrOutputParser(),
+                        )
+                    except Exception as e:
+                        print(f"Error during agenerate: {e}")
 
                     agent_action = (
                         agent_action.replace("```", "")
