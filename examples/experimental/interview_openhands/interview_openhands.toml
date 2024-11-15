@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.llm_agent.llm_agent"]
+extra_modules = ["examples.experimental.interview_openhands.llm_agent"]
 
 
 [[nodes]]
