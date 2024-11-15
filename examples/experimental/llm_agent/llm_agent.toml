@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["sotopia.experimental.agents.llm_agent", "sotopia.experimental.nodes.scene_context_node",]
+extra_modules = ["examples.experimental.agents.llm_agent", "examples.experimental.nodes.initial_message_node",]
 
 
 [[nodes]]
@@ -36,7 +36,7 @@ node_class = "tick"
 
 [[nodes]]
 node_name = "JaneScene"
-node_class = "scenario_context"
+node_class = "initial_message"
 
 [nodes.node_args]
 input_tick_channel = "tick/secs/1"
@@ -58,7 +58,7 @@ Remember, this interview is as much about your technical skills as it is about y
 
 [[nodes]]
 node_name = "JackScene"
-node_class = "scenario_context"
+node_class = "initial_message"
 
 [nodes.node_args]
 input_tick_channel = "tick/secs/1"

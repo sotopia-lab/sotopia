@@ -11,8 +11,8 @@ else:
     from typing_extensions import Self
 
 
-@NodeFactory.register("scenario_context")
-class ScenarioContext(Node[DataModel, Text]):
+@NodeFactory.register("initial_message")
+class InitialMessageNode(Node[DataModel, Text]):
     def __init__(
         self,
         input_tick_channel: str,
