@@ -32,6 +32,7 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
+
 class ActionType(Enum):
     NONE = "none"
     SPEAK = "speak"
