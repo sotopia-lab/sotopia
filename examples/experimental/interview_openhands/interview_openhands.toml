@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.interview_openhands.llm_agent", "examples.experimental.nodes.initial_message_node",]
+extra_modules = ["examples.experimental.interview_openhands.llm_agent", "examples.experimental.nodes.scene_context_node", "examples.experimental.nodes.chat_print_node"]
 
 
 [[nodes]]
@@ -10,7 +10,7 @@ node_class = "llm_agent"
 query_interval = 5
 output_channel = "Jack:Jane"
 input_text_channels = ["Jane:Jack"]
-input_env_channels = ["Runtime:Agent", "Scene:Jack"]
+input_env_channels = ["Scene:Jack", "Runtime:Agent"]
 input_tick_channel = "tick/secs/1"
 goal = "Your goal is to effectively test Jane's technical ability and finally decide if she has passed the interview. Make sure to also evaluate her communication skills, problem-solving approach, and enthusiasm."
 model_name = "gpt-4o-mini"
@@ -24,7 +24,7 @@ node_class = "llm_agent"
 query_interval = 7
 output_channel = "Jane:Jack"
 input_text_channels = ["Jack:Jane"]
-input_env_channels = ["Runtime:Agent", "Scene:Jane"]
+input_env_channels = ["Scene:Jane", "Runtime:Agent"]
 input_tick_channel = "tick/secs/1"
 goal = "Your goal is to do well in the interview by demonstrating your technical skills, clear communication, and enthusiasm for the position. Stay calm, ask clarifying questions when needed, and confidently explain your thought process."
 model_name = "gpt-4o-mini"
@@ -36,7 +36,7 @@ node_class = "tick"
 
 [[nodes]]
 node_name = "JaneScene"
-node_class = "initial_message"
+node_class = "scenario_context"
 
 [nodes.node_args]
 input_tick_channel = "tick/secs/1"
@@ -58,7 +58,7 @@ Remember, this interview is as much about your technical skills as it is about y
 
 [[nodes]]
 node_name = "JackScene"
-node_class = "initial_message"
+node_class = "scenario_context"
 
 [nodes.node_args]
 input_tick_channel = "tick/secs/1"
@@ -87,10 +87,13 @@ This interview not only evaluates Jane’s technical skills but also her communi
 """
 
 [[nodes]]
-node_name = "print"
-node_class = "print"
+node_name = "chat_print"
+node_class = "chat_print"
 
 [nodes.node_args.print_channel_types]
-"tick/secs/1" = "tick"
 "Jane:Jack" = "agent_action"
 "Jack:Jane" = "agent_action"
+"Agent:Runtime" = "agent_action"
+
+[nodes.node_args]
+env_agents = ["Jack", "Jane"]
