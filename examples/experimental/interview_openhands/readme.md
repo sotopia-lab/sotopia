@@ -7,11 +7,11 @@ In this example, we explore the interaction between two LLM agents, "Jack" and "
 - **Jack (Interviewer)**: An LLM agent tasked with assessing Jane's technical skills, communication, problem-solving approach, and enthusiasm.
 - **Jane (Interviewee)**: An LLM agent aiming to perform well in the interview by showcasing her skills and enthusiasm.
 
-## Customizing the Scenario
+### Customizing the Scenario
 
 You can modify the `interview_openhands.toml` file to simulate different scenarios by changing the goals, model names, and communication channels. This flexibility allows you to tailor the interaction to various use cases, such as customer service simulations, collaborative problem-solving, or educational tutoring.
 
-## Actions Available to LLM Agents
+### Actions Available to LLM Agents
 
 - **speak**: Communicate with other agents by sending a message.
 - **thought**: Make a plan or set a goal internally.
@@ -25,10 +25,6 @@ You can modify the `interview_openhands.toml` file to simulate different scenari
 - **leave**: Exit the conversation when goals are completed or abandoned.
 
 These actions enable the agents to interact dynamically with their environment and each other, providing a robust framework for simulating complex scenarios.
-
-## Implementation of the Agents
-
-The implementation of these agents can be found in `llm_agent.py`. The agents are configured to interact with each other through specified channels, simulating a real-time interview process.
 
 ## Dataflow Configuration
 
@@ -66,14 +62,14 @@ model_name = "gpt-4o-mini"
 agent_name = "Jane"
 ```
 
-## Auxiliary Nodes
+### Auxiliary Nodes
 
 In addition to the agents, there are auxiliary nodes that facilitate the interaction:
 
 - **Tick Node**: Provides a stable clock signal for synchronization.
 - **Print Node**: Outputs real-time messages for monitoring the interaction.
 
-### Auxiliary Node Configuration
+#### Auxiliary Node Configuration
 
 ```toml
 [[nodes]]
@@ -151,7 +147,7 @@ To run this interview setting example, use the following command:
 uv run aact run-dataflow examples/experimental/interview_openhands/interview_openhands.toml
 ```
 
-## Expected Output
+### Expected Output
 
 You will see JSON strings printed out, representing messages exchanged between the nodes. These messages include timestamps for easy debugging and data recording, demonstrating the real-time interaction between the agents.
 
