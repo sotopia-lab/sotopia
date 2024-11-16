@@ -163,15 +163,15 @@ You will see JSON strings printed out, representing messages exchanged between t
 {"timestamp":"2024-11-12T17:27:31.804342","channel":"tick/secs/1","data":{"data_type":"tick","tick":4}}
 {"timestamp":"2024-11-12T17:27:32.805544","channel":"tick/secs/1","data":{"data_type":"tick","tick":5}}
 {"timestamp":"2024-11-12T17:27:33.094975","channel":"Jack:Jane","data":{"data_type":"agent_action","agent_name":"Jack","
-action_type":"speak","argument":"Hi Jane! I'm Jack, a Principal Software Engineer here at Fintech. It's great to meet you! Could you please introduce yourself and tell me a little about your education and any relevant experiences you've had?","path":""}}                                                                                                          
+action_type":"speak","argument":"Hi Jane! I'm Jack, a Principal Software Engineer here at Fintech. It's great to meet you! Could you please introduce yourself and tell me a little about your education and any relevant experiences you've had?","path":""}}
 {"timestamp":"2024-11-12T17:27:33.801111","channel":"tick/secs/1","data":{"data_type":"tick","tick":6}}
 {"timestamp":"2024-11-12T17:27:34.803471","channel":"tick/secs/1","data":{"data_type":"tick","tick":7}}
 {"timestamp":"2024-11-12T17:27:35.118890","channel":"Jane:Jack","data":{"data_type":"agent_action","agent_name":"Jane","
-action_type":"speak","argument":"Hi Jack! I'm Jane, a college senior at Stanford University majoring in Computer Science. I've had a strong focus on software development, especially in fintech applications. I recently completed a project where I built a budgeting app using React and Node.js, which helped users manage their finances effectively. I'm excited about the opportunity to bring my skills to your team.","path":""}}                                                      
+action_type":"speak","argument":"Hi Jack! I'm Jane, a college senior at Stanford University majoring in Computer Science. I've had a strong focus on software development, especially in fintech applications. I recently completed a project where I built a budgeting app using React and Node.js, which helped users manage their finances effectively. I'm excited about the opportunity to bring my skills to your team.","path":""}}
 {"timestamp":"2024-11-12T17:27:35.803424","channel":"tick/secs/1","data":{"data_type":"tick","tick":8}}
 {"timestamp":"2024-11-12T17:27:36.800113","channel":"tick/secs/1","data":{"data_type":"tick","tick":9}}
 {"timestamp":"2024-11-12T17:27:37.732772","channel":"Jack:Jane","data":{"data_type":"agent_action","agent_name":"Jack","
-action_type":"speak","argument":"That's a fantastic introduction, Jane! Your project sounds really interesting. Now, let's dive into some technical questions. Are you ready?","path":""}}                                                      
+action_type":"speak","argument":"That's a fantastic introduction, Jane! Your project sounds really interesting. Now, let's dive into some technical questions. Are you ready?","path":""}}
 {"timestamp":"2024-11-12T17:27:37.802020","channel":"tick/secs/1","data":{"data_type":"tick","tick":10}}
 {"timestamp":"2024-11-12T17:27:38.800835","channel":"tick/secs/1","data":{"data_type":"tick","tick":11}}
 {"timestamp":"2024-11-12T17:27:39.804363","channel":"tick/secs/1","data":{"data_type":"tick","tick":12}}
@@ -185,5 +185,3 @@ This output shows the following events:
 4. "Jack" acknowledges Jane's introduction and prepares to ask technical questions.
 
 Each message includes a timestamp for easy debugging and data recording. The interaction demonstrates the agents' ability to simulate a realistic interview scenario, with messages exchanged in real-time.
-
-
