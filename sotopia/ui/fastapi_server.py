@@ -1,16 +1,27 @@
 from fastapi import FastAPI, WebSocket
 from typing import Literal, cast, Dict
+from fastapi.middleware.cors import CORSMiddleware
+
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
 import json
-from websocket_utils import (
+from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
     WSMessageType,
     ErrorType,
     WSMessage,
 )
 import uvicorn
+import asyncio
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)  # TODO: Whether allowing CORS for all origins
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -172,7 +183,19 @@ async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
                     ).to_json()
                     await websocket.send_json(agent_message_to_pass_back)
 
-                    # TODO There is no mechanism to stop the simulation
+                    try:
+                        data = await asyncio.wait_for(
+                            websocket.receive_text(), timeout=0.01
+                        )
+                        msg = json.loads(data)
+                        if msg.get("type") == WSMessageType.FINISH_SIM.value:
+                            print("----- FINISH -----")
+                            break
+                    except asyncio.TimeoutError:
+                        continue
+                    except Exception as e:
+                        print("Error in receiving message from client", e)
+
             except Exception:
                 await websocket.send_json(
                     WSMessage(

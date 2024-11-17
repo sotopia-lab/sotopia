@@ -22,6 +22,7 @@ class WSMessageType(str, Enum):
     ERROR = "ERROR"
     START_SIM = "START_SIM"
     END_SIM = "END_SIM"
+    FINISH_SIM = "FINISH_SIM"
 
 
 class ErrorType(str, Enum):

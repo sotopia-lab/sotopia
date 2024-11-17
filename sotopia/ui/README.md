@@ -158,6 +158,19 @@ returns:
 | END_SIM    | Client → Server | End simulation (payload: not needed) |
 | FINISH_SIM | Server → Client | Terminate simulation (payload: not needed) |
 
-**Error Type: TBD**
+
+**Error Type**
+
+| Error Code | Description |
+|------------|-------------|
+| NOT_AUTHORIZED | Authentication failure - invalid or expired token |
+| SIMULATION_ALREADY_STARTED | Attempt to start a simulation that is already active |
+| SIMULATION_NOT_STARTED | Operation attempted on an inactive simulation |
+| RESOURCE_NOT_FOUND | Required env_id or agent_ids not found |
+| SIMULATION_ERROR |  Error occurred during simulation execution |
+| SIMULATION_INTERRUPTED | The simulation is interruped |
+| OTHER | Other unspecified errors |
+
+
 
 **Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
