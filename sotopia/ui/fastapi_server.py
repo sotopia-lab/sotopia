@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, HTTPException
 from typing import Literal, cast, Dict
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -42,6 +42,12 @@ async def get_scenarios(
             EnvironmentProfile.codename == value
         ).all()
         scenarios.extend(cast(list[EnvironmentProfile], json_models))
+
+    if not scenarios:
+        raise HTTPException(
+            status_code=404, detail=f"No scenarios found with {get_by}={value}"
+        )
+
     return scenarios
 
 
@@ -63,6 +69,12 @@ async def get_agents(
     elif get_by == "occupation":
         json_models = AgentProfile.find(AgentProfile.occupation == value).all()
         agents_profiles.extend(cast(list[AgentProfile], json_models))
+
+    if not agents_profiles:
+        raise HTTPException(
+            status_code=404, detail=f"No agents found with {get_by}={value}"
+        )
+
     return agents_profiles
 
 
@@ -79,6 +91,11 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     elif get_by == "tag":
         json_models = EpisodeLog.find(EpisodeLog.tag == value).all()
         episodes.extend(cast(list[EpisodeLog], json_models))
+
+    if not episodes:
+        raise HTTPException(
+            status_code=404, detail=f"No episodes found with {get_by}={value}"
+        )
     return episodes
 
 
@@ -98,7 +115,12 @@ async def create_scenario(scenario: EnvironmentProfile) -> str:
 
 @app.put("/agents/{agent_id}", response_model=str)
 async def update_agent(agent_id: str, agent: AgentProfile) -> str:
-    old_agent = AgentProfile.get(pk=agent_id)
+    try:
+        old_agent = AgentProfile.get(pk=agent_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Agent with id={agent_id} not found"
+        )
     old_agent.update(**agent.model_dump())  # type: ignore
     assert old_agent.pk is not None
     return old_agent.pk
@@ -106,7 +128,12 @@ async def update_agent(agent_id: str, agent: AgentProfile) -> str:
 
 @app.put("/scenarios/{scenario_id}", response_model=str)
 async def update_scenario(scenario_id: str, scenario: EnvironmentProfile) -> str:
-    old_scenario = EnvironmentProfile.get(pk=scenario_id)
+    try:
+        old_scenario = EnvironmentProfile.get(pk=scenario_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Scenario with id={scenario_id} not found"
+        )
     old_scenario.update(**scenario.model_dump())  # type: ignore
     assert old_scenario.pk is not None
     return old_scenario.pk
@@ -114,7 +141,12 @@ async def update_scenario(scenario_id: str, scenario: EnvironmentProfile) -> str
 
 @app.delete("/agents/{agent_id}", response_model=str)
 async def delete_agent(agent_id: str) -> str:
-    agent = AgentProfile.get(pk=agent_id)
+    try:
+        agent = AgentProfile.get(pk=agent_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Agent with id={agent_id} not found"
+        )
     AgentProfile.delete(agent.pk)
     assert agent.pk is not None
     return agent.pk
@@ -122,7 +154,12 @@ async def delete_agent(agent_id: str) -> str:
 
 @app.delete("/scenarios/{scenario_id}", response_model=str)
 async def delete_scenario(scenario_id: str) -> str:
-    scenario = EnvironmentProfile.get(pk=scenario_id)
+    try:
+        scenario = EnvironmentProfile.get(pk=scenario_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Scenario with id={scenario_id} not found"
+        )
     EnvironmentProfile.delete(scenario.pk)
     assert scenario.pk is not None
     return scenario.pk
