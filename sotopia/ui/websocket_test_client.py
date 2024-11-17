@@ -1,4 +1,4 @@
-import websocket
+import websocket  # type: ignore
 import json
 import rel  # type: ignore
 from sotopia.database import EnvironmentProfile, AgentProfile
