@@ -1,8 +1,6 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
 from typing import Literal, cast, Dict
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
-import json
-from ws_utils import WebSocketSotopiaSimulator, WSMessageType, ErrorType, WSMessage
 import uvicorn
 
 app = FastAPI()
@@ -115,77 +113,6 @@ async def delete_scenario(scenario_id: str) -> str:
 active_simulations: Dict[
     str, bool
 ] = {}  # TODO check whether this is the correct way to store the active simulations
-
-
-@app.websocket("/ws/simulation")
-async def websocket_endpoint(websocket: WebSocket, token: str):
-    if not token:
-        await websocket.close(code=1008, reason="Missing token")
-        return
-
-    # TODO check the validity of the token
-
-    await websocket.accept()
-    simulation_started = False
-
-    while True:
-        raw_message = await websocket.receive_text()
-        client_start_msg = json.loads(raw_message)
-        msg_type = client_start_msg.get("type")
-
-        if msg_type == WSMessageType.START_SIM.value:
-            if simulation_started:
-                await websocket.send_json(
-                    WSMessage(
-                        type=WSMessageType.ERROR,
-                        data={"type": ErrorType.SIMULATION_ALREADY_STARTED},
-                    ).to_json()
-                )
-                continue
-
-            simulation_started = True
-            active_simulations[token] = True
-
-            try:
-                simulator = WebSocketSotopiaSimulator(
-                    env_id=client_start_msg["data"]["env_id"],
-                    agent_ids=client_start_msg["data"]["agent_ids"],
-                )
-            except Exception:
-                await websocket.send_json(
-                    WSMessage(
-                        type=WSMessageType.ERROR, data={"type": ErrorType.OTHER}
-                    ).to_json()
-                )
-                break
-
-            try:
-                async for message in simulator.run_one_step():
-                    agent_message_to_pass_back = WSMessage(
-                        type=WSMessageType.SERVER_MSG,
-                        data=message,
-                    ).to_json()
-                    await websocket.send_json(agent_message_to_pass_back)
-
-                    # TODO There is no mechanism to stop the simulation
-            except Exception:
-                await websocket.send_json(
-                    WSMessage(
-                        type=WSMessageType.ERROR,
-                        data={"type": ErrorType.SIMULATION_ISSUE},
-                    ).to_json()
-                )
-
-            end_simulation_message = WSMessage(
-                type=WSMessageType.END_SIM, data={}
-            ).to_json()
-            await websocket.send_json(end_simulation_message)
-            simulation_started = False
-            active_simulations[token] = False
-
-        else:
-            # TODO if that is not a start message, check other possibilities
-            pass
 
 
 if __name__ == "__main__":
