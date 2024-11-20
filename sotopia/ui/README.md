@@ -153,13 +153,13 @@ returns:
 |-----------|--------|-------------|
 | SERVER_MSG | Server → Client | Standard message from server (payload: `messageForRendering` [here](https://github.com/sotopia-lab/sotopia-demo/blob/main/socialstream/rendering_utils.py) ) |
 | CLIENT_MSG | Client → Server | Standard message from client (payload: TBD) |
-| ERROR      | Server → Client | Error notification (payload: TBD) |
+| ERROR      | Server → Client | Error notification (payload: `{"type": ERROR_TYPE, "description": DESC}`) |
 | START_SIM  | Client → Server | Initialize simulation (payload: `SimulationEpisodeInitialization`) |
 | END_SIM    | Client → Server | End simulation (payload: not needed) |
 | FINISH_SIM | Server → Client | Terminate simulation (payload: not needed) |
 
 
-**Error Type**
+**ERROR_TYPE**
 
 | Error Code | Description |
 |------------|-------------|
@@ -172,5 +172,14 @@ returns:
 | OTHER | Other unspecified errors |
 
 
+**Conversation Message From the Server**
+The server returns messages encapsulated in a structured format which is defined as follows:
+
+```python
+class MessageForRendering(TypedDict):
+    role: str # Specifies the origin of the message. Common values include "Background Info", "Environment", "{Agent Names}
+    type: str # Categorizes the nature of the message. Common types include: "comment", "said", "action"
+    content: str
+```
 
 **Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
