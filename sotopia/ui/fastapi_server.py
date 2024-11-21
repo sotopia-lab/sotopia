@@ -1,9 +1,49 @@
 from fastapi import FastAPI
 from typing import Literal, cast, Dict
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from pydantic import BaseModel
 import uvicorn
 
 app = FastAPI()
+
+
+class AgentProfileWrapper(BaseModel):
+    """
+    Wrapper for AgentProfile to avoid pydantic v2 issues
+    """
+
+    first_name: str
+    last_name: str
+    age: int = 0
+    occupation: str = ""
+    gender: str = ""
+    gender_pronoun: str = ""
+    public_info: str = ""
+    big_five: str = ""
+    moral_values: list[str] = []
+    schwartz_personal_values: list[str] = []
+    personality_and_values: str = ""
+    decision_making_style: str = ""
+    secret: str = ""
+    model_id: str = ""
+    mbti: str = ""
+    tag: str = ""
+
+
+class EnvironmentProfileWrapper(BaseModel):
+    """
+    Wrapper for EnvironmentProfile to avoid pydantic v2 issues
+    """
+
+    codename: str
+    source: str = ""
+    scenario: str = ""
+    agent_goals: list[str] = []
+    relationship: Literal[0, 1, 2, 3, 4, 5] = 0
+    age_constraint: str | None = None
+    occupation_constraint: str | None = None
+    agent_constraint: list[list[str]] | None = None
+    tag: str = ""
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -59,48 +99,35 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     return episodes
 
 
-@app.post("/agents/", response_model=str)
-async def create_agent(agent: AgentProfile) -> str:
-    return agent.first_name
+@app.post("/agents/")
+async def create_agent(agent: AgentProfileWrapper) -> str:
+    agent_profile = AgentProfile(**agent.model_dump())
+    agent_profile.save()
+    pk = agent_profile.pk
+    assert pk is not None
+    return pk
 
 
 @app.post("/scenarios/", response_model=str)
-async def create_scenario(scenario: EnvironmentProfile) -> str:
-    scenario.save()
-    assert scenario.pk is not None
-    return scenario.pk
-
-
-@app.put("/agents/{agent_id}", response_model=str)
-async def update_agent(agent_id: str, agent: AgentProfile) -> str:
-    old_agent = AgentProfile.get(pk=agent_id)
-    old_agent.update(**agent.model_dump())  # type: ignore
-    assert old_agent.pk is not None
-    return old_agent.pk
-
-
-@app.put("/scenarios/{scenario_id}", response_model=str)
-async def update_scenario(scenario_id: str, scenario: EnvironmentProfile) -> str:
-    old_scenario = EnvironmentProfile.get(pk=scenario_id)
-    old_scenario.update(**scenario.model_dump())  # type: ignore
-    assert old_scenario.pk is not None
-    return old_scenario.pk
+async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
+    print(scenario)
+    scenario_profile = EnvironmentProfile(**scenario.model_dump())
+    scenario_profile.save()
+    pk = scenario_profile.pk
+    assert pk is not None
+    return pk
 
 
 @app.delete("/agents/{agent_id}", response_model=str)
 async def delete_agent(agent_id: str) -> str:
-    agent = AgentProfile.get(pk=agent_id)
-    AgentProfile.delete(agent.pk)
-    assert agent.pk is not None
-    return agent.pk
+    AgentProfile.delete(agent_id)
+    return agent_id
 
 
 @app.delete("/scenarios/{scenario_id}", response_model=str)
 async def delete_scenario(scenario_id: str) -> str:
-    scenario = EnvironmentProfile.get(pk=scenario_id)
-    EnvironmentProfile.delete(scenario.pk)
-    assert scenario.pk is not None
-    return scenario.pk
+    EnvironmentProfile.delete(scenario_id)
+    return scenario_id
 
 
 active_simulations: Dict[

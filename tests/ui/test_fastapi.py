@@ -186,11 +186,8 @@ def test_create_agent() -> None:
     agent_data = {
         "first_name": "test_first_name",
         "last_name": "test_last_name",
-        "tag": "test",
     }
-    # agent_data = {"name": "test_name", "description": "test_description", "price": 100, "tax": 10}
     response = client.post("/agents/", json=agent_data)
-    print(response.json())
     assert response.status_code == 200
     assert isinstance(response.json(), str)
     pk = response.json()
@@ -209,8 +206,6 @@ def test_create_scenario() -> None:
     pk = response.json()
     delete_mock_env_profile(pk)
 
-
-def test_update_agent() -> None:
     pk = create_mock_agent_profile()
     agent_data = {
         "first_name": "updated_agent",
@@ -218,18 +213,11 @@ def test_update_agent() -> None:
         "occupation": "updated_occupation",
     }
     response = client.put(f"/agents/{pk}", json=agent_data)
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+    agent_profile = AgentProfile.get(pk=pk)
+    assert agent_profile.first_name == "updated_agent"
     delete_mock_agent_profile(pk)
-    assert response.status_code == 200
-    assert isinstance(response.json(), str)
-
-
-def test_update_scenario() -> None:
-    pk = create_mock_env_profile()
-    scenario_data = {"codename": "updated_codename", "scenario": "updated_scenario"}
-    response = client.put(f"/scenarios/{pk}", json=scenario_data)
-    delete_mock_env_profile(pk)
-    assert response.status_code == 200
-    assert isinstance(response.json(), str)
 
 
 def test_delete_agent() -> None:

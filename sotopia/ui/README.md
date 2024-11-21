@@ -78,26 +78,20 @@ EnvironmentProfile
 returns:
 - scenario_id: str
 
-### Updating Data in the API Server
+#### DELETE /agents/{agent_id}
 
-#### PUT /agents/{agent_id}
-
-Update agent profile in the API server.
-Request Body:
-AgentProfile
+Delete agent profile from the API server.
 
 returns:
 - agent_id: str
 
+#### DELETE /scenarios/{scenario_id}
 
-#### PUT /scenarios/{scenario_id}
-
-Update scenario profile in the API server.
-Request Body:
-EnvironmentProfile
+Delete scenario profile from the API server.
 
 returns:
 - scenario_id: str
+
 
 ### Initiating a new non-streaming simulation episode
 
