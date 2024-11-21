@@ -47,13 +47,6 @@ returns:
 - agents: list[AgentProfile]
 
 
-#### GET /episodes
-
-Get all episodes.
-
-returns:
-- episodes: list[Episode]
-
 #### GET /episodes/?get_by={id|tag}/{episode_id|episode_tag}
 
 Get episode by episode_tag.

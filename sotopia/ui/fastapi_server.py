@@ -48,11 +48,6 @@ async def get_agents(
     return agents_profiles
 
 
-@app.get("/episodes", response_model=list[EpisodeLog])
-async def get_episodes_all() -> list[EpisodeLog]:
-    return EpisodeLog.all()
-
-
 @app.get("/episodes/{get_by}/{value}", response_model=list[EpisodeLog])
 async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[EpisodeLog]:
     episodes: list[EpisodeLog] = []
@@ -66,9 +61,7 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
 
 @app.post("/agents/", response_model=str)
 async def create_agent(agent: AgentProfile) -> str:
-    agent.save()
-    assert agent.pk is not None
-    return agent.pk
+    return agent.first_name
 
 
 @app.post("/scenarios/", response_model=str)

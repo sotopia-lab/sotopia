@@ -3,7 +3,6 @@ from .fastapi_server import (
     get_scenarios,
     get_agents_all,
     get_agents,
-    get_episodes_all,
     get_episodes,
 )
 
@@ -12,6 +11,5 @@ __all__ = [
     "get_scenarios",
     "get_agents_all",
     "get_agents",
-    "get_episodes_all",
     "get_episodes",
 ]
