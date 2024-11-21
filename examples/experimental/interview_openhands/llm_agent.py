@@ -303,6 +303,17 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
     async def aact(self, message: AgentAction | Tick | Text) -> AgentAction:
         match message:
             case Text(text=text):
+                if "BrowserOutputObservation" in text:
+                    self.message_history.append(
+                        (
+                            self.name,
+                            "observation data",
+                            "BrowserOutputObservation received.",
+                        )
+                    )
+                    text = text.split("BrowserOutputObservation", 1)[1][
+                        :100
+                    ]   
                 self.message_history.append((self.name, "observation data", text))
                 return AgentAction(
                     agent_name=self.name, action_type="none", argument="", path=""

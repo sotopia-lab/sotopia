@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Console</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-header">Interview Simulation</div>
+        <div id="messages"></div>
+    </div>
+    <div id="ide-container">
+        <div id="file-explorer">
+            <h3>File Explorer</h3>
+            <ul id="file-list">
+                <!-- File list will be populated here -->
+            </ul>
+        </div>
+        <div id="code-interface">
+            <div id="code-editor">
+                <h3>Code Editor</h3>
+                <textarea id="editor" readonly></textarea>
+            </div>
+            <div id="terminal-header">Terminal</div>
+            <div id="terminal">
+                <!-- Terminal will be initialized here -->
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+    <script src="terminal.js"></script>
+    <script src="script.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('new_message', function(data) {
+            const messagesDiv = document.getElementById('messages');
+            const messageData = JSON.parse(data.message);
+
+            if (messageData.data.data_type === "agent_action") {
+
+                const actionType = messageData.data.action_type;
+
+                if (actionType == "speak") {
+                    const messageContainer = document.createElement('div');
+                    const profilePic = document.createElement('div');
+                    const messageContent = document.createElement('div');
+                    const agentName = document.createElement('div');
+                    const newMessage = document.createElement('div');
+
+                    const profilePictures = {
+                        Jack: 'images/jack.png',
+                        Jane: 'images/jane.png'
+                    };
+
+                    profilePic.classList.add('profile-pic');
+                    messageContent.classList.add('message-content');
+                    agentName.classList.add('agent-name');
+                    newMessage.classList.add('message');
+
+                    agentName.textContent = messageData.data.agent_name;
+                    newMessage.textContent = messageData.data.argument;
+
+                    if (messageData.data.agent_name === 'Jack') {
+                        messageContainer.classList.add('message-container', 'jack-container');
+                        newMessage.classList.add('jack');
+                        profilePic.style.backgroundImage = `url(${profilePictures.Jack})`;
+                    } else if (messageData.data.agent_name === 'Jane') {
+                        messageContainer.classList.add('message-container', 'jane-container');
+                        newMessage.classList.add('jane');
+                        profilePic.style.backgroundImage = `url(${profilePictures.Jane})`;
+                    }
+
+                    messageContent.appendChild(agentName);
+                    messageContent.appendChild(newMessage);
+                    messageContainer.appendChild(profilePic);
+                    messageContainer.appendChild(messageContent);
+                    messagesDiv.appendChild(messageContainer);
+
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+                // Handle 'run' action type
+                else if (messageData.data.action_type === 'run') {
+                    window.myTerminal.writeln(`$ ${messageData.data.argument}`);
+                }
+
+                // Handle 'write' action type
+                else if (messageData.data.action_type === 'write') {
+                    const filePath = messageData.data.path;
+                    const fileContent = messageData.data.argument;
+
+                    // Add file to the file explorer
+                    if (!files[filePath]) {
+                        const li = document.createElement('li');
+                        li.textContent = filePath;
+                        li.addEventListener('click', () => loadFileContent(filePath));
+                        fileList.appendChild(li);
+                    }
+
+                    // Update file content
+                    files[filePath] = fileContent;
+                    loadFileContent(filePath);
+                }
+            }
+
+            if (data.channel === "Runtime:Agent" && messageData.data.data_type === "text" && messageData.data.text.includes("CmdOutputObservation")) {
+                const outputText = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**")[1].trim();
+                window.myTerminal.writeln(outputText);
+            }
+        });
+
+        // Load file content into the editor
+        function loadFileContent(fileName) {
+            const editor = document.getElementById('editor');
+            editor.value = files[fileName];
+            editor.readOnly = false;
+        }
+    </script>
+</body>
+</html>
