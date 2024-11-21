@@ -161,7 +161,7 @@ returns:
 | Type | Direction   | Description |
 |-----------|--------|-------------|
 | SERVER_MSG | Server → Client | Standard message from server (payload: `messageForRendering` [here](https://github.com/sotopia-lab/sotopia-demo/blob/main/socialstream/rendering_utils.py) ) |
-| CLIENT_MSG | Client → Server | Standard message from client (payload: TBD) |
+| CLIENT_MSG | Client → Server | Standard message from client (payload: Currently not needed) |
 | ERROR      | Server → Client | Error notification (payload: `{"type": ERROR_TYPE, "description": DESC}`) |
 | START_SIM  | Client → Server | Initialize simulation (payload: `SimulationEpisodeInitialization`) |
 | END_SIM    | Client → Server | End simulation (payload: not needed) |
