@@ -106,10 +106,19 @@ EnvironmentProfile
 returns:
 - scenario_id: str
 
+
+### Error Code
+For RESTful APIs above we have the following error codes:
+| **Error Code** | **Description**                      |
+|-----------------|--------------------------------------|
+| **404**         | A resource is not found             |
+| **403**         | The query is not authorized         |
+| **500**         | Internal running error              |
+
 ### Initiating a new non-streaming simulation episode
 
 #### POST /episodes/
-
+[!] Currently not planning to implement
 ```python
 class SimulationEpisodeInitiation(BaseModel):
     scenario_id: str
