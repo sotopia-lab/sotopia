@@ -6,10 +6,9 @@ import { FileSystem } from './components/CodeEditor/FileSystem';
 import { Terminal } from './components/Terminal/Terminal';
 import { ChatInterface } from './components/ChatInterface/ChatInterface';
 import { Browser } from './components/Browser/Browser';
+import { Sidebar } from './components/Sidebar/Sidebar';
+import { SceneContext } from './components/Sidebar/SceneContext';
 
-// const socket = io();
-
-// Add this to your frontend code
 const socket = io('http://localhost:8000', {
   transports: ['websocket'],
   reconnection: true
@@ -27,6 +26,8 @@ type FilesType = {
   [key: string]: string;
 };
 
+type PanelOption = 'fileSystem' | 'sceneContext';
+
 const App: React.FC = () => {
   const [files, setFiles] = useState<FilesType>({
     "/workspace/index.html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Document</title>\n</head>\n<body>\n    <h1>Hello World</h1>\n</body>\n</html>",
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   const [terminalMessages, setTerminalMessages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'editor' | 'browser'>('editor');
   const [browserUrl, setBrowserUrl] = useState('https://example.com');
+  const [activePanel, setActivePanel] = useState<PanelOption>('fileSystem');
 
   useEffect(() => {
     const handleNewMessage = (data: any) => {
@@ -100,12 +102,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSidebarSelect = (option: PanelOption) => {
+    setActivePanel(option);
+  };
+
   return (
     <div className="App">
+      <Sidebar onSelect={handleSidebarSelect} />
       <div id="ide-container">
-        <div id="file-explorer">
-          <FileSystem onFileSelect={setCurrentFile} />
-        </div>
+        {activePanel === 'fileSystem' && (
+          <div id="file-explorer">
+            <FileSystem onFileSelect={setCurrentFile} />
+          </div>
+        )}
+        {activePanel === 'sceneContext' && (
+          <div id="scene-context">
+            <SceneContext />
+          </div>
+        )}
         <div id="code-interface">
           <div className="tabs">
             <button

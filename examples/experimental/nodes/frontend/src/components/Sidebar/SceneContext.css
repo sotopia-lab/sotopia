@@ -1,0 +1,8 @@
+#scene-context {
+    width: 260px;
+    background-color: #252526;
+    color: #cccccc;
+    border-right: 1px solid #333;
+    overflow-y: auto;
+    padding: 0px 0 0 10px;
+  }

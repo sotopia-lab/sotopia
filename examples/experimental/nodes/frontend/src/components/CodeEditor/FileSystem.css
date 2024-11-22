@@ -20,17 +20,44 @@
   .file-item {
     display: flex;
     align-items: center;
-    padding: 3px 12px;
+    padding: 3px 0;
     cursor: pointer;
     font-size: 13px;
     color: #cccccc;
+    user-select: none;
+  }
+  
+  .folder-arrow {
+    display: flex;
+    align-items: center;
+    margin-right: 4px;
+    color: #c5c5c5;
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Language-specific icon colors */
+  .html-icon { color: #e34f26; }
+  .css-icon { color: #264de4; }
+  .js-icon { color: #f0db4f; }
+  .python-icon { color: #4b8bbe; }
+  .ts-icon { color: #3178c6; }
+  .json-icon { color: #f0db4f; }
+  .md-icon { color: #ffffff; }
+  
+  .folder-children {
+    transition: all 0.2s ease;
   }
 
   .file-item:hover {
     background-color: #2a2d2e;
   }
 
-  .folder-icon, .file-icon {
+  .folder-icon {
     margin-right: 6px;
-    color: #c5c5c5;
+    color: #dcb67a;  /* Folder color */
+  }
+
+  .file-icon {
+    margin-right: 6px;
   }
