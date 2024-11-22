@@ -1,21 +1,21 @@
 /**
  * FileSystem.tsx
- * 
- * This component represents a file system explorer within the application. It allows users to 
- * navigate through folders and files, selecting files to open in the code editor. The file 
- * system is displayed in a tree structure, with expandable folders and icons representing 
+ *
+ * This component represents a file system explorer within the application. It allows users to
+ * navigate through folders and files, selecting files to open in the code editor. The file
+ * system is displayed in a tree structure, with expandable folders and icons representing
  * different file types.
- * 
+ *
  * Key Features:
  * - Displays a hierarchical view of folders and files.
  * - Supports expanding and collapsing folders to show/hide their contents.
  * - Uses icons to represent different file types (HTML, CSS, JavaScript, Python, etc.).
  * - Allows users to select files, triggering a callback to open them in the code editor.
- * 
+ *
  * Props:
  * - fileSystem: An array of FileNode objects representing the file system structure.
  * - onFileSelect: A callback function to handle the selection of a file.
- * 
+ *
  */
 
 import React, { useState } from 'react';

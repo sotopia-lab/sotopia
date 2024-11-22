@@ -1,19 +1,19 @@
 /**
  * Browser.tsx
- * 
- * This component represents a simple web browser interface within the application. It allows 
- * users to enter a URL and navigate to that page. The browser displays the content of the 
- * specified URL in an iframe, enabling users to interact with web content directly within 
+ *
+ * This component represents a simple web browser interface within the application. It allows
+ * users to enter a URL and navigate to that page. The browser displays the content of the
+ * specified URL in an iframe, enabling users to interact with web content directly within
  * the application.
- * 
+ *
  * Key Features:
  * - Provides an input field for entering URLs.
  * - Includes a "Go" button to navigate to the entered URL.
  * - Displays the web content in an iframe.
- * 
+ *
  * Props:
  * - url: The initial URL to be loaded in the browser.
- * 
+ *
  * Author: [Your Name]
  * Date: [Date]
  */

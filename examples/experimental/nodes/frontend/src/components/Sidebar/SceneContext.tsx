@@ -1,18 +1,18 @@
 /**
  * SceneContext.tsx
- * 
- * This component displays the context messages from agents within the application. It allows 
- * users to view messages that provide additional information or context related to the current 
+ *
+ * This component displays the context messages from agents within the application. It allows
+ * users to view messages that provide additional information or context related to the current
  * scene or interaction. The messages are rendered in a markdown format for better readability.
- * 
+ *
  * Key Features:
  * - Displays a header for the scene context.
  * - Renders messages with optional agent names.
  * - Supports markdown formatting for message content.
- * 
+ *
  * Props:
  * - messages: An array of message objects, each containing text and an optional agent name.
- * 
+ *
  */
 
 import React from 'react';

@@ -1,18 +1,18 @@
 /**
  * App.tsx
- * 
- * This file serves as the main entry point for the React application. It manages the overall 
- * application state, handles socket connections for real-time communication, and coordinates 
- * interactions between various components such as the code editor, terminal, chat interface, 
+ *
+ * This file serves as the main entry point for the React application. It manages the overall
+ * application state, handles socket connections for real-time communication, and coordinates
+ * interactions between various components such as the code editor, terminal, chat interface,
  * and file system.
- * 
+ *
  * Key Features:
  * - Establishes a WebSocket connection to the server for real-time updates.
- * - Manages application state using React hooks, including messages, terminal output, 
+ * - Manages application state using React hooks, including messages, terminal output,
  *   and active panels.
  * - Handles incoming messages from the server, including agent actions and chat messages.
  * - Provides a user interface for code editing, browsing, and terminal commands.
- * 
+ *
  * Components Used:
  * - CodeEditor: For editing code files.
  * - FileSystem: For displaying and managing files.
@@ -21,7 +21,7 @@
  * - Browser: For displaying web content.
  * - Sidebar: For navigation between different application panels.
  * - SceneContext: For displaying context messages from agents.
- * 
+ *
  */
 
 import React, { useEffect, useState } from 'react';

@@ -1,20 +1,20 @@
 /**
  * Terminal.tsx
- * 
- * This component represents a terminal interface within the application. It allows users to 
- * execute commands, view command outputs, and navigate the file system. The terminal 
+ *
+ * This component represents a terminal interface within the application. It allows users to
+ * execute commands, view command outputs, and navigate the file system. The terminal
  * communicates with the server via WebSocket to send commands and receive outputs in real-time.
- * 
+ *
  * Key Features:
  * - Displays a command prompt with the current user, hostname, and path.
  * - Supports command history for easy navigation and re-execution of previous commands.
  * - Processes and styles terminal output, including success, notice, and error messages.
  * - Handles special commands like 'cd' for changing directories.
- * 
+ *
  * Props:
  * - externalMessages: An array of messages received from the server to be displayed in the terminal.
  * - socket: The WebSocket connection used to send commands to the server.
- * 
+ *
  */
 
 import React, { useState, useRef, useEffect } from 'react';

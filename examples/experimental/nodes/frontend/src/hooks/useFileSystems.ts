@@ -1,16 +1,16 @@
 /**
  * useFileSystems.ts
- * 
- * This custom hook manages the state of a file system within the application. It provides 
- * functionality for handling file selection, opening, closing, and editing files. The hook 
- * maintains the structure of the file system and the currently open files, allowing users 
+ *
+ * This custom hook manages the state of a file system within the application. It provides
+ * functionality for handling file selection, opening, closing, and editing files. The hook
+ * maintains the structure of the file system and the currently open files, allowing users
  * to interact with files in a simulated environment.
- * 
+ *
  * Key Features:
  * - Initializes a file system with a predefined structure and files.
  * - Allows users to open, close, and edit files.
  * - Updates the file system state when files are modified or added.
- * 
+ *
  * Returns:
  * - fileSystem: The current state of the file system.
  * - openFiles: An array of currently open files.
@@ -20,7 +20,7 @@
  * - handleFileChange: Function to update the content of an open file.
  * - addFile: Function to add a new file to the file system.
  * - setActiveFile: Function to set the currently active file.
- * 
+ *
  */
 
 import { useState } from 'react';

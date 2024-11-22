@@ -1,21 +1,21 @@
 /**
  * ChatInterface.tsx
- * 
- * This component represents a chat interface within the application. It allows users to 
- * send and receive messages in real-time. The chat interface communicates with the server 
+ *
+ * This component represents a chat interface within the application. It allows users to
+ * send and receive messages in real-time. The chat interface communicates with the server
  * via WebSocket to send user messages and receive messages from other agents or users.
- * 
+ *
  * Key Features:
  * - Displays a list of messages with sender information.
  * - Supports sending messages via an input field and a send button.
  * - Automatically scrolls to the bottom when new messages are received.
  * - Displays a blinking light indicator when new messages arrive.
- * 
+ *
  * Props:
  * - messages: An array of message objects to be displayed in the chat.
  * - socket: The WebSocket connection used to send messages to the server.
  * - onSendMessage: A callback function to handle the sending of messages.
- * 
+ *
  */
 
 import './ChatInterface.css';

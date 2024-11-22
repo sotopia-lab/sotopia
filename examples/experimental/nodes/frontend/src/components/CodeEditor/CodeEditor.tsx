@@ -1,24 +1,24 @@
 /**
  * CodeEditor.tsx
- * 
- * This component represents a code editor interface within the application. It allows users to 
- * open, edit, and manage multiple code files simultaneously. The code editor uses CodeMirror 
- * for syntax highlighting and code editing features. It communicates with the parent component 
+ *
+ * This component represents a code editor interface within the application. It allows users to
+ * open, edit, and manage multiple code files simultaneously. The code editor uses CodeMirror
+ * for syntax highlighting and code editing features. It communicates with the parent component
  * to handle file selection, closing, and content changes.
- * 
+ *
  * Key Features:
  * - Displays tabs for each open file with icons based on file type.
  * - Supports syntax highlighting for various programming languages (JavaScript, HTML, CSS, Python).
  * - Allows users to close files and switch between them.
  * - Automatically fills empty lines to maintain a consistent editor height.
- * 
+ *
  * Props:
  * - openFiles: An array of objects representing the currently open files, each containing a path and content.
  * - activeFile: The path of the currently active file being edited.
  * - onFileClose: A callback function to handle the closing of a file.
  * - onFileSelect: A callback function to handle the selection of a file.
  * - onChange: A callback function to handle changes in the content of the active file.
- * 
+ *
  */
 
 import React from 'react';
