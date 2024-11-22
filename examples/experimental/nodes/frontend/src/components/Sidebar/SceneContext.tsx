@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import './SceneContext.css';
 
 interface SceneContextProps {
@@ -14,7 +15,7 @@ export const SceneContext: React.FC<SceneContextProps> = ({ messages }) => {
         {messages.map((message, index) => (
           <div key={index} className="scene-message">
             {message.agentName && <strong>{message.agentName}: </strong>}
-            {message.text}
+            <ReactMarkdown>{message.text}</ReactMarkdown>
           </div>
         ))}
       </div>

@@ -29,6 +29,11 @@ type FilesType = {
 
 type PanelOption = 'fileSystem' | 'sceneContext';
 
+type OpenFile = {
+  path: string;
+  content: string;
+};
+
 const App: React.FC = () => {
   const [fileSystem, setFileSystem] = useState<FileSystemState>({
     tree: [
@@ -68,7 +73,13 @@ const App: React.FC = () => {
     }
   });
 
-  const [currentFile, setCurrentFile] = useState("/workspace/main.py");
+  const [openFiles, setOpenFiles] = useState<OpenFile[]>([
+    {
+      path: '/workspace/main.py',
+      content: fileSystem.files['/workspace/main.py']
+    }
+  ]);
+  const [activeFile, setActiveFile] = useState<string>('/workspace/main.py');
   const [messages, setMessages] = useState<Array<{text: string, type: 'message' | 'status'}>>([]);
   const [terminalMessages, setTerminalMessages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'editor' | 'browser'>('editor');
@@ -117,56 +128,71 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const addFile = (path: string, content: string) => {
-    setFileSystem(prev => {
-      // Split path into parts
-      const parts = path.split('/').filter(Boolean);
-      const fileName = parts[parts.length - 1];
-
-      // Create new file node
-      const newFile: FileNode = {
-        name: fileName,
-        type: 'file',
-        path: path
-      };
-
-      // Update tree structure
-      const newTree = [...prev.tree];
-      let currentLevel = newTree;
-      for (let i = 0; i < parts.length - 1; i++) {
-        const folder = currentLevel.find(node =>
-          node.type === 'folder' && node.name === parts[i]
-        );
-        if (folder && folder.children) {
-          currentLevel = folder.children;
-        }
-      }
-
-      // Add new file to appropriate level if it doesn't exist
-      if (!currentLevel.find(node => node.path === path)) {
-        currentLevel.push(newFile);
-      }
-
-      // Update files content
-      return {
-        tree: newTree,
-        files: {
-          ...prev.files,
-          [path]: content
-        }
-      };
-    });
-
-    // Automatically switch to the new/updated file
-    setCurrentFile(path);
+  const handleFileSelect = (path: string) => {
+    // Check if file is already open
+    if (!openFiles.find(f => f.path === path)) {
+      // Add new file to openFiles
+      setOpenFiles(prev => [...prev, {
+        path,
+        content: fileSystem.files[path] || ''
+      }]);
+    }
+    setActiveFile(path);
     setActiveTab('editor');
+  };
+
+  const handleFileClose = (path: string) => {
+    setOpenFiles(prev => prev.filter(f => f.path !== path));
+    if (activeFile === path) {
+      // Set the active file to the last remaining open file
+      const remainingFiles = openFiles.filter(f => f.path !== path);
+      setActiveFile(remainingFiles[remainingFiles.length - 1]?.path);
+    }
+  };
+
+  const handleFileChange = (path: string, content: string) => {
+    // Update both openFiles and fileSystem
+    setOpenFiles(prev => 
+      prev.map(f => f.path === path ? { ...f, content } : f)
+    );
+    
+    setFileSystem(prev => ({
+      ...prev,
+      files: {
+        ...prev.files,
+        [path]: content
+      }
+    }));
+  };
+
+  const addFile = (path: string, content: string) => {
+    // Update fileSystem
+    setFileSystem(prev => ({
+      ...prev,
+      files: {
+        ...prev.files,
+        [path]: content
+      }
+    }));
+
+    // Update openFiles - check if file is already open
+    setOpenFiles(prev => {
+      const existingFileIndex = prev.findIndex(f => f.path === path);
+      if (existingFileIndex !== -1) {
+        // Update content of existing file
+        const updatedFiles = [...prev];
+        updatedFiles[existingFileIndex] = { path, content };
+        return updatedFiles;
+      }
+      // Add new file if it doesn't exist
+      return [...prev, { path, content }];
+    });
   };
 
   const handleAgentAction = (messageData: any) => {
     const actionType = messageData.data.action_type;
     const agentName = messageData.data.agent_name;
 
-    // Always log the action for debugging
     console.log('Processing agent action:', actionType, 'from', agentName);
 
     switch (actionType) {
@@ -189,6 +215,9 @@ const App: React.FC = () => {
         const filePath = messageData.data.path;
         const fileContent = messageData.data.argument;
         addFile(filePath, fileContent);
+        setActiveFile(filePath); // This will now activate the existing tab if it exists
+        setActiveTab('editor');
+        setActivePanel('fileSystem');
         setMessages(prev => [...prev, {
           text: `${agentName} is writing code...`,
           type: 'status' as const
@@ -237,7 +266,7 @@ const App: React.FC = () => {
           <div id="file-explorer">
             <FileSystem
               fileSystem={fileSystem.tree}
-              onFileSelect={(path) => setCurrentFile(path)}
+              onFileSelect={handleFileSelect}
             />
           </div>
         )}
@@ -264,17 +293,11 @@ const App: React.FC = () => {
           {activeTab === 'editor' ? (
             <div id="code-editor">
               <CodeEditor
-                code={fileSystem.files[currentFile]}
-                onChange={(newCode) =>
-                  setFileSystem(prevFiles => ({
-                    ...prevFiles,
-                    files: {
-                      ...prevFiles.files,
-                      [currentFile]: newCode
-                    }
-                  }))
-                }
-                filename={currentFile}
+                openFiles={openFiles}
+                activeFile={activeFile}
+                onFileClose={handleFileClose}
+                onFileSelect={setActiveFile}
+                onChange={handleFileChange}
               />
             </div>
           ) : (

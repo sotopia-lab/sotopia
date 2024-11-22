@@ -12,3 +12,13 @@ export interface FileSystemState {
     [path: string]: string;  // path -> content mapping
   };
 }
+
+export interface OpenFile {
+  path: string;
+  content: string;
+}
+
+export interface CodeEditorState {
+  openFiles: OpenFile[];
+  activeFile?: string; // path of the currently active file
+}

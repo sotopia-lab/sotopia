@@ -1,6 +1,7 @@
 import './ChatInterface.css';
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client'; // Import the Socket type
+import { FaComments } from 'react-icons/fa'; // Import the chat icon
 
 
 interface ScrollAreaProps {
@@ -37,6 +38,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSendMessage
 }) => {
   const [input, setInput] = useState('');
+  const [showBlinkingLight, setShowBlinkingLight] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   console.log("ChatInterface received messages:", messages);
@@ -45,8 +47,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     scrollToBottom();
+    if (messages.length > 0) {
+      setShowBlinkingLight(true);
+      const timer = setTimeout(() => {
+        setShowBlinkingLight(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
   }, [messages]);
 
   const handleSend = () => {
@@ -84,7 +93,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div id="chat-container" className="flex flex-col h-full w-full">
-      <div id="chat-header">Chat</div>
+      <div id="chat-header" className="flex items-center justify-between">
+        <div className="flex items-center">
+          <FaComments className="chat-icon" size={12} />
+          Chat
+        </div>
+        {showBlinkingLight && <div className="blinking-light"></div>}
+      </div>
       <ScrollArea className="flex-grow">
         {messages.map((message, index) => {
           const parsedMessage = parseMessage(message);

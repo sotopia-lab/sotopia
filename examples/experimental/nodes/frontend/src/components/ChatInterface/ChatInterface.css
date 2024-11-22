@@ -18,7 +18,32 @@
     border-bottom: 1px solid #333;
     font-weight: bold;
     text-align: left;
+    display: flex;
+    align-items: center;
   }
+
+
+  #chat-header .chat-icon {
+    margin-right: 8px; /* Add margin to create space between icon and text */
+}
+
+.blinking-light {
+  margin-left: 8px;
+  width: 5px; /* Width of the light */
+  height: 5px; /* Height of the light */
+  border-radius: 50%; /* Make it circular */
+  background-color: green; /* Color of the light */
+  animation: blink 3s infinite; /* Animation for blinking */
+}
+
+@keyframes blink {
+  0%, 100% {
+      opacity: 1; /* Fully visible */
+  }
+  50% {
+      opacity: 0; /* Invisible */
+  }
+}
 
   #messages {
     padding: 10px;

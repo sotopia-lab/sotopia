@@ -38,4 +38,18 @@
   font-size: 13px;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.scene-message strong {
+  font-weight: bold;
+}
+
+.scene-message em {
+  font-style: italic;
+}
+
+.scene-message a {
+  color: #007acc;
+  text-decoration: underline;
 }

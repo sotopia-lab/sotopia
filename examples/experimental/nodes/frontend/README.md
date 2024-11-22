@@ -1,46 +1,159 @@
-# Getting Started with Create React App
+# AI Code Editor Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, interactive code editor interface designed to work with AI agents. This React-based application provides real-time code editing, file management, and chat capabilities.
 
-## Available Scripts
+## Core Features
 
-In the project directory, you can run:
+### 1. Code Editor Interface
+- Multi-file editing support with tabs
+- Syntax highlighting for multiple languages
+- Real-time code updates
+- File system navigation
 
-### `npm start`
+### 2. Chat Interface
+- Real-time communication with AI agents
+- Status messages for agent actions
+- Visual indicators for new messages
+- Avatar-based message display
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### 3. Terminal Integration
+- Command execution display
+- Output visualization
+- Real-time updates
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### 4. File System Management
+- Tree-based file explorer
+- File creation and modification
+- Workspace organization
 
-### `npm test`
+## Technical Architecture
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### State Management
+The application uses React's useState for managing various states:
+- File system state (files and directory structure)
+- Open files and active file tracking
+- Chat messages and terminal outputs
+- UI state (active tabs and panels)
 
-### `npm run build`
+### Socket Communication
+```
+typescript
+const socket = io('http://localhost:8000', {
+transports: ['websocket'],
+reconnection: true
+});
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Handles real-time communication with the backend server for:
+- Chat messages
+- File updates
+- Terminal commands
+- Agent actions
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Key Components
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. **App.tsx** (Main Container)
+```
+typescript:nodes/frontend/src/App.tsx
+startLine: 37
+endLine: 322
+```
+Serves as the main application container, managing:
+- Global state
+- Component coordination
+- Socket event handling
+- File system operations
 
-### `npm run eject`
+2. **ChatInterface**
+```
+typescript:nodes/frontend/src/components/ChatInterface/ChatInterface.tsx
+startLine: 35
+endLine: 129
+```
+Handles:
+- Message display and parsing
+- Real-time chat updates
+- Visual notifications
+- User input
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+3. **CodeEditor**
+Provides:
+- Multi-file editing
+- Syntax highlighting
+- Tab management
+- File content updates
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+4. **FileSystem**
+Features:
+- Tree view of files
+- File selection
+- Directory navigation
+- File type icons
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## State Flow
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+1. **File Operations**
+- File selection triggers state updates
+- Content changes update both local and global state
+- Real-time sync between components
 
-## Learn More
+2. **Chat Communication**
+- Messages trigger UI updates
+- Agent actions cause state changes
+- Visual indicators for new messages
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+3. **Terminal Integration**
+- Command outputs update terminal state
+- Real-time display of execution results
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Getting Started
+
+1. **Installation**
+```bash
+npm install
+```
+
+
+2. **Development**
+```bash
+npm start
+```
+
+Runs the app in development mode at http://localhost:3000
+
+3. **Building**
+```bash
+npm run build
+```
+
+Creates production build in `build` folder
+
+## Component Communication
+
+The application uses a combination of:
+- Props for component-to-component communication
+- Socket events for real-time updates
+- State management for UI synchronization
+
+## Styling
+
+- Custom CSS modules for component styling
+- Tailwind CSS for utility classes
+- Dark theme optimized for code editing
+
+## Future Improvements
+
+1. **Performance Optimization**
+- Implement virtual scrolling for large files
+- Optimize socket connections
+- Add file content caching
+
+2. **Feature Additions**
+- Collaborative editing
+- More language support
+- Enhanced terminal features
+
+3. **UI Enhancements**
+- Customizable themes
+- Resizable panels
+- Enhanced file preview
