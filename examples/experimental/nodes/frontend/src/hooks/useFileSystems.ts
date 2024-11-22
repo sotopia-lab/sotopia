@@ -87,15 +87,15 @@ export const useFileSystem = () => {
         ...prev.files,
         [path]: content
       };
-      
+
       const pathParts = path.split('/').filter(Boolean);
       const fileName = pathParts[pathParts.length - 1];
-      
+
       const updatedTree = [...prev.tree];
       const workspaceFolder = updatedTree.find(node => node.name === 'workspace');
       if (workspaceFolder && workspaceFolder.children) {
         const fileExists = workspaceFolder.children.some(child => child.path === path);
-        
+
         if (!fileExists) {
           const newFileNode: FileNode = {
             name: fileName,

@@ -41,7 +41,7 @@ const App: React.FC = () => {
     addFile,
     setActiveFile
   } = useFileSystem();
-  
+
   // State for various components and messages
   const [messages, setMessages] = useState<Array<{text: string, type: 'message' | 'status'}>>([]);
   const [terminalMessages, setTerminalMessages] = useState<string[]>([]);
@@ -123,10 +123,10 @@ const App: React.FC = () => {
         // Handle file writing
         const filePath = messageData.data.path;
         const fileContent = messageData.data.argument;
-        
+
         // Check if file already exists in openFiles
         const existingFileIndex = openFiles.findIndex(f => f.path === filePath);
-        
+
         if (existingFileIndex !== -1) {
           // Update existing file content
           handleFileChange(filePath, fileContent);
@@ -134,7 +134,7 @@ const App: React.FC = () => {
           // Add new file
           addFile(filePath, fileContent);
         }
-        
+
         setActiveFile(filePath);
         setActiveTab('editor');
         setActivePanel('fileSystem');
