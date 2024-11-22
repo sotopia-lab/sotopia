@@ -28,7 +28,7 @@ const stripAnsiCodes = (text: string): string => {
 // Process terminal output and apply appropriate styling
 const processTerminalLine = (line: string): JSX.Element => {
   const strippedLine = stripAnsiCodes(line);
-  
+
   if (line.startsWith('Requirement already satisfied:')) {
     return <div className="terminal-success">{strippedLine}</div>;
   }
@@ -78,7 +78,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
   // Handle incoming messages from socket
   useEffect(() => {
     if (externalMessages.length === 0) return;
-    
+
     const message = externalMessages[externalMessages.length - 1];
     if (!message.trim()) return;
 
@@ -107,7 +107,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
     // Update history with command output
     setHistory(prev => {
       const lastEntry = prev[prev.length - 1];
-      
+
       // Skip internal cd command outputs
       if (lastEntry?.command?.startsWith('cd ')) {
         return prev;
@@ -138,9 +138,9 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
   // Handle command execution
   const handleCommand = (command: string) => {
     if (!command.trim()) return;
-    
+
     const currentPrompt = getPrompt();
-    
+
     // Add command to history
     setHistory(prev => [...prev, { prompt: currentPrompt, command }]);
 
@@ -157,7 +157,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
       // Execute command in current directory without showing cd
       socket.emit('terminal_command', command);
     }
-    
+
     setInput('');
   };
 

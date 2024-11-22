@@ -55,8 +55,8 @@ io.on('connection', (socket) => {
       await redisClient.publish('Agent:Runtime', JSON.stringify(messageEnvelope));
     } catch (err) {
       console.error('Error publishing command:', err);
-      socket.emit('new_message', { 
-        channel: 'Runtime:Agent', 
+      socket.emit('new_message', {
+        channel: 'Runtime:Agent',
         message: JSON.stringify({
           data: {
             data_type: "text",
