@@ -5,20 +5,12 @@ import {
   SiTypescript, SiJson, SiMarkdown
 } from 'react-icons/si';
 import './FileSystem.css'; // Import the CSS file
-
-const files = [
-  { name: 'workspace', type: 'folder', children: [
-    { name: 'index.html', type: 'file' },
-    { name: 'style.css', type: 'file' },
-    { name: 'script.js', type: 'file' },
-    { name: 'interview.py', type: 'file' },
-  ]},
-];
+import { FileNode } from '../../types/FileSystem';
 
 interface FileSystemProps {
-  onFileSelect: (fileName: string) => void;
+  fileSystem: FileNode[];
+  onFileSelect: (path: string) => void;
 }
-
 
 const getFileIcon = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
@@ -35,8 +27,8 @@ const getFileIcon = (fileName: string) => {
   }
 };
 
-export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['workspace']));
+export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect }) => {
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/workspace']));
 
   const toggleFolder = (folderName: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -51,19 +43,19 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     });
   };
 
-  const renderItem = (item: any, depth: number = 0) => {
-    const isExpanded = expandedFolders.has(item.name);
+  const renderItem = (item: FileNode, depth: number = 0) => {
+    const isExpanded = expandedFolders.has(item.path);
 
     return (
       <div
-        key={item.name}
+        key={item.path}
         className="file-item"
         style={{ paddingLeft: `${depth * 16 + (item.type === 'file' ? 20 : 12)}px` }}
-        onClick={() => item.type === 'file' && onFileSelect(`/workspace/${item.name}`)}
+        onClick={() => item.type === 'file' && onFileSelect(item.path)}
       >
         {item.type === 'folder' ? (
           <>
-            <span className="folder-arrow" onClick={(e) => toggleFolder(item.name, e)}>
+            <span className="folder-arrow" onClick={(e) => toggleFolder(item.path, e)}>
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           </>
@@ -75,12 +67,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     );
   };
 
-  const renderFolder = (folder: any, depth: number = 0) => (
-    <div key={folder.name}>
+  const renderFolder = (folder: FileNode, depth: number = 0) => (
+    <div key={folder.path}>
       {renderItem(folder, depth)}
-      {expandedFolders.has(folder.name) && folder.children && (
+      {expandedFolders.has(folder.path) && folder.children && (
         <div className="folder-children">
-          {folder.children.map((child: any) =>
+          {folder.children.map((child: FileNode) =>
             child.type === 'folder' ?
               renderFolder(child, depth + 1) :
               renderItem(child, depth + 1)
@@ -92,13 +84,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
   return (
     <>
-    <div id="file-explorer-header">Folders</div>
-    <div className="file-explorer">
-      {files.map(file => file.type === 'folder' ?
-        renderFolder(file) :
-        renderItem(file)
-      )}
-    </div>
+      <div id="file-explorer-header">Folders</div>
+      <div className="file-explorer">
+        {fileSystem.map(node => 
+          node.type === 'folder' ? renderFolder(node) : renderItem(node)
+        )}
+      </div>
     </>
   );
 };

@@ -7,14 +7,16 @@ import { githubDark } from '@uiw/codemirror-theme-github';
 import './CodeEditor.css'; // Import the CSS file
 
 interface CodeEditorProps {
-  code: string;
+  code: string | undefined;
   onChange: (value: string) => void;
   filename: string;
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ code, onChange, filename }) => {
   // Add empty lines to fill the editor
-  const fillEmptyLines = (content: string) => {
+  const fillEmptyLines = (content: string | undefined) => {
+    if (!content) return '\n'.repeat(50); // Return 50 empty lines if no content
+    
     const lines = content.split('\n');
     const currentLines = lines.length;
     if (currentLines < 50) {

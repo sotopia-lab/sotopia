@@ -8,6 +8,7 @@ import { ChatInterface } from './components/ChatInterface/ChatInterface';
 import { Browser } from './components/Browser/Browser';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { SceneContext } from './components/Sidebar/SceneContext';
+import { FileSystemState, FileNode } from './types/FileSystem';
 
 const socket = io('http://localhost:8000', {
   transports: ['websocket'],
@@ -29,14 +30,45 @@ type FilesType = {
 type PanelOption = 'fileSystem' | 'sceneContext';
 
 const App: React.FC = () => {
-  const [files, setFiles] = useState<FilesType>({
-    "/workspace/index.html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Document</title>\n</head>\n<body>\n    <h1>Hello World</h1>\n</body>\n</html>",
-    "/workspace/style.css": "body {\n    background-color: #f0f0f0;\n    font-family: Arial, sans-serif;\n}",
-    "/workspace/script.js": "console.log('Hello, World!');",
-    "/workspace/interview.py": "# Python code here"
+  const [fileSystem, setFileSystem] = useState<FileSystemState>({
+    tree: [
+      {
+        name: 'workspace',
+        type: 'folder',
+        path: '/workspace',
+        children: [
+          {
+            name: 'index.html',
+            type: 'file',
+            path: '/workspace/index.html',
+          },
+          {
+            name: 'style.css',
+            type: 'file',
+            path: '/workspace/style.css',
+          },
+          {
+            name: 'script.js',
+            type: 'file',
+            path: '/workspace/script.js',
+          },
+          {
+            name: 'main.py',
+            type: 'file',
+            path: '/workspace/main.py',
+          }
+        ]
+      }
+    ],
+    files: {
+      '/workspace/index.html': '<!DOCTYPE html>\n<html lang="en">...',
+      '/workspace/style.css': 'body {\n    background-color: #f0f0f0;...',
+      '/workspace/script.js': 'console.log("Hello, World!");',
+      '/workspace/main.py': '# Python code here'
+    }
   });
 
-  const [currentFile, setCurrentFile] = useState("/workspace/interview.py");
+  const [currentFile, setCurrentFile] = useState("/workspace/main.py");
   const [messages, setMessages] = useState<Array<{text: string, type: 'message' | 'status'}>>([]);
   const [terminalMessages, setTerminalMessages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'editor' | 'browser'>('editor');
@@ -75,6 +107,51 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const addFile = (path: string, content: string) => {
+    setFileSystem(prev => {
+      // Split path into parts
+      const parts = path.split('/').filter(Boolean);
+      const fileName = parts[parts.length - 1];
+      
+      // Create new file node
+      const newFile: FileNode = {
+        name: fileName,
+        type: 'file',
+        path: path
+      };
+
+      // Update tree structure
+      const newTree = [...prev.tree];
+      let currentLevel = newTree;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const folder = currentLevel.find(node => 
+          node.type === 'folder' && node.name === parts[i]
+        );
+        if (folder && folder.children) {
+          currentLevel = folder.children;
+        }
+      }
+      
+      // Add new file to appropriate level if it doesn't exist
+      if (!currentLevel.find(node => node.path === path)) {
+        currentLevel.push(newFile);
+      }
+
+      // Update files content
+      return {
+        tree: newTree,
+        files: {
+          ...prev.files,
+          [path]: content
+        }
+      };
+    });
+
+    // Automatically switch to the new/updated file
+    setCurrentFile(path);
+    setActiveTab('editor');
+  };
+
   const handleAgentAction = (messageData: any) => {
     const actionType = messageData.data.action_type;
     const agentName = messageData.data.agent_name;
@@ -94,8 +171,7 @@ const App: React.FC = () => {
       case "write":
         const filePath = messageData.data.path;
         const fileContent = messageData.data.argument;
-        setFiles(prev => ({ ...prev, [filePath]: fileContent }));
-        setActiveTab('editor');
+        addFile(filePath, fileContent);
         setMessages(prev => [...prev, {
           text: `${agentName} is writing code...`,
           type: 'status' as const
@@ -142,7 +218,10 @@ const App: React.FC = () => {
       <div id="ide-container">
         {activePanel === 'fileSystem' && (
           <div id="file-explorer">
-            <FileSystem onFileSelect={setCurrentFile} />
+            <FileSystem
+              fileSystem={fileSystem.tree}
+              onFileSelect={(path) => setCurrentFile(path)}
+            />
           </div>
         )}
         {activePanel === 'sceneContext' && (
@@ -168,9 +247,15 @@ const App: React.FC = () => {
           {activeTab === 'editor' ? (
             <div id="code-editor">
               <CodeEditor
-                code={files[currentFile]}
+                code={fileSystem.files[currentFile]}
                 onChange={(newCode) =>
-                  setFiles(prevFiles => ({ ...prevFiles, [currentFile]: newCode }))
+                  setFileSystem(prevFiles => ({
+                    ...prevFiles,
+                    files: {
+                      ...prevFiles.files,
+                      [currentFile]: newCode
+                    }
+                  }))
                 }
                 filename={currentFile}
               />
