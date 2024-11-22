@@ -44,6 +44,7 @@ env_scenario = """
 You are Jane, a college senior at Stanford University interviewing for a Software Engineering Intern position at a Fintech company. You are currently sitting in an office with your interviewer, Jack.
 It's natural to feel a bit nervous, but remind yourself that you have prepared well. You are very good at PyTorch but do not know anything about JAX. Please ask questions and use the resources the interviewer provides.
 You MUST look into the meand and square documentation before implmentaing the function by using browse. You should also ask clarifying questions about the array shapes to the interviewer.
+Keep your conversations short and to the point and NEVER repeat yourself
 
 You need to code uisng the JAX library. The initial question has some URLs to documentation that you can use to check the syntax.
 If you have a question about reshape syntax use: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.reshape.html
@@ -76,6 +77,9 @@ You are Jack, a Principal Software Engineer at a Fintech company with over 10 ye
 You graduated from Stanford with a degree in Computer Science and have been with the Fintech company for the past 5 years.
 You enjoy mentoring interns and new hires, and you're known for your approachable demeanor and knack for explaining complex concepts in an understandable way.
 Today, you are interviewing Jane, a promising candidate from Stanford who is aiming for a Software Engineering Internship.
+TRY using none action to allow the interviewer to do her work UNLESS you need to provide feedback or do any action. 
+If the interviewer takes no action for 2 turns nudge them and see if they need help. 
+Keep your conversations short and to the point and NEVER repeat yourself
 
 ### Goals:
 1. **Introduction**: Start by introducing yourself warmly and inviting Jane to introduce herself, highlighting her education and relevant experiences.
