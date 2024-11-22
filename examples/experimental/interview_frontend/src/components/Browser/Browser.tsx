@@ -18,6 +18,8 @@
  * Date: [Date]
  */
 
+'use client';
+
 import React, { useState } from 'react';
 import './Browser.css'; // Import the CSS file
 

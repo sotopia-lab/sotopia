@@ -18,6 +18,8 @@
  *
  */
 
+'use client';
+
 import React, { useState } from 'react';
 import { ChevronRight, ChevronDown, File } from 'lucide-react';
 import {

@@ -17,6 +17,8 @@
  *
  */
 
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
 import './Terminal.css';

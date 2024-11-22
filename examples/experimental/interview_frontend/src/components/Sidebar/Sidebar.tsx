@@ -14,6 +14,8 @@
  *
  */
 
+'use client';
+
 import React from 'react';
 import { FaCogs, FaFolderOpen } from 'react-icons/fa'; // Import the file icon
 import './Sidebar.css';

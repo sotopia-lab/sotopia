@@ -18,6 +18,8 @@
  *
  */
 
+'use client';
+
 import './ChatInterface.css';
 import React, { ReactNode, useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client'; // Import the Socket type
