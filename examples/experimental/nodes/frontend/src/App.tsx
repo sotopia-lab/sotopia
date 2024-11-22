@@ -74,11 +74,21 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'editor' | 'browser'>('editor');
   const [browserUrl, setBrowserUrl] = useState('https://example.com');
   const [activePanel, setActivePanel] = useState<PanelOption>('fileSystem');
+  const [sceneMessages, setSceneMessages] = useState<{ text: string, agentName: string }[]>([]);
 
   useEffect(() => {
     const handleNewMessage = (data: any) => {
       try {
         const messageData = JSON.parse(data.message);
+
+        // Handle Scene context messages
+        if (data.channel.startsWith('Scene:')) {
+          if (messageData.data?.data_type === "text") {
+            setSceneMessages(prev => [...prev, { text: messageData.data.text, agentName: data.channel }]); // Changed channelName to agentName
+            setActivePanel('sceneContext');
+          }
+          return;
+        }
 
         // Check if it's an agent action
         if (messageData.data?.data_type === "agent_action") {
@@ -233,7 +243,7 @@ const App: React.FC = () => {
         )}
         {activePanel === 'sceneContext' && (
           <div id="scene-context">
-            <SceneContext />
+            <SceneContext messages={sceneMessages} />
           </div>
         )}
         <div id="code-interface">
