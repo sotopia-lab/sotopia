@@ -47,13 +47,13 @@ const App: React.FC = () => {
     const handleNewMessage = (data: any) => {
       try {
         const messageData = JSON.parse(data.message);
-        
+
         // Check if it's an agent action
         if (messageData.data?.data_type === "agent_action") {
           handleAgentAction(messageData);
-        } 
+        }
         // Check if it's a command output
-        else if (messageData.data?.data_type === "text" && 
+        else if (messageData.data?.data_type === "text" &&
                  messageData.data.text.includes("CmdOutputObservation")) {
           const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
           if (parts.length > 1) {
@@ -63,7 +63,7 @@ const App: React.FC = () => {
         }
         // Log the message for debugging
         console.log('Parsed message:', messageData);
-        
+
       } catch (error) {
         console.error('Error parsing message:', error);
       }
@@ -182,8 +182,8 @@ const App: React.FC = () => {
         </div>
       </div>
       <div id="chat-container">
-        <ChatInterface 
-          messages={messages} 
+        <ChatInterface
+          messages={messages}
           socket={socket}
           onSendMessage={(text: string) => {
             setMessages(prev => [...prev, {

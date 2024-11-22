@@ -31,14 +31,14 @@ interface ChatInterfaceProps {
   onSendMessage: (text: string) => void;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
-  messages, 
-  socket, 
-  onSendMessage 
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({
+  messages,
+  socket,
+  onSendMessage
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
-  
+
   console.log("ChatInterface received messages:", messages);
 
   const scrollToBottom = () => {
