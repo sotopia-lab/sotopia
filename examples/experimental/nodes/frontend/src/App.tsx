@@ -168,6 +168,13 @@ const App: React.FC = () => {
         setMessages(prev => [...prev, newMessage]);
         break;
 
+      case "thought":
+        setMessages(prev => [...prev, {
+          text: `💭 ${agentName} is thinking: ${messageData.data.argument}`,
+          type: 'status' as const
+        }]);
+        break;
+
       case "write":
         const filePath = messageData.data.path;
         const fileContent = messageData.data.argument;

@@ -4,6 +4,7 @@ import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
 import { python } from '@codemirror/lang-python';
 import { githubDark } from '@uiw/codemirror-theme-github';
+import { EditorView } from '@codemirror/view';
 import './CodeEditor.css'; // Import the CSS file
 
 interface CodeEditorProps {
@@ -51,7 +52,10 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ code, onChange, filename }) => 
           value={fillEmptyLines(code)}
           height="100%"
           theme={githubDark}
-          extensions={getLanguageExtension(filename)}
+          extensions={[
+            ...getLanguageExtension(filename),
+            EditorView.lineWrapping,
+          ]}
           onChange={onChange}
           basicSetup={{
             lineNumbers: true,
