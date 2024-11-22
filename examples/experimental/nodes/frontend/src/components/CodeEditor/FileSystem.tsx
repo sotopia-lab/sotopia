@@ -86,7 +86,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
     <>
       <div id="file-explorer-header">Folders</div>
       <div className="file-explorer">
-        {fileSystem.map(node => 
+        {fileSystem.map(node =>
           node.type === 'folder' ? renderFolder(node) : renderItem(node)
         )}
       </div>

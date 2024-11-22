@@ -11,4 +11,4 @@ export interface FileSystemState {
   files: {
     [path: string]: string;  // path -> content mapping
   };
-} 
+}

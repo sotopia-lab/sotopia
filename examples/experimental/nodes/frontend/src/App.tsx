@@ -112,7 +112,7 @@ const App: React.FC = () => {
       // Split path into parts
       const parts = path.split('/').filter(Boolean);
       const fileName = parts[parts.length - 1];
-      
+
       // Create new file node
       const newFile: FileNode = {
         name: fileName,
@@ -124,14 +124,14 @@ const App: React.FC = () => {
       const newTree = [...prev.tree];
       let currentLevel = newTree;
       for (let i = 0; i < parts.length - 1; i++) {
-        const folder = currentLevel.find(node => 
+        const folder = currentLevel.find(node =>
           node.type === 'folder' && node.name === parts[i]
         );
         if (folder && folder.children) {
           currentLevel = folder.children;
         }
       }
-      
+
       // Add new file to appropriate level if it doesn't exist
       if (!currentLevel.find(node => node.path === path)) {
         currentLevel.push(newFile);
