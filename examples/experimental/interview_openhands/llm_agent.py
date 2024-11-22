@@ -311,9 +311,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                             "BrowserOutputObservation received.",
                         )
                     )
-                    text = text.split("BrowserOutputObservation", 1)[1][
-                        :100
-                    ]   
+                    text = text.split("BrowserOutputObservation", 1)[1][:100]
                 self.message_history.append((self.name, "observation data", text))
                 return AgentAction(
                     agent_name=self.name, action_type="none", argument="", path=""

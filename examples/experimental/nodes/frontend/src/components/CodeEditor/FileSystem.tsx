@@ -23,8 +23,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
       style={{ paddingLeft: `${depth * 12 + 12}px` }}
       onClick={() => item.type === 'file' && onFileSelect(`/workspace/${item.name}`)}
     >
-      {item.type === 'folder' ? 
-        <Folder size={16} className="folder-icon" /> : 
+      {item.type === 'folder' ?
+        <Folder size={16} className="folder-icon" /> :
         <File size={16} className="file-icon" />
       }
       <span>{item.name}</span>
@@ -34,9 +34,9 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
   const renderFolder = (folder: any, depth: number = 0) => (
     <div key={folder.name}>
       {renderItem(folder, depth)}
-      {folder.children && folder.children.map((child: any) => 
-        child.type === 'folder' ? 
-          renderFolder(child, depth + 1) : 
+      {folder.children && folder.children.map((child: any) =>
+        child.type === 'folder' ?
+          renderFolder(child, depth + 1) :
           renderItem(child, depth + 1)
       )}
     </div>
@@ -46,8 +46,8 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
     <>
     <div id="file-explorer-header">Folders</div>
     <div className="file-explorer">
-      {files.map(file => file.type === 'folder' ? 
-        renderFolder(file) : 
+      {files.map(file => file.type === 'folder' ?
+        renderFolder(file) :
         renderItem(file)
       )}
     </div>

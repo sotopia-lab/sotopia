@@ -7,7 +7,7 @@
     overflow-y: auto;
     padding: 0px 0 0 10px;
   }
-  
+
   #file-explorer-header {
     background-color: #252526;
     color: #d4d4d4;
@@ -16,7 +16,7 @@
     border-bottom: 1px solid #333;
     font-weight: bold;
   }
-  
+
   .file-item {
     display: flex;
     align-items: center;
@@ -25,13 +25,12 @@
     font-size: 13px;
     color: #cccccc;
   }
-  
+
   .file-item:hover {
     background-color: #2a2d2e;
   }
-  
+
   .folder-icon, .file-icon {
     margin-right: 6px;
     color: #c5c5c5;
   }
-  

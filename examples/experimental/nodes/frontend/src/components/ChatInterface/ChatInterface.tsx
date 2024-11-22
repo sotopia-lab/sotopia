@@ -49,9 +49,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialM
 
   const handleSend = () => {
     if (input.trim()) {
-      setMessages([...messages, { 
+      setMessages([...messages, {
         text: `User: ${input}`, // Prefix with "User:"
-        type: 'message' 
+        type: 'message'
       }]);
       setInput('');
     }
@@ -105,7 +105,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialM
         })}
         <div ref={messagesEndRef} />
       </ScrollArea>
-      
+
       <div className="chat-input-container p-4 border-t">
         <div className="flex space-x-2">
           <input
@@ -116,7 +116,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialM
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Type a message..."
           />
-          <button 
+          <button
             onClick={handleSend}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >

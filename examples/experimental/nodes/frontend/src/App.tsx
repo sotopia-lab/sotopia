@@ -64,7 +64,7 @@ const App: React.FC = () => {
   const handleAgentAction = (messageData: any) => {
     const actionType = messageData.data.action_type;
     const agentName = messageData.data.agent_name;
-    
+
     if (actionType === "speak") {
       const newMessage = {
         text: `${agentName}: ${messageData.data.argument}`,
@@ -108,14 +108,14 @@ const App: React.FC = () => {
         </div>
         <div id="code-interface">
           <div className="tabs">
-            <button 
-              onClick={() => setActiveTab('editor')} 
+            <button
+              onClick={() => setActiveTab('editor')}
               className={activeTab === 'editor' ? 'active' : ''}
             >
               Code Editor
             </button>
-            <button 
-              onClick={() => setActiveTab('browser')} 
+            <button
+              onClick={() => setActiveTab('browser')}
               className={activeTab === 'browser' ? 'active' : ''}
             >
               Browser
@@ -125,7 +125,7 @@ const App: React.FC = () => {
             <div id="code-editor">
               <CodeEditor
                 code={files[currentFile]}
-                onChange={(newCode) => 
+                onChange={(newCode) =>
                   setFiles(prevFiles => ({ ...prevFiles, [currentFile]: newCode }))
                 }
                 filename={currentFile}

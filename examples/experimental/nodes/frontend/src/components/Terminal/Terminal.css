@@ -8,14 +8,14 @@
     border-bottom: 1px solid #333;
     text-align: left;
   }
-  
+
   .terminal-title {
     font-size: 13px;
     color: #cccccc;
   }
-  
-  
-  
+
+
+
   #terminal {
     height: 33vh;
     padding: 10px;
@@ -29,7 +29,7 @@
     display: flex;
     flex-direction: column;
   }
-  
+
   .terminal-container {
     display: flex;
     flex-direction: column;
@@ -38,7 +38,7 @@
     color: #d4d4d4;
     font-family: 'Courier New', monospace;
   }
-  
+
   .terminal-header {
     background-color: #333;
     color: #fff;
@@ -47,7 +47,7 @@
     font-weight: bold;
     border-radius: 8px 8px 0 0;
   }
-  
+
   .terminal-body {
     flex: 1;
     display: flex;
@@ -55,19 +55,19 @@
     padding: 10px;
     overflow: hidden;
   }
-  
+
   .terminal-history {
     flex: 1;
     overflow-y: auto;
     margin-bottom: 10px;
   }
-  
+
   .terminal-line {
     padding: 2px 0;
     white-space: pre-wrap;
     word-wrap: break-word;
   }
-  
+
   .terminal-input-line {
     display: flex;
     align-items: center;
@@ -75,12 +75,12 @@
     padding: 5px;
     border-radius: 4px;
   }
-  
+
   .terminal-prompt {
     color: #d4d4d4;
     margin-right: 8px;
   }
-  
+
   .terminal-input {
     flex: 1;
     background: transparent;
@@ -91,7 +91,7 @@
     padding: 0;
     outline: none;
   }
-  
+
   .terminal-input:focus {
     outline: none;
     box-shadow: none;

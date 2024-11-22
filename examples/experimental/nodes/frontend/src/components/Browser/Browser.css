@@ -5,7 +5,7 @@
     display: flex;
     flex-direction: column;
   }
-  
+
   .browser-toolbar {
     display: flex;
     align-items: center;
@@ -13,7 +13,7 @@
     background-color: #252526;
     border-bottom: 1px solid #333;
   }
-  
+
   .browser-toolbar input {
     flex: 1;
     background-color: #3c3c3c;
@@ -24,12 +24,12 @@
     margin-right: 8px;
     font-size: 13px;
   }
-  
+
   .browser-toolbar input:focus {
     outline: none;
     border-color: #007acc;
   }
-  
+
   .browser-toolbar button {
     background-color: #007acc;
     color: white;
@@ -39,16 +39,16 @@
     cursor: pointer;
     font-size: 13px;
   }
-  
+
   .browser-toolbar button:hover {
     background-color: #0066aa;
   }
-  
+
   .browser-content {
     flex: 1;
     background-color: #ffffff;
   }
-  
+
   .browser-content iframe {
     width: 100%;
     height: 100%;

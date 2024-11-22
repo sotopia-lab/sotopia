@@ -8,7 +8,7 @@ interface BrowserProps {
 
 export const Browser: React.FC<BrowserProps> = ({ url }) => {
     const [currentUrl, setCurrentUrl] = useState(url);
-  
+
     return (
       <div className="browser-container">
         <div className="browser-toolbar">

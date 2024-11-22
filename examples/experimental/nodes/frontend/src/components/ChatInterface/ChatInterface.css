@@ -9,7 +9,7 @@
     flex-direction: column;
     height: 100vh;
   }
-  
+
   #chat-header {
     background-color: #252526;
     color: #d4d4d4;
@@ -19,7 +19,7 @@
     font-weight: bold;
     text-align: left;
   }
-  
+
   #messages {
     padding: 10px;
     height: calc(100vh - 60px);
@@ -27,7 +27,7 @@
     display: flex;
     flex-direction: column;
   }
-  
+
   /* Message Styles */
   .message {
     display: flex;
@@ -35,19 +35,19 @@
     padding: 8px 16px;
     margin-bottom: 4px;
   }
-  
+
   .message-content-wrapper {
     display: flex;
     flex-direction: column;
     max-width: calc(100% - 52px);
   }
-  
+
   .message-sender {
     font-size: 0.875rem;
     color: #808080;
     margin-bottom: 4px;
   }
-  
+
   .message-bubble {
     padding: 10px 15px;
     border-radius: 20px;
@@ -66,7 +66,7 @@
     border-radius: 50%;
     overflow: hidden;
   }
-  
+
   .avatar-placeholder {
     width: 100%;
     height: 100%;
@@ -79,42 +79,42 @@
     font-weight: bold;
     font-size: 14px;
   }
-  
+
   /* Jack's messages */
   .message[data-sender="Jack"] {
     justify-content: flex-start;
     align-items: flex-start;
   }
-  
+
   .message[data-sender="Jack"] .message-bubble {
     background-color: #007aff;
     color: white;
     align-self: flex-start;
   }
-  
+
   /* Jane's messages */
   .message[data-sender="Jane"] {
     justify-content: flex-end;
     align-items: flex-end;
     flex-direction: row-reverse;
   }
-  
+
   .message[data-sender="Jane"] .message-bubble {
     background-color: #e5e5ea;
     color: black;
     align-self: flex-end;
   }
-  
+
   .message[data-sender="Jane"] .message-sender {
     text-align: right;
     width: 100%;
     color: #808080;
   }
-  
+
   .message[data-sender="Jane"] .message-content-wrapper {
     align-items: flex-end;
   }
-  
+
   .message[data-sender="Jane"] .message-avatar {
     margin-left: 12px;
     margin-right: 0;
@@ -163,7 +163,7 @@
   max-width: calc(100% - 52px);
   margin-left: auto; /* Push content to the right */
 }
-  
+
   /* Message Actions */
   .message-actions {
     display: flex;
@@ -171,17 +171,17 @@
     margin-top: 4px;
     font-size: 0.75rem;
   }
-  
+
   .message-replies {
     color: #0084ff;
     cursor: pointer;
     margin-right: 8px;
   }
-  
+
   .message-timestamp {
     color: #808080;
   }
-  
+
   /* Emoji Styles */
   .message-emoji {
     display: inline-flex;
@@ -191,11 +191,11 @@
     padding: 2px 8px;
     margin-left: 4px;
   }
-  
+
   .emoji-icon {
     margin-right: 4px;
   }
-  
+
   /* Reply Button Styles */
   .reply-button {
     background-color: #0084ff;
@@ -207,25 +207,25 @@
     cursor: pointer;
     margin-left: auto;
   }
-  
+
   .reply-button:hover {
     background-color: #0073e6;
   }
-  
+
   /* Scrollbar Styles */
   #messages::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   #messages::-webkit-scrollbar-track {
     background: #1e1e1e;
   }
-  
+
   #messages::-webkit-scrollbar-thumb {
     background: #444;
     border-radius: 4px;
   }
-  
+
   #messages::-webkit-scrollbar-thumb:hover {
     background: #555;
   }
@@ -237,7 +237,7 @@
     font-style: italic;
     text-align: center;
   }
-  
+
   .status-message::before {
     content: '•';
     margin-right: 4px;
@@ -249,22 +249,22 @@
     padding: 1rem;
     margin-top: auto;
   }
-  
+
   .chat-input-container input {
     outline: none;
     border: 1px solid #e5e7eb;
     transition: border-color 0.2s ease;
   }
-  
+
   .chat-input-container input:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
   }
-  
+
   .chat-input-container button {
     transition: background-color 0.2s ease;
   }
-  
+
   .chat-input-container button:hover {
     background-color: #2563eb;
   } */
@@ -276,13 +276,13 @@
     padding: 0.75rem;
     margin-top: auto;
   }
-  
+
   .chat-input-container .flex {
     display: flex;
     align-items: center;
     gap: 8px;
   }
-  
+
   .chat-input-container input {
     flex: 1;
     background-color: #3c3c3c;
@@ -295,16 +295,16 @@
     transition: all 0.2s ease;
     min-width: 0; /* Prevents input from overflowing */
   }
-  
+
   .chat-input-container input::placeholder {
     color: #808080;
   }
-  
+
   .chat-input-container input:focus {
     border-color: #007aff;
     background-color: #444444;
   }
-  
+
   .chat-input-container button {
     background-color: #007aff;
     color: white;
@@ -317,7 +317,7 @@
     transition: all 0.2s ease;
     min-width: 80px;
   }
-  
+
   .chat-input-container button:hover {
     background-color: #0066cc;
   }

@@ -4,7 +4,7 @@ import './Terminal.css'; // Import the CSS file
 
 interface TerminalProps {
   externalMessages: string[];
-  socket: Socket; 
+  socket: Socket;
 }
 
 // Function to strip ANSI color codes
@@ -56,7 +56,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
         <span className="terminal-title">Terminal</span>
       </div>
       <div className="terminal-body">
-        <div 
+        <div
           ref={historyRef}
           className="terminal-history"
         >
