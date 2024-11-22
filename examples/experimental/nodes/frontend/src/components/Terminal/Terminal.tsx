@@ -83,15 +83,15 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
   const [input, setInput] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
 
   // Initialize terminal on mount
   useEffect(() => {
-    if (!isInitialized) {
-      // Send initial commands to get user, hostname, and current path
+    if (!initializedRef.current) {
       socket.emit('terminal_command', 'whoami && hostname && pwd');
-      setIsInitialized(true);
+      initializedRef.current = true;
     }
-  }, [isInitialized, socket]);
+  }, [socket]);
 
   // Auto-scroll to bottom when history updates
   useEffect(() => {
