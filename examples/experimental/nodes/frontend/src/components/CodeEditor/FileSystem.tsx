@@ -53,7 +53,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ onFileSelect }) => {
 
   const renderItem = (item: any, depth: number = 0) => {
     const isExpanded = expandedFolders.has(item.name);
-    
+
     return (
       <div
         key={item.name}

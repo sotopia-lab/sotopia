@@ -26,7 +26,7 @@
     color: #cccccc;
     user-select: none;
   }
-  
+
   .folder-arrow {
     display: flex;
     align-items: center;
@@ -35,7 +35,7 @@
     width: 14px;
     height: 14px;
   }
-  
+
   /* Language-specific icon colors */
   .html-icon { color: #e34f26; }
   .css-icon { color: #264de4; }
@@ -44,7 +44,7 @@
   .ts-icon { color: #3178c6; }
   .json-icon { color: #f0db4f; }
   .md-icon { color: #ffffff; }
-  
+
   .folder-children {
     transition: all 0.2s ease;
   }
