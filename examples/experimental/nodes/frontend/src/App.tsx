@@ -152,10 +152,10 @@ const App: React.FC = () => {
 
   const handleFileChange = (path: string, content: string) => {
     // Update both openFiles and fileSystem
-    setOpenFiles(prev => 
+    setOpenFiles(prev =>
       prev.map(f => f.path === path ? { ...f, content } : f)
     );
-    
+
     setFileSystem(prev => ({
       ...prev,
       files: {

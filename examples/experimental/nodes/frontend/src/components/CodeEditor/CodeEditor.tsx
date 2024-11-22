@@ -92,7 +92,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           >
             {getFileIcon(file.path)}
             <span className="tab-title">{getFileName(file.path)}</span>
-            <span 
+            <span
               className="tab-close"
               onClick={(e) => handleClose(e, file.path)}
             >
