@@ -8,78 +8,41 @@ import { ChatInterface } from './components/ChatInterface/ChatInterface';
 import { Browser } from './components/Browser/Browser';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { SceneContext } from './components/Sidebar/SceneContext';
-import { FileSystemState, FileNode } from './types/FileSystem';
+import { useFileSystem } from './hooks/useFileSystems';
 
+// Initialize socket connection to the server
 const socket = io('http://localhost:8000', {
   transports: ['websocket'],
   reconnection: true
 });
 
+// Log connection status
 socket.on('connect', () => {
   console.log('Connected to server with ID:', socket.id);
 });
 
+// Log connection errors
 socket.on('connect_error', (error) => {
   console.error('Connection error:', error);
 });
 
-type FilesType = {
-  [key: string]: string;
-};
-
+// Define the type for the active panel in the sidebar
 type PanelOption = 'fileSystem' | 'sceneContext';
 
-type OpenFile = {
-  path: string;
-  content: string;
-};
-
 const App: React.FC = () => {
-  const [fileSystem, setFileSystem] = useState<FileSystemState>({
-    tree: [
-      {
-        name: 'workspace',
-        type: 'folder',
-        path: '/workspace',
-        children: [
-          {
-            name: 'index.html',
-            type: 'file',
-            path: '/workspace/index.html',
-          },
-          {
-            name: 'style.css',
-            type: 'file',
-            path: '/workspace/style.css',
-          },
-          {
-            name: 'script.js',
-            type: 'file',
-            path: '/workspace/script.js',
-          },
-          {
-            name: 'main.py',
-            type: 'file',
-            path: '/workspace/main.py',
-          }
-        ]
-      }
-    ],
-    files: {
-      '/workspace/index.html': '<!DOCTYPE html>\n<html lang="en">...',
-      '/workspace/style.css': 'body {\n    background-color: #f0f0f0;...',
-      '/workspace/script.js': 'console.log("Hello, World!");',
-      '/workspace/main.py': '# Python code here'
-    }
-  });
-
-  const [openFiles, setOpenFiles] = useState<OpenFile[]>([
-    {
-      path: '/workspace/main.py',
-      content: fileSystem.files['/workspace/main.py']
-    }
-  ]);
-  const [activeFile, setActiveFile] = useState<string>('/workspace/main.py');
+  // Use custom hook for file system management
+  const {
+    fileSystem,
+    openFiles,
+    activeFile,
+    handleFileSelect,
+    handleFileClose,
+    handleFileChange,
+    addFile,
+    setActiveFile
+  } = useFileSystem();
+  
+  // State for various components and messages
   const [messages, setMessages] = useState<Array<{text: string, type: 'message' | 'status'}>>([]);
   const [terminalMessages, setTerminalMessages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'editor' | 'browser'>('editor');
@@ -87,6 +50,7 @@ const App: React.FC = () => {
   const [activePanel, setActivePanel] = useState<PanelOption>('fileSystem');
   const [sceneMessages, setSceneMessages] = useState<{ text: string, agentName: string }[]>([]);
 
+  // Effect to handle incoming messages from the socket
   useEffect(() => {
     const handleNewMessage = (data: any) => {
       try {
@@ -95,7 +59,7 @@ const App: React.FC = () => {
         // Handle Scene context messages
         if (data.channel.startsWith('Scene:')) {
           if (messageData.data?.data_type === "text") {
-            setSceneMessages(prev => [...prev, { text: messageData.data.text, agentName: data.channel }]); // Changed channelName to agentName
+            setSceneMessages(prev => [...prev, { text: messageData.data.text, agentName: data.channel }]);
             setActivePanel('sceneContext');
           }
           return;
@@ -122,91 +86,15 @@ const App: React.FC = () => {
       }
     };
 
+    // Listen for new messages from the socket
     socket.on('new_message', handleNewMessage);
     return () => {
+      // Clean up the listener on component unmount
       socket.off('new_message', handleNewMessage);
     };
   }, []);
 
-  const handleFileSelect = (path: string) => {
-    // Check if file is already open
-    if (!openFiles.find(f => f.path === path)) {
-      // Add new file to openFiles
-      setOpenFiles(prev => [...prev, {
-        path,
-        content: fileSystem.files[path] || ''
-      }]);
-    }
-    setActiveFile(path);
-    setActiveTab('editor');
-  };
-
-  const handleFileClose = (path: string) => {
-    setOpenFiles(prev => prev.filter(f => f.path !== path));
-    if (activeFile === path) {
-      // Set the active file to the last remaining open file
-      const remainingFiles = openFiles.filter(f => f.path !== path);
-      setActiveFile(remainingFiles[remainingFiles.length - 1]?.path);
-    }
-  };
-
-  const handleFileChange = (path: string, content: string) => {
-    // Update both openFiles and fileSystem
-    setOpenFiles(prev =>
-      prev.map(f => f.path === path ? { ...f, content } : f)
-    );
-
-    setFileSystem(prev => ({
-      ...prev,
-      files: {
-        ...prev.files,
-        [path]: content
-      }
-    }));
-  };
-
-  const addFile = (path: string, content: string) => {
-    // Update fileSystem
-    setFileSystem(prev => {
-      const newFiles = {
-        ...prev.files,
-        [path]: content
-      };
-      
-      // Create new file node
-      const pathParts = path.split('/').filter(Boolean);
-      const fileName = pathParts[pathParts.length - 1];
-      const newFileNode: FileNode = {
-        name: fileName,
-        type: 'file',
-        path: path,
-      };
-      
-      // Add file node to tree
-      const updatedTree = [...prev.tree];
-      const workspaceFolder = updatedTree.find(node => node.name === 'workspace');
-      if (workspaceFolder && workspaceFolder.children) {
-        workspaceFolder.children = [...workspaceFolder.children, newFileNode];
-      }
-
-      return {
-        tree: updatedTree,
-        files: newFiles
-      };
-    });
-
-    // Update openFiles
-    setOpenFiles(prev => {
-      const existingFileIndex = prev.findIndex(f => f.path === path);
-      if (existingFileIndex !== -1) {
-        const updatedFiles = [...prev];
-        updatedFiles[existingFileIndex] = { path, content };
-        return updatedFiles;
-      }
-      return [...prev, { path, content }];
-    });
-  };
-
+  // Function to handle actions from agents
   const handleAgentAction = (messageData: any) => {
     const actionType = messageData.data.action_type;
     const agentName = messageData.data.agent_name;
@@ -215,6 +103,7 @@ const App: React.FC = () => {
 
     switch (actionType) {
       case "speak":
+        // Handle agent speaking
         const newMessage = {
           text: `${agentName}: ${messageData.data.argument}`,
           type: 'message' as const
@@ -223,6 +112,7 @@ const App: React.FC = () => {
         break;
 
       case "thought":
+        // Handle agent's thoughts
         setMessages(prev => [...prev, {
           text: `💭 ${agentName} is thinking: ${messageData.data.argument}`,
           type: 'status' as const
@@ -230,10 +120,22 @@ const App: React.FC = () => {
         break;
 
       case "write":
+        // Handle file writing
         const filePath = messageData.data.path;
         const fileContent = messageData.data.argument;
-        addFile(filePath, fileContent);
-        setActiveFile(filePath); // This will now activate the existing tab if it exists
+        
+        // Check if file already exists in openFiles
+        const existingFileIndex = openFiles.findIndex(f => f.path === filePath);
+        
+        if (existingFileIndex !== -1) {
+          // Update existing file content
+          handleFileChange(filePath, fileContent);
+        } else {
+          // Add new file
+          addFile(filePath, fileContent);
+        }
+        
+        setActiveFile(filePath);
         setActiveTab('editor');
         setActivePanel('fileSystem');
         setMessages(prev => [...prev, {
@@ -243,6 +145,7 @@ const App: React.FC = () => {
         break;
 
       case "run":
+        // Handle command execution
         setTerminalMessages(prev => [...prev, `$ ${messageData.data.argument}`]);
         setMessages(prev => [...prev, {
           text: `${agentName} is executing a command...`,
@@ -251,6 +154,7 @@ const App: React.FC = () => {
         break;
 
       case "browse":
+        // Handle browsing action
         const url = messageData.data.argument;
         setBrowserUrl(url);
         setActiveTab('browser');
@@ -265,10 +169,12 @@ const App: React.FC = () => {
     }
   };
 
+  // Handle sidebar selection
   const handleSidebarSelect = (option: PanelOption) => {
     setActivePanel(option);
   };
 
+  // Listen for chat messages from the socket
   socket.on('chat_message', (message: string) => {
     setMessages(prev => [...prev, {
       text: message,
