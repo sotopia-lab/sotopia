@@ -18,9 +18,6 @@ const processTerminalLine = (line: string): JSX.Element => {
   if (line.startsWith('Requirement already satisfied:')) {
     return <div style={{ color: '#00ff00' }}>{stripAnsiCodes(line)}</div>;
   }
-  if (line.startsWith('$')) {
-    return <div style={{ color: '#00ff00' }}>{stripAnsiCodes(line)}</div>;
-  }
   if (line.includes('notice')) {
     return <div style={{ color: '#808080' }}>{stripAnsiCodes(line)}</div>;
   }
@@ -40,28 +37,29 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
 
   useEffect(() => {
     if (externalMessages.length > 0) {
-      setHistory((prevHistory) => [...prevHistory, ...externalMessages]);
+      // Append the latest message to history
+      setHistory((prevHistory) => [
+        ...prevHistory,
+        externalMessages[externalMessages.length - 1],
+      ]);
     }
   }, [externalMessages]);
 
   const handleCommand = (command: string) => {
-    setHistory([...history, `$ ${command}`, '']);
     setInput('');
-    console.log('Command: ' + command);
     socket.emit('terminal_command', command); // Emit the command to the server
+    // Optionally, you can add the command to history if desired
+    // setHistory((prevHistory) => [...prevHistory, `$ ${command}`]);
   };
 
   return (
     <div className="terminal-container">
       <div id="terminal-header">
-           <FaTerminal size={12} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+        <FaTerminal size={12} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
         <span className="terminal-title">Terminal</span>
       </div>
       <div className="terminal-body">
-        <div
-          ref={historyRef}
-          className="terminal-history"
-        >
+        <div ref={historyRef} className="terminal-history">
           {history.map((line, index) => (
             <div key={index} className="terminal-line">
               {processTerminalLine(line)}

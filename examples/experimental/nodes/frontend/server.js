@@ -40,12 +40,24 @@ io.on('connection', (socket) => {
   console.log('A user connected');
 
   socket.on('terminal_command', async (command) => {
-    console.log(`Received command: ${command}`);
-    // try {
-    //   await redisClient.publish('TerminalChannel', command); // Publish to a Redis channel
-    // } catch (err) {
-    //   console.error('Error publishing to Redis:', err);
-    // }
+    // console.log(`Received command: ${command}`);
+    // Create the message envelope that matches the Python Message[AgentAction] structure
+    const messageEnvelope = {
+      data: {
+        agent_name: "Terminal",
+        action_type: "run",
+        argument: command,
+        path: "",
+        data_type: "agent_action"  // This needs to be inside the data object
+      }
+    };
+
+    try {
+      // Publish the JSON-serialized message to the Agent:Runtime channel
+      await redisClient.publish('Agent:Runtime', JSON.stringify(messageEnvelope));
+    } catch (err) {
+      console.error('Error publishing to Redis:', err);
+    }
   });
 
   socket.on('disconnect', () => {

@@ -46,6 +46,7 @@
     font-size: 0.875rem;
     color: #808080;
     margin-bottom: 4px;
+    padding-left: 10px;
   }
 
   .message-bubble {
@@ -109,6 +110,7 @@
     text-align: right;
     width: 100%;
     color: #808080;
+    padding-right: 10px;
   }
 
   .message[data-sender="Jane"] .message-content-wrapper {

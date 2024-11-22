@@ -28,12 +28,18 @@ interface ChatInterfaceProps {
     type: 'message' | 'status';
   }>;
   socket: Socket;
+  onSendMessage: (text: string) => void;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialMessages , socket}) => {
-  const [messages, setMessages] = useState(initialMessages);
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
+  messages, 
+  socket, 
+  onSendMessage 
+}) => {
   const [input, setInput] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  
+  console.log("ChatInterface received messages:", messages);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,14 +49,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialM
     scrollToBottom();
   }, [messages]);
 
-
   const handleSend = () => {
     if (input.trim()) {
-      setMessages([...messages, {
-        text: `User: ${input}`, // Prefix with "User:"
-        type: 'message'
-      }]);
-      socket.emit('chat_message', `User: ${input}`); // Emit the command to the server
+      socket.emit('chat_message', input.trim());
+      onSendMessage(input.trim());
       setInput('');
     }
   };
@@ -64,6 +66,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialM
       };
     }
     const colonIndex = message.text.indexOf(':');
+    if (colonIndex === -1) {
+      return {
+        agentName: 'System',
+        text: message.text,
+        type: 'message'
+      };
+    }
     const agentName = message.text.slice(0, colonIndex);
     const text = message.text.slice(colonIndex + 1).trim();
     return {

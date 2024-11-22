@@ -45,15 +45,27 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleNewMessage = (data: any) => {
-      const messageData = JSON.parse(data.message);
-      if (messageData.data.data_type === "agent_action") {
-        handleAgentAction(messageData);
-      } else if (messageData.data.data_type === "text" && messageData.data.text.includes("CmdOutputObservation")) {
-        const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
-        if (parts.length > 1) {
-          const outputText = parts[1].trim();
-          setTerminalMessages((prev) => [...prev, outputText]);
+      try {
+        const messageData = JSON.parse(data.message);
+        
+        // Check if it's an agent action
+        if (messageData.data?.data_type === "agent_action") {
+          handleAgentAction(messageData);
+        } 
+        // Check if it's a command output
+        else if (messageData.data?.data_type === "text" && 
+                 messageData.data.text.includes("CmdOutputObservation")) {
+          const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
+          if (parts.length > 1) {
+            const outputText = parts[1].trim();
+            setTerminalMessages(prev => [...prev, outputText]);
+          }
         }
+        // Log the message for debugging
+        console.log('Parsed message:', messageData);
+        
+      } catch (error) {
+        console.error('Error parsing message:', error);
       }
     };
 
@@ -67,44 +79,62 @@ const App: React.FC = () => {
     const actionType = messageData.data.action_type;
     const agentName = messageData.data.agent_name;
 
-    if (actionType === "speak") {
-      const newMessage = {
-        text: `${agentName}: ${messageData.data.argument}`,
-        type: 'message' as const
-      };
-      setMessages(prev => [...prev, newMessage]);
-    } else if (actionType === "write") {
-      const filePath = messageData.data.path;
-      const fileContent = messageData.data.argument;
-      setFiles(prevFiles => ({ ...prevFiles, [filePath]: fileContent }));
-      setActiveTab('editor');
-      const statusMessage = {
-        text: `${agentName} is writing code...`,
-        type: 'status' as const
-      };
-      setMessages(prev => [...prev, statusMessage]);
-    } else if (actionType === "run") {
-      setTerminalMessages((prev) => [...prev, `$ ${messageData.data.argument}`]);
-      const statusMessage = {
-        text: `${agentName} is executing a command...`,
-        type: 'status' as const
-      };
-      setMessages(prev => [...prev, statusMessage]);
-    } else if (actionType === "browse") {
-      const url = messageData.data.argument;
-      setBrowserUrl(url);
-      setActiveTab('browser');
-      const statusMessage = {
-        text: `${agentName} is browsing ${url}`,
-        type: 'status' as const
-      };
-      setMessages(prev => [...prev, statusMessage]);
+    // Always log the action for debugging
+    console.log('Processing agent action:', actionType, 'from', agentName);
+
+    switch (actionType) {
+      case "speak":
+        const newMessage = {
+          text: `${agentName}: ${messageData.data.argument}`,
+          type: 'message' as const
+        };
+        setMessages(prev => [...prev, newMessage]);
+        break;
+
+      case "write":
+        const filePath = messageData.data.path;
+        const fileContent = messageData.data.argument;
+        setFiles(prev => ({ ...prev, [filePath]: fileContent }));
+        setActiveTab('editor');
+        setMessages(prev => [...prev, {
+          text: `${agentName} is writing code...`,
+          type: 'status' as const
+        }]);
+        break;
+
+      case "run":
+        setTerminalMessages(prev => [...prev, `$ ${messageData.data.argument}`]);
+        setMessages(prev => [...prev, {
+          text: `${agentName} is executing a command...`,
+          type: 'status' as const
+        }]);
+        break;
+
+      case "browse":
+        const url = messageData.data.argument;
+        setBrowserUrl(url);
+        setActiveTab('browser');
+        setMessages(prev => [...prev, {
+          text: `${agentName} is browsing ${url}`,
+          type: 'status' as const
+        }]);
+        break;
+
+      default:
+        console.log('Unknown action type:', actionType);
     }
   };
 
   const handleSidebarSelect = (option: PanelOption) => {
     setActivePanel(option);
   };
+
+  socket.on('chat_message', (message: string) => {
+    setMessages(prev => [...prev, {
+      text: message,
+      type: 'message' as const
+    }]);
+  });
 
   return (
     <div className="App">
@@ -152,7 +182,16 @@ const App: React.FC = () => {
         </div>
       </div>
       <div id="chat-container">
-        <ChatInterface messages={messages} socket={socket}/>
+        <ChatInterface 
+          messages={messages} 
+          socket={socket}
+          onSendMessage={(text: string) => {
+            setMessages(prev => [...prev, {
+              text: `User: ${text}`,
+              type: 'message' as const
+            }]);
+          }}
+        />
       </div>
     </div>
   );
