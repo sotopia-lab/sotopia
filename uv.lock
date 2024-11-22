@@ -3374,14 +3374,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rel"
-version = "0.4.9.19"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/45/a6397d9c819a39caeac08520edf19fd1c9af287c442784cdddf7c7819bf0/rel-0.4.9.19-py3-none-any.whl", hash = "sha256:dbca54cfeab89f406825208ec7bebe0ed1e104705fc5478750fc0e019822dff1", size = 15182 },
-]
-
-[[package]]
 name = "requests"
 version = "2.32.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3814,9 +3806,7 @@ anthropic = [
 ]
 chat = [
     { name = "fastapi", extra = ["standard"] },
-    { name = "rel" },
     { name = "uvicorn" },
-    { name = "websockets" },
 ]
 cohere = [
     { name = "cohere" },
@@ -3878,14 +3868,12 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
     { name = "redis-om", specifier = ">=0.3.0,<0.4.0" },
-    { name = "rel", marker = "extra == 'chat'" },
     { name = "rich", specifier = ">=13.6.0,<14.0.0" },
     { name = "scipy", marker = "extra == 'examples'" },
     { name = "together", specifier = ">=0.2.4,<1.4.0" },
     { name = "torch", marker = "extra == 'examples'" },
     { name = "transformers", marker = "extra == 'examples'" },
     { name = "uvicorn", marker = "extra == 'chat'" },
-    { name = "websockets", marker = "extra == 'chat'", specifier = ">=13.1" },
 ]
 
 [package.metadata.requires-dev]
