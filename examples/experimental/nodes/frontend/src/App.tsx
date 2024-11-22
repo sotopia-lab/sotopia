@@ -138,7 +138,7 @@ const App: React.FC = () => {
         </div>
       </div>
       <div id="chat-container">
-        <ChatInterface messages={messages} />
+        <ChatInterface messages={messages} socket={socket}/>
       </div>
     </div>
   );

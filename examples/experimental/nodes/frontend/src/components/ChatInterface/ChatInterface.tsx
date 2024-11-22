@@ -1,5 +1,7 @@
 import './ChatInterface.css';
 import React, { ReactNode, useState } from 'react';
+import { Socket } from 'socket.io-client'; // Import the Socket type
+
 
 interface ScrollAreaProps {
   className?: string;
@@ -25,9 +27,10 @@ interface ChatInterfaceProps {
     text: string;
     type: 'message' | 'status';
   }>;
+  socket: Socket;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialMessages }) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialMessages , socket}) => {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -53,6 +56,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialM
         text: `User: ${input}`, // Prefix with "User:"
         type: 'message'
       }]);
+      socket.emit('chat_message', `User: ${input}`); // Emit the command to the server
       setInput('');
     }
   };
