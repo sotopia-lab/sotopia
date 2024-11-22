@@ -1,19 +1,41 @@
+/**
+ * Terminal.tsx
+ * 
+ * This component represents a terminal interface within the application. It allows users to 
+ * execute commands, view command outputs, and navigate the file system. The terminal 
+ * communicates with the server via WebSocket to send commands and receive outputs in real-time.
+ * 
+ * Key Features:
+ * - Displays a command prompt with the current user, hostname, and path.
+ * - Supports command history for easy navigation and re-execution of previous commands.
+ * - Processes and styles terminal output, including success, notice, and error messages.
+ * - Handles special commands like 'cd' for changing directories.
+ * 
+ * Props:
+ * - externalMessages: An array of messages received from the server to be displayed in the terminal.
+ * - socket: The WebSocket connection used to send commands to the server.
+ * 
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
 import './Terminal.css';
 import { FaTerminal } from 'react-icons/fa';
 
+// Define the props for the Terminal component
 interface TerminalProps {
   externalMessages: string[];
   socket: Socket;
 }
 
+// Define the structure of the terminal state
 interface TerminalState {
   user: string;
   hostname: string;
   currentPath: string;
 }
 
+// Define the structure of a history entry
 interface HistoryEntry {
   prompt: string;
   command?: string;
@@ -29,6 +51,7 @@ const stripAnsiCodes = (text: string): string => {
 const processTerminalLine = (line: string): JSX.Element => {
   const strippedLine = stripAnsiCodes(line);
 
+  // Apply different styles based on the content of the line
   if (line.startsWith('Requirement already satisfied:')) {
     return <div className="terminal-success">{strippedLine}</div>;
   }
@@ -46,6 +69,7 @@ const normalizePath = (path: string): string => {
   return path.replace(/\/+/g, '/');
 };
 
+// Terminal component definition
 export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) => {
   // Main terminal state
   const [terminalState, setTerminalState] = useState<TerminalState>({
@@ -63,6 +87,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
   // Initialize terminal on mount
   useEffect(() => {
     if (!isInitialized) {
+      // Send initial commands to get user, hostname, and current path
       socket.emit('terminal_command', 'whoami && hostname && pwd');
       setIsInitialized(true);
     }
