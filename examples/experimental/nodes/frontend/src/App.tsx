@@ -167,24 +167,42 @@ const App: React.FC = () => {
 
   const addFile = (path: string, content: string) => {
     // Update fileSystem
-    setFileSystem(prev => ({
-      ...prev,
-      files: {
+    setFileSystem(prev => {
+      const newFiles = {
         ...prev.files,
         [path]: content
+      };
+      
+      // Create new file node
+      const pathParts = path.split('/').filter(Boolean);
+      const fileName = pathParts[pathParts.length - 1];
+      const newFileNode: FileNode = {
+        name: fileName,
+        type: 'file',
+        path: path,
+      };
+      
+      // Add file node to tree
+      const updatedTree = [...prev.tree];
+      const workspaceFolder = updatedTree.find(node => node.name === 'workspace');
+      if (workspaceFolder && workspaceFolder.children) {
+        workspaceFolder.children = [...workspaceFolder.children, newFileNode];
       }
-    }));
 
-    // Update openFiles - check if file is already open
+      return {
+        tree: updatedTree,
+        files: newFiles
+      };
+    });
+
+    // Update openFiles
     setOpenFiles(prev => {
       const existingFileIndex = prev.findIndex(f => f.path === path);
       if (existingFileIndex !== -1) {
-        // Update content of existing file
         const updatedFiles = [...prev];
         updatedFiles[existingFileIndex] = { path, content };
         return updatedFiles;
       }
-      // Add new file if it doesn't exist
       return [...prev, { path, content }];
     });
   };
