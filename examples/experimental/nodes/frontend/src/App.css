@@ -59,16 +59,3 @@ body {
 .tabs button:hover:not(.active) {
   background-color: #2a2d2e;
 }
-
-/* textarea {
-  width: 100%;
-  height: calc(100% - 30px);
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-  border: none;
-  padding: 10px;
-  box-sizing: border-box;
-  resize: none;
-} */

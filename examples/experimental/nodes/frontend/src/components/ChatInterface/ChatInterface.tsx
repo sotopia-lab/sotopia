@@ -43,13 +43,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages: initialM
     scrollToBottom();
   }, [messages]);
 
-  // const handleSend = () => {
-  //   if (input.trim()) {
-  //     setMessages([...messages, { text: input, type: 'message' }]);
-  //     setInput('');
-  //   }
-  // };
-
+  
   const handleSend = () => {
     if (input.trim()) {
       setMessages([...messages, {
