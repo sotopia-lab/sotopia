@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Socket } from 'socket.io-client'; // Import the Socket type
 import './Terminal.css'; // Import the CSS file
+import { FaTerminal } from 'react-icons/fa'; // Import the terminal icon
 
 interface TerminalProps {
   externalMessages: string[];
@@ -53,6 +54,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
   return (
     <div className="terminal-container">
       <div id="terminal-header">
+           <FaTerminal size={12} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
         <span className="terminal-title">Terminal</span>
       </div>
       <div className="terminal-body">
