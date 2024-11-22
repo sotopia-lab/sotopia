@@ -1,13 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import './App.css';
-import CodeEditor from './components/code-editor';
-import { FileSystem } from './components/file-system';
-import { Terminal } from './components/terminal';
-import { ChatInterface } from './components/chat-interface';
-import { Browser } from './components/browser';
+import CodeEditor from './components/CodeEditor/CodeEditor';
+import { FileSystem } from './components/CodeEditor/FileSystem';
+import { Terminal } from './components/Terminal/Terminal';
+import { ChatInterface } from './components/ChatInterface/ChatInterface';
+import { Browser } from './components/Browser/Browser';
 
-const socket = io();
+// const socket = io();
+
+// Add this to your frontend code
+const socket = io('http://localhost:8000', {
+  transports: ['websocket'],
+  reconnection: true
+});
+
+socket.on('connect', () => {
+  console.log('Connected to server with ID:', socket.id);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Connection error:', error);
+});
 
 type FilesType = {
   [key: string]: string;
@@ -120,7 +134,7 @@ const App: React.FC = () => {
           ) : (
             <Browser url={browserUrl} />
           )}
-          <Terminal externalMessages={terminalMessages} />
+          <Terminal externalMessages={terminalMessages} socket={socket}/>
         </div>
       </div>
       <div id="chat-container">

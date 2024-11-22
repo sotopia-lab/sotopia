@@ -1,0 +1,98 @@
+/* Update Terminal Header Styles */
+#terminal-header {
+    background-color: #252526;
+    color: #d4d4d4;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    text-align: left;
+  }
+  
+  .terminal-title {
+    font-size: 13px;
+    color: #cccccc;
+  }
+  
+  
+  
+  #terminal {
+    height: 33vh;
+    padding: 10px;
+    background-color: #1e1e1e;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    color: #d4d4d4;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .terminal-container {
+    display: flex;
+    flex-direction: column;
+    height: 33vh;
+    background-color: #000000;
+    color: #d4d4d4;
+    font-family: 'Courier New', monospace;
+  }
+  
+  .terminal-header {
+    background-color: #333;
+    color: #fff;
+    padding: 8px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 8px 8px 0 0;
+  }
+  
+  .terminal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    overflow: hidden;
+  }
+  
+  .terminal-history {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 10px;
+  }
+  
+  .terminal-line {
+    padding: 2px 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  
+  .terminal-input-line {
+    display: flex;
+    align-items: center;
+    background-color: #000000;
+    padding: 5px;
+    border-radius: 4px;
+  }
+  
+  .terminal-prompt {
+    color: #d4d4d4;
+    margin-right: 8px;
+  }
+  
+  .terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #d4d4d4;
+    font-family: 'Courier New', monospace;
+    font-size: inherit;
+    padding: 0;
+    outline: none;
+  }
+  
+  .terminal-input:focus {
+    outline: none;
+    box-shadow: none;
+  }

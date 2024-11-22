@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Socket } from 'socket.io-client'; // Import the Socket type
+import './Terminal.css'; // Import the CSS file
 
 interface TerminalProps {
   externalMessages: string[];
+  socket: Socket; 
 }
 
 // Function to strip ANSI color codes
@@ -23,7 +26,7 @@ const processTerminalLine = (line: string): JSX.Element => {
   return <div>{stripAnsiCodes(line)}</div>;
 };
 
-export const Terminal: React.FC<TerminalProps> = ({ externalMessages }) => {
+export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) => {
   const [history, setHistory] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const historyRef = useRef<HTMLDivElement>(null);
@@ -43,6 +46,8 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages }) => {
   const handleCommand = (command: string) => {
     setHistory([...history, `$ ${command}`, '']);
     setInput('');
+    console.log('Command: ' + command);
+    socket.emit('terminal_command', command); // Emit the command to the server
   };
 
   return (

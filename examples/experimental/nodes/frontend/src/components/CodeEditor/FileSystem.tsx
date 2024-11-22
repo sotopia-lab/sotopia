@@ -1,5 +1,6 @@
 import React from 'react';
 import { Folder, File } from 'lucide-react';
+import './FileSystem.css'; // Import the CSS file
 
 const files = [
   { name: 'workspace', type: 'folder', children: [

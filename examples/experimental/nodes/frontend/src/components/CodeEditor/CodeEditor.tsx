@@ -4,6 +4,7 @@ import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
 import { python } from '@codemirror/lang-python';
 import { githubDark } from '@uiw/codemirror-theme-github';
+import './CodeEditor.css'; // Import the CSS file
 
 interface CodeEditorProps {
   code: string;
