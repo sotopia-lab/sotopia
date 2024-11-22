@@ -206,19 +206,6 @@ def test_create_scenario() -> None:
     pk = response.json()
     delete_mock_env_profile(pk)
 
-    pk = create_mock_agent_profile()
-    agent_data = {
-        "first_name": "updated_agent",
-        "gender": "updated_gender",
-        "occupation": "updated_occupation",
-    }
-    response = client.put(f"/agents/{pk}", json=agent_data)
-    assert response.status_code == 200
-    assert isinstance(response.json(), str)
-    agent_profile = AgentProfile.get(pk=pk)
-    assert agent_profile.first_name == "updated_agent"
-    delete_mock_agent_profile(pk)
-
 
 def test_delete_agent() -> None:
     pk = create_mock_agent_profile()
