@@ -258,6 +258,7 @@ const App: React.FC = () => {
                 onFileClose={handleFileClose}
                 onFileSelect={setActiveFile}
                 onChange={handleFileChange}
+                socket={socket}
               />
             </div>
           ) : (

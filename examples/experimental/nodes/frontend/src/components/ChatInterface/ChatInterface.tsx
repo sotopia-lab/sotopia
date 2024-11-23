@@ -88,7 +88,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSend = () => {
     if (input.trim()) {
       socket.emit('chat_message', input.trim()); // Send message via socket
-      onSendMessage(input.trim()); // Call the provided callback
       setInput(''); // Clear the input field
     }
   };

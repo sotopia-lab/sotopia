@@ -40,6 +40,24 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   }
 
+
+  .save-button {
+    background-color: #2a2a2a; /* Match the editor background color */
+    border: none; /* No border */
+    color: white; /* Text color */
+    cursor: pointer; /* Pointer cursor */
+    padding: 5px 10px; /* Padding for the button */
+    margin-left: auto; /* Push the button to the right */
+    display: flex;
+    align-items: center; /* Center icon vertically */
+    border-radius: 4px; /* Rounded corners */
+  }
+  
+  .save-button:hover {
+    background-color: #3a3a3a; /* Slightly lighter on hover */
+    opacity: 0.9; /* Slightly change opacity on hover */
+  }
+  
   .tab-close {
     margin-left: 8px;
     padding: 2px;

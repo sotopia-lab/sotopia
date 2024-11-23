@@ -24,7 +24,7 @@ redisClient.on('error', (err) => {
   await redisClient.connect();
 
   // Define allowed channels
-  const allowedChannels = ['Scene:Jack', 'Scene:Jane', 'Jane:Jack', 'Jack:Jane', 'Agent:Runtime', 'Runtime:Agent'];
+  const allowedChannels = ['Scene:Jack', 'Scene:Jane', 'Human:Jack', 'Jack:Human', 'Agent:Runtime', 'Runtime:Agent'];
 
   // Subscribe only to allowed channels
   const subscriber = redisClient.duplicate();
@@ -38,14 +38,57 @@ redisClient.on('error', (err) => {
 io.on('connection', (socket) => {
   console.log('A user connected');
 
-  socket.on('terminal_command', async (command) => {
-    console.log('Received command:', command);
+  socket.on('chat_message', async (message) => {
+    console.log('Received chat message:', message);
+    try {
+      // Send chat message to Jane:Jack channel
+      // Send command to Runtime through Redis
+      const agentAction = {
+        data: {
+          agent_name: "user",
+          action_type: "speak",
+          argument: message,
+          path: "",
+          data_type: "agent_action"
+        }
+      };
+      await redisClient.publish('Human:Jack', JSON.stringify(agentAction));
+    } catch (err) {
+      console.error('Error publishing chat message:', err);
+    }
+  });
 
+
+
+  // Listen for save_file event
+  socket.on('save_file', async ({ path, content }) => {
+    console.log('Saving file:', path);
+    try {
+      // Prepare the message to send to the Agent:Runtime channel
+      const saveMessage = {
+        data: {
+          agent_name: "user",
+          action_type: "write",
+          argument: content,
+          path: path,
+          data_type: "agent_action"
+        }
+      };
+      // Publish the message to the Agent:Runtime channel
+      await redisClient.publish('Agent:Runtime', JSON.stringify(saveMessage));
+    } catch (err) {
+      console.error('Error publishing save file message:', err);
+    }
+  });
+
+
+  socket.on('terminal_command', async (command) => {
+    console.log('Received terminal command:', command);
     try {
       // Send command to Runtime through Redis
       const messageEnvelope = {
         data: {
-          agent_name: "Terminal",
+          agent_name: "user",
           action_type: "run",
           argument: command,
           path: "",

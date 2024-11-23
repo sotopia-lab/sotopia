@@ -33,6 +33,8 @@ import './CodeEditor.css'; // Import the CSS file
 import { X } from 'lucide-react';
 import { File } from 'lucide-react';
 import { SiHtml5, SiCss3, SiJavascript, SiPython, SiTypescript } from 'react-icons/si'; // Import icons
+import { Save } from 'lucide-react'; // Import save icon
+import { Socket } from 'socket.io-client';
 
 // Define the structure of an open file
 interface OpenFile {
@@ -47,6 +49,7 @@ interface CodeEditorProps {
   onFileClose: (path: string) => void;
   onFileSelect: (path: string) => void;
   onChange: (path: string, content: string) => void;
+  socket: Socket;
 }
 
 // Function to get the appropriate file icon based on the file extension
@@ -67,6 +70,7 @@ const getFileIcon = (path: string) => {
 const CodeEditor: React.FC<CodeEditorProps> = ({
   openFiles,
   activeFile,
+  socket,
   onFileClose,
   onFileSelect,
   onChange,
@@ -112,25 +116,38 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   };
 
+  const handleSave = () => {
+    if (activeFile) {
+      console.log('Saving file:', activeFile, activeFileContent);
+      socket.emit('save_file', { path: activeFile, content: activeFileContent });
+    }
+  };
+
   return (
     <div className="editor-container">
-      <div className="editor-tabs">
-        {openFiles.map((file) => (
-          <div
-            key={file.path}
-            className={`editor-tab ${file.path === activeFile ? 'active' : ''}`}
-            onClick={() => onFileSelect(file.path)}
-          >
-            {getFileIcon(file.path)} {/* Display the file icon */}
-            <span className="tab-title">{getFileName(file.path)}</span>
-            <span
-              className="tab-close"
-              onClick={(e) => handleClose(e, file.path)} // Close file on click
+      <div className="editor-toolbar">
+        <div className="editor-tabs">
+          {openFiles.map((file) => (
+            <div
+              key={file.path}
+              className={`editor-tab ${file.path === activeFile ? 'active' : ''}`}
+              onClick={() => onFileSelect(file.path)}
             >
-              <X size={14} />
-            </span>
-          </div>
-        ))}
+              {getFileIcon(file.path)}
+              <span className="tab-title">{getFileName(file.path)}</span>
+              <span
+                className="tab-close"
+                onClick={(e) => handleClose(e, file.path)}
+              >
+                <X size={14} />
+              </span>
+            </div>
+          ))}
+
+          <button onClick={handleSave} className="save-button">
+            <Save size={16} /> {/* Save icon */}
+          </button>
+        </div>
       </div>
       {activeFile && (
         <div className="editor-content">

@@ -149,44 +149,44 @@
 
 
 /* User messages - right aligned */
-.message[data-sender="User"] {
+.message[data-sender="user"] {
   justify-content: flex-end;
   align-items: flex-end;
   flex-direction: row-reverse;
   width: 100%; /* Ensure full width container */
 }
 
-.message[data-sender="User"] .message-bubble {
+.message[data-sender="user"] .message-bubble {
   background-color: #e5e5ea;
   color: black;
   align-self: flex-end;
   margin-left: auto; /* Push bubble to the right */
 }
 
-.message[data-sender="User"] .message-sender {
+.message[data-sender="user"] .message-sender {
   text-align: right;
   width: 100%;
   color: #808080;
   padding-right: 10px; /* Add padding to align with bubble */
 }
 
-.message[data-sender="User"] .message-content-wrapper {
+.message[data-sender="user"] .message-content-wrapper {
   align-items: flex-end;
   width: 100%; /* Ensure wrapper takes full width */
 }
 
-.message[data-sender="User"] .message-avatar {
+.message[data-sender="user"] .message-avatar {
   margin-left: 12px;
   margin-right: 0;
 }
 
-.message[data-sender="User"] .avatar-placeholder {
+.message[data-sender="user"] .avatar-placeholder {
   background-color: #e5e5ea;
   color: #333333;
 }
 
-/* Adjust the max-width for User messages */
-.message[data-sender="User"] .message-content-wrapper {
+/* Adjust the max-width for user messages */
+.message[data-sender="user"] .message-content-wrapper {
   max-width: calc(100% - 52px);
   margin-left: auto; /* Push content to the right */
 }

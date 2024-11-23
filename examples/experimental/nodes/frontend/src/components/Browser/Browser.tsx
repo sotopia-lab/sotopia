@@ -14,8 +14,6 @@
  * Props:
  * - url: The initial URL to be loaded in the browser.
  *
- * Author: [Your Name]
- * Date: [Date]
  */
 
 import React, { useState } from 'react';
@@ -29,6 +27,8 @@ interface BrowserProps {
 // Main Browser component definition
 export const Browser: React.FC<BrowserProps> = ({ url }) => {
     const [currentUrl, setCurrentUrl] = useState(url); // State to manage the current URL
+
+    // const proxyUrl = `https://cors-anywhere.herokuapp.com/${currentUrl}`;
 
     return (
       <div className="browser-container">
