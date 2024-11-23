@@ -21,7 +21,7 @@
  *
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { html } from '@codemirror/lang-html';
@@ -77,15 +77,14 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 }) => {
   // Function to extract the file name from the file path
   const getFileName = (path: string) => path.split('/').pop() || path;
+  const [unsavedChanges, setUnsavedChanges] = useState<{ [key: string]: boolean }>({}); // Track unsaved changes for each file
+  const activeFileContent = openFiles.find(f => f.path === activeFile)?.content;   // Get the content of the currently active file
 
   // Handle file close action
   const handleClose = (e: React.MouseEvent, path: string) => {
     e.stopPropagation();
     onFileClose(path);
   };
-
-  // Get the content of the currently active file
-  const activeFileContent = openFiles.find(f => f.path === activeFile)?.content;
 
   // Add empty lines to fill the editor to a minimum height
   const fillEmptyLines = (content: string | undefined) => {
@@ -120,7 +119,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     if (activeFile) {
       console.log('Saving file:', activeFile, activeFileContent);
       socket.emit('save_file', { path: activeFile, content: activeFileContent });
+      setUnsavedChanges(prev => ({ ...prev, [activeFile]: false })); // Reset unsaved changes for the active file
     }
+  };
+
+  const handleChange = (activeFile: string, value: string) => {
+    onChange(activeFile, value); // Call the onChange prop
+    setUnsavedChanges(prev => ({ ...prev, [activeFile]: true })); // Set unsaved changes for the active file
   };
 
   return (
@@ -134,7 +139,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
               onClick={() => onFileSelect(file.path)}
             >
               {getFileIcon(file.path)}
-              <span className="tab-title">{getFileName(file.path)}</span>
+              <span className="tab-title">
+              {unsavedChanges[file.path] ? `* ${getFileName(file.path)}` : getFileName(file.path)}
+              </span>
               <span
                 className="tab-close"
                 onClick={(e) => handleClose(e, file.path)}
@@ -159,7 +166,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
               ...getLanguageExtension(activeFile), // Set language-specific extensions
               EditorView.lineWrapping, // Enable line wrapping
             ]}
-            onChange={(value) => onChange(activeFile, value)} // Handle content changes
+            onChange={(value) => handleChange(activeFile, value)} // Handle content changes
             basicSetup={{
               lineNumbers: true,
               highlightActiveLineGutter: true,
