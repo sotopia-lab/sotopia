@@ -157,11 +157,11 @@ export const useFileSystem = () => {
 
   const updateFileSystemFromList = (fileList: string[]) => {
     // Initialize root workspace folder
-    const newTree: FileNode[] = [{ 
-      name: 'workspace', 
-      type: 'folder', 
-      path: '/workspace', 
-      children: [] 
+    const newTree: FileNode[] = [{
+      name: 'workspace',
+      type: 'folder',
+      path: '/workspace',
+      children: []
     }];
 
     // Process each file path
@@ -169,7 +169,7 @@ export const useFileSystem = () => {
       // Remove the leading /workspace/ and split the remaining path
       const relativePath = filePath.replace(/^\/workspace\//, '');
       const segments = relativePath.split('/').filter(Boolean);
-      
+
       if (segments.length === 0) return; // Skip if it's just the workspace folder
 
       let currentLevel = newTree[0].children!;
@@ -178,7 +178,7 @@ export const useFileSystem = () => {
       // Process each segment of the path
       segments.forEach((segment, index) => {
         currentPath += '/' + segment;
-        
+
         // If we're at the last segment, it's a file
         if (index === segments.length - 1) {
           currentLevel.push({

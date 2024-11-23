@@ -120,7 +120,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
     <>
       <div id="file-explorer-header">
         Folders
-        <button 
+        <button
           onClick={handleRefresh}
           className="refresh-button"
           title="Refresh file structure"

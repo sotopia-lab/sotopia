@@ -117,7 +117,7 @@ const App: React.FC = () => {
         if (messageData.data?.data_type === "text" &&
             messageData.data.text.includes("CmdOutputObservation") &&
             messageData.data.text.includes("/workspace")) {
-          
+
           const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
           if (parts.length > 1) {
             const fileList = parts[1].trim().split('\n').filter(Boolean);
