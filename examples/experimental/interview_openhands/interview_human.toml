@@ -1,0 +1,71 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.interview_openhands.llm_agent", "examples.experimental.nodes.initial_message_node", "examples.experimental.nodes.chat_print_node"]
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
+
+[[nodes]]
+node_name = "Jack"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 5
+output_channel = "Jack:Human"
+input_text_channels = ["Human:Jack"]
+input_env_channels = ["Scene:Jack", "Runtime:Agent"]
+input_tick_channel = "tick/secs/1"
+goal = "Your goal is to perform well in the interview by demonstrating your technical skills, clear communication, and enthusiasm for the position. Stay calm, ask clarifying questions when needed, and confidently explain your thought process."
+model_name = "gpt-4o"
+agent_name = "Jack"
+
+
+[[nodes]]
+node_name = "JackScene"
+node_class = "initial_message"
+
+[nodes.node_args]
+input_tick_channel = "tick/secs/1"
+output_channels = ["Scene:Jack"]
+env_scenario = """
+You are Jack, a college senior at Stanford University interviewing for a Software Engineering Intern position at a Fintech company. You are currently sitting in an office with your interviewer, Jack.
+Youe interviewer is a human. Give them enough time to speak and wait for their questions and directions. Do not keep speaking if there is no input from the human. While you wait use the none action. You can also think or browse. 
+Do not keep asking the same question or repeat the same action. You should use the browse action to search things on the web about things you don't know like current news and documentation.
+Also break large speak actions into multiple parts over multiple turns.
+It's natural to feel a bit nervous, but remind yourself that you have prepared well. You are very good at python. Please ask questions and use the resources the interviewer provides.
+### Goals:
+1. **Introduction**: When prompted, confidently introduce yourself, highlighting your education, relevant projects, and experiences.
+2. **Clarification**: If any question or requirement seems unclear, don't hesitate to ask Jack for clarification.
+3. **Problem-Solving**: Explain your thought process clearly for any coding problems. Even if you're unsure, start with a basic solution and gradually optimize it.
+4. **Communication**: Be articulate in your explanations. Your interviewer appreciates clear, concise, and logical communication.
+5. **Coding**: Write your code in a file in the /workspace directory. Make sure to justify each part of your solution. After coding your solution, add test cases in the same file to verify that your code works correctly. Explain how your test cases cover different scenarios and edge cases.
+6. **Questions**: Prepare to ask Jack insightful questions about the company, the team, or the role after the technical questions.
+
+Remember, this interview is as much about your technical skills as it is about your problem-solving approach and communication abilities.
+"""
+
+[[nodes]]
+node_name = "chat_print"
+node_class = "chat_print"
+
+[nodes.node_args.print_channel_types]
+"Human:Jack" = "agent_action"
+"Jack:Human" = "agent_action"
+"Agent:Runtime" = "agent_action"
+
+[nodes.node_args]
+env_agents = ["Jack", "Jane"]
+
+[[nodes]]
+node_name = "record"
+node_class = "record"
+
+[nodes.node_args]
+jsonl_file_path = "logs/interview_openhands.jsonl"
+
+[nodes.node_args.record_channel_types]
+"Human:Jack" = "agent_action"
+"Jack:Human" = "agent_action"
+"Agent:Runtime" = "agent_action"
+"Runtime:Agent" = "text"
+"Scene:Jack" = "text"
