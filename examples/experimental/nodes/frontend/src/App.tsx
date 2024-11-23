@@ -110,16 +110,16 @@ const App: React.FC = () => {
         }
         // Check if it's a command output
         else if (messageData.data.data_type === "text" &&
-                 messageData.data.text.includes("CmdOutputObservation") && 
+                 messageData.data.text.includes("CmdOutputObservation") &&
                  !messageData.data.text.includes("**FILE_SYSTEM_REFRESH**")) {
           // Try to extract output from success case (exit code=0)
           let parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
-          
+
           // If not found, try to extract from error case (exit code=1)
           if (parts.length === 1) {
             parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=1)**");
           }
-          
+
           // If we found output in either case, add it to terminal messages
           if (parts.length > 1) {
             const outputText = parts[1].trim();
