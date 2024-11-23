@@ -270,32 +270,6 @@
     margin-right: 4px;
   }
 
-  /* .chat-input-container {
-    background-color: white;
-    border-top: 1px solid #e5e7eb;
-    padding: 1rem;
-    margin-top: auto;
-  }
-
-  .chat-input-container input {
-    outline: none;
-    border: 1px solid #e5e7eb;
-    transition: border-color 0.2s ease;
-  }
-
-  .chat-input-container input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-  }
-
-  .chat-input-container button {
-    transition: background-color 0.2s ease;
-  }
-
-  .chat-input-container button:hover {
-    background-color: #2563eb;
-  } */
-
 
   .chat-input-container {
     background-color: #252526;
@@ -310,7 +284,11 @@
     gap: 8px;
   }
 
-  .chat-input-container input {
+
+  .chat-input-container textarea {
+    min-height: 40px; /* Minimum height for the textarea */
+    max-height: 150px; /* Maximum height for the textarea */
+    overflow: auto; /* Hide overflow to prevent scrollbars */
     flex: 1;
     background-color: #3c3c3c;
     color: #d4d4d4;
@@ -321,6 +299,7 @@
     outline: none;
     transition: all 0.2s ease;
     min-width: 0; /* Prevents input from overflowing */
+    display: block; /* Add this */
   }
 
   .chat-input-container input::placeholder {
@@ -343,6 +322,8 @@
     white-space: nowrap;
     transition: all 0.2s ease;
     min-width: 80px;
+    height: 40px;
+    align-self: flex-end; 
   }
 
   .chat-input-container button:hover {

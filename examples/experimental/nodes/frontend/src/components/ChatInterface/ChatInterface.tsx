@@ -19,9 +19,9 @@
  */
 
 import './ChatInterface.css';
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client'; // Import the Socket type
-import { FaComments } from 'react-icons/fa'; // Import the chat icon
+import { FaComments } from 'react-icons/fa'; // Import the chat and send icons
 
 // Define the props for the scrollable area
 interface ScrollAreaProps {
@@ -63,7 +63,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 }) => {
   const [input, setInput] = useState(''); // State for the input field
   const [showBlinkingLight, setShowBlinkingLight] = useState(false); // State for blinking light indicator
-  const messagesEndRef = React.useRef<HTMLDivElement>(null); // Ref for scrolling to the bottom
+  const messagesEndRef = useRef<HTMLDivElement>(null); // Ref for scrolling to the bottom
+  const textareaRef = useRef<HTMLTextAreaElement>(null); // Ref for the textarea
 
   console.log("ChatInterface received messages:", messages);
 
@@ -89,6 +90,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (input.trim()) {
       socket.emit('chat_message', input.trim()); // Send message via socket
       setInput(''); // Clear the input field
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto'; // Reset height to auto
+        textareaRef.current.style.height = '40px'; // Set to initial height
+      }
     }
   };
 
@@ -116,6 +121,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       text,
       type: 'message'
     };
+  };
+
+  // Function to handle textarea height adjustment
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    e.target.style.height = 'auto'; // Reset height to auto to calculate new height
+    e.target.style.height = `${e.target.scrollHeight}px`; // Set height to scrollHeight
   };
 
   return (
@@ -155,19 +167,25 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <div ref={messagesEndRef} /> {/* Reference for scrolling */}
       </ScrollArea>
 
-      <div className="chat-input-container p-4 border-t">
-        <div className="flex space-x-2">
-          <input
-            type="text"
+      <div className="chat-input-container">
+        <div className="flex">
+          <textarea
+            ref={textareaRef} // Attach ref to the textarea
             className="flex-grow p-2 rounded-lg border"
             value={input}
-            onChange={(e) => setInput(e.target.value)} // Update input state
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()} // Send message on Enter key
+            onChange={handleInputChange}
+            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Type a message..."
+            rows={1}
+            style={{ 
+              resize: 'none',
+              minHeight: '40px',
+              height: 'auto'
+            }}
           />
           <button
-            onClick={handleSend} // Send message on button click
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            onClick={handleSend}
+            className="w-10 h-10 bg-blue-500 text-white rounded-full hover:bg-blue-600 flex items-center justify-center"
           >
             Send
           </button>
