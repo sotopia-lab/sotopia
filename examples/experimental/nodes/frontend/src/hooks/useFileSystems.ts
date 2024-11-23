@@ -20,6 +20,7 @@
  * - handleFileChange: Function to update the content of an open file.
  * - addFile: Function to add a new file to the file system.
  * - setActiveFile: Function to set the currently active file.
+ * - updateFileSystemFromList: Function to update the file system state when receiving the file list from the server.
  *
  */
 
@@ -154,6 +155,93 @@ export const useFileSystem = () => {
     });
   };
 
+  const updateFileSystemFromList = (fileList: string[]) => {
+    // Initialize root workspace folder
+    const newTree: FileNode[] = [{ 
+      name: 'workspace', 
+      type: 'folder', 
+      path: '/workspace', 
+      children: [] 
+    }];
+
+    // Process each file path
+    fileList.forEach(filePath => {
+      // Remove the leading /workspace/ and split the remaining path
+      const relativePath = filePath.replace(/^\/workspace\//, '');
+      const segments = relativePath.split('/').filter(Boolean);
+      
+      if (segments.length === 0) return; // Skip if it's just the workspace folder
+
+      let currentLevel = newTree[0].children!;
+      let currentPath = '/workspace';
+
+      // Process each segment of the path
+      segments.forEach((segment, index) => {
+        currentPath += '/' + segment;
+        
+        // If we're at the last segment, it's a file
+        if (index === segments.length - 1) {
+          currentLevel.push({
+            name: segment,
+            type: 'file',
+            path: currentPath
+          });
+        } else {
+          // It's a folder
+          let folder = currentLevel.find(
+            node => node.type === 'folder' && node.name === segment
+          );
+
+          // Create folder if it doesn't exist
+          if (!folder) {
+            folder = {
+              name: segment,
+              type: 'folder',
+              path: currentPath,
+              children: []
+            };
+            currentLevel.push(folder);
+          }
+
+          currentLevel = folder.children!;
+        }
+      });
+    });
+
+    // Sort folders and files
+    const sortNodes = (nodes: FileNode[]) => {
+      return nodes.sort((a, b) => {
+        // Folders come before files
+        if (a.type !== b.type) {
+          return a.type === 'folder' ? -1 : 1;
+        }
+        // Alphabetical sorting within same type
+        return a.name.localeCompare(b.name);
+      });
+    };
+
+    // Recursively sort all levels
+    const sortRecursive = (node: FileNode) => {
+      if (node.children) {
+        node.children = sortNodes(node.children);
+        node.children.forEach(child => {
+          if (child.type === 'folder') {
+            sortRecursive(child);
+          }
+        });
+      }
+    };
+
+    // Sort the tree
+    sortRecursive(newTree[0]);
+
+    // Update the file system state while preserving existing file contents
+    setFileSystem(prev => ({
+      ...prev,
+      tree: newTree
+    }));
+  };
+
   return {
     fileSystem,
     openFiles,
@@ -162,6 +250,7 @@ export const useFileSystem = () => {
     handleFileClose,
     handleFileChange,
     addFile,
-    setActiveFile
+    setActiveFile,
+    updateFileSystemFromList
   };
 };

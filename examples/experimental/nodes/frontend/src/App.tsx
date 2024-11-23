@@ -65,7 +65,8 @@ const App: React.FC = () => {
     handleFileClose,
     handleFileChange,
     addFile,
-    setActiveFile
+    setActiveFile,
+    updateFileSystemFromList
   } = useFileSystem();
 
   // State for various components and messages
@@ -112,6 +113,18 @@ const App: React.FC = () => {
         // Log the message for debugging
         console.log('Parsed message:', messageData);
 
+        // Handle file structure refresh response
+        if (messageData.data?.data_type === "text" &&
+            messageData.data.text.includes("CmdOutputObservation") &&
+            messageData.data.text.includes("/workspace")) {
+          
+          const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
+          if (parts.length > 1) {
+            const fileList = parts[1].trim().split('\n').filter(Boolean);
+            updateFileSystemFromList(fileList);
+          }
+        }
+
       } catch (error) {
         // Log any errors that occur during message parsing
         console.error('Error parsing message:', error);
@@ -124,7 +137,7 @@ const App: React.FC = () => {
       // Clean up the listener on component unmount
       socket.off('new_message', handleNewMessage);
     };
-  }, []);
+  }, [updateFileSystemFromList]);
 
   // Function to handle actions from agents
   const handleAgentAction = (messageData: any) => {
@@ -227,6 +240,7 @@ const App: React.FC = () => {
             <FileSystem
               fileSystem={fileSystem.tree}
               onFileSelect={handleFileSelect}
+              socket={socket}
             />
           </div>
         )}

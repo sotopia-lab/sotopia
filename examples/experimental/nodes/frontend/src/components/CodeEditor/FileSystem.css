@@ -15,6 +15,10 @@
     font-size: 13px;
     border-bottom: 1px solid #333;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
   }
 
   .file-item {
@@ -60,4 +64,29 @@
 
   .file-icon {
     margin-right: 6px;
+  }
+
+  .refresh-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+
+  .refresh-button:hover {
+    background-color: #2a2a2a;
+    color: #fff;
+  }
+
+  .refresh-button svg {
+    transition: transform 0.3s ease;
+  }
+
+  .refresh-button:active svg {
+    transform: rotate(180deg);
   }

@@ -15,22 +15,25 @@
  * Props:
  * - fileSystem: An array of FileNode objects representing the file system structure.
  * - onFileSelect: A callback function to handle the selection of a file.
+ * - socket: A socket object to handle communication with the backend.
  *
  */
 
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, File } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, RefreshCw } from 'lucide-react';
 import {
   SiHtml5, SiCss3, SiJavascript, SiPython,
   SiTypescript, SiJson, SiMarkdown
 } from 'react-icons/si';
 import './FileSystem.css'; // Import the CSS file
 import { FileNode } from '../../types/FileSystem'; // Import the FileNode type
+import { Socket } from 'socket.io-client';
 
 // Define the props for the FileSystem component
 interface FileSystemProps {
   fileSystem: FileNode[];
   onFileSelect: (path: string) => void;
+  socket: Socket; // Add socket prop
 }
 
 // Function to get the appropriate file icon based on the file extension
@@ -50,8 +53,13 @@ const getFileIcon = (fileName: string) => {
 };
 
 // Main FileSystem component definition
-export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect }) => {
+export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect, socket }) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/workspace'])); // Track expanded folders
+
+  const handleRefresh = () => {
+    // Send command to get file structure
+    socket.emit('terminal_command', "find /workspace -type f");
+  };
 
   // Toggle the expansion state of a folder
   const toggleFolder = (folderName: string, e: React.MouseEvent) => {
@@ -110,7 +118,16 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
 
   return (
     <>
-      <div id="file-explorer-header">Folders</div>
+      <div id="file-explorer-header">
+        Folders
+        <button 
+          onClick={handleRefresh}
+          className="refresh-button"
+          title="Refresh file structure"
+        >
+          <RefreshCw size={14} />
+        </button>
+      </div>
       <div className="file-explorer">
         {fileSystem.map(node =>
           node.type === 'folder' ? renderFolder(node) : renderItem(node) // Render the file system
