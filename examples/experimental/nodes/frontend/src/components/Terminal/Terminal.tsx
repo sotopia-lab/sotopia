@@ -51,6 +51,10 @@ const stripAnsiCodes = (text: string): string => {
 const processTerminalLine = (line: string): JSX.Element => {
   const strippedLine = stripAnsiCodes(line);
 
+  // Check for exit code in the line
+  if (line.includes('exit code=1')) {
+    return <div className="terminal-error">{strippedLine}</div>; // Style for error output
+  }
   // Apply different styles based on the content of the line
   if (line.startsWith('Requirement already satisfied:')) {
     return <div className="terminal-success">{strippedLine}</div>;
@@ -81,7 +85,6 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
   // Command history
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [input, setInput] = useState('');
-  const [isInitialized, setIsInitialized] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
 

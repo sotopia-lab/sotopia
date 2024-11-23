@@ -85,9 +85,18 @@ const App: React.FC = () => {
         // Parse the incoming message data
         const messageData = JSON.parse(data.message);
 
+        // Log the entire messageData for debugging
+        console.log('Received message data:', messageData);
+
+        // Check if messageData.data is defined
+        if (!messageData.data) {
+          console.error('messageData.data is undefined:', messageData);
+          return; // Exit if data is not present
+        }
+
         // Handle Scene context messages
         if (data.channel.startsWith('Scene:')) {
-          if (messageData.data?.data_type === "text") {
+          if (messageData.data.data_type === "text") {
             // Update scene messages and set active panel to scene context
             setSceneMessages(prev => [...prev, { text: messageData.data.text, agentName: data.channel }]);
             setActivePanel('sceneContext');
@@ -96,29 +105,33 @@ const App: React.FC = () => {
         }
 
         // Check if it's an agent action
-        if (messageData.data?.data_type === "agent_action") {
+        if (messageData.data.data_type === "agent_action") {
           handleAgentAction(messageData);
         }
         // Check if it's a command output
-        else if (messageData.data?.data_type === "text" &&
+        else if (messageData.data.data_type === "text" &&
                  messageData.data.text.includes("CmdOutputObservation") && 
                  !messageData.data.text.includes("**FILE_SYSTEM_REFRESH**")) {
-          // Extract command output from the message
-          const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
+          // Try to extract output from success case (exit code=0)
+          let parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
+          
+          // If not found, try to extract from error case (exit code=1)
+          if (parts.length === 1) {
+            parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=1)**");
+          }
+          
+          // If we found output in either case, add it to terminal messages
           if (parts.length > 1) {
             const outputText = parts[1].trim();
             // Update terminal messages with the command output
             setTerminalMessages(prev => [...prev, outputText]);
           }
         }
-        // Log the message for debugging
-        console.log('Parsed message:', messageData);
 
         // Handle file structure refresh response
-        if (messageData.data?.data_type === "text" &&
+        if (messageData.data.data_type === "text" &&
             messageData.data.text.includes("CmdOutputObservation") &&
             messageData.data.text.includes("**FILE_SYSTEM_REFRESH**")) {
-
           const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
           if (parts.length > 1) {
             const fileList = parts[1].trim().split('\n').filter(Boolean).slice(1);
@@ -142,6 +155,12 @@ const App: React.FC = () => {
 
   // Function to handle actions from agents
   const handleAgentAction = (messageData: any) => {
+    // Check if messageData.data is defined
+    if (!messageData.data) {
+      console.error('messageData.data is undefined:', messageData);
+      return; // Exit if data is not present
+    }
+
     const actionType = messageData.data.action_type; // Get the action type from the message
     const agentName = messageData.data.agent_name; // Get the agent's name
 
@@ -192,13 +211,22 @@ const App: React.FC = () => {
         }]);
         break;
 
+        case "read":
+          // Check if messageData.data.text is defined
+            setMessages(prev => [...prev, {
+              text: `${agentName} is reading file ${messageData.data.path}`,
+              type: 'status' as const
+            }]);
+          break;
+
       case "run":
-        // Handle command execution
-        setTerminalMessages(prev => [...prev, `$ ${messageData.data.argument}`]);
-        setMessages(prev => [...prev, {
-          text: `${agentName} is executing a command...`,
-          type: 'status' as const
-        }]);
+        // Check if messageData.data.text is defined
+          // Handle command execution
+          setTerminalMessages(prev => [...prev, `$ ${messageData.data.argument}`]);
+          setMessages(prev => [...prev, {
+            text: `${agentName} is executing a command...`,
+            type: 'status' as const
+          }]);
         break;
 
       case "browse":

@@ -96,7 +96,7 @@
 }
 
 .terminal-error {
-  color: #F48771;
+  color: red;
 }
 
 .terminal-text {
