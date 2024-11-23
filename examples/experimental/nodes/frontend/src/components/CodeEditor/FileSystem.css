@@ -130,7 +130,7 @@
       transform: translateY(0);
     }
   }
-  
+
   .file-input {
     flex: 1;
     background: #2d2d2d;
@@ -140,7 +140,7 @@
     font-size: 12px;
     border-radius: 2px;
   }
-  
+
   .action-button {
     padding: 2px;
     background: transparent;
@@ -152,15 +152,15 @@
     color: #cccccc;
     border-radius: 2px;
   }
-  
+
   .action-button:hover {
     background: #333;
   }
-  
+
   .add-button {
     color: #4CAF50;
   }
-  
+
   .cancel-button {
     color: #f44336;
   }

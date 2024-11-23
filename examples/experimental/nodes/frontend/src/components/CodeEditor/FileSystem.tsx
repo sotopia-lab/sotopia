@@ -161,15 +161,15 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
               className="file-input"
               autoFocus
             />
-            <button 
-              onClick={handleAddFile} 
+            <button
+              onClick={handleAddFile}
               className="action-button add-button"
               title="Add file"
             >
               <Check size={14} />
             </button>
-            <button 
-              onClick={() => setInputVisible(false)} 
+            <button
+              onClick={() => setInputVisible(false)}
               className="action-button cancel-button"
               title="Cancel"
             >
