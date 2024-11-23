@@ -2,187 +2,162 @@ from fastapi.testclient import TestClient
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
 from sotopia.messages import SimpleMessage
 from sotopia.ui.fastapi_server import app
+import pytest
+from typing import Generator, Callable
 
 client = TestClient(app)
 
 
-def create_mock_agent_profile() -> str:
-    agent_profile = AgentProfile(
-        first_name="John",
-        last_name="Doe",
-        age=30,
-        occupation="test_occupation",
-        gender="test_gender",
-        gender_pronoun="He/Him",
-        public_info="Public Info",
-        big_five="OCEAN",
-        moral_values=["Honesty", "Integrity"],
-        schwartz_personal_values=["Self-Direction", "Stimulation"],
-        personality_and_values="Personality and Values",
-        decision_making_style="Analytical",
-        secret="Secret",
-        model_id="model_123",
-        mbti="INTJ",
-    )
-    agent_profile.save()
-    pk = agent_profile.pk
-    assert pk is not None
-    return pk
-
-
-def delete_mock_agent_profile(pk: str) -> None:
-    AgentProfile.delete(pk)
-
-
-def create_mock_env_profile() -> str:
-    env_profile = EnvironmentProfile(
-        codename="test_codename",
-        scenario="A",
-        agent_goals=[
-            "B",
-            "C",
-        ],
-    )
-    env_profile.save()
-    pk = env_profile.pk
-    assert pk is not None
-    return pk
-
-
-def delete_mock_env_profile(pk: str) -> None:
-    EnvironmentProfile.delete(pk)
-
-
-def create_mock_episode_log() -> str:
-    agent1 = "agent1"
-    agent2 = "agent2"
-    episode_log = EpisodeLog(
-        environment="test_environment",
-        agents=[agent1, agent2],
+def create_dummy_episode_log() -> None:
+    episode = EpisodeLog(
+        environment="tmppk_env_profile",
+        agents=["tmppk_agent1", "tmppk_agent2"],
         messages=[
             [
                 (
-                    agent1,
-                    agent2,
+                    "tmppk_agent1",
+                    "tmppk_agent2",
                     SimpleMessage(message="Hello").to_natural_language(),
                 ),
                 (
-                    agent2,
-                    agent1,
+                    "tmppk_agent2",
+                    "tmppk_agent1",
                     SimpleMessage(message="Hi").to_natural_language(),
                 ),
             ],
             [
                 (
                     "Environment",
-                    agent2,
+                    "tmppk_agent2",
                     SimpleMessage(message="Hello").to_natural_language(),
                 ),
                 (
-                    agent2,
-                    agent1,
-                    SimpleMessage(message="Hi again").to_natural_language(),
+                    "tmppk_agent2",
+                    "tmppk_agent1",
+                    SimpleMessage(message="Hi").to_natural_language(),
                 ),
             ],
         ],
-        reasoning="Reasoning",
-        rewards=[1.0, 2.0],
-        rewards_prompt="Rewards Prompt",
+        rewards=[
+            (0, {"believability": 9.0}),
+            (
+                0,
+                {
+                    "believability": 9.0,
+                    "relationship": 2.0,
+                    "knowledge": 1.0,
+                    "secret": 0.0,
+                    "social_rules": 0.0,
+                    "financial_and_material_benefits": 0.0,
+                    "goal": 10.0,
+                    "overall_score": 0,
+                },
+            ),
+        ],
+        reasoning="",
+        pk="tmppk_episode_log",
+        rewards_prompt="",
         tag="test_tag",
     )
-    episode_log.save()
-    pk = episode_log.pk
-    assert pk is not None
-    return pk
+    episode.save()
 
 
-def delete_mock_episode_log(pk: str) -> None:
-    EpisodeLog.delete(pk)
+@pytest.fixture
+def create_mock_data() -> Generator[None, None, None]:
+    def _create_mock_agent_profile() -> None:
+        AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
+        AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
+
+    def _create_mock_env_profile() -> None:
+        env_profile = EnvironmentProfile(
+            codename="test_codename",
+            scenario="A",
+            agent_goals=[
+                "B",
+                "C",
+            ],
+            pk="tmppk_env_profile",
+        )
+        env_profile.save()
+
+    _create_mock_agent_profile()
+    _create_mock_env_profile()
+
+    yield
+
+    AgentProfile.delete("tmppk_agent1")
+    AgentProfile.delete("tmppk_agent2")
+    EnvironmentProfile.delete("tmppk_env_profile")
+    EpisodeLog.delete("tmppk_episode_log")
 
 
-def test_get_scenarios_all() -> None:
-    pk = create_mock_env_profile()
+def test_get_scenarios_all(create_mock_data: Callable[[], None]) -> None:
     response = client.get("/scenarios")
-    delete_mock_env_profile(pk)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-def test_get_scenarios_by_id() -> None:
-    pk = create_mock_env_profile()
-    response = client.get(f"/scenarios/id/{pk}")
-    delete_mock_env_profile(pk)
+def test_get_scenarios_by_id(create_mock_data: Callable[[], None]) -> None:
+    response = client.get("/scenarios/id/tmppk_env_profile")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert response.json()[0]["scenario"] == "A"
 
 
-def test_get_scenarios_by_codename() -> None:
+def test_get_scenarios_by_codename(create_mock_data: Callable[[], None]) -> None:
     codename = "test_codename"
-    pk = create_mock_env_profile()
     response = client.get(f"/scenarios/codename/{codename}")
-    delete_mock_env_profile(pk)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert response.json()[0]["codename"] == codename
 
 
-def test_get_agents_all() -> None:
-    pk = create_mock_agent_profile()
+def test_get_agents_all(create_mock_data: Callable[[], None]) -> None:
     response = client.get("/agents")
-    delete_mock_agent_profile(pk)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-def test_get_agents_by_id() -> None:
-    pk = create_mock_agent_profile()
-    response = client.get(f"/agents/id/{pk}")
-    delete_mock_agent_profile(pk)
+def test_get_agents_by_id(create_mock_data: Callable[[], None]) -> None:
+    response = client.get("/agents/id/tmppk_agent1")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert response.json()[0]["first_name"] == "John"
 
 
-def test_get_agents_by_gender() -> None:
+def test_get_agents_by_gender(create_mock_data: Callable[[], None]) -> None:
     gender = "test_gender"
-    pk = create_mock_agent_profile()
     response = client.get(f"/agents/gender/{gender}")
-    delete_mock_agent_profile(pk)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert response.json()[0]["gender"] == gender
 
 
-def test_get_agents_by_occupation() -> None:
+def test_get_agents_by_occupation(create_mock_data: Callable[[], None]) -> None:
     occupation = "test_occupation"
-    pk = create_mock_agent_profile()
     response = client.get(f"/agents/occupation/{occupation}")
-    delete_mock_agent_profile(pk)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert response.json()[0]["occupation"] == occupation
 
 
-def test_get_episodes_by_id() -> None:
-    pk = create_mock_episode_log()
-    response = client.get(f"/episodes/id/{pk}")
-    delete_mock_episode_log(pk)
+def test_get_episodes_by_id(create_mock_data: Callable[[], None]) -> None:
+    create_dummy_episode_log()
+    response = client.get("/episodes/id/tmppk_episode_log")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-def test_get_episodes_by_tag() -> None:
+def test_get_episodes_by_tag(create_mock_data: Callable[[], None]) -> None:
+    create_dummy_episode_log()
     tag = "test_tag"
-    pk = create_mock_episode_log()
     response = client.get(f"/episodes/tag/{tag}")
-    delete_mock_episode_log(pk)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     assert response.json()[0]["tag"] == tag
 
 
-def test_create_agent() -> None:
+def test_create_agent(create_mock_data: Callable[[], None]) -> None:
     agent_data = {
         "first_name": "test_first_name",
         "last_name": "test_last_name",
@@ -190,11 +165,9 @@ def test_create_agent() -> None:
     response = client.post("/agents/", json=agent_data)
     assert response.status_code == 200
     assert isinstance(response.json(), str)
-    pk = response.json()
-    delete_mock_agent_profile(pk)
 
 
-def test_create_scenario() -> None:
+def test_create_scenario(create_mock_data: Callable[[], None]) -> None:
     scenario_data = {
         "codename": "test_codename",
         "scenario": "test_scenario",
@@ -203,19 +176,15 @@ def test_create_scenario() -> None:
     response = client.post("/scenarios/", json=scenario_data)
     assert response.status_code == 200
     assert isinstance(response.json(), str)
-    pk = response.json()
-    delete_mock_env_profile(pk)
 
 
-def test_delete_agent() -> None:
-    pk = create_mock_agent_profile()
-    response = client.delete(f"/agents/{pk}")
+def test_delete_agent(create_mock_data: Callable[[], None]) -> None:
+    response = client.delete("/agents/tmppk_agent1")
     assert response.status_code == 200
     assert isinstance(response.json(), str)
 
 
-def test_delete_scenario() -> None:
-    pk = create_mock_env_profile()
-    response = client.delete(f"/scenarios/{pk}")
+def test_delete_scenario(create_mock_data: Callable[[], None]) -> None:
+    response = client.delete("/scenarios/tmppk_env_profile")
     assert response.status_code == 200
     assert isinstance(response.json(), str)
