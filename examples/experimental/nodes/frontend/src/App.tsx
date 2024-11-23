@@ -145,7 +145,7 @@ const App: React.FC = () => {
         // Split the response by new lines
         const lines = messageData.data.text.split('\n').slice(1);
         console.log('lines', lines);
-        
+
         // Check if the response has at least 3 parts
         if (lines.length >= 3) {
           const filePath = lines[1].trim(); // The second line contains the file path
