@@ -52,12 +52,12 @@
     align-items: center; /* Center icon vertically */
     border-radius: 4px; /* Rounded corners */
   }
-  
+
   .save-button:hover {
     background-color: #3a3a3a; /* Slightly lighter on hover */
     opacity: 0.9; /* Slightly change opacity on hover */
   }
-  
+
   .tab-close {
     margin-left: 8px;
     padding: 2px;
