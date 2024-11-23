@@ -101,7 +101,8 @@ const App: React.FC = () => {
         }
         // Check if it's a command output
         else if (messageData.data?.data_type === "text" &&
-                 messageData.data.text.includes("CmdOutputObservation")) {
+                 messageData.data.text.includes("CmdOutputObservation") && 
+                 !messageData.data.text.includes("**FILE_SYSTEM_REFRESH**")) {
           // Extract command output from the message
           const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
           if (parts.length > 1) {
@@ -116,11 +117,11 @@ const App: React.FC = () => {
         // Handle file structure refresh response
         if (messageData.data?.data_type === "text" &&
             messageData.data.text.includes("CmdOutputObservation") &&
-            messageData.data.text.includes("/workspace")) {
+            messageData.data.text.includes("**FILE_SYSTEM_REFRESH**")) {
 
           const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
           if (parts.length > 1) {
-            const fileList = parts[1].trim().split('\n').filter(Boolean);
+            const fileList = parts[1].trim().split('\n').filter(Boolean).slice(1);
             updateFileSystemFromList(fileList);
           }
         }

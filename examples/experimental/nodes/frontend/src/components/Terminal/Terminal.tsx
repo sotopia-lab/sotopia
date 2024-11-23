@@ -89,6 +89,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
   useEffect(() => {
     if (!initializedRef.current) {
       socket.emit('terminal_command', 'whoami && hostname && pwd');
+      socket.emit('terminal_command', "echo '**FILE_SYSTEM_REFRESH**' && find /workspace -type f");
       initializedRef.current = true;
     }
   }, [socket]);

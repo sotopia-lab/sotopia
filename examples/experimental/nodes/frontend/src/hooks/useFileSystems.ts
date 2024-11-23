@@ -34,35 +34,10 @@ const initialFileSystem: FileSystemState = {
       name: 'workspace',
       type: 'folder',
       path: '/workspace',
-      children: [
-        {
-          name: 'index.html',
-          type: 'file',
-          path: '/workspace/index.html',
-        },
-        {
-          name: 'style.css',
-          type: 'file',
-          path: '/workspace/style.css',
-        },
-        {
-          name: 'script.js',
-          type: 'file',
-          path: '/workspace/script.js',
-        },
-        {
-          name: 'main.py',
-          type: 'file',
-          path: '/workspace/main.py',
-        }
-      ]
+      children: []
     }
   ],
   files: {
-    '/workspace/index.html': '<!DOCTYPE html>\n<html lang="en">...',
-    '/workspace/style.css': 'body {\n    background-color: #f0f0f0;...',
-    '/workspace/script.js': 'console.log("Hello, World!");',
-    '/workspace/main.py': '# Python code here'
   }
 };
 
@@ -75,7 +50,7 @@ export const useFileSystem = () => {
       content: initialFileSystem.files['/workspace/main.py']
     }
   ]);
-  const [activeFile, setActiveFile] = useState<string>('/workspace/main.py'); // State for the active file
+  const [activeFile, setActiveFile] = useState<string>(); // State for the active file
 
   // Function to handle file selection
   const handleFileSelect = (path: string) => {
@@ -157,19 +132,22 @@ export const useFileSystem = () => {
 
   const updateFileSystemFromList = (fileList: string[]) => {
     // Initialize root workspace folder
-    const newTree: FileNode[] = [{
-      name: 'workspace',
-      type: 'folder',
-      path: '/workspace',
-      children: []
+    const newTree: FileNode[] = [{ 
+      name: 'workspace', 
+      type: 'folder', 
+      path: '/workspace', 
+      children: [] 
     }];
+
+    // Create a set of existing file paths for quick lookup
+    const existingFiles = new Set(Object.keys(fileSystem.files));
 
     // Process each file path
     fileList.forEach(filePath => {
-      // Remove the leading /workspace/ and split the remaining path
-      const relativePath = filePath.replace(/^\/workspace\//, '');
-      const segments = relativePath.split('/').filter(Boolean);
-
+      // Clean up the file path
+      const cleanedPath = filePath.replace(/^\/workspace\//, '').trim().replace(/\\r/g, ''); // Remove \r
+      const segments = cleanedPath.split('/').filter(Boolean);
+      
       if (segments.length === 0) return; // Skip if it's just the workspace folder
 
       let currentLevel = newTree[0].children!;
@@ -178,14 +156,17 @@ export const useFileSystem = () => {
       // Process each segment of the path
       segments.forEach((segment, index) => {
         currentPath += '/' + segment;
-
+        
         // If we're at the last segment, it's a file
         if (index === segments.length - 1) {
-          currentLevel.push({
-            name: segment,
-            type: 'file',
-            path: currentPath
-          });
+          // Check if the file already exists
+          if (!existingFiles.has(currentPath)) {
+            currentLevel.push({
+              name: segment,
+              type: 'file',
+              path: currentPath
+            });
+          } 
         } else {
           // It's a folder
           let folder = currentLevel.find(

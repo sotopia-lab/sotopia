@@ -58,7 +58,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
 
   const handleRefresh = () => {
     // Send command to get file structure
-    socket.emit('terminal_command', "find /workspace -type f");
+    socket.emit('terminal_command', "echo '**FILE_SYSTEM_REFRESH**' && find /workspace -type f");
   };
 
   // Toggle the expansion state of a folder
