@@ -101,7 +101,7 @@ const App: React.FC = () => {
         }
         // Check if it's a command output
         else if (messageData.data?.data_type === "text" &&
-                 messageData.data.text.includes("CmdOutputObservation") && 
+                 messageData.data.text.includes("CmdOutputObservation") &&
                  !messageData.data.text.includes("**FILE_SYSTEM_REFRESH**")) {
           // Extract command output from the message
           const parts = messageData.data.text.split("**CmdOutputObservation (source=None, exit code=0)**");
