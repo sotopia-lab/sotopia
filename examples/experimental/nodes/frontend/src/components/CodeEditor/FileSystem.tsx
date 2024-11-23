@@ -78,6 +78,12 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
     });
   };
 
+  // Handle double-click on a file
+  const handleFileDoubleClick = (path: string) => {
+    // Send the cat command to the server
+    socket.emit('terminal_command', `echo '**FILE_CONTENT**' && echo '${path}' && cat ${path}`);
+  };
+
   // Render a file or folder item
   const renderItem = (item: FileNode, depth: number = 0) => {
     const isExpanded = expandedFolders.has(item.path); // Check if the folder is expanded
@@ -88,6 +94,7 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
         className="file-item"
         style={{ paddingLeft: `${depth * 16 + (item.type === 'file' ? 20 : 12)}px` }} // Indent based on depth
         onClick={() => item.type === 'file' && onFileSelect(item.path)} // Select file on click
+        onDoubleClick={() => item.type === 'file' && handleFileDoubleClick(item.path)} // Handle double-click
       >
         {item.type === 'folder' ? (
           <>

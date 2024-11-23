@@ -139,6 +139,24 @@ const App: React.FC = () => {
           }
         }
 
+        // Handle file content response
+        if (messageData.data.data_type === "text" &&
+          messageData.data.text.includes("**FILE_CONTENT**")) {
+        // Split the response by new lines
+        const lines = messageData.data.text.split('\n').slice(1);
+        console.log('lines', lines);
+        
+        // Check if the response has at least 3 parts
+        if (lines.length >= 3) {
+          const filePath = lines[1].trim(); // The second line contains the file path
+          console.log('filePath', filePath);
+          const fileContent = lines.slice(2).join('\n').trim(); // The rest is the file content
+          console.log('fileContent', fileContent);
+          // Update the file content using the handleFileChange function
+          handleFileChange(filePath, fileContent); // Update the file content
+          }
+        }
+
       } catch (error) {
         // Log any errors that occur during message parsing
         console.error('Error parsing message:', error);
