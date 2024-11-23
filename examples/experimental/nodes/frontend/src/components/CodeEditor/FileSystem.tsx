@@ -20,7 +20,7 @@
  */
 
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, File, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, RefreshCw, Check, X } from 'lucide-react';
 import {
   SiHtml5, SiCss3, SiJavascript, SiPython,
   SiTypescript, SiJson, SiMarkdown
@@ -28,6 +28,7 @@ import {
 import './FileSystem.css'; // Import the CSS file
 import { FileNode } from '../../types/FileSystem'; // Import the FileNode type
 import { Socket } from 'socket.io-client';
+import { Plus, FilePlus } from 'lucide-react'; // Import the Plus icon
 
 // Define the props for the FileSystem component
 interface FileSystemProps {
@@ -55,6 +56,8 @@ const getFileIcon = (fileName: string) => {
 // Main FileSystem component definition
 export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect, socket }) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/workspace'])); // Track expanded folders
+  const [newFileName, setNewFileName] = useState(''); // State for new file name
+  const [isInputVisible, setInputVisible] = useState(false); // State to control input visibility
 
   const handleRefresh = () => {
     // Send command to get file structure
@@ -116,9 +119,23 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
     </div>
   );
 
+  const handleAddFile = () => {
+    if (newFileName) {
+      // Send command to create the new file
+      socket.emit('terminal_command', `touch /workspace/${newFileName}`); // Create the new file
+
+      // Optionally, you can listen for a response from the server to confirm the file was created
+      // and then refresh the file system
+      handleRefresh(); // Refresh the file system to reflect the new file
+
+      setNewFileName(''); // Clear input after adding
+      setInputVisible(false); // Hide input
+    }
+  };
+
   return (
     <>
-      <div id="file-explorer-header">
+      <div id="file-explorer-header" className="file-explorer-header">
         Folders
         <button
           onClick={handleRefresh}
@@ -128,10 +145,43 @@ export const FileSystem: React.FC<FileSystemProps> = ({ fileSystem, onFileSelect
           <RefreshCw size={14} />
         </button>
       </div>
-      <div className="file-explorer">
-        {fileSystem.map(node =>
-          node.type === 'folder' ? renderFolder(node) : renderItem(node) // Render the file system
+      <div className="file-explorer" style={{ position: 'relative' }}>
+        {!isInputVisible && (
+          <span className="add-file-icon" title="Add File" onClick={() => setInputVisible(true)}>
+            <FilePlus size={14} /> {/* Add the Plus icon */}
+          </span>
         )}
+        {isInputVisible && (
+          <div className="input-container">
+            <input
+              type="text"
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="Enter file name"
+              className="file-input"
+              autoFocus
+            />
+            <button 
+              onClick={handleAddFile} 
+              className="action-button add-button"
+              title="Add file"
+            >
+              <Check size={14} />
+            </button>
+            <button 
+              onClick={() => setInputVisible(false)} 
+              className="action-button cancel-button"
+              title="Cancel"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+        <div className="file-system-list"> {/* New class for the file system list */}
+          {fileSystem.map(node =>
+            node.type === 'folder' ? renderFolder(node) : renderItem(node) // Render the file system
+          )}
+        </div>
       </div>
     </>
   );
