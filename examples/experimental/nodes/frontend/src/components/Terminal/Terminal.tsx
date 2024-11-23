@@ -84,6 +84,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
 
   // Command history
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [input, setInput] = useState('');
   const historyRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
@@ -172,6 +173,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
 
     // Add command to history
     setHistory(prev => [...prev, { prompt: currentPrompt, command }]);
+    setHistoryIndex(null); // Reset history index
 
     if (command.startsWith('cd ')) {
       const newPath = command.slice(3).trim();
@@ -190,12 +192,32 @@ export const Terminal: React.FC<TerminalProps> = ({ externalMessages, socket }) 
     setInput('');
   };
 
-  // Handle special keys
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleCommand(input);
+    } else if (e.key === 'ArrowUp') {
+      // Show the previous command
+      if (history.length > 0) {
+        if (historyIndex === null) {
+          setHistoryIndex(history.length - 1); // Start from the last command
+        } else if (historyIndex > 0) {
+          setHistoryIndex(prev => prev! - 1); // Move up in history
+        }
+        setInput(history[historyIndex!]?.command || ''); // Update input with the command or fallback to empty string
+      }
+    } else if (e.key === 'ArrowDown') {
+      // Show the next command
+      if (historyIndex !== null) {
+        if (historyIndex < history.length - 1) {
+          setHistoryIndex(prev => prev! + 1); // Move down in history
+          setInput(history[historyIndex + 1]?.command || ''); // Update input with the next command or fallback to empty string
+        } else {
+          setHistoryIndex(null); // Reset if at the end of history
+          setInput(''); // Clear input
+        }
+      }
     }
-    // Add more key handlers here (e.g., up/down for history)
+    // Add more special buttons
   };
 
   return (
