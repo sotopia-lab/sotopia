@@ -65,8 +65,20 @@ def create_dummy_episode_log() -> None:
 @pytest.fixture
 def create_mock_data() -> Generator[None, None, None]:
     def _create_mock_agent_profile() -> None:
-        AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
-        AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
+        AgentProfile(
+            first_name="John",
+            last_name="Doe",
+            occupation="test_occupation",
+            gender="test_gender",
+            pk="tmppk_agent1",
+        ).save()
+        AgentProfile(
+            first_name="Jane",
+            last_name="Doe",
+            occupation="test_occupation",
+            gender="test_gender",
+            pk="tmppk_agent2",
+        ).save()
 
     def _create_mock_env_profile() -> None:
         env_profile = EnvironmentProfile(
