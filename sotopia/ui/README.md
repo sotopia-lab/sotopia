@@ -47,16 +47,6 @@ returns:
 - agents: list[AgentProfile]
 
 
-<<<<<<< HEAD
-=======
-#### GET /episodes
-
-Get all episodes.
-
-returns:
-- episodes: list[Episode]
-
->>>>>>> main
 #### GET /episodes/?get_by={id|tag}/{episode_id|episode_tag}
 
 Get episode by episode_tag.
@@ -88,46 +78,21 @@ EnvironmentProfile
 returns:
 - scenario_id: str
 
-<<<<<<< HEAD
 #### DELETE /agents/{agent_id}
 
 Delete agent profile from the API server.
-=======
-### Updating Data in the API Server
-
-#### PUT /agents/{agent_id}
-
-Update agent profile in the API server.
-Request Body:
-AgentProfile
->>>>>>> main
 
 returns:
 - agent_id: str
 
-<<<<<<< HEAD
 #### DELETE /scenarios/{scenario_id}
 
 Delete scenario profile from the API server.
-=======
-
-#### PUT /scenarios/{scenario_id}
-
-Update scenario profile in the API server.
-Request Body:
-EnvironmentProfile
->>>>>>> main
 
 returns:
 - scenario_id: str
 
 
-<<<<<<< HEAD
-### Initiating a new non-streaming simulation episode
-
-#### POST /episodes/
-
-=======
 ### Error Code
 For RESTful APIs above we have the following error codes:
 | **Error Code** | **Description**                      |
@@ -140,7 +105,6 @@ For RESTful APIs above we have the following error codes:
 
 #### POST /episodes/
 [!] Currently not planning to implement
->>>>>>> main
 ```python
 class SimulationEpisodeInitiation(BaseModel):
     scenario_id: str
@@ -160,8 +124,6 @@ returns:
 
 We use the websocket connection to send the simulation step-by-step results to the UI.
 Please see an example protocol [here](https://claude.site/artifacts/322011f6-597f-4819-8afb-bf8137dfb56a)
-<<<<<<< HEAD
-=======
 
 #### WEBSOCKET /ws/simulate/?token={token}
 
@@ -216,4 +178,3 @@ class MessageForRendering(TypedDict):
 ```
 
 **Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
->>>>>>> main
