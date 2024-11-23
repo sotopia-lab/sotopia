@@ -177,7 +177,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Type a message..."
             rows={1}
-            style={{ 
+            style={{
               resize: 'none',
               minHeight: '40px',
               height: 'auto'

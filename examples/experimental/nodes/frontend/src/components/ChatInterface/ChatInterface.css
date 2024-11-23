@@ -323,7 +323,7 @@
     transition: all 0.2s ease;
     min-width: 80px;
     height: 40px;
-    align-self: flex-end; 
+    align-self: flex-end;
   }
 
   .chat-input-container button:hover {
