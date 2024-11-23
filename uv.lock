@@ -3806,7 +3806,11 @@ anthropic = [
 ]
 chat = [
     { name = "fastapi", extra = ["standard"] },
+<<<<<<< HEAD
     { name = "websockets" },
+=======
+    { name = "uvicorn" },
+>>>>>>> main
 ]
 cohere = [
     { name = "cohere" },
@@ -3873,7 +3877,11 @@ requires-dist = [
     { name = "together", specifier = ">=0.2.4,<1.4.0" },
     { name = "torch", marker = "extra == 'examples'" },
     { name = "transformers", marker = "extra == 'examples'" },
+<<<<<<< HEAD
     { name = "websockets", marker = "extra == 'chat'", specifier = ">=13.1" },
+=======
+    { name = "uvicorn", marker = "extra == 'chat'" },
+>>>>>>> main
 ]
 
 [package.metadata.requires-dev]

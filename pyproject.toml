@@ -39,7 +39,11 @@ google-generativeai = ["google-generativeai"]
 examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 chat = [
     "fastapi[standard]",
+<<<<<<< HEAD
     "websockets>=13.1",
+=======
+    "uvicorn",
+>>>>>>> main
 ]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 

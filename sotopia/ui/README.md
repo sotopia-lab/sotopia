@@ -47,6 +47,16 @@ returns:
 - agents: list[AgentProfile]
 
 
+<<<<<<< HEAD
+=======
+#### GET /episodes
+
+Get all episodes.
+
+returns:
+- episodes: list[Episode]
+
+>>>>>>> main
 #### GET /episodes/?get_by={id|tag}/{episode_id|episode_tag}
 
 Get episode by episode_tag.
@@ -78,25 +88,59 @@ EnvironmentProfile
 returns:
 - scenario_id: str
 
+<<<<<<< HEAD
 #### DELETE /agents/{agent_id}
 
 Delete agent profile from the API server.
+=======
+### Updating Data in the API Server
+
+#### PUT /agents/{agent_id}
+
+Update agent profile in the API server.
+Request Body:
+AgentProfile
+>>>>>>> main
 
 returns:
 - agent_id: str
 
+<<<<<<< HEAD
 #### DELETE /scenarios/{scenario_id}
 
 Delete scenario profile from the API server.
+=======
+
+#### PUT /scenarios/{scenario_id}
+
+Update scenario profile in the API server.
+Request Body:
+EnvironmentProfile
+>>>>>>> main
 
 returns:
 - scenario_id: str
 
 
+<<<<<<< HEAD
 ### Initiating a new non-streaming simulation episode
 
 #### POST /episodes/
 
+=======
+### Error Code
+For RESTful APIs above we have the following error codes:
+| **Error Code** | **Description**                      |
+|-----------------|--------------------------------------|
+| **404**         | A resource is not found             |
+| **403**         | The query is not authorized         |
+| **500**         | Internal running error              |
+
+### Initiating a new non-streaming simulation episode
+
+#### POST /episodes/
+[!] Currently not planning to implement
+>>>>>>> main
 ```python
 class SimulationEpisodeInitiation(BaseModel):
     scenario_id: str
@@ -116,3 +160,60 @@ returns:
 
 We use the websocket connection to send the simulation step-by-step results to the UI.
 Please see an example protocol [here](https://claude.site/artifacts/322011f6-597f-4819-8afb-bf8137dfb56a)
+<<<<<<< HEAD
+=======
+
+#### WEBSOCKET /ws/simulate/?token={token}
+
+Parameters:
+- Token: String. User authentication token. Each token maps to a unique session.
+
+returns:
+- msg: WSMessage
+
+**WSMessage**
+```json
+{
+    "type": "WSMessageType",
+    "data": {
+        // Message-specific payload
+    }
+}
+```
+
+**WSMessageType**
+| Type | Direction   | Description |
+|-----------|--------|-------------|
+| SERVER_MSG | Server → Client | Standard message from server (payload: `messageForRendering` [here](https://github.com/sotopia-lab/sotopia-demo/blob/main/socialstream/rendering_utils.py) ) |
+| CLIENT_MSG | Client → Server | Standard message from client (payload: Currently not needed) |
+| ERROR      | Server → Client | Error notification (payload: `{"type": ERROR_TYPE, "description": DESC}`) |
+| START_SIM  | Client → Server | Initialize simulation (payload: `SimulationEpisodeInitialization`) |
+| END_SIM    | Client → Server | End simulation (payload: not needed) |
+| FINISH_SIM | Server → Client | Terminate simulation (payload: not needed) |
+
+
+**ERROR_TYPE**
+
+| Error Code | Description |
+|------------|-------------|
+| NOT_AUTHORIZED | Authentication failure - invalid or expired token |
+| SIMULATION_ALREADY_STARTED | Attempt to start a simulation that is already active |
+| SIMULATION_NOT_STARTED | Operation attempted on an inactive simulation |
+| RESOURCE_NOT_FOUND | Required env_id or agent_ids not found |
+| SIMULATION_ERROR |  Error occurred during simulation execution |
+| SIMULATION_INTERRUPTED | The simulation is interruped |
+| OTHER | Other unspecified errors |
+
+
+**Conversation Message From the Server**
+The server returns messages encapsulated in a structured format which is defined as follows:
+
+```python
+class MessageForRendering(TypedDict):
+    role: str # Specifies the origin of the message. Common values include "Background Info", "Environment", "{Agent Names}
+    type: str # Categorizes the nature of the message. Common types include: "comment", "said", "action"
+    content: str
+```
+
+**Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
+>>>>>>> main

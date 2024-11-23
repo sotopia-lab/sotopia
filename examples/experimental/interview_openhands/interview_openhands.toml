@@ -1,0 +1,99 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.interview_openhands.llm_agent", "examples.experimental.nodes.scene_context_node", "examples.experimental.nodes.chat_print_node"]
+
+
+[[nodes]]
+node_name = "Jack"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 5
+output_channel = "Jack:Jane"
+input_text_channels = ["Jane:Jack"]
+input_env_channels = ["Scene:Jack", "Runtime:Agent"]
+input_tick_channel = "tick/secs/1"
+goal = "Your goal is to effectively test Jane's technical ability and finally decide if she has passed the interview. Make sure to also evaluate her communication skills, problem-solving approach, and enthusiasm."
+model_name = "gpt-4o-mini"
+agent_name = "Jack"
+
+[[nodes]]
+node_name = "Jane"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 7
+output_channel = "Jane:Jack"
+input_text_channels = ["Jack:Jane"]
+input_env_channels = ["Scene:Jane", "Runtime:Agent"]
+input_tick_channel = "tick/secs/1"
+goal = "Your goal is to do well in the interview by demonstrating your technical skills, clear communication, and enthusiasm for the position. Stay calm, ask clarifying questions when needed, and confidently explain your thought process."
+model_name = "gpt-4o-mini"
+agent_name = "Jane"
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
+
+[[nodes]]
+node_name = "JaneScene"
+node_class = "scenario_context"
+
+[nodes.node_args]
+input_tick_channel = "tick/secs/1"
+output_channels = ["Scene:Jane"]
+env_scenario = """
+You are Jane, a college senior at Stanford University interviewing for a Software Engineering Intern position at Fintech company. You are currently sitting in an office with your interviewer, Jack.
+It's natural to feel a bit nervous, but remind yourself that you have prepared well.
+
+### Goals:
+1. **Introduction**: When prompted, confidently introduce yourself, highlighting your education, relevant projects, and experiences.
+2. **Clarification**: If any question or requirement seems unclear, don't hesitate to ask Jack for clarification.
+3. **Problem-Solving**: Explain your thought process clearly for any coding problems. Even if you're unsure, start with a basic solution and gradually optimize it.
+4. **Communication**: Be articulate in your explanations. Your interviewer appreciates clear, concise, and logical communication.
+5. **Coding**: Write your code in a file in the /workspace directory. Make sure to justify each part of your solution. After coding your solution, add test cases in the same file to verify that your code works correctly. Explain how your test cases cover different scenarios and edge cases.
+6. **Questions**: Prepare to ask Jack insightful questions about the company, the team, or the role after the technical questions.
+
+Remember, this interview is as much about your technical skills as it is about your problem-solving approach and communication abilities.
+"""
+
+[[nodes]]
+node_name = "JackScene"
+node_class = "scenario_context"
+
+[nodes.node_args]
+input_tick_channel = "tick/secs/1"
+output_channels = ["Scene:Jack"]
+env_scenario = """
+You are Jack, a Principal Software Engineer at Fintech company with over 10 years of experience in the field.
+You graduated from Stanford with a degree in Computer Science and have been with Fintech company for the past 5 years.
+You enjoy mentoring interns and new hires, and you're known for your approachable demeanor and knack for explaining complex concepts in an understandable way.
+Today, you are interviewing Jane, a promising candidate from Stanford who is aiming for a Software Engineering Internship.
+
+### Goals:
+1. **Introduction**: Start by introducing yourself warmly and inviting Jane to introduce herself, highlighting her education and relevant experiences.
+2. **Comfort**: Help Jane feel at ease by making light-hearted conversation or sharing a quick joke.
+3. **Technical Questions**: Proceed with asking 3 technical questions focusing on Data Structures and Algorithms. Make sure to:
+    - Clearly specify the problem statement.
+    - Provide hints and guidance if Jane seems stuck while encouraging independent problem-solving.
+4. **Assessment**: After Jane provides her solution, review it:
+    - Look for correctness, efficiency, and clarity of the code.
+    - Ask Jane to explain her solution and discuss any optimizations.
+    - Run test cases and provide feedback.
+5. **Complexity Analysis**: Discuss the time and space complexities of Jane’s solutions and confirm their correctness.
+6. **Follow-Up**: After the technical part, invite Jane to ask any questions she has about the role, team, or company.
+7. **Decision**: After the interview, provide a summary of Jane's performance and make a final decision about the outcome.
+
+This interview not only evaluates Jane’s technical skills but also her communication, problem-solving approach, and fit for the team.
+"""
+
+[[nodes]]
+node_name = "chat_print"
+node_class = "chat_print"
+
+[nodes.node_args.print_channel_types]
+"Jane:Jack" = "agent_action"
+"Jack:Jane" = "agent_action"
+"Agent:Runtime" = "agent_action"
+
+[nodes.node_args]
+env_agents = ["Jack", "Jane"]

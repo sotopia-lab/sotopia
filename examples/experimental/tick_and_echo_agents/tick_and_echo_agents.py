@@ -1,6 +1,6 @@
 from aact import NodeFactory
 from aact.messages import Text, Tick
-from sotopia.experimental.agents import BaseAgent
+from sotopia.experimental.agents.base_agent import BaseAgent
 
 
 @NodeFactory.register("simple_echo_agent")
