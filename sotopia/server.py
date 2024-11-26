@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 import logging
-from typing import Literal, Sequence, Type, cast
+from typing import Literal, Sequence, Type
 
 import gin
 import rich
@@ -310,7 +310,7 @@ async def run_async_server(
         else [await i for i in episode_futures]
     )
 
-    return cast(list[list[tuple[str, str, Message]]], batch_results)
+    return batch_results
 
 
 async def arun_one_script(
