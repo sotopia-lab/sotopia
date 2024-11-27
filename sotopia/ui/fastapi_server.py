@@ -1,9 +1,8 @@
-from fastapi import FastAPI, WebSocket, HTTPException
-from typing import Literal, cast, Dict
+from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
+from typing import Literal, cast, Dict, Optional
 from fastapi.middleware.cors import CORSMiddleware
 
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
-import json
 from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
     WSMessageType,
@@ -12,6 +11,12 @@ from sotopia.ui.websocket_utils import (
 )
 import uvicorn
 import asyncio
+
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -165,92 +170,176 @@ async def delete_scenario(scenario_id: str) -> str:
     return scenario.pk
 
 
+@app.get("/models", response_model=list[str])
+async def get_models() -> list[str]:
+    # TODO figure out how to get the available models
+    return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
+
+
 active_simulations: Dict[
     str, bool
 ] = {}  # TODO check whether this is the correct way to store the active simulations
 
 
+async def send_msg(websocket: WebSocket, msg: WSMessage) -> None:
+    # first check if the connection is still open
+    if websocket.client_state.value != 1:
+        print("Connection is not open, current state:", websocket.client_state)
+        return
+    await websocket.send_json(msg.to_json())
+
+
+async def receive_msg(websocket: WebSocket) -> Optional[str]:
+    if websocket.client_state.value != 1:
+        # print("Connection is not open, current state:", websocket.client_state)
+        return None
+
+    data = await websocket.receive_text()
+    return data
+
+
+class SimulationState:
+    _instance = None
+    _lock = asyncio.Lock()
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._active_simulations = {}
+        return cls._instance
+
+    async def try_acquire_token(self, token: str) -> tuple[bool, str]:
+        async with self._lock:
+            if not token:
+                return False, "Invalid token"
+
+            if self._active_simulations.get(token):
+                return False, "Token is active already"
+
+            self._active_simulations[token] = True
+            return True, "Token is valid"
+
+    async def release_token(self, token: str) -> None:
+        async with self._lock:
+            self._active_simulations.pop(token, None)
+
+    @asynccontextmanager
+    async def start_simulation(self, token: str) -> AsyncIterator[bool]:
+        try:
+            yield True
+        finally:
+            await self.release_token(token)
+
+
+class SimulationManager:
+    def __init__(self):
+        self.state = SimulationState()
+
+    async def verify_token(self, token: str) -> dict:
+        is_valid, msg = await self.state.try_acquire_token(token)
+        return {"is_valid": is_valid, "msg": msg}
+
+    async def create_simulator(
+        self, env_id: str, agent_ids: list
+    ) -> "WebSocketSotopiaSimulator":
+        try:
+            return WebSocketSotopiaSimulator(env_id=env_id, agent_ids=agent_ids)
+        except Exception as e:
+            error_msg = f"Failed to create simulator: {e}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+
+    async def handle_client_message(
+        self,
+        websocket: WebSocket,
+        simulator: "WebSocketSotopiaSimulator",
+        message: dict,
+        timeout: float = 0.1,
+    ) -> bool:
+        try:
+            msg_type = message.get("type")
+            if msg_type == WSMessageType.FINISH_SIM.value:
+                return True
+            # TODO handle other message types
+            return False
+        except Exception as e:
+            msg = f"Error handling client message: {e}"
+            logger.error(msg)
+            await self.send_error(websocket, ErrorType.INVALID_MESSAGE, msg)
+            return False
+
+    async def run_simulation(
+        self, websocket: WebSocket, simulator: "WebSocketSotopiaSimulator"
+    ) -> None:
+        try:
+            async for message in simulator.run_one_step():
+                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
+
+                try:
+                    data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
+                    if await self.handle_client_message(websocket, simulator, data):
+                        break
+                except asyncio.TimeoutError:
+                    continue
+
+        except Exception as e:
+            msg = f"Error running simulation: {e}"
+            await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
+        finally:
+            await self.send_message(websocket, WSMessageType.END_SIM, {})
+
+    @staticmethod
+    async def send_message(
+        websocket: WebSocket, msg_type: WSMessageType, data: dict
+    ) -> None:
+        await websocket.send_json({"type": msg_type.value, "data": data})
+
+    @staticmethod
+    async def send_error(
+        websocket: WebSocket, error_type: ErrorType, details: str = ""
+    ) -> None:
+        await websocket.send_json(
+            {
+                "type": WSMessageType.ERROR.value,
+                "data": {"type": error_type.value, "details": details},
+            }
+        )
+
+
 @app.websocket("/ws/simulation")
 async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
-    if not token:
-        await websocket.close(code=1008, reason="Missing token")
+    manager = SimulationManager()
+
+    token_status = await manager.verify_token(token)
+    if not token_status["is_valid"]:
+        await websocket.close(code=1008, reason=token_status["msg"])
         return
 
-    # TODO check the validity of the token
+    try:
+        await websocket.accept()
 
-    await websocket.accept()
-    simulation_started = False
-
-    while True:
-        raw_message = await websocket.receive_text()
-        client_start_msg = json.loads(raw_message)
-        msg_type = client_start_msg.get("type")
-
-        if msg_type == WSMessageType.START_SIM.value:
-            if simulation_started:
-                await websocket.send_json(
-                    WSMessage(
-                        type=WSMessageType.ERROR,
-                        data={"type": ErrorType.SIMULATION_ALREADY_STARTED},
-                    ).to_json()
-                )
+        while True:
+            start_msg = await websocket.receive_json()
+            if start_msg.get("type") != WSMessageType.START_SIM.value:
                 continue
 
-            simulation_started = True
-            active_simulations[token] = True
-
-            try:
-                simulator = WebSocketSotopiaSimulator(
-                    env_id=client_start_msg["data"]["env_id"],
-                    agent_ids=client_start_msg["data"]["agent_ids"],
+            async with manager.state.start_simulation(token):
+                simulator = await manager.create_simulator(
+                    env_id=start_msg["data"]["env_id"],
+                    agent_ids=start_msg["data"]["agent_ids"],
                 )
-            except Exception:
-                await websocket.send_json(
-                    WSMessage(
-                        type=WSMessageType.ERROR, data={"type": ErrorType.OTHER}
-                    ).to_json()
-                )
-                break
+                await manager.run_simulation(websocket, simulator)
 
-            try:
-                async for message in simulator.run_one_step():
-                    agent_message_to_pass_back = WSMessage(
-                        type=WSMessageType.SERVER_MSG,
-                        data=message,
-                    ).to_json()
-                    await websocket.send_json(agent_message_to_pass_back)
-
-                    try:
-                        data = await asyncio.wait_for(
-                            websocket.receive_text(), timeout=0.01
-                        )
-                        msg = json.loads(data)
-                        if msg.get("type") == WSMessageType.FINISH_SIM.value:
-                            print("----- FINISH -----")
-                            break
-                    except asyncio.TimeoutError:
-                        continue
-                    except Exception as e:
-                        print("Error in receiving message from client", e)
-
-            except Exception:
-                await websocket.send_json(
-                    WSMessage(
-                        type=WSMessageType.ERROR,
-                        data={"type": ErrorType.SIMULATION_ISSUE},
-                    ).to_json()
-                )
-
-            end_simulation_message = WSMessage(
-                type=WSMessageType.END_SIM, data={}
-            ).to_json()
-            await websocket.send_json(end_simulation_message)
-            simulation_started = False
-            active_simulations[token] = False
-
-        else:
-            # TODO if that is not a start message, check other possibilities
-            pass
+    except WebSocketDisconnect:
+        logger.info(f"Client disconnected: {token}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
+    finally:
+        try:
+            await websocket.close()
+        except Exception as e:
+            logger.error(f"Error closing websocket: {e}")
 
 
 if __name__ == "__main__":

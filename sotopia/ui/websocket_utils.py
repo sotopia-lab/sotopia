@@ -53,10 +53,17 @@ class WSMessage(BaseModel):
 
 
 def get_env_agents(
-    env_id: str, agent_ids: list[str]
+    env_id: str,
+    agent_ids: list[str],
+    agent_models: list[str],
+    evaluator_model: str,
 ) -> tuple[ParallelSotopiaEnv, Agents, dict[str, Observation]]:
     # environment_profile = EnvironmentProfile.find().all()[0]
     # agent_profiles = AgentProfile.find().all()[:2]
+    assert len(agent_ids) == len(
+        agent_models
+    ), f"Provided {len(agent_ids)} agent_ids but {len(agent_models)} agent_models"
+
     environment_profile: EnvironmentProfile = EnvironmentProfile.get(env_id)
     agent_profiles: list[AgentProfile] = [
         AgentProfile.get(agent_id) for agent_id in agent_ids
@@ -65,9 +72,9 @@ def get_env_agents(
     agent_list = [
         LLMAgent(
             agent_profile=agent_profile,
-            model_name="gpt-4o-mini",
+            model_name=agent_models[idx],
         )
-        for agent_idx, agent_profile in enumerate(agent_profiles)
+        for idx, agent_profile in enumerate(agent_profiles)
     ]
     for idx, goal in enumerate(environment_profile.agent_goals):
         agent_list[idx].goal = goal
@@ -81,7 +88,7 @@ def get_env_agents(
         ],
         terminal_evaluators=[
             ReachGoalLLMEvaluator(
-                "gpt-4o",
+                evaluator_model,
                 EvaluationForTwoAgents[SotopiaDimensions],
             ),
         ],
@@ -111,9 +118,15 @@ def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
 
 
 class WebSocketSotopiaSimulator:
-    def __init__(self, env_id: str, agent_ids: list[str]) -> None:
+    def __init__(
+        self,
+        env_id: str,
+        agent_ids: list[str],
+        agent_models: list[str] = ["gpt-4o-mini", "gpt-4o-mini"],
+        evaluator_model: str = "gpt-4o",
+    ) -> None:
         self.env, self.agents, self.environment_messages = get_env_agents(
-            env_id, agent_ids
+            env_id, agent_ids, agent_models, evaluator_model
         )
         self.messages: list[list[tuple[str, str, str]]] = []
         self.messages.append(
