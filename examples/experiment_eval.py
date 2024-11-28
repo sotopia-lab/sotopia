@@ -17,12 +17,12 @@ from sotopia.database import (
     EnvAgentComboStorage,
     EnvironmentProfile,
     EpisodeLog,
+    EvaluationDimensionGenerator,
 )
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import LLM_Name
@@ -108,6 +108,12 @@ def _iterate_env_agent_combo_not_in_db(
     env_ids: list[str] = [],
     tag: str | None = None,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
+    evaluation_dimensions = (
+        EvaluationDimensionGenerator.generate_dimension_model_from_name(
+            ["transactivity", "verbal_equity"]
+        )
+    )
+
     """We iterate over each environment and return the **first** env-agent combo that is not in the database."""
     if not env_ids:
         env_ids = list(EnvironmentProfile.all_pks())
@@ -152,7 +158,7 @@ def _iterate_env_agent_combo_not_in_db(
                 terminal_evaluators=[
                     ReachGoalLLMEvaluator(
                         model_names["env"],
-                        EvaluationForTwoAgents[SotopiaDimensions],
+                        EvaluationForTwoAgents[evaluation_dimensions],
                     ),
                 ],
             )
