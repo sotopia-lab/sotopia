@@ -1,0 +1,166 @@
+/* File Explorer Styles */
+#file-explorer {
+    width: 260px;
+    background-color: #252526;
+    color: #cccccc;
+    border-right: 1px solid #333;
+    overflow-y: auto;
+    padding: 0 0 0 10px;
+    position: relative;
+  }
+
+  .file-explorer-header {
+    background-color: #252526;
+    color: #d4d4d4;
+    padding: 7px 12px; /* Existing padding */
+    font-size: 13px;
+    border-bottom: 1px solid #333;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.file-system-list {
+  padding-top: 10px; /* Add padding to create space between the header and the list */
+}
+
+  .add-file-icon {
+    position: absolute; /* Position the icon absolutely */
+    top: 12px; /* Adjust the top position */
+    right: 15px; /* Adjust the right position */
+    cursor: pointer; /* Change cursor to pointer on hover */
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    padding: 3px 0;
+    cursor: pointer;
+    font-size: 13px;
+    color: #cccccc;
+    user-select: none;
+  }
+
+  .folder-arrow {
+    display: flex;
+    align-items: center;
+    margin-right: 4px;
+    color: #c5c5c5;
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Language-specific icon colors */
+  .html-icon { color: #e34f26; }
+  .css-icon { color: #264de4; }
+  .js-icon { color: #f0db4f; }
+  .python-icon { color: #4b8bbe; }
+  .ts-icon { color: #3178c6; }
+  .json-icon { color: #f0db4f; }
+  .md-icon { color: #ffffff; }
+
+  .folder-children {
+    transition: all 0.2s ease;
+  }
+
+  .file-item:hover {
+    background-color: #2a2d2e;
+  }
+
+  .folder-icon {
+    margin-right: 6px;
+    color: #dcb67a;  /* Folder color */
+  }
+
+  .file-icon {
+    margin-right: 6px;
+  }
+
+  .refresh-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+
+  .refresh-button:hover {
+    background-color: #2a2a2a;
+    color: #fff;
+  }
+
+  .refresh-button svg {
+    transition: transform 0.3s ease;
+  }
+
+  .refresh-button:active svg {
+    transform: rotate(180deg);
+  }
+
+
+  .input-container {
+    /* position: absolute; */
+    display: flex; /* Align input and buttons in a row */
+    display: flex;
+    margin-top: 10px; /* Space above the input */
+    margin-bottom: -5px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 4px; /* Add padding for better touch targets */
+    align-items: center;
+    background: #1e1e1e;
+    border-radius: 4px;
+    border: 1px solid #333;
+    z-index: 10;
+    animation: slideDown 0.2s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .file-input {
+    flex: 1;
+    background: #2d2d2d;
+    border: none;
+    padding: 4px 8px;
+    color: #cccccc;
+    font-size: 12px;
+    border-radius: 2px;
+  }
+
+  .action-button {
+    padding: 2px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cccccc;
+    border-radius: 2px;
+  }
+
+  .action-button:hover {
+    background: #333;
+  }
+
+  .add-button {
+    color: #4CAF50;
+  }
+
+  .cancel-button {
+    color: #f44336;
+  }

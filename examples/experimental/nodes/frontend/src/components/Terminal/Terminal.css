@@ -1,0 +1,137 @@
+/* Terminal Container */
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  height: 33vh;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Courier New', monospace;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Terminal Header */
+#terminal-header {
+  background-color: #252526;
+  color: #d4d4d4;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: bold;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+}
+
+.terminal-title {
+  font-size: 13px;
+  color: #cccccc;
+  margin-left: 8px;
+}
+
+/* Terminal Body */
+.terminal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  overflow: hidden;
+  background-color: #1e1e1e;
+}
+
+/* Terminal History */
+.terminal-history {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  padding: 0 5px;
+}
+
+/* Terminal Entry Styling */
+.terminal-entry {
+  margin-bottom: 6px;
+}
+
+.terminal-command {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal-output {
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #b4b4b4;
+}
+
+/* Terminal Input Line */
+.terminal-input-line {
+  display: flex;
+  align-items: center;
+  background-color: transparent;
+  padding: 5px;
+}
+
+.terminal-prompt {
+  color: #00ff00;
+  margin-right: 8px;
+}
+
+.terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #d4d4d4;
+  font-family: 'Courier New', monospace;
+  font-size: inherit;
+  padding: 0;
+  outline: none;
+}
+
+/* Output Type Styling */
+.terminal-success {
+  color: #4EC9B0;
+}
+
+.terminal-notice {
+  color: #808080;
+}
+
+.terminal-error {
+  color: red;
+}
+
+.terminal-text {
+  color: #d4d4d4;
+}
+
+/* Scrollbar Styling */
+.terminal-history::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal-history::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.terminal-history::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+.terminal-history::-webkit-scrollbar-thumb:hover {
+  background: #4f4f4f;
+}
+
+/* Selection Styling */
+.terminal-container ::selection {
+  background-color: #264f78;
+  color: #d4d4d4;
+}
+
+/* Remove duplicate styles */
+#terminal {
+  display: none; /* Remove duplicate terminal styles */
+}
+
+.terminal-header {
+  display: none; /* Remove duplicate header styles */
+}
