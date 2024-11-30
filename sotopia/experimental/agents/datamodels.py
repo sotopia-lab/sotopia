@@ -19,6 +19,7 @@ class Observation(DataModel):
 
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
+    agent_name: str = Field(description="the name of the agent")
     output_channel: str = Field(description="the name of the output channel")
     action_type: ActionType = Field(
         description="whether to speak at this turn or choose to not do anything"

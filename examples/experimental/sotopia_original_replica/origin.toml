@@ -10,6 +10,8 @@ node_class = "moderator"
 output_channels = ["moderator:Jane", "moderator:Jack"]
 input_channels = ["Jane:moderator", "Jack:moderator"]
 agent_mapping = {"moderator:Jane" = "Jane", "moderator:Jack" = "Jack"}
+scenario = "Two friends are sitting in a cafe and catching up with each other's lives."
+max_turns = 20
 
 [[nodes]]
 node_name = "Jack"
@@ -19,7 +21,7 @@ node_class = "llm_agent"
 query_interval = 5
 input_channels = ["moderator:Jack"]
 output_channel = "Jack:moderator"
-goal = "Your goal is to effectively test Jane's technical ability and finally decide if she has passed the interview. Make sure to also evaluate her communication skills, problem-solving approach, and enthusiasm."
+goal = "Your goal is to borrow 5000 dollars from Jane."
 model_name = "gpt-4o-mini"
 agent_name = "Jack"
 
@@ -32,7 +34,7 @@ node_class = "llm_agent"
 query_interval = 7
 output_channel = "Jane:moderator"
 input_channels = ["moderator:Jane"]
-goal = "Your goal is to do well in the interview by demonstrating your technical skills, clear communication, and enthusiasm for the position. Stay calm, ask clarifying questions when needed, and confidently explain your thought process."
+goal = "Your goal is to help Jack however, you are in a finicial crisis yourself and can only afford to give him 500 dollars."
 model_name = "gpt-4o-mini"
 agent_name = "Jane"
 
@@ -41,9 +43,8 @@ node_name = "chat_print"
 node_class = "chat_print"
 
 [nodes.node_args.print_channel_types]
-"Jane:Jack" = "agent_action"
-"Jack:Jane" = "agent_action"
-"Agent:Runtime" = "agent_action"
+"Jane:moderator" = "agent_action"
+"Jack:moderator" = "agent_action"
 
 [nodes.node_args]
 env_agents = ["Jack", "Jane"]
