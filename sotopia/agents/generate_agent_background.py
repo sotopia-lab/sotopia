@@ -1,41 +1,7 @@
 import json
-import os
 from typing import Callable
 
-from sotopia.generation_utils.generate import convert_narratives, agenerate_init_profile
 from sotopia.messages import Message, ScriptBackground
-
-
-async def generate_background(
-    info_json_file: str, basic_info: dict[str, str]
-) -> tuple[str, str, str, str, list[dict[str, str]]]:
-    if os.path.isfile(info_json_file):
-        with open(info_json_file, "r") as f:
-            info_dict = json.load(f)
-            initial_profile = str(info_dict["initial_profile"])
-            profile = info_dict["profile"]
-            first_narrative = info_dict["first_narrative_profile"]
-            second_narrative = info_dict["second_narrative_profile"]
-            previous_messages = info_dict["messages"]
-    else:
-        initial_profile = str(basic_info)
-        profile = await agenerate_init_profile(
-            model_name="gpt-4o-mini", basic_info=basic_info
-        )
-        first_narrative = convert_narratives(
-            model_name="gpt-4o-mini", narrative="first", text=profile
-        )
-        second_narrative = convert_narratives(
-            model_name="gpt-4o-mini", narrative="second", text=profile
-        )
-        previous_messages = []
-    return (
-        initial_profile,
-        profile,
-        first_narrative,
-        second_narrative,
-        previous_messages,
-    )
 
 
 def generate_background_conversation(
