@@ -30,6 +30,7 @@ class ErrorType(str, Enum):
     SIMULATION_ALREADY_STARTED = "SIMULATION_ALREADY_STARTED"
     SIMULATION_NOT_STARTED = "SIMULATION_NOT_STARTED"
     SIMULATION_ISSUE = "SIMULATION_ISSUE"
+    INVALID_MESSAGE = "INVALID_MESSAGE"
     OTHER = "OTHER"
 
 
@@ -142,7 +143,7 @@ class WebSocketSotopiaSimulator:
         for index, agent_name in enumerate(self.env.agents):
             self.agents[agent_name].goal = self.env.profile.agent_goals[index]
 
-    async def run_one_step(self) -> AsyncGenerator[dict[str, Any], None]:
+    async def arun_one_step(self) -> AsyncGenerator[dict[str, Any], None]:
         done = False
 
         turn = self.messages[-1]

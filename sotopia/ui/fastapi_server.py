@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
-from typing import Literal, cast, Dict, Optional
+from typing import Literal, cast, Dict, Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
 
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
@@ -199,10 +199,11 @@ async def receive_msg(websocket: WebSocket) -> Optional[str]:
 
 
 class SimulationState:
-    _instance = None
+    _instance: Optional["SimulationState"] = None
     _lock = asyncio.Lock()
+    _active_simulations: dict[str, bool] = {}
 
-    def __new__(cls):
+    def __new__(cls) -> "SimulationState":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._active_simulations = {}
@@ -232,16 +233,16 @@ class SimulationState:
 
 
 class SimulationManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.state = SimulationState()
 
-    async def verify_token(self, token: str) -> dict:
+    async def verify_token(self, token: str) -> dict[str, Any]:
         is_valid, msg = await self.state.try_acquire_token(token)
         return {"is_valid": is_valid, "msg": msg}
 
     async def create_simulator(
-        self, env_id: str, agent_ids: list
-    ) -> "WebSocketSotopiaSimulator":
+        self, env_id: str, agent_ids: list[str]
+    ) -> WebSocketSotopiaSimulator:
         try:
             return WebSocketSotopiaSimulator(env_id=env_id, agent_ids=agent_ids)
         except Exception as e:
@@ -252,8 +253,8 @@ class SimulationManager:
     async def handle_client_message(
         self,
         websocket: WebSocket,
-        simulator: "WebSocketSotopiaSimulator",
-        message: dict,
+        simulator: WebSocketSotopiaSimulator,
+        message: dict[str, Any],
         timeout: float = 0.1,
     ) -> bool:
         try:
@@ -269,10 +270,10 @@ class SimulationManager:
             return False
 
     async def run_simulation(
-        self, websocket: WebSocket, simulator: "WebSocketSotopiaSimulator"
+        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
     ) -> None:
         try:
-            async for message in simulator.run_one_step():
+            async for message in simulator.arun_one_step():
                 await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
 
                 try:
@@ -290,7 +291,7 @@ class SimulationManager:
 
     @staticmethod
     async def send_message(
-        websocket: WebSocket, msg_type: WSMessageType, data: dict
+        websocket: WebSocket, msg_type: WSMessageType, data: dict[str, Any]
     ) -> None:
         await websocket.send_json({"type": msg_type.value, "data": data})
 

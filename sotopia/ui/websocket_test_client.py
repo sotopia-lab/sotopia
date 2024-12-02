@@ -18,28 +18,12 @@ class WebSocketClient:
         self.client_id = client_id
         self.message_file = Path(f"message_{client_id}.txt")
 
-    async def save_message(self, message: str):
+    async def save_message(self, message: str) -> None:
         """Save received message to a file"""
         with open(self.message_file, "a", encoding="utf-8") as f:
             f.write(f"{message}\n")
 
-    async def send_start_message(self, websocket):
-        """Send initial START_SIM message"""
-        # Note: You'll need to implement the logic to get agent_ids and env_id
-        # This is just an example structure
-        agent_ids = [agent.pk for agent in AgentProfile.find().all()[:2]]
-        env_id = EnvironmentProfile.find().all()[0].pk
-        start_message = {
-            "type": "START_SIM",
-            "data": {
-                "env_id": env_id,  # Replace with actual env_id
-                "agent_ids": agent_ids,  # Replace with actual agent_ids
-            },
-        }
-        await websocket.send(json.dumps(start_message))
-        print(f"Client {self.client_id}: Sent START_SIM message")
-
-    async def connect(self):
+    async def connect(self) -> None:
         """Establish and maintain websocket connection"""
         uri_with_token = f"{self.uri}?token=test_token_{self.client_id}"
 
@@ -48,7 +32,19 @@ class WebSocketClient:
                 print(f"Client {self.client_id}: Connected to {self.uri}")
 
                 # Send initial message
-                await self.send_start_message(websocket)
+                # Note: You'll need to implement the logic to get agent_ids and env_id
+                # This is just an example structure
+                agent_ids = [agent.pk for agent in AgentProfile.find().all()[:2]]
+                env_id = EnvironmentProfile.find().all()[0].pk
+                start_message = {
+                    "type": "START_SIM",
+                    "data": {
+                        "env_id": env_id,  # Replace with actual env_id
+                        "agent_ids": agent_ids,  # Replace with actual agent_ids
+                    },
+                }
+                await websocket.send(json.dumps(start_message))
+                print(f"Client {self.client_id}: Sent START_SIM message")
 
                 # Receive and process messages
                 while True:
@@ -58,6 +54,7 @@ class WebSocketClient:
                             f"\nClient {self.client_id} received message:",
                             json.dumps(json.loads(message), indent=2),
                         )
+                        assert isinstance(message, str)
                         await self.save_message(message)
                     except websockets.ConnectionClosed:
                         print(f"Client {self.client_id}: Connection closed")
@@ -70,7 +67,7 @@ class WebSocketClient:
             print(f"Client {self.client_id} connection error:", str(e))
 
 
-async def main():
+async def main() -> None:
     # Create multiple WebSocket clients
     num_clients = 0
     uri = "ws://localhost:8800/ws/simulation"
