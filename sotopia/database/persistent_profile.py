@@ -21,21 +21,169 @@ class RelationshipType(IntEnum):
 
 
 class AgentProfile(JsonModel):
-    first_name: str = Field(index=True)
-    last_name: str = Field(index=True)
-    age: int = Field(index=True, default_factory=lambda: 0)
-    occupation: str = Field(index=True, default_factory=lambda: "")
-    gender: str = Field(index=True, default_factory=lambda: "")
-    gender_pronoun: str = Field(index=True, default_factory=lambda: "")
-    public_info: str = Field(index=True, default_factory=lambda: "")
-    big_five: str = Field(index=True, default_factory=lambda: "")
-    moral_values: list[str] = Field(index=False, default_factory=lambda: [])
-    schwartz_personal_values: list[str] = Field(index=False, default_factory=lambda: [])
-    personality_and_values: str = Field(index=True, default_factory=lambda: "")
-    decision_making_style: str = Field(index=True, default_factory=lambda: "")
-    secret: str = Field(default_factory=lambda: "")
-    model_id: str = Field(default_factory=lambda: "")
-    mbti: str = Field(default_factory=lambda: "")
+    first_name: str = Field(index=True, description="The first name of the character")
+    last_name: str = Field(index=True, description="The last name of the character")
+    age: int = Field(
+        index=True, default_factory=lambda: 0, description="The age of the character"
+    )
+    occupation: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The occupation of the character",
+    )
+    gender: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The gender of the character",
+    )
+    gender_pronoun: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The gender pronoun of the character",
+    )
+    public_info: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="Public information about the character",
+    )
+    big_five: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The Big Five personality traits of the character",
+    )
+    moral_values: list[str] = Field(
+        index=False,
+        default_factory=lambda: [],
+        description="The moral values of the character, use the categories from Moral Foundations Theory (https://en.wikipedia.org/wiki/Moral_foundations_theory)",
+    )
+    schwartz_personal_values: list[str] = Field(
+        index=False,
+        default_factory=lambda: [],
+        description="The Schwartz personal values of the character, use the categories from Schwartz's Theory of Basic Values (https://scholarworks.gvsu.edu/cgi/viewcontent.cgi?article=1116&context=orpc)",
+    )
+    decision_making_style: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The decision-making style of the character (categories from The Development and Validation of the Rational and Intuitive Decision Styles Scale)",
+    )
+    personality_and_values: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="A summary of the character's personality and values",
+    )
+    secret: str = Field(
+        default_factory=lambda: "", description="Secrets about the character"
+    )
+    model_id: str = Field(default_factory=lambda: "", description="?")
+    mbti: str = Field(
+        default_factory=lambda: "",
+        description="The MBTI personality type of the character",
+    )
+    # New added fields to merge with the Stanford 1000 agent profiles (https://github.com/joonspk-research/genagents)
+    ethnicity: str = Field(
+        default_factory=lambda: "",
+        description="The ethnicity of the character, for example, 'American', 'Portugal', 'Chinese', etc.",
+    )
+    race: str = Field(
+        default_factory=lambda: "", description="The race of the character"
+    )
+    detailed_race: str = Field(
+        default_factory=lambda: "",
+        description="The detailed race of the character",
+    )
+    hispanic_origin: str = Field(
+        default_factory=lambda: "",
+        description="The hispanic origin of the character, e.g., 'hispanic', 'not hispanic'",
+    )
+    street_address: str = Field(
+        default_factory=lambda: "",
+        description="The street address of the character, e.g., '123 Elmwood Drive'",
+    )
+    city: str = Field(
+        default_factory=lambda: "",
+        description="The city where the character resides, e.g., 'Little Rock'",
+    )
+    state: str = Field(
+        default_factory=lambda: "",
+        description="The state where the character resides, e.g., 'AR'",
+    )
+    political_views: str = Field(
+        default_factory=lambda: "",
+        description="The political views of the character, e.g., 'Slightly liberal'",
+    )
+    party_identification: str = Field(
+        default_factory=lambda: "",
+        description="The party identification of the character, e.g., 'Independent, close to democrat'",
+    )
+    residence_at_16: str = Field(
+        default_factory=lambda: "",
+        description="The region where the character resided at age 16, e.g., 'West South Central'",
+    )
+    same_residence_since_16: str = Field(
+        default_factory=lambda: "",
+        description="Whether the character has lived in the same state since age 16, e.g., 'Different state'",
+    )
+    family_structure_at_16: str = Field(
+        default_factory=lambda: "",
+        description="The family structure of the character at age 16, e.g., 'Lived with parents'",
+    )
+    family_income_at_16: str = Field(
+        default_factory=lambda: "",
+        description="The family income of the character at age 16, e.g., 'Average'",
+    )
+    fathers_highest_degree: str = Field(
+        default_factory=lambda: "",
+        description="The highest degree obtained by the character's father, e.g., 'High school'",
+    )
+    mothers_highest_degree: str = Field(
+        default_factory=lambda: "",
+        description="The highest degree obtained by the character's mother, e.g., 'High school'",
+    )
+    mothers_work_history: str = Field(
+        default_factory=lambda: "",
+        description="The work history of the character's mother, e.g., 'No'",
+    )
+    marital_status: str = Field(
+        default_factory=lambda: "",
+        description="The marital status of the character, e.g., 'Never married'",
+    )
+    work_status: str = Field(
+        default_factory=lambda: "",
+        description="The work status of the character, e.g., 'With a job, but not at work because of temporary illness, vacation, strike'",
+    )
+    military_service_duration: str = Field(
+        default_factory=lambda: "",
+        description="The duration of military service of the character, e.g., 'No active duty'",
+    )
+    religion: str = Field(
+        default_factory=lambda: "",
+        description="The religion of the character, e.g., 'Catholic'",
+    )
+    religion_at_16: str = Field(
+        default_factory=lambda: "",
+        description="The religion of the character at age 16, e.g., 'Catholic'",
+    )
+    born_in_us: str = Field(
+        default_factory=lambda: "",
+        description="Whether the character was born in the US, e.g., 'Yes'",
+    )
+    us_citizenship_status: str = Field(
+        default_factory=lambda: "",
+        description="The US citizenship status of the character, e.g., 'A U.S. citizen'",
+    )
+    highest_degree_received: str = Field(
+        default_factory=lambda: "",
+        description="The highest degree received by the character, e.g., 'High school'",
+    )
+    speak_other_language: str = Field(
+        default_factory=lambda: "",
+        description="Whether the character speaks another language, e.g., 'No'",
+    )
+    total_wealth: str = Field(
+        default_factory=lambda: "",
+        description="The total wealth of the character, e.g., 'Less than $5,000'. Make sure to include a certain value with US dollars as the unit.",
+    )
+
     tag: str = Field(
         index=True,
         default_factory=lambda: "",

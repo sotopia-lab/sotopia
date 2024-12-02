@@ -24,7 +24,7 @@ from pydantic.v1 import SecretStr
 from rich import print
 from typing_extensions import Literal
 
-from sotopia.database import EnvironmentProfile, RelationshipProfile
+from sotopia.database import EnvironmentProfile, RelationshipProfile, AgentProfile
 from sotopia.messages import ActionType, AgentAction, ScriptBackground
 from sotopia.messages.message_classes import (
     ScriptInteraction,
@@ -772,45 +772,22 @@ def process_history(
 
 
 @beartype
-async def agenerate_init_profile(
+async def agenerate_character_profile(
     model_name: str,
-    basic_info: dict[str, str],
+    basic_info: str,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
-) -> str:
+) -> AgentProfile:
     """
     Using langchain to generate the background
     """
     return await agenerate(
         model_name=model_name,
-        template="""Please expand a fictional background for {name}. Here is the basic information:
-            {name}'s age: {age}
-            {name}'s gender identity: {gender_identity}
-            {name}'s pronouns: {pronoun}
-            {name}'s occupation: {occupation}
-            {name}'s big 5 personality traits: {bigfive}
-            {name}'s moral Foundation: think {mft} is more important than others
-            {name}'s Schwartz portrait value: {schwartz}
-            {name}'s decision-making style: {decision_style}
-            {name}'s secret: {secret}
-            Include the previous information in the background.
-            Then expand the personal backgrounds with concrete details (e.g, look, family, hobbies, friends and etc.)
-            For the personality and values (e.g., MBTI, moral foundation, and etc.),
-            remember to use examples and behaviors in the person's life to demonstrate it.
+        template="""Generate a realistic character profile using the provided information. If any details are missing, make educated guesses to fill them in. DO NOT leave any entry blank.
+            {basic_info}
             """,
-        input_values=dict(
-            name=basic_info["name"],
-            age=basic_info["age"],
-            gender_identity=basic_info["gender_identity"],
-            pronoun=basic_info["pronoun"],
-            occupation=basic_info["occupation"],
-            bigfive=basic_info["Big_Five_Personality"],
-            mft=basic_info["Moral_Foundation"],
-            schwartz=basic_info["Schwartz_Portrait_Value"],
-            decision_style=basic_info["Decision_making_Style"],
-            secret=basic_info["secret"],
-        ),
-        output_parser=StrOutputParser(),
+        input_values=dict(basic_info=basic_info),
+        output_parser=PydanticOutputParser(pydantic_object=AgentProfile),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
     )
