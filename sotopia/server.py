@@ -339,7 +339,13 @@ async def run_async_server(
         else [await i for i in episode_futures]
     )
 
-    return batch_results
+    if len(batch_results) > 0:
+        first_result = batch_results[0]
+        assert isinstance(
+            first_result, list
+        ), f"Unexpected result type: {type(first_result)}"
+
+    return batch_results  # type: ignore
 
 
 async def arun_one_script(
