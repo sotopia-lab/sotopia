@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from typing import Literal, cast, Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
 from sotopia.ui.websocket_utils import (
@@ -26,6 +27,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )  # TODO: Whether allowing CORS for all origins
+
+
+class AgentProfileWrapper(BaseModel):
+    """
+    Wrapper for AgentProfile to avoid pydantic v2 issues
+    """
+
+    first_name: str
+    last_name: str
+    age: int = 0
+    occupation: str = ""
+    gender: str = ""
+    gender_pronoun: str = ""
+    public_info: str = ""
+    big_five: str = ""
+    moral_values: list[str] = []
+    schwartz_personal_values: list[str] = []
+    personality_and_values: str = ""
+    decision_making_style: str = ""
+    secret: str = ""
+    model_id: str = ""
+    mbti: str = ""
+    tag: str = ""
+
+
+class EnvironmentProfileWrapper(BaseModel):
+    """
+    Wrapper for EnvironmentProfile to avoid pydantic v2 issues
+    """
+
+    codename: str
+    source: str = ""
+    scenario: str = ""
+    agent_goals: list[str] = []
+    relationship: Literal[0, 1, 2, 3, 4, 5] = 0
+    age_constraint: str | None = None
+    occupation_constraint: str | None = None
+    agent_constraint: list[list[str]] | None = None
+    tag: str = ""
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -104,21 +144,21 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
 
 
 @app.post("/agents/", response_model=str)
-async def create_agent(agent: AgentProfile) -> str:
+async def create_agent(agent: AgentProfileWrapper) -> str:
     agent.save()
     assert agent.pk is not None
     return agent.pk
 
 
 @app.post("/scenarios/", response_model=str)
-async def create_scenario(scenario: EnvironmentProfile) -> str:
+async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
     scenario.save()
     assert scenario.pk is not None
     return scenario.pk
 
 
 @app.put("/agents/{agent_id}", response_model=str)
-async def update_agent(agent_id: str, agent: AgentProfile) -> str:
+async def update_agent(agent_id: str, agent: AgentProfileWrapper) -> str:
     try:
         old_agent = AgentProfile.get(pk=agent_id)
     except Exception:  # TODO Check the exception type
@@ -131,7 +171,7 @@ async def update_agent(agent_id: str, agent: AgentProfile) -> str:
 
 
 @app.put("/scenarios/{scenario_id}", response_model=str)
-async def update_scenario(scenario_id: str, scenario: EnvironmentProfile) -> str:
+async def update_scenario(scenario_id: str, scenario: EnvironmentProfileWrapper) -> str:
     try:
         old_scenario = EnvironmentProfile.get(pk=scenario_id)
     except Exception:  # TODO Check the exception type

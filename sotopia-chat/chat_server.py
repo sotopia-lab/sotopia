@@ -222,8 +222,10 @@ async def async_start_server_with_session_ids(session_ids: list[str]) -> None:
         case 2:
             if await r.llen("chat_server_combos_double") == 0:
                 await gather(
-                    _assign_left_or_right_and_run(session_id)
-                    for session_id in session_ids
+                    *[
+                        _assign_left_or_right_and_run(session_id)
+                        for session_id in session_ids
+                    ]
                 )
             else:
                 agent_env_combo_pk: str = (

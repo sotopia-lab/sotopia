@@ -22,7 +22,7 @@ dependencies = [
     "together>=0.2.4,<1.4.0",
     "pydantic>=2.5.0,<3.0.0",
     "beartype>=0.14.0,<0.20.0",
-    "langchain-openai>=0.1.8,<0.3.0",
+    "langchain-openai>=0.1.8,<0.2",
     "hiredis>=3.0.0",
     "aact"
 ]
@@ -37,10 +37,8 @@ groq = ["groq"]
 cohere = ["cohere"]
 google-generativeai = ["google-generativeai"]
 examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
-chat = [
-    "fastapi",
-    "websockets>=13.1",
-    "rel",
+api = [
+    "fastapi[standard]",
     "uvicorn",
 ]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
