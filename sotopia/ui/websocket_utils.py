@@ -176,4 +176,7 @@ class WebSocketSotopiaSimulator:
             if not eval_available:
                 parsed_messages = parsed_messages[:-2]
 
-            yield parsed_messages
+            yield {
+                "type": "messages",
+                "messages": parsed_messages,
+            }
