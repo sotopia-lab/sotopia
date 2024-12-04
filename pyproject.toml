@@ -37,17 +37,10 @@ groq = ["groq"]
 cohere = ["cohere"]
 google-generativeai = ["google-generativeai"]
 examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
-<<<<<<< HEAD
-chat = [
-    "fastapi[standard]",
-]
-ui = ["streamlit"]
-=======
 api = [
     "fastapi[standard]",
     "uvicorn",
 ]
->>>>>>> main
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 
 [tool.uv]
