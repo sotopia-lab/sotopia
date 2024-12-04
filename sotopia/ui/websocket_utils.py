@@ -151,7 +151,11 @@ class WebSocketSotopiaSimulator:
             streaming=True,
         )
 
-        async for messages in await generator:
+        assert isinstance(
+            generator, AsyncGenerator
+        ), "generator should be async generator"
+
+        async for messages in await generator:  # type: ignore
             reasoning, rewards = "", [0.0, 0.0]
             eval_available = False
             if messages[-1][0][0] == "Evaluation":

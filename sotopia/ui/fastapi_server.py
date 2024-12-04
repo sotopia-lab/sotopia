@@ -145,16 +145,20 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
 
 @app.post("/agents/", response_model=str)
 async def create_agent(agent: AgentProfileWrapper) -> str:
-    agent.save()
-    assert agent.pk is not None
-    return agent.pk
+    agent_profile = AgentProfile(**agent.model_dump())
+    agent_profile.save()
+    pk = agent_profile.pk
+    assert pk is not None
+    return pk
 
 
 @app.post("/scenarios/", response_model=str)
 async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
-    scenario.save()
-    assert scenario.pk is not None
-    return scenario.pk
+    scenario_profile = EnvironmentProfile(**scenario.model_dump())
+    scenario_profile.save()
+    pk = scenario_profile.pk
+    assert pk is not None
+    return pk
 
 
 @app.put("/agents/{agent_id}", response_model=str)

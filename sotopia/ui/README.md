@@ -47,13 +47,6 @@ returns:
 - agents: list[AgentProfile]
 
 
-#### GET /episodes
-
-Get all episodes.
-
-returns:
-- episodes: list[Episode]
-
 #### GET /episodes/?get_by={id|tag}/{episode_id|episode_tag}
 
 Get episode by episode_tag.
@@ -183,7 +176,7 @@ returns:
 curl -X GET "http://localhost:8000/scenarios"
 ```
 
-Randomly select a scenario, e.g., `01HZRGTG1K4YQ2CBS9SNH28R9S`
+This gonna give you all the scenarios, and you can randomly pick one
 
 
 **Get all agents**:
@@ -191,8 +184,34 @@ Randomly select a scenario, e.g., `01HZRGTG1K4YQ2CBS9SNH28R9S`
 curl -X GET "http://localhost:8000/agents"
 ```
 
-Randomly select two agents, e.g., `01H5TNE5PE9RQGH86YM6MSWZMW` and `01H5TNE5PT06B3QPXJ65HHACV7`
+This gonna give you all the agents, and you can randomly pick one
 
 **Connecting to the websocket server**:
+We recommend using Python. Here is the simplist way to start a simulation and receive the results in real time:
+```python
+import aiohttp
+import asyncio
+import json
 
-@bugsz: Adding ur example here?
+async def main():
+    async with aiohttp.ClientSession() as session:
+        async with session.ws_connect(f'ws://{API_BASE}/ws/simulation?token={YOUR_TOKEN}') as ws:
+            start_message = {
+                "type": "START_SIM",
+                "data": {
+                    "env_id": "{ENV_ID}",
+                    "agent_ids": ["{AGENT1_PK}", "{AGENT2_PK}"],
+                },
+            }
+            await ws.send_json(start_message)
+
+            async for msg in ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    print(f"Received: {msg.data}")
+                elif msg.type == aiohttp.WSMsgType.CLOSED:
+                    break
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    break
+```
+
+Alternatively, an example can also be found in `websocket_test_client.py` under the same folder

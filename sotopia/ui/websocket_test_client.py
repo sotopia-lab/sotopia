@@ -78,7 +78,9 @@ async def main() -> None:
         for i in range(num_clients)
     ]
     clients.append(WebSocketClient(uri=uri, token="test_token_10", client_id=10))
-    clients.append(WebSocketClient(uri=uri, token="test_token_10", client_id=10))
+    clients.append(
+        WebSocketClient(uri=uri, token="test_token_10", client_id=10)
+    )  # test duplicate token
 
     # Create tasks for each client
     tasks = [asyncio.create_task(client.connect()) for client in clients]
