@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from typing import Literal, cast, Dict
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.server import arun_one_episode
+from sotopia.agents import LLMAgent, Agents
 from pydantic import BaseModel
 import uvicorn
 
@@ -44,6 +47,13 @@ class EnvironmentProfileWrapper(BaseModel):
     occupation_constraint: str | None = None
     agent_constraint: list[list[str]] | None = None
     tag: str = ""
+
+
+class SimulateRequest(BaseModel):
+    env_id: str
+    agent_ids: list[str]
+    models: list[str]
+    max_turns: int
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -110,12 +120,35 @@ async def create_agent(agent: AgentProfileWrapper) -> str:
 
 @app.post("/scenarios/", response_model=str)
 async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
-    print(scenario)
     scenario_profile = EnvironmentProfile(**scenario.model_dump())
     scenario_profile.save()
     pk = scenario_profile.pk
     assert pk is not None
     return pk
+
+
+@app.post("/simulate/", response_model=str)
+async def simulate(simulate_request: SimulateRequest) -> str:
+    env_profile: EnvironmentProfile = EnvironmentProfile.get(pk=simulate_request.env_id)
+    env = ParallelSotopiaEnv(env_profile=env_profile)
+
+    agents = Agents(
+        {
+            "agent1": LLMAgent(
+                "agent1",
+                model_name=simulate_request.models[0],
+                agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[0]),
+            ),
+            "agent2": LLMAgent(
+                "agent2",
+                model_name=simulate_request.models[1],
+                agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[1]),
+            ),
+        }
+    )
+
+    messages = await arun_one_episode(env=env, agent_list=list(agents.values()))
+    return messages
 
 
 @app.delete("/agents/{agent_id}", response_model=str)
