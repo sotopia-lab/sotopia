@@ -2,7 +2,7 @@ import os
 
 import streamlit as st
 
-from sotopia.ui.streamlit_ui.utils import initialize_session_state, reset_database
+from sotopia.ui.streamlit_ui.utils import reset_database
 
 
 def update_database_callback() -> None:
@@ -16,8 +16,6 @@ def update_database_callback() -> None:
         st.error(f"Error occurred while updating database: {e}, please try again.")
 
     st.session_state.current_database_url = updated_url
-    initialize_session_state(force_reload=True)
-
     print("Updated DB URL: ", st.session_state.current_database_url)
 
 

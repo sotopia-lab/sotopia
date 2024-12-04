@@ -1,7 +1,5 @@
 import streamlit as st
 
-from ..utils import initialize_session_state
-
 from sotopia.database import AgentProfile
 
 
@@ -11,7 +9,6 @@ def local_css(file_name: str) -> None:
 
 
 def display_characters() -> None:
-    initialize_session_state()
     st.title("Characters")
     all_characters = AgentProfile.find().all()
 

@@ -17,9 +17,6 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
-from sotopia.envs.parallel import (
-    render_text_for_environment,
-)
 from sotopia.messages import Observation
 from redis_om import get_redis_connection  # type: ignore
 
@@ -110,71 +107,6 @@ def load_additional_envs() -> list[EnvironmentProfile]:
             [EnvironmentProfile(**env_data) for env_data in json.load(open(data_file))]
         )
     return envs
-
-
-def initialize_session_state(force_reload: bool = False) -> None:
-    if "active" not in st.session_state or force_reload:
-        all_agents: list[AgentProfile] = AgentProfile.find().all()[:10]  # type: ignore
-        all_envs: list[EnvironmentProfile] = EnvironmentProfile.find().all()[:10]  # type: ignore
-        additional_agents = load_additional_agents()
-        additional_envs = load_additional_envs()
-
-        all_agents = additional_agents + all_agents
-        all_envs = additional_envs + all_envs
-
-        st.session_state.agent_mapping = [
-            {
-                get_full_name(agent_profile): agent_profile
-                for agent_profile in all_agents
-            }
-        ] * 2
-        st.session_state.env_mapping = {
-            env_profile.codename: env_profile for env_profile in all_envs
-        }
-        st.session_state.env_description_mapping = {
-            env_profile.codename: get_abstract(
-                render_text_for_environment(env_profile.scenario)
-            )
-            for env_profile in all_envs
-        }
-
-        st.session_state.active = False
-        st.session_state.conversation = []
-        st.session_state.background = "Default Background"
-        st.session_state.env_agent_combo = EnvAgentComboStorage.find().all()[0]
-        st.session_state.state = ActionState.IDLE
-        st.session_state.env = None
-        st.session_state.agents = None
-        st.session_state.environment_messages = None
-        st.session_state.messages = []
-        st.session_state.agent_models = [DEFAULT_MODEL, DEFAULT_MODEL]
-        st.session_state.evaluator_model = "gpt-4o"
-        st.session_state.editable = False
-        st.session_state.human_agent_idx = 0
-
-        st.session_state.rewards = [0.0, 0.0]
-        st.session_state.reasoning = ""
-        st.session_state.agent_choice_1 = get_full_name(all_agents[0])
-        st.session_state.agent_choice_2 = get_full_name(all_agents[1])
-        st.session_state.scenario_choice = all_envs[0].codename
-        set_settings(
-            agent_choice_1=st.session_state.agent_choice_1,
-            agent_choice_2=st.session_state.agent_choice_2,
-            scenario_choice=all_envs[0].codename,
-            user_agent_name="PLACEHOLDER",
-            agent_names=[],
-            reset_agents=True,
-        )
-
-        st.session_state.human_agent_selection = "Agent 1"
-
-    if "all_codenames" not in st.session_state or force_reload:
-        codename_pk_mapping = {env.codename: env.pk for env in EnvironmentProfile.all()}
-        st.session_state.all_codenames = codename_pk_mapping
-        st.session_state.current_episodes = EpisodeLog.find(
-            EpisodeLog.environment
-            == codename_pk_mapping[list(codename_pk_mapping.keys())[0]]
-        ).all()
 
 
 def set_from_env_agent_profile_combo(

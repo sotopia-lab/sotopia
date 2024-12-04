@@ -9,8 +9,8 @@ import aiohttp
 import requests
 import streamlit as st
 
-from ..rendering_utils import messageForRendering
-from ..utils import get_abstract
+from sotopia.ui.streamlit_ui.rendering.rendering_utils import messageForRendering
+from sotopia.ui.streamlit_ui.utils import get_abstract
 
 
 def compose_agent_names(agent_dict: dict[Any, Any]) -> str:

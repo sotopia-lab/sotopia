@@ -1,18 +1,79 @@
 from typing import TypedDict
 
 from sotopia.agents import Agents, LLMAgent
-from sotopia.database import AgentProfile, EpisodeLog
+from sotopia.database import AgentProfile, EpisodeLog, EnvironmentProfile
 from sotopia.envs.parallel import (
     ParallelSotopiaEnv,
     render_text_for_agent,
+    render_text_for_environment,
 )
 from sotopia.messages import Message
+import streamlit as st
 
 
 class messageForRendering(TypedDict):
     role: str
     type: str
     content: str
+
+
+def render_environment_profile(profile: EnvironmentProfile) -> None:
+    # Render the codename as a subheader
+    # Render the scenario with domain and realism in styled tags
+    processed_agent1_goal = render_text_for_environment(profile.agent_goals[0]).replace(
+        "\n", "<br>"
+    )
+    processed_agent2_goal = render_text_for_environment(profile.agent_goals[1]).replace(
+        "\n", "<br>"
+    )
+    st.markdown(
+        f"""
+        <div style="background-color: #f9f9f9; padding: 10px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 20px;">
+            <p><strong>Scenario</strong>: {profile.scenario}</p>
+            <div style="margin-top: 20px;">
+                <div style="display: inline-block; width: 48%; vertical-align: top;">
+                    <p><strong>Agent 1's Goal</strong></p>
+                    <div style="background-color: #D1E9F6; padding: 10px; border-radius: 10px; margin-bottom: 5px;">
+                        <p class="truncate">{processed_agent1_goal}</p>
+                    </div>
+                </div>
+                <div style="display: inline-block; width: 48%; vertical-align: top;">
+                    <p><strong>Agent 2's Goal</strong></p>
+                    <div style="background-color: #D1E9F6; padding: 10px; border-radius: 10px; margin-bottom: 5px;">
+                        <p class="truncate">{processed_agent2_goal}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Foldable green container for additional information
+    with st.expander("Additional Information", expanded=False):
+        st.write(
+            f"""
+            <div style="background-color: #d0f5d0; padding: 10px; border-radius: 10px;">
+                <h4>Primary Key</h4>
+                <p>{profile.pk}</p>
+                <h4>Codename</h4>
+                <p>{profile.codename}</p>
+                <h4>Source</h4>
+                <p>{profile.source}</p>
+                <h4>Relationship</h4>
+                <p>{profile.relationship.name}</p>
+                <h4>Age Constraint</h4>
+                <p>{profile.age_constraint if profile.age_constraint else 'None'}</p>
+                <h4>Occupation Constraint</h4>
+                <p>{profile.occupation_constraint if profile.occupation_constraint else 'None'}</p>
+                <h4>Agent Constraint</h4>
+                <p>{profile.agent_constraint if profile.agent_constraint else 'None'}</p>
+                <h4>Tag</h4>
+                <p>{profile.tag}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:

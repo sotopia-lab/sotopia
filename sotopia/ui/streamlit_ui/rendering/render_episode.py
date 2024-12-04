@@ -4,13 +4,12 @@ import streamlit as st
 from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 from sotopia.envs.parallel import render_text_for_agent, render_text_for_environment
 
-from ..rendering_utils import (
+from sotopia.ui.streamlit_ui.rendering.rendering_utils import (
     _agent_profile_to_friendabove_self,
     render_for_humans,
 )
-from ..utils import (
+from sotopia.ui.streamlit_ui.utils import (
     get_full_name,
-    initialize_session_state,
 )
 
 
@@ -93,8 +92,7 @@ def rendering_episode(episode: EpisodeLog) -> None:
             )
 
 
-def rendering_demo() -> None:
-    initialize_session_state()
+def rendering_episodes() -> None:
     local_css("./././css/style.css")
 
     codenames = list(st.session_state.all_codenames.keys())

@@ -1,8 +1,8 @@
 import streamlit as st
 
-from ..rendering import rendering_demo
+from sotopia.ui.streamlit_ui.rendering import rendering_episodes
 
 st.title("Episode")
 
 st.write("Here are some instructions about using the episode renderer.")
-rendering_demo()
+rendering_episodes()

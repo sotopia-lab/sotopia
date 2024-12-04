@@ -1,3 +1,3 @@
-from .render_episode import rendering_demo, rendering_episode
+from .render_episode import rendering_episode, rendering_episodes
 
-__all__ = ["rendering_demo", "rendering_episode"]
+__all__ = ["rendering_episode", "rendering_episodes"]
