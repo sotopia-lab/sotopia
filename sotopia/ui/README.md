@@ -174,3 +174,25 @@ returns:
 
 
 **Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
+
+
+## An example to run simulation with the API
+
+**Get all scenarios**:
+```bash
+curl -X GET "http://localhost:8000/scenarios"
+```
+
+Randomly select a scenario, e.g., `01HZRGTG1K4YQ2CBS9SNH28R9S`
+
+
+**Get all agents**:
+```bash
+curl -X GET "http://localhost:8000/agents"
+```
+
+Randomly select two agents, e.g., `01H5TNE5PE9RQGH86YM6MSWZMW` and `01H5TNE5PT06B3QPXJ65HHACV7`
+
+**Connecting to the websocket server**:
+
+@bugsz: Adding ur example here?
