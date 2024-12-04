@@ -1,12 +1,8 @@
-import asyncio
 import glob
 import json
 import os
-from functools import wraps
-from typing import Optional
 
 import streamlit as st
-from redis_om import get_redis_connection
 from sotopia.agents import Agents, LLMAgent
 from sotopia.database import (
     AgentProfile,
@@ -24,7 +20,8 @@ from sotopia.envs.evaluators import (
 from sotopia.envs.parallel import (
     render_text_for_environment,
 )
-from sotopia.messages import AgentAction, Observation
+from sotopia.messages import Observation
+from redis_om import get_redis_connection  # type: ignore
 
 HUMAN_MODEL_NAME = "human"
 MODEL_LIST = [
@@ -85,18 +82,6 @@ class EnvAgentProfileCombo:
         self.agents = agents
 
 
-def async_to_sync(async_func: callable) -> callable:
-    @wraps(async_func)
-    def sync_func(*args, **kwargs):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(async_func(*args, **kwargs))
-        loop.close()
-        return result
-
-    return sync_func
-
-
 def get_abstract(description: str) -> str:
     return " ".join(description.split()[:50]) + "..."
 
@@ -129,8 +114,8 @@ def load_additional_envs() -> list[EnvironmentProfile]:
 
 def initialize_session_state(force_reload: bool = False) -> None:
     if "active" not in st.session_state or force_reload:
-        all_agents = AgentProfile.find().all()[:10]
-        all_envs = EnvironmentProfile.find().all()[:10]
+        all_agents: list[AgentProfile] = AgentProfile.find().all()[:10]  # type: ignore
+        all_envs: list[EnvironmentProfile] = EnvironmentProfile.find().all()[:10]  # type: ignore
         additional_agents = load_additional_agents()
         additional_envs = load_additional_envs()
 
@@ -184,9 +169,7 @@ def initialize_session_state(force_reload: bool = False) -> None:
         st.session_state.human_agent_selection = "Agent 1"
 
     if "all_codenames" not in st.session_state or force_reload:
-        codename_pk_mapping = {
-            env.codename: env.pk for env in EnvironmentProfile.find().all()
-        }
+        codename_pk_mapping = {env.codename: env.pk for env in EnvironmentProfile.all()}
         st.session_state.all_codenames = codename_pk_mapping
         st.session_state.current_episodes = EpisodeLog.find(
             EpisodeLog.environment
@@ -283,139 +266,19 @@ def set_settings(
     )
 
 
-def step(user_input: str | None = None) -> None:
-    print_current_speaker()
-    env: ParallelSotopiaEnv = st.session_state.env
-    print("Env profile: ", env.profile)
-    for agent_name in env.agents:
-        print("Agent profile: ", st.session_state.agents[agent_name].profile)
-        print("Agent goal: ", st.session_state.agents[agent_name].goal)
-
-    def act_function(
-        user_input: Optional[str], is_human: bool, agent_name: str
-    ) -> AgentAction:
-        assert user_input is not None or not is_human, "User input is required"
-        if is_human:
-            st.session_state.agents[agent_name].recv_message(
-                "Environment", st.session_state.environment_messages[agent_name]
-            )
-            # set the message to the agents
-            return AgentAction(action_type="speak", argument=user_input)
-        else:
-            return async_to_sync(st.session_state.agents[agent_name].aact)(
-                st.session_state.environment_messages[agent_name]
-            )  # type: ignore
-
-    agent_messages: dict[str, AgentAction] = dict()
-    actions = []
-    # AGENT1_WAITING -> AGENT1_SPEAKING
-    for agent_idx, agent_name in enumerate(env.agents):
-        session_state: ActionState = st.session_state.state
-        model_in_turn = st.session_state.agent_models[agent_idx]
-        is_human = model_in_turn == HUMAN_MODEL_NAME
-
-        agent_speaking = (
-            agent_idx == 0 and session_state == ActionState.AGENT1_SPEAKING
-        ) or (agent_idx == 1 and session_state == ActionState.AGENT2_SPEAKING)
-        if not agent_speaking:
-            st.session_state.agents[agent_name].recv_message(
-                "Environment", st.session_state.environment_messages[agent_name]
-            )
-
-        match agent_idx:
-            case 0:
-                match session_state:
-                    case ActionState.AGENT1_SPEAKING:
-                        action = act_function(
-                            user_input, is_human=is_human, agent_name=agent_name
-                        )
-                    case ActionState.EVALUATION_WAITING:
-                        action = AgentAction(action_type="leave", argument="")
-                    case _:
-                        action = AgentAction(action_type="none", argument="")
-
-            case 1:
-                match session_state:
-                    case ActionState.AGENT2_SPEAKING:
-                        action = act_function(
-                            user_input, is_human=is_human, agent_name=agent_name
-                        )
-                    case ActionState.EVALUATION_WAITING:
-                        action = AgentAction(action_type="leave", argument="")
-                    case _:
-                        action = AgentAction(action_type="none", argument="")
-        print(f"Agent {agent_idx} model {model_in_turn} output action: ", action)
-
-        actions.append(action)
-
-    for idx, agent_name in enumerate(st.session_state.env.agents):
-        agent_messages[agent_name] = actions[idx]
-        st.session_state.messages[-1].append(
-            (agent_name, "Environment", agent_messages[agent_name])
-        )
-
-    # send agent messages to environment
-    (
-        st.session_state.environment_messages,
-        rewards_in_turn,
-        terminated,
-        ___,
-        info,
-    ) = async_to_sync(st.session_state.env.astep)(agent_messages)
-    st.session_state.messages.append(
-        [
-            (
-                "Environment",
-                agent_name,
-                st.session_state.environment_messages[agent_name],
-            )
-            for agent_name in st.session_state.env.agents
-        ]
-    )
-
-    done = all(terminated.values())
-    if done:
-        print("Conversation ends...")
-        st.session_state.state = ActionState.IDLE
-        st.session_state.active = False
-        st.session_state.done = False
-
-        st.session_state.rewards = [
-            info[agent_name]["complete_rating"]
-            for agent_name in st.session_state.env.agents
-        ]
-        st.session_state.reasoning = info[st.session_state.env.agents[0]]["comments"]
-        st.session_state.rewards_prompt = info["rewards_prompt"]["overall_prompt"]
-
-    session_state: ActionState = st.session_state.state
-    match session_state:
-        case ActionState.AGENT1_SPEAKING:
-            st.session_state.state = ActionState.AGENT2_WAITING
-        case ActionState.AGENT2_SPEAKING:
-            st.session_state.state = ActionState.AGENT1_WAITING
-        case ActionState.EVALUATION_WAITING:
-            st.session_state.state = ActionState.IDLE
-        case ActionState.IDLE:
-            st.session_state.state = ActionState.IDLE
-        case _:
-            raise ValueError("Invalid state", st.session_state.state)
-
-    done = all(terminated.values())
-
-
 def get_preview(target: str, length: int = 20) -> str:
     return " ".join(target.split()[:length]) + "..."
 
 
 def reset_database(db_url: str) -> None:
-    EpisodeLog._meta.database = get_redis_connection(url=db_url)
-    EpisodeLog.Meta.database = get_redis_connection(url=db_url)
+    EpisodeLog._meta.database = get_redis_connection(url=db_url)  # type: ignore
+    EpisodeLog.Meta.database = get_redis_connection(url=db_url)  # type: ignore
 
-    AgentProfile._meta.database = get_redis_connection(url=db_url)
-    AgentProfile.Meta.database = get_redis_connection(url=db_url)
+    AgentProfile._meta.database = get_redis_connection(url=db_url)  # type: ignore
+    AgentProfile.Meta.database = get_redis_connection(url=db_url)  # type: ignore
 
-    EnvironmentProfile._meta.database = get_redis_connection(url=db_url)
-    EnvironmentProfile.Meta.database = get_redis_connection(url=db_url)
+    EnvironmentProfile._meta.database = get_redis_connection(url=db_url)  # type: ignore
+    EnvironmentProfile.Meta.database = get_redis_connection(url=db_url)  # type: ignore
 
-    EnvAgentComboStorage._meta.database = get_redis_connection(url=db_url)
-    EnvAgentComboStorage.Meta.database = get_redis_connection(url=db_url)
+    EnvAgentComboStorage._meta.database = get_redis_connection(url=db_url)  # type: ignore
+    EnvAgentComboStorage.Meta.database = get_redis_connection(url=db_url)  # type: ignore
