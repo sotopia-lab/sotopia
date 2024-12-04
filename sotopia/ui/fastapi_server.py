@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
-from typing import Literal, cast, Dict, Optional, Any
+from typing import Literal, cast, Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
 
 from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
@@ -7,7 +7,6 @@ from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
     WSMessageType,
     ErrorType,
-    WSMessage,
 )
 import uvicorn
 import asyncio
@@ -176,28 +175,6 @@ async def get_models() -> list[str]:
     return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
 
 
-active_simulations: Dict[
-    str, bool
-] = {}  # TODO check whether this is the correct way to store the active simulations
-
-
-async def send_msg(websocket: WebSocket, msg: WSMessage) -> None:
-    # first check if the connection is still open
-    if websocket.client_state.value != 1:
-        print("Connection is not open, current state:", websocket.client_state)
-        return
-    await websocket.send_json(msg.to_json())
-
-
-async def receive_msg(websocket: WebSocket) -> Optional[str]:
-    if websocket.client_state.value != 1:
-        # print("Connection is not open, current state:", websocket.client_state)
-        return None
-
-    data = await websocket.receive_text()
-    return data
-
-
 class SimulationState:
     _instance: Optional["SimulationState"] = None
     _lock = asyncio.Lock()
@@ -273,7 +250,7 @@ class SimulationManager:
         self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
     ) -> None:
         try:
-            async for message in simulator.arun_one_step():
+            async for message in simulator.arun():
                 await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
 
                 try:
@@ -285,6 +262,7 @@ class SimulationManager:
 
         except Exception as e:
             msg = f"Error running simulation: {e}"
+            logger.error(msg)
             await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
         finally:
             await self.send_message(websocket, WSMessageType.END_SIM, {})

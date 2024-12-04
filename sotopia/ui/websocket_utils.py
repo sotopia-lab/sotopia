@@ -5,15 +5,14 @@ from sotopia.envs.evaluators import (
     SotopiaDimensions,
 )
 from sotopia.agents import Agents, LLMAgent
-from sotopia.messages import Observation, AgentAction
+from sotopia.messages import Observation
 from sotopia.envs import ParallelSotopiaEnv
-from sotopia.database import EnvironmentProfile, AgentProfile
+from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import TypedDict, Any
+from typing import TypedDict, Any, AsyncGenerator
 from pydantic import BaseModel
-import asyncio
-from typing import AsyncGenerator
 
 
 class WSMessageType(str, Enum):
@@ -143,138 +142,38 @@ class WebSocketSotopiaSimulator:
         for index, agent_name in enumerate(self.env.agents):
             self.agents[agent_name].goal = self.env.profile.agent_goals[index]
 
-    async def arun_one_step(self) -> AsyncGenerator[dict[str, Any], None]:
-        done = False
+    async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
+        # Use sotopia to run the simulation
+        generator = arun_one_episode(
+            env=self.env,
+            agent_list=list(self.agents.values()),
+            push_to_db=False,
+            streaming=True,
+        )
 
-        turn = self.messages[-1]
-        messages_for_rendering = [
-            {"role": "Background Info", "type": "info", "content": turn[0][2]},
-            {"role": "Background Info", "type": "info", "content": turn[1][2]},
-            {"role": "System", "type": "divider", "content": "Start Simulation"},
-        ]
-        for msg in messages_for_rendering:
-            yield msg
+        async for messages in await generator:
+            reasoning, rewards = "", [0.0, 0.0]
+            eval_available = False
+            if messages[-1][0][0] == "Evaluation":
+                reasoning = messages[-1][0][2].to_natural_language()
+                rewards = eval(messages[-2][0][2].to_natural_language())
+                eval_available = True
 
-        while not done:
-            # gather agent messages
-            agent_messages: dict[str, AgentAction] = dict()
-            actions = await asyncio.gather(
-                *[
-                    self.agents[agent_name].aact(self.environment_messages[agent_name])
-                    for agent_name in self.env.agents
-                ]
+            epilog = EpisodeLog(
+                environment=self.env.profile.pk,
+                agents=[agent.profile.pk for agent in self.agents.values()],
+                tag="test",
+                models=["gpt-4o", "gpt-4o", "gpt-4o-mini"],
+                messages=[
+                    [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
+                    for messages_in_turn in messages
+                ],
+                reasoning=reasoning,
+                rewards=rewards,
+                rewards_prompt="",
             )
+            agent_profiles, parsed_messages = epilog.render_for_humans()
+            if not eval_available:
+                parsed_messages = parsed_messages[:-2]
 
-            for idx, agent_name in enumerate(self.env.agents):
-                agent_messages[agent_name] = actions[idx]
-
-                self.messages[-1].append(
-                    (
-                        agent_name,
-                        "Environment",
-                        agent_messages[agent_name].to_natural_language(),
-                    )
-                )
-
-            # send agent messages to environment
-            (
-                self.environment_messages,
-                rewards_in_turn,
-                terminated,
-                ___,
-                info,
-            ) = await self.env.astep(agent_messages)
-
-            self.messages.append(
-                [
-                    (
-                        "Environment",
-                        agent_name,
-                        self.environment_messages[agent_name].to_natural_language(),
-                    )
-                    for agent_name in self.env.agents
-                ]
-            )
-
-            messages_in_this_turn: list[dict[str, str]] = []
-            for sender, receiver, message in self.messages[-2]:
-                if receiver == "Environment":
-                    if sender != "Environment":
-                        if "did nothing" in message:
-                            continue
-                        else:
-                            if "said:" in message:
-                                messages_in_this_turn.append(
-                                    {
-                                        "role": sender,
-                                        "type": "said",
-                                        "content": message,
-                                    }
-                                )
-                            else:
-                                messages_in_this_turn.append(
-                                    {
-                                        "role": sender,
-                                        "type": "action",
-                                        "content": message,
-                                    }
-                                )
-                    else:
-                        messages_in_this_turn.append(
-                            {
-                                "role": "Environment",
-                                "type": "environment",
-                                "content": message,
-                            }
-                        )
-
-            yield messages_in_this_turn[0]
-
-            done = all(terminated.values())
-
-        yield {
-            "role": "System",
-            "type": "divider",
-            "content": "End Simulation",
-        }
-
-        reasoning = info[self.env.agents[0]]["comments"]
-        rewards = [
-            info[agent_name]["complete_rating"] for agent_name in self.env.agents
-        ]
-        reasoning_per_agent, general_comment = parse_reasoning(
-            reasoning, 2
-        )  # TODO: support multiple in the future
-
-        for idx, reasoning in enumerate(reasoning_per_agent):
-            reasoning_lines = reasoning.split("\n")
-            new_reasoning = ""
-            for reasoning_line in reasoning_lines:
-                dimension = reasoning_line.split(":")[0]
-                new_reasoning += (
-                    (
-                        f"**{dimension}**: {':'.join(reasoning_line.split(':')[1:])}"
-                        + "\n"
-                    )
-                    if dimension != ""
-                    else reasoning_line + "\n"
-                )
-            yield {
-                "role": f"Agent {idx + 1}",
-                "type": "comment",
-                "content": f"**Agent {idx + 1} reasoning**:\n{new_reasoning}\n\n**Rewards**: {str(rewards[idx])}",
-            }
-
-        # yield {
-        #     "role": "agent",  # TODO separate agent 1 and 2
-        #     "type": "comment",
-        #     "content": reasoning,
-        # }
-        # rewards = [
-        #     info[agent_name]["complete_rating"] for agent_name in self.env.agents
-        # ]
-        # yield {
-        #     "role": "agent",  # TODO separate agent 1 and 2
-        #     "type": "comment",
-        #     "content": rewards,
-        # }
+            yield parsed_messages

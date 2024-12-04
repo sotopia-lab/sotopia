@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 import logging
-from typing import Literal, Sequence, Type, cast
+from typing import Literal, Sequence, Type, cast, AsyncGenerator, Union
 
 import gin
 import rich
@@ -25,7 +25,7 @@ from sotopia.envs.evaluators import (
     unweighted_aggregate_evaluate,
 )
 from sotopia.generation_utils.generate import LLM_Name, agenerate_script
-from sotopia.messages import AgentAction, Message, Observation
+from sotopia.messages import AgentAction, Message, Observation, SimpleMessage
 from sotopia.messages.message_classes import (
     ScriptBackground,
     ScriptEnvironmentResponse,
@@ -104,6 +104,12 @@ def run_sync_server(
     return messages
 
 
+def flatten_listed_messages(
+    messages: list[list[tuple[str, str, Message]]],
+) -> list[tuple[str, str, Message]]:
+    return list(itertools.chain.from_iterable(messages))
+
+
 @gin.configurable
 async def arun_one_episode(
     env: ParallelSotopiaEnv,
@@ -113,102 +119,125 @@ async def arun_one_episode(
     json_in_script: bool = False,
     tag: str | None = None,
     push_to_db: bool = False,
-) -> list[tuple[str, str, Message]]:
+    streaming: bool = False,
+) -> Union[
+    list[tuple[str, str, Message]],
+    AsyncGenerator[list[list[tuple[str, str, Message]]], None],
+]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
-    environment_messages = env.reset(agents=agents, omniscient=omniscient)
-    agents.reset()
 
-    messages: list[list[tuple[str, str, Message]]] = []
+    async def generate_messages() -> (
+        AsyncGenerator[list[list[tuple[str, str, Message]]], None]
+    ):
+        environment_messages = env.reset(agents=agents, omniscient=omniscient)
+        agents.reset()
+        messages: list[list[tuple[str, str, Message]]] = []
 
-    # Main Event Loop
-    done = False
-    messages.append(
-        [
-            ("Environment", agent_name, environment_messages[agent_name])
-            for agent_name in env.agents
-        ]
-    )
-    # set goal for agents
-    for index, agent_name in enumerate(env.agents):
-        agents[agent_name].goal = env.profile.agent_goals[index]
-    rewards: list[list[float]] = []
-    reasons: list[str] = []
-    while not done:
-        # gather agent messages
-        agent_messages: dict[str, AgentAction] = dict()
-        actions = await asyncio.gather(
-            *[
-                agents[agent_name].aact(environment_messages[agent_name])
-                for agent_name in env.agents
-            ]
-        )
-        if script_like:
-            # manually mask one message
-            agent_mask = env.action_mask
-            for idx in range(len(agent_mask)):
-                print("Current mask: ", agent_mask)
-                if agent_mask[idx] == 0:
-                    print("Action not taken: ", actions[idx])
-                    actions[idx] = AgentAction(action_type="none", argument="")
-                else:
-                    print("Current action taken: ", actions[idx])
-
-        # actions = cast(list[AgentAction], actions)
-        for idx, agent_name in enumerate(env.agents):
-            agent_messages[agent_name] = actions[idx]
-
-            messages[-1].append((agent_name, "Environment", agent_messages[agent_name]))
-
-        # send agent messages to environment
-        (
-            environment_messages,
-            rewards_in_turn,
-            terminated,
-            ___,
-            info,
-        ) = await env.astep(agent_messages)
+        # Main Event Loop
+        done = False
         messages.append(
             [
                 ("Environment", agent_name, environment_messages[agent_name])
                 for agent_name in env.agents
             ]
         )
-        # print("Environment message: ", environment_messages)
-        # exit(0)
-        rewards.append([rewards_in_turn[agent_name] for agent_name in env.agents])
-        reasons.append(
-            " ".join(info[agent_name]["comments"] for agent_name in env.agents)
+        yield messages
+
+        # set goal for agents
+        for index, agent_name in enumerate(env.agents):
+            agents[agent_name].goal = env.profile.agent_goals[index]
+        rewards: list[list[float]] = []
+        reasons: list[str] = []
+        while not done:
+            # gather agent messages
+            agent_messages: dict[str, AgentAction] = dict()
+            actions = await asyncio.gather(
+                *[
+                    agents[agent_name].aact(environment_messages[agent_name])
+                    for agent_name in env.agents
+                ]
+            )
+            if script_like:
+                # manually mask one message
+                agent_mask = env.action_mask
+                for idx in range(len(agent_mask)):
+                    if agent_mask[idx] == 0:
+                        actions[idx] = AgentAction(action_type="none", argument="")
+                    else:
+                        pass
+
+            # actions = cast(list[AgentAction], actions)
+            for idx, agent_name in enumerate(env.agents):
+                agent_messages[agent_name] = actions[idx]
+
+                messages[-1].append(
+                    (agent_name, "Environment", agent_messages[agent_name])
+                )
+
+            # send agent messages to environment
+            (
+                environment_messages,
+                rewards_in_turn,
+                terminated,
+                ___,
+                info,
+            ) = await env.astep(agent_messages)
+            messages.append(
+                [
+                    ("Environment", agent_name, environment_messages[agent_name])
+                    for agent_name in env.agents
+                ]
+            )
+
+            yield messages
+            rewards.append([rewards_in_turn[agent_name] for agent_name in env.agents])
+            reasons.append(
+                " ".join(info[agent_name]["comments"] for agent_name in env.agents)
+            )
+            done = all(terminated.values())
+
+        epilog = EpisodeLog(
+            environment=env.profile.pk,
+            agents=[agent.profile.pk for agent in agent_list],
+            tag=tag,
+            models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
+            messages=[
+                [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
+                for messages_in_turn in messages
+            ],
+            reasoning=info[env.agents[0]]["comments"],
+            rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
+            rewards_prompt=info["rewards_prompt"]["overall_prompt"],
         )
-        done = all(terminated.values())
+        rich.print(epilog.rewards_prompt)
+        agent_profiles, conversation = epilog.render_for_humans()
+        for agent_profile in agent_profiles:
+            rich.print(agent_profile)
+        for message in conversation:
+            rich.print(message)
 
-    # TODO: clean up this part
-    epilog = EpisodeLog(
-        environment=env.profile.pk,
-        agents=[agent.profile.pk for agent in agent_list],
-        tag=tag,
-        models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
-        messages=[
-            [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
-            for messages_in_turn in messages
-        ],
-        reasoning=info[env.agents[0]]["comments"],
-        rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
-        rewards_prompt=info["rewards_prompt"]["overall_prompt"],
-    )
-    rich.print(epilog.rewards_prompt)
-    agent_profiles, conversation = epilog.render_for_humans()
-    for agent_profile in agent_profiles:
-        rich.print(agent_profile)
-    for message in conversation:
-        rich.print(message)
+        if streaming:
+            # yield the rewards and reasonings
+            messages.append(
+                [("Evaluation", "Rewards", SimpleMessage(message=str(epilog.rewards)))]
+            )
+            messages.append(
+                [("Evaluation", "Reasoning", SimpleMessage(message=epilog.reasoning))]
+            )
+            yield messages
 
-    if push_to_db:
-        try:
-            epilog.save()
-        except Exception as e:
-            logging.error(f"Failed to save episode log: {e}")
-    # flatten nested list messages
-    return list(itertools.chain(*messages))
+        if push_to_db:
+            try:
+                epilog.save()
+            except Exception as e:
+                logging.error(f"Failed to save episode log: {e}")
+
+    if streaming:
+        return generate_messages()
+    else:
+        async for last_messages in generate_messages():
+            pass
+        return flatten_listed_messages(last_messages)
 
 
 @gin.configurable
