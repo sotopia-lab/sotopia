@@ -17,7 +17,7 @@ from sotopia.database import (
     EnvAgentComboStorage,
     EnvironmentProfile,
     EpisodeLog,
-    EvaluationDimensionGenerator,
+    EvaluationDimensionBuilder,
 )
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
@@ -108,9 +108,17 @@ def _iterate_env_agent_combo_not_in_db(
     env_ids: list[str] = [],
     tag: str | None = None,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
+    # method 1 for loading evaluation metric
     evaluation_dimensions = (
-        EvaluationDimensionGenerator.generate_dimension_model_from_name(
+        EvaluationDimensionBuilder.select_existing_dimension_model_by_name(
             ["transactivity", "verbal_equity"]
+        )
+    )
+
+    # method 2 for loading evaluation metric
+    evaluation_dimensions = (
+        EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
+            "sotopia"
         )
     )
 
@@ -158,7 +166,8 @@ def _iterate_env_agent_combo_not_in_db(
                 terminal_evaluators=[
                     ReachGoalLLMEvaluator(
                         model_names["env"],
-                        EvaluationForTwoAgents[evaluation_dimensions],
+                        EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
+                        # TODO check how to do type annotation
                     ),
                 ],
             )

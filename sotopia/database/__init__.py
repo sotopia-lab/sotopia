@@ -31,7 +31,7 @@ from .session_transaction import MessageTransaction, SessionTransaction
 from .waiting_room import MatchingInWaitingRoom
 from .aggregate_annotations import map_human_annotations_to_episode_logs
 from .evaluation_dimensions import (
-    EvaluationDimensionGenerator,
+    EvaluationDimensionBuilder,
     CustomEvaluationDimension,
     CustomEvaluationDimensionList,
 )
@@ -70,7 +70,7 @@ __all__ = [
     "jsonl_to_relationshipprofiles",
     "jsonl_to_envagnetcombostorage",
     "get_rewards_from_episode",
-    "EvaluationDimensionGenerator",
+    "EvaluationDimensionBuilder",
     "CustomEvaluationDimension",
     "CustomEvaluationDimensionList",
 ]
