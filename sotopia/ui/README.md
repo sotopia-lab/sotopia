@@ -78,33 +78,31 @@ EnvironmentProfile
 returns:
 - scenario_id: str
 
-#### DELETE /agents/{agent_id}
+### Updating Data in the API Server
 
-Delete agent profile from the API server.
+#### PUT /agents/{agent_id}
+
+Update agent profile in the API server.
+Request Body:
+AgentProfile
 
 returns:
 - agent_id: str
 
-#### DELETE /scenarios/{scenario_id}
 
-Delete scenario profile from the API server.
+#### PUT /scenarios/{scenario_id}
+
+Update scenario profile in the API server.
+Request Body:
+EnvironmentProfile
 
 returns:
 - scenario_id: str
 
-
-### Error Code
-For RESTful APIs above we have the following error codes:
-| **Error Code** | **Description**                      |
-|-----------------|--------------------------------------|
-| **404**         | A resource is not found             |
-| **403**         | The query is not authorized         |
-| **500**         | Internal running error              |
-
 ### Initiating a new non-streaming simulation episode
 
 #### POST /episodes/
-[!] Currently not planning to implement
+
 ```python
 class SimulationEpisodeInitiation(BaseModel):
     scenario_id: str
@@ -147,14 +145,14 @@ returns:
 | Type | Direction   | Description |
 |-----------|--------|-------------|
 | SERVER_MSG | Server → Client | Standard message from server (payload: `messageForRendering` [here](https://github.com/sotopia-lab/sotopia-demo/blob/main/socialstream/rendering_utils.py) ) |
-| CLIENT_MSG | Client → Server | Standard message from client (payload: Currently not needed) |
-| ERROR      | Server → Client | Error notification (payload: `{"type": ERROR_TYPE, "description": DESC}`) |
+| CLIENT_MSG | Client → Server | Standard message from client (payload: TBD) |
+| ERROR      | Server → Client | Error notification (payload: TBD) |
 | START_SIM  | Client → Server | Initialize simulation (payload: `SimulationEpisodeInitialization`) |
 | END_SIM    | Client → Server | End simulation (payload: not needed) |
 | FINISH_SIM | Server → Client | Terminate simulation (payload: not needed) |
 
 
-**ERROR_TYPE**
+**Error Type**
 
 | Error Code | Description |
 |------------|-------------|
@@ -167,14 +165,53 @@ returns:
 | OTHER | Other unspecified errors |
 
 
-**Conversation Message From the Server**
-The server returns messages encapsulated in a structured format which is defined as follows:
-
-```python
-class MessageForRendering(TypedDict):
-    role: str # Specifies the origin of the message. Common values include "Background Info", "Environment", "{Agent Names}
-    type: str # Categorizes the nature of the message. Common types include: "comment", "said", "action"
-    content: str
-```
 
 **Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
+
+
+## An example to run simulation with the API
+
+**Get all scenarios**:
+```bash
+curl -X GET "http://localhost:8000/scenarios"
+```
+
+This gonna give you all the scenarios, and you can randomly pick one
+
+
+**Get all agents**:
+```bash
+curl -X GET "http://localhost:8000/agents"
+```
+
+This gonna give you all the agents, and you can randomly pick one
+
+**Connecting to the websocket server**:
+We recommend using Python. Here is the simplist way to start a simulation and receive the results in real time:
+```python
+import aiohttp
+import asyncio
+import json
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        async with session.ws_connect(f'ws://{API_BASE}/ws/simulation?token={YOUR_TOKEN}') as ws:
+            start_message = {
+                "type": "START_SIM",
+                "data": {
+                    "env_id": "{ENV_ID}",
+                    "agent_ids": ["{AGENT1_PK}", "{AGENT2_PK}"],
+                },
+            }
+            await ws.send_json(start_message)
+
+            async for msg in ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    print(f"Received: {msg.data}")
+                elif msg.type == aiohttp.WSMsgType.CLOSED:
+                    break
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    break
+```
+
+Please check out an detailed example in `examples/experimental/websocket/websocket_test_client.py`
