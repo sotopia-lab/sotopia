@@ -36,11 +36,19 @@ display_scenarios = st.Page(
 display_characters = st.Page(
     "./pages/display_characters.py", title="Characters", icon=":material/people:"
 )
-# display_omniscent_chat = st.Page("./pages/omniscient_chat.py", title="Omniscient Chat and Editing", icon=":material/add:")
-# st.logo("./figs/haicosys.svg", icon_image="./figs/haicosys.svg", size="large", link="https://haicosystem.org")
+
+display_chat = st.Page(
+    "./pages/render_chat_websocket.py", title="Simulation", icon=":material/add:"
+)
 
 pg = st.navigation(
-    [display_intro, display_scenarios, display_episodes, display_characters]
+    [
+        display_intro,
+        display_scenarios,
+        display_episodes,
+        display_characters,
+        display_chat,
+    ]
 )
 
 # Reset active agent when switching modes across pages

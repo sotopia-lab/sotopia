@@ -130,6 +130,11 @@ async def delete_scenario(scenario_id: str) -> str:
     return scenario_id
 
 
+@app.get("/models", response_model=list[str])
+async def get_models() -> list[str]:
+    return ["gpt-4o", "gpt-4o-mini"]
+
+
 active_simulations: Dict[
     str, bool
 ] = {}  # TODO check whether this is the correct way to store the active simulations

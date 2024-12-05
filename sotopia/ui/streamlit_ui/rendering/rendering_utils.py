@@ -20,12 +20,17 @@ class messageForRendering(TypedDict):
 def render_environment_profile(profile: EnvironmentProfile) -> None:
     # Render the codename as a subheader
     # Render the scenario with domain and realism in styled tags
-    processed_agent1_goal = render_text_for_environment(profile.agent_goals[0]).replace(
-        "\n", "<br>"
-    )
-    processed_agent2_goal = render_text_for_environment(profile.agent_goals[1]).replace(
-        "\n", "<br>"
-    )
+    if len(profile.agent_goals) == 2:
+        processed_agent1_goal = render_text_for_environment(
+            profile.agent_goals[0]
+        ).replace("\n", "<br>")
+        processed_agent2_goal = render_text_for_environment(
+            profile.agent_goals[1]
+        ).replace("\n", "<br>")
+    else:
+        processed_agent1_goal = ""
+        processed_agent2_goal = ""
+
     st.markdown(
         f"""
         <div style="background-color: #f9f9f9; padding: 10px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 20px;">

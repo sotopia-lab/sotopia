@@ -387,20 +387,26 @@ def chat_demo() -> None:
             while not st.session_state.websocket_manager.receive_queue.empty():
                 message = st.session_state.websocket_manager.receive_queue.get()
                 handle_message(message)
+                breakpoint()
 
         with chat_history_container.container():
             streamlit_rendering(
                 messages=st.session_state.messages,
-                agent_names=tuple(st.session_state.agents.keys())[:2],
+                agent_names=(
+                    st.session_state.agent_choice_1,
+                    st.session_state.agent_choice_2,
+                ),
             )
         time.sleep(1)
 
     with chat_history_container.container():
         streamlit_rendering(
             messages=st.session_state.messages,
-            agent_names=tuple(st.session_state.agents.keys())[:2],
+            agent_names=(
+                st.session_state.agent_choice_1,
+                st.session_state.agent_choice_2,
+            ),
         )
 
 
-if __name__ == "__main__":
-    chat_demo()
+chat_demo()
