@@ -214,4 +214,4 @@ async def main():
                     break
 ```
 
-Alternatively, an example can also be found in `websocket_test_client.py` under the same folder
+Please check out an detailed example in `examples/experimental/websocket/websocket_test_client.py`
