@@ -159,11 +159,13 @@ def run_simple_sample_with_custom_samples(
     )
 
     all_agents: list[AgentProfile] = cast(
-        list[AgentProfile], AgentProfile.find().page(0, 2)
-    )  # type: ignore
+        list[AgentProfile],
+        AgentProfile.find().page(0, 2),  # type: ignore
+    )
     all_envs: list[EnvironmentProfile] = cast(
-        list[EnvironmentProfile], EnvironmentProfile.find().page(0, 1)
-    )  # type: ignore
+        list[EnvironmentProfile],
+        EnvironmentProfile.find().page(0, 1),  # type: ignore
+    )
     environment: ParallelSotopiaEnv = ParallelSotopiaEnv(
         env_profile=all_envs[0],
         model_name="gpt-4o-mini",
