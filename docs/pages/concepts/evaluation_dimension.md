@@ -11,7 +11,8 @@ In original Sotopia paper, there are 7 dimensions to evaluate the quality of soc
 - goal
 
 
-However we observe under many use cases people may want to evaluate with customized evaluation metrics.
+However we observe under many use cases people may want to evaluate with customized evaluation metrics, so we provide a way to build custom evaluation dimensions.
+For a quick reference, you can directly check out the `examples/use_custom_dimensions.py`.
 
 ### CustomEvaluationDimension
 The [`CustomEvaluationDimension`](/python_API/database/evaluation_dimensions) is a class that can be used to create a custom evaluation dimension.
@@ -32,6 +33,31 @@ The [`EvaluationDimensionBuilder`](/python_API/database/evaluation_dimensions) i
 
 
 ## Usage
+### Initialize the database
+The default evaluation metric is still `SotopiaDimensions` in `sotopia.env.evaluators`.There is no `CustomEvaluationDimension` in the database by default. To initialize the database, please refer to `examples/use_custom_dimensions.py`.
+
+### Use the custom evaluation dimensions
+After you initialize your customized evaluation dimensions, you can choose to use any one of these methods provided below:
+
+#### Method 1: Choose dimensions by names
+```python
+evaluation_dimensions = (
+    EvaluationDimensionBuilder.select_existing_dimension_model_by_name(
+        ["transactivity", "verbal_equity"]
+    )
+)
+```
+
+#### Method 2: Directly choose the grouped evaluation dimension list
+```python
+evaluation_dimensions = (
+    EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
+        "sotopia"
+    )
+)
+```
+
+#### Method 3: Build a custom evaluation dimension model temporarily
 We provide multiple ways to build a custom evaluation dimension model with `EvaluationDimensionBuilder`, specifically:
 - `generate_dimension_model`: build an evaluation dimension from existing dimension primary keys.
 - `generate_dimension_model_from_dict`: build an evaluation dimension from a dictionary that specifies the parameters of the `CustomEvaluationDimension`. For example
@@ -48,3 +74,19 @@ We provide multiple ways to build a custom evaluation dimension model with `Eval
 ```
 - `select_existing_dimension_model_by_name`: build an evaluation dimension from existing dimension names. For example `['believability', 'goal']`
 - `select_existing_dimension_model_by_list_name`: build an evaluation dimension from existing `CustomEvaluationDimensionList` list names. For example, directly use `sotopia`.
+
+
+After you get the evaluation dimension model, you can pass it as a parameter for the `Evaluator`, for example,
+```python
+evaluation_dimensions = (
+    EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
+        "sotopia"
+    )
+)
+terminal_evaluators=[
+    ReachGoalLLMEvaluator(
+        model_names["env"],
+        EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
+    ),
+],
+```

@@ -31,7 +31,11 @@ class EvaluationDimensionBuilder:
         return validator
 
     @staticmethod
-    def generate_dimension_model(dimension_ids: list[str]) -> Type[BaseModel]:
+    def build_dimension_model(dimension_ids: list[str]) -> Type[BaseModel]:
+        """
+        Build an evaluation dimension from existing dimension primary keys.
+        The returned model is a pydantic model that can be used to evaluate the conversation.
+        """
         fields: dict[str, Any] = {}
 
         for dimension_id in dimension_ids:
@@ -54,9 +58,13 @@ class EvaluationDimensionBuilder:
         return model
 
     @staticmethod
-    def generate_dimension_model_from_dict(
+    def build_dimension_model_from_dict(
         dimensions: list[dict[str, Union[str, int]]],
     ) -> Type[BaseModel]:
+        """
+        Build an evaluation dimension from a dictionary that specifies the parameters of the `CustomEvaluationDimension`.
+        The returned model is a pydantic model that can be used to evaluate the conversation.
+        """
         fields: dict[str, Any] = {}
         for dimension_dict in dimensions:
             dimension = CustomEvaluationDimension(**dimension_dict)
@@ -81,6 +89,10 @@ class EvaluationDimensionBuilder:
     def select_existing_dimension_model_by_name(
         dimension_names: list[str],
     ) -> Type[BaseModel]:
+        """
+        Build an evaluation dimension from existing dimension names. For example `['believability', 'goal']`
+        The returned model is a pydantic model that can be used to evaluate the conversation.
+        """
         fields: dict[str, Any] = {}
         for dimension_name in dimension_names:
             dimensions = CustomEvaluationDimension.find(
@@ -111,6 +123,13 @@ class EvaluationDimensionBuilder:
     def select_existing_dimension_model_by_list_name(
         list_name: str,
     ) -> Type[BaseModel]:
+        """
+        Build an evaluation dimension from existing `CustomEvaluationDimensionList` list names. For example, directly use `sotopia`
+        The returned model is a pydantic model that can be used to evaluate the conversation.
+        """
+        # if list_name == "sotopia":
+        #     return SotopiaDimensions # TODO see if we could make this work in `experiment_eval.py`. Right now there is a circular import
+
         dimensions = CustomEvaluationDimensionList.find(
             CustomEvaluationDimensionList.name == list_name
         ).all()
@@ -119,5 +138,5 @@ class EvaluationDimensionBuilder:
         ), f"Expected 1 dimension list for {list_name}, but found {len(dimensions)}"
         dimension_list = cast(CustomEvaluationDimensionList, dimensions[0])
         dimension_ids = dimension_list.dimension_pks
-        model = EvaluationDimensionBuilder.generate_dimension_model(dimension_ids)
+        model = EvaluationDimensionBuilder.build_dimension_model(dimension_ids)
         return model

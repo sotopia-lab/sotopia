@@ -23,6 +23,7 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
+    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.generation_utils.generate import LLM_Name
@@ -34,6 +35,7 @@ from sotopia.samplers import (
 )
 from sotopia.server import run_async_server
 from sotopia_conf.gin_utils import parse_gin_flags, run
+# from sotopia.database import EvaluationDimensionBuilder
 
 _DEFAULT_GIN_SEARCH_PATHS = [
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -108,21 +110,19 @@ def _iterate_env_agent_combo_not_in_db(
     env_ids: list[str] = [],
     tag: str | None = None,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
-    # method 1 for loading evaluation metric
-    evaluation_dimensions = (
-        EvaluationDimensionBuilder.select_existing_dimension_model_by_name(
-            ["transactivity", "verbal_equity"]
-        )
-    )
-
-    # method 2 for loading evaluation metric
-    evaluation_dimensions = (
-        EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
-            "sotopia"
-        )
-    )
-
     """We iterate over each environment and return the **first** env-agent combo that is not in the database."""
+    # loading evaluation metric
+    try:
+        evaluation_dimensions = EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
+            "sotopia"
+        )  # Initialize your customized dimension, please refer to `examples/use_custom_dimensions.py`
+    except Exception as e:
+        print(
+            "No customized evaluation dimensions found, using default SotopiaDimensions",
+            e,
+        )
+        evaluation_dimensions = SotopiaDimensions
+
     if not env_ids:
         env_ids = list(EnvironmentProfile.all_pks())
     for env_id in env_ids:
