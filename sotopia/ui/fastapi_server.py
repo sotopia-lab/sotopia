@@ -1,10 +1,32 @@
-from fastapi import FastAPI
-from typing import Literal, cast, Dict
-from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
+from typing import Literal, cast, Optional, Any
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from sotopia.ui.websocket_utils import (
+    WebSocketSotopiaSimulator,
+    WSMessageType,
+    ErrorType,
+)
 import uvicorn
+import asyncio
+
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)  # TODO: Whether allowing CORS for all origins
 
 
 class AgentProfileWrapper(BaseModel):
@@ -64,6 +86,12 @@ async def get_scenarios(
             EnvironmentProfile.codename == value
         ).all()
         scenarios.extend(cast(list[EnvironmentProfile], json_models))
+
+    if not scenarios:
+        raise HTTPException(
+            status_code=404, detail=f"No scenarios found with {get_by}={value}"
+        )
+
     return scenarios
 
 
@@ -85,7 +113,18 @@ async def get_agents(
     elif get_by == "occupation":
         json_models = AgentProfile.find(AgentProfile.occupation == value).all()
         agents_profiles.extend(cast(list[AgentProfile], json_models))
+
+    if not agents_profiles:
+        raise HTTPException(
+            status_code=404, detail=f"No agents found with {get_by}={value}"
+        )
+
     return agents_profiles
+
+
+@app.get("/episodes", response_model=list[EpisodeLog])
+async def get_episodes_all() -> list[EpisodeLog]:
+    return EpisodeLog.all()
 
 
 @app.get("/episodes/{get_by}/{value}", response_model=list[EpisodeLog])
@@ -96,10 +135,15 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     elif get_by == "tag":
         json_models = EpisodeLog.find(EpisodeLog.tag == value).all()
         episodes.extend(cast(list[EpisodeLog], json_models))
+
+    if not episodes:
+        raise HTTPException(
+            status_code=404, detail=f"No episodes found with {get_by}={value}"
+        )
     return episodes
 
 
-@app.post("/agents/")
+@app.post("/agents/", response_model=str)
 async def create_agent(agent: AgentProfileWrapper) -> str:
     agent_profile = AgentProfile(**agent.model_dump())
     agent_profile.save()
@@ -110,7 +154,6 @@ async def create_agent(agent: AgentProfileWrapper) -> str:
 
 @app.post("/scenarios/", response_model=str)
 async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
-    print(scenario)
     scenario_profile = EnvironmentProfile(**scenario.model_dump())
     scenario_profile.save()
     pk = scenario_profile.pk
@@ -118,26 +161,208 @@ async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
     return pk
 
 
+@app.put("/agents/{agent_id}", response_model=str)
+async def update_agent(agent_id: str, agent: AgentProfileWrapper) -> str:
+    try:
+        old_agent = AgentProfile.get(pk=agent_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Agent with id={agent_id} not found"
+        )
+    old_agent.update(**agent.model_dump())  # type: ignore
+    assert old_agent.pk is not None
+    return old_agent.pk
+
+
+@app.put("/scenarios/{scenario_id}", response_model=str)
+async def update_scenario(scenario_id: str, scenario: EnvironmentProfileWrapper) -> str:
+    try:
+        old_scenario = EnvironmentProfile.get(pk=scenario_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Scenario with id={scenario_id} not found"
+        )
+    old_scenario.update(**scenario.model_dump())  # type: ignore
+    assert old_scenario.pk is not None
+    return old_scenario.pk
+
+
 @app.delete("/agents/{agent_id}", response_model=str)
 async def delete_agent(agent_id: str) -> str:
-    AgentProfile.delete(agent_id)
-    return agent_id
+    try:
+        agent = AgentProfile.get(pk=agent_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Agent with id={agent_id} not found"
+        )
+    AgentProfile.delete(agent.pk)
+    assert agent.pk is not None
+    return agent.pk
 
 
 @app.delete("/scenarios/{scenario_id}", response_model=str)
 async def delete_scenario(scenario_id: str) -> str:
-    EnvironmentProfile.delete(scenario_id)
-    return scenario_id
+    try:
+        scenario = EnvironmentProfile.get(pk=scenario_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Scenario with id={scenario_id} not found"
+        )
+    EnvironmentProfile.delete(scenario.pk)
+    assert scenario.pk is not None
+    return scenario.pk
 
 
 @app.get("/models", response_model=list[str])
 async def get_models() -> list[str]:
-    return ["gpt-4o", "gpt-4o-mini"]
+    # TODO figure out how to get the available models
+    return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
 
 
-active_simulations: Dict[
-    str, bool
-] = {}  # TODO check whether this is the correct way to store the active simulations
+class SimulationState:
+    _instance: Optional["SimulationState"] = None
+    _lock = asyncio.Lock()
+    _active_simulations: dict[str, bool] = {}
+
+    def __new__(cls) -> "SimulationState":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._active_simulations = {}
+        return cls._instance
+
+    async def try_acquire_token(self, token: str) -> tuple[bool, str]:
+        async with self._lock:
+            if not token:
+                return False, "Invalid token"
+
+            if self._active_simulations.get(token):
+                return False, "Token is active already"
+
+            self._active_simulations[token] = True
+            return True, "Token is valid"
+
+    async def release_token(self, token: str) -> None:
+        async with self._lock:
+            self._active_simulations.pop(token, None)
+
+    @asynccontextmanager
+    async def start_simulation(self, token: str) -> AsyncIterator[bool]:
+        try:
+            yield True
+        finally:
+            await self.release_token(token)
+
+
+class SimulationManager:
+    def __init__(self) -> None:
+        self.state = SimulationState()
+
+    async def verify_token(self, token: str) -> dict[str, Any]:
+        is_valid, msg = await self.state.try_acquire_token(token)
+        return {"is_valid": is_valid, "msg": msg}
+
+    async def create_simulator(
+        self, env_id: str, agent_ids: list[str]
+    ) -> WebSocketSotopiaSimulator:
+        try:
+            return WebSocketSotopiaSimulator(env_id=env_id, agent_ids=agent_ids)
+        except Exception as e:
+            error_msg = f"Failed to create simulator: {e}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+
+    async def handle_client_message(
+        self,
+        websocket: WebSocket,
+        simulator: WebSocketSotopiaSimulator,
+        message: dict[str, Any],
+        timeout: float = 0.1,
+    ) -> bool:
+        try:
+            msg_type = message.get("type")
+            if msg_type == WSMessageType.FINISH_SIM.value:
+                return True
+            # TODO handle other message types
+            return False
+        except Exception as e:
+            msg = f"Error handling client message: {e}"
+            logger.error(msg)
+            await self.send_error(websocket, ErrorType.INVALID_MESSAGE, msg)
+            return False
+
+    async def run_simulation(
+        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
+    ) -> None:
+        try:
+            async for message in simulator.arun():
+                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
+
+                try:
+                    data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
+                    if await self.handle_client_message(websocket, simulator, data):
+                        break
+                except asyncio.TimeoutError:
+                    continue
+
+        except Exception as e:
+            msg = f"Error running simulation: {e}"
+            logger.error(msg)
+            await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
+        finally:
+            await self.send_message(websocket, WSMessageType.END_SIM, {})
+
+    @staticmethod
+    async def send_message(
+        websocket: WebSocket, msg_type: WSMessageType, data: dict[str, Any]
+    ) -> None:
+        await websocket.send_json({"type": msg_type.value, "data": data})
+
+    @staticmethod
+    async def send_error(
+        websocket: WebSocket, error_type: ErrorType, details: str = ""
+    ) -> None:
+        await websocket.send_json(
+            {
+                "type": WSMessageType.ERROR.value,
+                "data": {"type": error_type.value, "details": details},
+            }
+        )
+
+
+@app.websocket("/ws/simulation")
+async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
+    manager = SimulationManager()
+
+    token_status = await manager.verify_token(token)
+    if not token_status["is_valid"]:
+        await websocket.close(code=1008, reason=token_status["msg"])
+        return
+
+    try:
+        await websocket.accept()
+
+        while True:
+            start_msg = await websocket.receive_json()
+            if start_msg.get("type") != WSMessageType.START_SIM.value:
+                continue
+
+            async with manager.state.start_simulation(token):
+                simulator = await manager.create_simulator(
+                    env_id=start_msg["data"]["env_id"],
+                    agent_ids=start_msg["data"]["agent_ids"],
+                )
+                await manager.run_simulation(websocket, simulator)
+
+    except WebSocketDisconnect:
+        logger.info(f"Client disconnected: {token}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
+    finally:
+        try:
+            await websocket.close()
+        except Exception as e:
+            logger.error(f"Error closing websocket: {e}")
 
 
 if __name__ == "__main__":
