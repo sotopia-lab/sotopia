@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from typing import Literal, cast, Dict
-from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from sotopia.database import (
+    EnvironmentProfile,
+    AgentProfile,
+    EpisodeLog,
+    RelationshipProfile,
+)
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
@@ -8,6 +13,13 @@ from pydantic import BaseModel
 import uvicorn
 
 app = FastAPI()
+
+
+class RelationshipWrapper(BaseModel):
+    agent_1_id: str = ""
+    agent_2_id: str = ""
+    relationship: Literal[0, 1, 2, 3, 4, 5] = 0
+    backstory: str = ""
 
 
 class AgentProfileWrapper(BaseModel):
@@ -98,6 +110,18 @@ async def get_agents(
     return agents_profiles
 
 
+@app.get("/relationship/{agent_1_id}/{agent_2_id}", response_model=str)
+async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
+    relationship_profiles = RelationshipProfile.find(
+        (RelationshipProfile.agent_1_id == agent_1_id)
+        & (RelationshipProfile.agent_2_id == agent_2_id)
+    ).all()
+    assert len(relationship_profiles) == 1
+    relationship_profile = relationship_profiles[0]
+    assert isinstance(relationship_profile, RelationshipProfile)
+    return str(relationship_profile.relationship)
+
+
 @app.get("/episodes/{get_by}/{value}", response_model=list[EpisodeLog])
 async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[EpisodeLog]:
     episodes: list[EpisodeLog] = []
@@ -109,6 +133,15 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     return episodes
 
 
+@app.post("/scenarios/", response_model=str)
+async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
+    scenario_profile = EnvironmentProfile(**scenario.model_dump())
+    scenario_profile.save()
+    pk = scenario_profile.pk
+    assert pk is not None
+    return pk
+
+
 @app.post("/agents/")
 async def create_agent(agent: AgentProfileWrapper) -> str:
     agent_profile = AgentProfile(**agent.model_dump())
@@ -118,11 +151,11 @@ async def create_agent(agent: AgentProfileWrapper) -> str:
     return pk
 
 
-@app.post("/scenarios/", response_model=str)
-async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
-    scenario_profile = EnvironmentProfile(**scenario.model_dump())
-    scenario_profile.save()
-    pk = scenario_profile.pk
+@app.post("/relationship/", response_model=str)
+async def create_relationship(relationship: RelationshipWrapper) -> str:
+    relationship_profile = RelationshipProfile(**relationship.model_dump())
+    relationship_profile.save()
+    pk = relationship_profile.pk
     assert pk is not None
     return pk
 
@@ -147,8 +180,11 @@ async def simulate(simulate_request: SimulateRequest) -> str:
         }
     )
 
-    messages = await arun_one_episode(env=env, agent_list=list(agents.values()))
-    return messages
+    episode_pk = await arun_one_episode(
+        env=env, agent_list=list(agents.values()), only_return_episode_pk=True
+    )
+    assert isinstance(episode_pk, str)
+    return episode_pk
 
 
 @app.delete("/agents/{agent_id}", response_model=str)
@@ -161,6 +197,18 @@ async def delete_agent(agent_id: str) -> str:
 async def delete_scenario(scenario_id: str) -> str:
     EnvironmentProfile.delete(scenario_id)
     return scenario_id
+
+
+@app.delete("/relationship/{relationship_id}", response_model=str)
+async def delete_relationship(relationship_id: str) -> str:
+    RelationshipProfile.delete(relationship_id)
+    return relationship_id
+
+
+@app.delete("/episodes/{episode_id}", response_model=str)
+async def delete_episode(episode_id: str) -> str:
+    EpisodeLog.delete(episode_id)
+    return episode_id
 
 
 active_simulations: Dict[

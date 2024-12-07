@@ -113,7 +113,8 @@ async def arun_one_episode(
     json_in_script: bool = False,
     tag: str | None = None,
     push_to_db: bool = False,
-) -> list[tuple[str, str, Message]]:
+    only_return_episode_pk: bool = False,
+) -> list[tuple[str, str, Message]] | str:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     environment_messages = env.reset(agents=agents, omniscient=omniscient)
     agents.reset()
@@ -207,6 +208,9 @@ async def arun_one_episode(
             epilog.save()
         except Exception as e:
             logging.error(f"Failed to save episode log: {e}")
+        if only_return_episode_pk:
+            assert isinstance(epilog.pk, str)
+            return epilog.pk
     # flatten nested list messages
     return list(itertools.chain(*messages))
 
@@ -309,8 +313,7 @@ async def run_async_server(
         if using_async
         else [await i for i in episode_futures]
     )
-
-    return batch_results
+    return batch_results  # type: ignore
 
 
 async def arun_one_script(
