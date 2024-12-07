@@ -95,28 +95,25 @@ def rendering_episode(episode: EpisodeLog) -> None:
 def rendering_episodes() -> None:
     local_css("./././css/style.css")
 
-    codenames = list(st.session_state.all_codenames.keys())
+    tags = ["gpt-4_gpt-4_v0.0.1_clean"]
+    if "current_episodes" not in st.session_state:
+        st.session_state["current_episodes"] = EpisodeLog.find(
+            EpisodeLog.tag == tags[0]
+        ).all()
 
     def update() -> None:
-        codename_key = st.session_state.selected_codename
-        st.session_state.current_episodes = EpisodeLog.find(
-            EpisodeLog.environment == st.session_state.all_codenames[codename_key]
-        ).all()
+        tag = st.session_state.selected_tag
+        st.session_state.current_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()
 
     with st.container():
         # Dropdown for codename selection
         st.selectbox(
-            "Choose a codename:",
-            codenames,
+            "Choose a tag:",
+            tags,
             index=0,
             on_change=update,
-            key="selected_codename",
+            key="selected_tag",
         )
-
-        # episode = st.selectbox(
-        #     "Which episode would you like to see?",
-        #     [f"{str(i)}-" for i in range(len(st.session_state.current_episodes))],
-        # )
 
         selected_index = st.number_input(
             "Specify the index of the episode to display:",
@@ -134,7 +131,7 @@ def rendering_episodes() -> None:
             environment = EnvironmentProfile.get(episode.environment)
 
             avatar_mapping = {
-                agent_names[0]: "👤",
+                agent_names[0]: "🧔🏻",
                 agent_names[1]: "🧑",
             }
 
