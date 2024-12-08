@@ -8,6 +8,7 @@ from sotopia.database import (
     AgentProfile,
     EnvironmentProfile,
     EpisodeLog,
+    CustomEvaluationDimension,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.messages import SimpleMessage
@@ -40,6 +41,25 @@ def test_create_agent_profile() -> None:
     agent = LLMAgent(uuid_str=pk)
     assert agent.profile == agent_profile
     AgentProfile.delete(pk)
+
+
+def test_create_custom_dimension() -> None:
+    custom_dimension = CustomEvaluationDimension(
+        name="verbosity_custom",
+        description="The verbosity of the conversation",
+        range_low=0,
+        range_high=10,
+    )
+    custom_dimension.save()
+    pk = custom_dimension.pk
+    dimension = CustomEvaluationDimension.get(pk)
+    assert (
+        dimension.name == custom_dimension.name
+        and dimension.description == custom_dimension.description
+        and dimension.range_low == custom_dimension.range_low
+        and dimension.range_high == custom_dimension.range_high
+    )
+    CustomEvaluationDimension.delete(pk)
 
 
 @pytest.fixture
