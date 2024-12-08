@@ -246,8 +246,8 @@ async def arun_one_episode(
     elif only_return_episode_pk:
         async for last_messages in generate_messages():
             pass
-        assert isinstance(last_messages[-1][-1], SimpleMessage)
-        return last_messages[-1][-1].message
+        assert isinstance(last_messages[-1][-1][-1], SimpleMessage)
+        return last_messages[-1][-1][-1].message
     else:
         async for last_messages in generate_messages():
             pass

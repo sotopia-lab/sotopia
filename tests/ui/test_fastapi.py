@@ -134,6 +134,18 @@ def create_mock_data(for_posting: bool = False) -> Generator[None, None, None]:
     except Exception as e:
         print(e)
 
+    try:
+        EpisodeLog.delete("tmppk_episode_log")
+    except Exception as e:
+        print(e)
+
+    try:
+        episodes = EpisodeLog.find(EpisodeLog.tag == "test_tag").all()
+        for episode in episodes:
+            EpisodeLog.delete(episode.pk)
+    except Exception as e:
+        print(e)
+
 
 def test_get_scenarios_all(create_mock_data: Callable[[], None]) -> None:
     response = client.get("/scenarios")
@@ -264,3 +276,27 @@ def test_delete_relationship(create_mock_data: Callable[[], None]) -> None:
     response = client.delete("/relationship/tmppk_relationship")
     assert response.status_code == 200
     assert isinstance(response.json(), str)
+
+
+def test_simulate(create_mock_data: Callable[[], None]) -> None:
+    response = client.post(
+        "/simulate",
+        json={
+            "env_id": "tmppk_env_profile",
+            "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
+            "models": [
+                # "custom/llama3.2:1b@http://localhost:8000/v1",
+                # "custom/llama3.2:1b@http://localhost:8000/v1",
+                # "custom/llama3.2:1b@http://localhost:8000/v1"
+                "gpt-4o-mini",
+                "gpt-4o-mini",
+                "gpt-4o-mini",
+            ],
+            "max_turns": 2,
+            "tag": "test_tag",
+        },
+    )
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+    episode = EpisodeLog.get(response.json())
+    print(episode)

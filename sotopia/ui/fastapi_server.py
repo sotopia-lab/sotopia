@@ -7,6 +7,12 @@ from sotopia.database import (
     RelationshipType,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.envs.evaluators import (
+    RuleBasedTerminatedEvaluator,
+    ReachGoalLLMEvaluator,
+    EvaluationForTwoAgents,
+    SotopiaDimensions,
+)
 from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
@@ -210,24 +216,38 @@ async def create_relationship(relationship: RelationshipWrapper) -> str:
 
 @app.post("/simulate/", response_model=str)
 async def simulate(simulate_request: SimulateRequest) -> str:
+    assert len(simulate_request.models) == 3, "There should be three models"
     env_profile: EnvironmentProfile = EnvironmentProfile.get(pk=simulate_request.env_id)
-    env = ParallelSotopiaEnv(env_profile=env_profile)
-
+    env_params: dict[str, Any] = {
+        "model_name": simulate_request.models[0],
+        "action_order": "round-robin",
+        "evaluators": [
+            RuleBasedTerminatedEvaluator(
+                max_turn_number=simulate_request.max_turns, max_stale_turn=2
+            ),
+        ],
+        "terminal_evaluators": [
+            ReachGoalLLMEvaluator(
+                simulate_request.models[0],
+                EvaluationForTwoAgents[SotopiaDimensions],
+            ),
+        ],
+    }
+    env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
     agents = Agents(
         {
             "agent1": LLMAgent(
                 "agent1",
-                model_name=simulate_request.models[0],
+                model_name=simulate_request.models[1],
                 agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[0]),
             ),
             "agent2": LLMAgent(
                 "agent2",
-                model_name=simulate_request.models[1],
+                model_name=simulate_request.models[2],
                 agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[1]),
             ),
         }
     )
-
     episode_pk = await arun_one_episode(
         env=env,
         agent_list=list(agents.values()),
@@ -236,7 +256,6 @@ async def simulate(simulate_request: SimulateRequest) -> str:
         tag=simulate_request.tag,
     )
     assert isinstance(episode_pk, str)
-    EpisodeLog.delete(episode_pk)
     return episode_pk
 
 
