@@ -17,10 +17,11 @@ class CustomEvaluationDimensionList(JsonModel):
 
 
 class EvaluationDimensionBuilder:
-    '''
+    """
     EvaluationDimensionBuilder is a utility class for creating and managing evaluation dimensions.
     It provides methods to build evaluation dimension models from various inputs such as primary keys, dictionaries, and names.
-    '''
+    """
+
     @staticmethod
     def create_range_validator(
         low: int, high: int
