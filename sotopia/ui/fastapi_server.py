@@ -4,6 +4,7 @@ from sotopia.database import (
     AgentProfile,
     EpisodeLog,
     RelationshipProfile,
+    RelationshipType,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.server import arun_one_episode
@@ -43,6 +44,7 @@ class RelationshipWrapper(BaseModel):
     agent_2_id: str = ""
     relationship: Literal[0, 1, 2, 3, 4, 5] = 0
     backstory: str = ""
+    tag: str = ""
 
 
 class AgentProfileWrapper(BaseModel):
@@ -89,6 +91,7 @@ class SimulateRequest(BaseModel):
     agent_ids: list[str]
     models: list[str]
     max_turns: int
+    tag: str
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -154,7 +157,7 @@ async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
     assert len(relationship_profiles) == 1
     relationship_profile = relationship_profiles[0]
     assert isinstance(relationship_profile, RelationshipProfile)
-    return str(relationship_profile.relationship)
+    return f"{str(relationship_profile.relationship)}: {RelationshipType(relationship_profile.relationship).name}"
 
 
 @app.get("/episodes", response_model=list[EpisodeLog])
@@ -226,36 +229,15 @@ async def simulate(simulate_request: SimulateRequest) -> str:
     )
 
     episode_pk = await arun_one_episode(
-        env=env, agent_list=list(agents.values()), only_return_episode_pk=True
+        env=env,
+        agent_list=list(agents.values()),
+        only_return_episode_pk=True,
+        push_to_db=True,
+        tag=simulate_request.tag,
     )
     assert isinstance(episode_pk, str)
+    EpisodeLog.delete(episode_pk)
     return episode_pk
-
-
-@app.put("/agents/{agent_id}", response_model=str)
-async def update_agent(agent_id: str, agent: AgentProfileWrapper) -> str:
-    try:
-        old_agent = AgentProfile.get(pk=agent_id)
-    except Exception:  # TODO Check the exception type
-        raise HTTPException(
-            status_code=404, detail=f"Agent with id={agent_id} not found"
-        )
-    old_agent.update(**agent.model_dump())  # type: ignore
-    assert old_agent.pk is not None
-    return old_agent.pk
-
-
-@app.put("/scenarios/{scenario_id}", response_model=str)
-async def update_scenario(scenario_id: str, scenario: EnvironmentProfileWrapper) -> str:
-    try:
-        old_scenario = EnvironmentProfile.get(pk=scenario_id)
-    except Exception:  # TODO Check the exception type
-        raise HTTPException(
-            status_code=404, detail=f"Scenario with id={scenario_id} not found"
-        )
-    old_scenario.update(**scenario.model_dump())  # type: ignore
-    assert old_scenario.pk is not None
-    return old_scenario.pk
 
 
 @app.delete("/agents/{agent_id}", response_model=str)
