@@ -1,30 +1,54 @@
-# Evaluation Dimensions API
+# `evaluation_dimensions.py`
 
-## CustomEvaluationDimension
+This module provides classes and utilities for defining and managing custom evaluation dimensions within the Sotopia environment. It includes classes for individual dimensions, lists of dimensions, and a builder for creating dimension models.
 
-The `CustomEvaluationDimension` class is used to define custom evaluation dimensions with specific attributes such as name, description, and score range.
+## Classes
 
-### Attributes
-- `name`: The name of the dimension.
-- `description`: A brief description of the dimension.
-- `range_low`: The minimum score for the dimension.
-- `range_high`: The maximum score for the dimension.
+### `CustomEvaluationDimension`
 
-## CustomEvaluationDimensionList
+Represents a custom evaluation dimension with specific attributes such as name, description, and score range.
 
-The `CustomEvaluationDimensionList` class is used to group multiple custom evaluation dimensions together.
+#### Attributes
+- `name`: `str`. The name of the dimension.
+- `description`: `str`. A brief description of the dimension.
+- `range_low`: `int`. The minimum score for the dimension.
+- `range_high`: `int`. The maximum score for the dimension.
 
-### Attributes
-- `name`: The name of the dimension list.
-- `dimension_pks`: A list of primary keys for the dimensions included in the list.
+### `CustomEvaluationDimensionList`
 
-## EvaluationDimensionBuilder
+Groups multiple custom evaluation dimensions together.
 
-The `EvaluationDimensionBuilder` class provides utility methods to create and manage evaluation dimension models.
+#### Attributes
+- `name`: `str`. The name of the dimension list.
+- `dimension_pks`: `list[str]`. A list of primary keys for the dimensions included in the list.
 
-### Methods
+### `EvaluationDimensionBuilder`
+
+Provides utility methods to create and manage evaluation dimension models.
+
+#### Methods
 - `create_range_validator(low: int, high: int)`: Creates a validator for score ranges.
+  
+  **Arguments:**
+  - `low`: `int`. The minimum score allowed.
+  - `high`: `int`. The maximum score allowed.
+
 - `build_dimension_model(dimension_ids: list[str])`: Builds a dimension model from primary keys.
+  
+  **Arguments:**
+  - `dimension_ids`: `list[str]`. A list of dimension primary keys.
+
 - `build_dimension_model_from_dict(dimensions: list[dict[str, Union[str, int]]])`: Builds a dimension model from a dictionary.
+  
+  **Arguments:**
+  - `dimensions`: `list[dict[str, Union[str, int]]]`. A list of dictionaries specifying dimension attributes.
+
 - `select_existing_dimension_model_by_name(dimension_names: list[str])`: Selects a dimension model by dimension names.
+  
+  **Arguments:**
+  - `dimension_names`: `list[str]`. A list of dimension names.
+
 - `select_existing_dimension_model_by_list_name(list_name: str)`: Selects a dimension model by list name.
+  
+  **Arguments:**
+  - `list_name`: `str`. The name of the dimension list.
