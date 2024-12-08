@@ -36,6 +36,9 @@ The [`EvaluationDimensionBuilder`](/python_API/database/evaluation_dimensions) i
 ### Initialize the database
 The default evaluation metric is still `SotopiaDimensions` in `sotopia.env.evaluators`.There is no `CustomEvaluationDimension` in the database by default. To initialize the database, please refer to `examples/use_custom_dimensions.py`.
 
+### Use the SotopiaDimension
+The `SotopiaDimension` can be used directly without initializing the database. It provides a set of predefined evaluation dimensions that are ready to use for evaluating social interactions.
+
 ### Use the custom evaluation dimensions
 After you initialize your customized evaluation dimensions, you can choose to use any one of these methods provided below:
 
