@@ -10,6 +10,29 @@ In original Sotopia paper, there are 7 dimensions to evaluate the quality of soc
 - financial and material benefits
 - goal
 
+The `SotopiaDimensions` can be used directly without initializing the database. It provides a set of predefined evaluation dimensions that are ready to use for evaluating social interactions. For example,
+
+```python
+from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.envs.evaluators import EvaluationForTwoAgents, ReachGoalLLMEvaluator, RuleBasedTerminatedEvaluator, SotopiaDimensions
+
+env = ParallelSotopiaEnv(
+    env_profile=env_profile,
+        model_name=model_names["env"],
+        action_order="round-robin",
+        evaluators=[
+            RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
+        ],
+        terminal_evaluators=[
+            ReachGoalLLMEvaluator(
+                model_names["env"],
+                EvaluationForTwoAgents[SotopiaDimensions],  # type: ignore
+                # TODO check how to do type annotation
+            ),
+        ],
+    )
+```
+
 
 However we observe under many use cases people may want to evaluate with customized evaluation metrics, so we provide a way to build custom evaluation dimensions.
 For a quick reference, you can directly check out the `examples/use_custom_dimensions.py`.
@@ -36,8 +59,6 @@ The [`EvaluationDimensionBuilder`](/python_API/database/evaluation_dimensions) i
 ### Initialize the database
 The default evaluation metric is still `SotopiaDimensions` in `sotopia.env.evaluators`.There is no `CustomEvaluationDimension` in the database by default. To initialize the database, please refer to `examples/use_custom_dimensions.py`.
 
-### Use the SotopiaDimension
-The `SotopiaDimension` can be used directly without initializing the database. It provides a set of predefined evaluation dimensions that are ready to use for evaluating social interactions.
 
 ### Use the custom evaluation dimensions
 After you initialize your customized evaluation dimensions, you can choose to use any one of these methods provided below:
