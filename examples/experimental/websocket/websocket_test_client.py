@@ -12,8 +12,8 @@ from pathlib import Path
 
 
 class WebSocketClient:
-    def __init__(self, uri: str, token: str, client_id: int):
-        self.uri = uri
+    def __init__(self, url: str, token: str, client_id: int):
+        self.url = url
         self.token = token
         self.client_id = client_id
         self.message_file = Path(f"message_{client_id}.txt")
@@ -25,11 +25,11 @@ class WebSocketClient:
 
     async def connect(self) -> None:
         """Establish and maintain websocket connection"""
-        uri_with_token = f"{self.uri}?token=test_token_{self.client_id}"
+        url_with_token = f"{self.url}?token=test_token_{self.client_id}"
 
         try:
-            async with websockets.connect(uri_with_token) as websocket:
-                print(f"Client {self.client_id}: Connected to {self.uri}")
+            async with websockets.connect(url_with_token) as websocket:
+                print(f"Client {self.client_id}: Connected to {self.url}")
 
                 # Send initial message
                 # Note: You'll need to implement the logic to get agent_ids and env_id
@@ -70,16 +70,16 @@ class WebSocketClient:
 async def main() -> None:
     # Create multiple WebSocket clients
     num_clients = 0
-    uri = "ws://localhost:8800/ws/simulation"
+    url = "ws://localhost:8800/ws/simulation"
 
     # Create and store client instances
     clients = [
-        WebSocketClient(uri=uri, token=f"test_token_{i}", client_id=i)
+        WebSocketClient(url=url, token=f"test_token_{i}", client_id=i)
         for i in range(num_clients)
     ]
-    clients.append(WebSocketClient(uri=uri, token="test_token_10", client_id=10))
+    clients.append(WebSocketClient(url=url, token="test_token_10", client_id=10))
     clients.append(
-        WebSocketClient(uri=uri, token="test_token_10", client_id=10)
+        WebSocketClient(url=url, token="test_token_10", client_id=10)
     )  # test duplicate token
 
     # Create tasks for each client

@@ -1,9 +1,18 @@
+from typing import Literal, cast, Dict
+from sotopia.database import (
+    EnvironmentProfile,
+    AgentProfile,
+    EpisodeLog,
+    RelationshipProfile,
+)
+from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.server import arun_one_episode
+from sotopia.agents import LLMAgent, Agents
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
-from typing import Literal, cast, Optional, Any
+from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
 from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
     WSMessageType,
@@ -27,6 +36,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )  # TODO: Whether allowing CORS for all origins
+
+
+class RelationshipWrapper(BaseModel):
+    agent_1_id: str = ""
+    agent_2_id: str = ""
+    relationship: Literal[0, 1, 2, 3, 4, 5] = 0
+    backstory: str = ""
 
 
 class AgentProfileWrapper(BaseModel):
@@ -66,6 +82,13 @@ class EnvironmentProfileWrapper(BaseModel):
     occupation_constraint: str | None = None
     agent_constraint: list[list[str]] | None = None
     tag: str = ""
+
+
+class SimulateRequest(BaseModel):
+    env_id: str
+    agent_ids: list[str]
+    models: list[str]
+    max_turns: int
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -122,6 +145,18 @@ async def get_agents(
     return agents_profiles
 
 
+@app.get("/relationship/{agent_1_id}/{agent_2_id}", response_model=str)
+async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
+    relationship_profiles = RelationshipProfile.find(
+        (RelationshipProfile.agent_1_id == agent_1_id)
+        & (RelationshipProfile.agent_2_id == agent_2_id)
+    ).all()
+    assert len(relationship_profiles) == 1
+    relationship_profile = relationship_profiles[0]
+    assert isinstance(relationship_profile, RelationshipProfile)
+    return str(relationship_profile.relationship)
+
+
 @app.get("/episodes", response_model=list[EpisodeLog])
 async def get_episodes_all() -> list[EpisodeLog]:
     return EpisodeLog.all()
@@ -143,6 +178,15 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     return episodes
 
 
+@app.post("/scenarios/", response_model=str)
+async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
+    scenario_profile = EnvironmentProfile(**scenario.model_dump())
+    scenario_profile.save()
+    pk = scenario_profile.pk
+    assert pk is not None
+    return pk
+
+
 @app.post("/agents/", response_model=str)
 async def create_agent(agent: AgentProfileWrapper) -> str:
     agent_profile = AgentProfile(**agent.model_dump())
@@ -152,13 +196,40 @@ async def create_agent(agent: AgentProfileWrapper) -> str:
     return pk
 
 
-@app.post("/scenarios/", response_model=str)
-async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
-    scenario_profile = EnvironmentProfile(**scenario.model_dump())
-    scenario_profile.save()
-    pk = scenario_profile.pk
+@app.post("/relationship/", response_model=str)
+async def create_relationship(relationship: RelationshipWrapper) -> str:
+    relationship_profile = RelationshipProfile(**relationship.model_dump())
+    relationship_profile.save()
+    pk = relationship_profile.pk
     assert pk is not None
     return pk
+
+
+@app.post("/simulate/", response_model=str)
+async def simulate(simulate_request: SimulateRequest) -> str:
+    env_profile: EnvironmentProfile = EnvironmentProfile.get(pk=simulate_request.env_id)
+    env = ParallelSotopiaEnv(env_profile=env_profile)
+
+    agents = Agents(
+        {
+            "agent1": LLMAgent(
+                "agent1",
+                model_name=simulate_request.models[0],
+                agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[0]),
+            ),
+            "agent2": LLMAgent(
+                "agent2",
+                model_name=simulate_request.models[1],
+                agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[1]),
+            ),
+        }
+    )
+
+    episode_pk = await arun_one_episode(
+        env=env, agent_list=list(agents.values()), only_return_episode_pk=True
+    )
+    assert isinstance(episode_pk, str)
+    return episode_pk
 
 
 @app.put("/agents/{agent_id}", response_model=str)
@@ -211,6 +282,23 @@ async def delete_scenario(scenario_id: str) -> str:
     EnvironmentProfile.delete(scenario.pk)
     assert scenario.pk is not None
     return scenario.pk
+
+
+@app.delete("/relationship/{relationship_id}", response_model=str)
+async def delete_relationship(relationship_id: str) -> str:
+    RelationshipProfile.delete(relationship_id)
+    return relationship_id
+
+
+@app.delete("/episodes/{episode_id}", response_model=str)
+async def delete_episode(episode_id: str) -> str:
+    EpisodeLog.delete(episode_id)
+    return episode_id
+
+
+active_simulations: Dict[
+    str, bool
+] = {}  # TODO check whether this is the correct way to store the active simulations
 
 
 @app.get("/models", response_model=list[str])

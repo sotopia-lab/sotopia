@@ -119,10 +119,12 @@ async def arun_one_episode(
     json_in_script: bool = False,
     tag: str | None = None,
     push_to_db: bool = False,
+    only_return_episode_pk: bool = False,
     streaming: bool = False,
 ) -> Union[
     list[tuple[str, str, Message]],
     AsyncGenerator[list[list[tuple[str, str, Message]]], None],
+    str,
 ]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
 
@@ -231,9 +233,21 @@ async def arun_one_episode(
                 epilog.save()
             except Exception as e:
                 logging.error(f"Failed to save episode log: {e}")
+            if only_return_episode_pk:
+                # save the episode pk to the last message
+                assert isinstance(epilog.pk, str)
+                messages.append(
+                    [("Evaluation", "Episode PK", SimpleMessage(message=epilog.pk))]
+                )
+                yield messages
 
     if streaming:
         return generate_messages()
+    elif only_return_episode_pk:
+        async for last_messages in generate_messages():
+            pass
+        assert isinstance(last_messages[-1][-1], SimpleMessage)
+        return last_messages[-1][-1].message
     else:
         async for last_messages in generate_messages():
             pass
