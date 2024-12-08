@@ -52,7 +52,7 @@ def test_create_custom_dimension() -> None:
     )
     custom_dimension.save()
     pk = custom_dimension.pk
-    dimension = CustomEvaluationDimension(uuid_str=pk)
+    dimension = CustomEvaluationDimension.get(pk)
     assert (
         dimension.name == custom_dimension.name
         and dimension.description == custom_dimension.description
