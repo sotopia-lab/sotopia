@@ -15,7 +15,7 @@ local_css("./css/style.css")
 def display_scenarios() -> None:
     st.title("Scenarios")
 
-    response = requests.get("http://localhost:8000/scenarios")
+    response = requests.get(f"{st.session_state.API_BASE}/scenarios")
     scenarios = response.json() if response.status_code == 200 else []
 
     col1, col2 = st.columns(2, gap="medium")

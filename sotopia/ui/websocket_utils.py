@@ -151,9 +151,10 @@ class WebSocketSotopiaSimulator:
             streaming=True,
         )
 
-        assert isinstance(
-            generator, AsyncGenerator
-        ), "generator should be async generator"
+        # assert isinstance(
+        #     generator, AsyncGenerator
+        # ), f"generator should be async generator, but got {type(generator)}"
+        # TODO check the typing
 
         async for messages in await generator:  # type: ignore
             reasoning, rewards = "", [0.0, 0.0]

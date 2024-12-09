@@ -4,6 +4,10 @@ import streamlit as st
 
 from sotopia.ui.streamlit_ui.utils import reset_database
 
+PORT = 8800
+st.session_state.API_BASE = f"http://localhost:{PORT}"
+st.session_state.WS_BASE = f"ws://localhost:{PORT}"
+
 
 def update_database_callback() -> None:
     new_database_url = st.session_state.new_database_url
@@ -38,7 +42,17 @@ display_characters = st.Page(
 )
 
 display_chat = st.Page(
-    "./pages/render_chat_websocket.py", title="Simulation", icon=":material/add:"
+    "./pages/render_chat_websocket_simplified.py",
+    title="Simulation",
+    icon=":material/add:",
+)
+
+add_characters = st.Page(
+    "./pages/add_characters.py", title="Add Characters", icon=":material/add:"
+)
+
+add_scenarios = st.Page(
+    "./pages/add_scenarios.py", title="Add Scenarios", icon=":material/add:"
 )
 
 pg = st.navigation(
@@ -48,6 +62,8 @@ pg = st.navigation(
         display_episodes,
         display_characters,
         display_chat,
+        add_characters,
+        add_scenarios,
     ]
 )
 
