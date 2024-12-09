@@ -15,9 +15,9 @@ from sotopia.generation_utils.generate import StrOutputParser
 
 # Check Python version
 if sys.version_info >= (3, 11):
-    pass
+    from typing import Self
 else:
-    pass
+    from typing_extensions import Self
 
 # Configure logging
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -98,7 +98,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             )
 
 
-
 @NodeFactory.register("dummy_agent")
 class DummyAgent(BaseAgent[Observation, AgentAction]):
     def __init__(
@@ -128,6 +127,12 @@ class DummyAgent(BaseAgent[Observation, AgentAction]):
         ## TODO: akhatua Fix the mapping of action to be gramatically correct
         return "\n".join(message.to_natural_language() for message in message_history)
 
+    async def __aenter__(self) -> Self:
+        await asyncio.sleep(
+            random.randint(1, 7)
+        )  # simulate the time it takes to start up the agent
+        return await super().__aenter__()
+
     async def aact(self, obs: Observation) -> AgentAction:
         self.message_history.append(obs)
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
@@ -135,9 +140,11 @@ class DummyAgent(BaseAgent[Observation, AgentAction]):
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="none",
-                argument=self.model_name, #change #1: agent will return its model name to moderator for record
+                argument=self.model_name,  # change #1: agent will return its model name to moderator for record
             )
-        elif len(obs.available_actions) == 1 and "leave" in obs.available_actions:  #change #2: agent will leave on receiving leave message
+        elif (
+            len(obs.available_actions) == 1 and "leave" in obs.available_actions
+        ):  # change #2: agent will leave on receiving leave message
             self.shutdown_event.set()
             return AgentAction(
                 agent_name=self.name,
@@ -146,10 +153,9 @@ class DummyAgent(BaseAgent[Observation, AgentAction]):
                 argument="",
             )
         else:
-            history = self._format_message_history(self.message_history)
-            await asyncio.sleep(random.randint(2,5)) #simulate API call
-            action: str = f"I am {self.name}" #dummy will only return his name back
-            
+            await asyncio.sleep(random.randint(2, 5))  # simulate API call
+            action: str = f"I am {self.name}"  # dummy will only return his name back
+
             return AgentAction(
                 agent_name=self.name,
                 output_channel=self.output_channel,

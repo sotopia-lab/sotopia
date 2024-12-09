@@ -68,26 +68,29 @@ class Moderator(BaseAgent[AgentAction, Observation]):
         self.current_agent_index: int = 0
         self.scenario: str = scenario
         self.agents: list[str] = list(agent_mapping.values())
-        self.agent_models: dict[str,str] = {}
-        self.agents_awake: dict[str,bool] = {name:False for name in self.agents}
-        self.all_agents_awake:asyncio.Event = asyncio.Event()
-        self.message_history:list[list[tuple[str, str, str]]] = [[("Environment","Environment",self.scenario)]]
+        self.agent_models: dict[str, str] = {}
+        self.agents_awake: dict[str, bool] = {name: False for name in self.agents}
+        self.all_agents_awake: asyncio.Event = asyncio.Event()
+        self.message_history: list[list[tuple[str, str, str]]] = [
+            [("Environment", "Environment", self.scenario)]
+        ]
 
     async def send(self, action: Observations) -> None:
         for output_channel, output_channel_type in self.output_channel_types.items():
-            await self.r.publish(
-                output_channel,
-                Message[output_channel_type](
-                    data=action.observations_map[output_channel]
-                ).model_dump_json(),  # type:ignore[valid-type]
-            )
+            if output_channel in action.observations_map:
+                await self.r.publish(
+                    output_channel,
+                    Message[output_channel_type](  # type:ignore[valid-type]
+                        data=action.observations_map[output_channel]
+                    ).model_dump_json(),
+                )
 
     async def __aenter__(self) -> Self:
         print(self.scenario)
         asyncio.create_task(self.booting())
         self.task_scheduler = asyncio.create_task(self._task_scheduler())
         return await super().__aenter__()
-    
+
     async def _task_scheduler(self) -> None:
         await self.all_agents_awake.wait()
         return await super()._task_scheduler()
@@ -99,7 +102,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
         - if further information of the agents are needed, should be communicated through the booting process
         2. after all agents are awake, send agent[0] a message to allow the agent to start speaking
         """
-        while not self.all_agents_awake.set():
+        while not self.all_agents_awake.is_set():
             await self.send(
                 Observations(
                     observations_map={
@@ -118,19 +121,19 @@ class Moderator(BaseAgent[AgentAction, Observation]):
                 agent_action = await self.observation_queue.get()
                 self.agents_awake[agent_action.agent_name] = True
                 self.agent_models[agent_action.agent_name] = agent_action.argument
-            if not (False in self.agents_awake.values()):
+            if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
-        
+
         for output_channel, agent_name in self.agent_mapping.items():
             if agent_name == self.agents[0]:
-                self.send(
+                await self.send(
                     Observations(
                         observations_map={
                             output_channel: Observation(
                                 agent_name="moderator",
                                 last_turn=self.scenario,
                                 turn_number=0,
-                                available_actions=self.available_actions 
+                                available_actions=self.available_actions,
                             )
                         }
                     )
@@ -139,51 +142,69 @@ class Moderator(BaseAgent[AgentAction, Observation]):
         self.current_agent_index += 1
 
     async def save(self) -> None:
-        '''
+        """
         save the EpisodeLog to redis, without evaluating
         TODO: specify what to be added inside tag
         TODO: update the code so that EpisodeLog.render_for_humans() can work
             -currently it cannot work because no AgentProfile has been uploaded to redis
             -such a process should be done back in the agents' end
             -also the current agentslist is consist of names, but not uuid's of agents
-        '''
+        """
         epilog = EpisodeLog(
-                environment=self.scenario,
-                agents=self.agents,
-                tag=None,
-                models=list(self.agent_models.values()),
-                messages=self.message_history,
-                reasoning = "",
-                rewards = [0]*len(self.agents),
-                rewards_prompt = ""
-            )
+            environment=self.scenario,
+            agents=self.agents,
+            tag=None,
+            models=list(self.agent_models.values()),
+            messages=self.message_history,
+            reasoning="",
+            rewards=[0] * len(self.agents),
+            rewards_prompt="",
+        )
         epilog.save()
         # print(epilog.render_for_humans())
 
-
     async def aact(self, agent_action: AgentAction) -> Observations | None:
-        if len(self.message_history) == 1 :
-            self.message_history[0].append((agent_action.agent_name,"Environment",agent_action.to_natural_language()))
-        else:
-            self.message_history.append([(agent_action.agent_name,"Environment",agent_action.to_natural_language())])
+        if agent_action.action_type == "none":
+            return None
 
-        if self.turn_number < self.max_turns:  # minor changes: from 20 to self.max_turns
+        if len(self.message_history) == 1:
+            self.message_history[0].append(
+                (
+                    agent_action.agent_name,
+                    "Environment",
+                    agent_action.to_natural_language(),
+                )
+            )
+        else:
+            self.message_history.append(
+                [
+                    (
+                        agent_action.agent_name,
+                        "Environment",
+                        agent_action.to_natural_language(),
+                    )
+                ]
+            )
+
+        if (
+            self.turn_number < self.max_turns
+        ):  # minor changes: from 20 to self.max_turns
             self.turn_number += 1
         else:
             await self.save()
             self.shutdown_event.set()
-            return  Observations(
-                    observations_map={
-                        output_channel: Observation(
-                            agent_name="moderator",
-                            last_turn=self.scenario,
-                            turn_number=self.turn_number+1,
-                            available_actions=["leave"],
-                        )
-                        for output_channel, agent_name in self.agent_mapping.items()
-                    }
-                )
-        
+            return Observations(
+                observations_map={
+                    output_channel: Observation(
+                        agent_name="moderator",
+                        last_turn=self.scenario,
+                        turn_number=self.turn_number + 1,
+                        available_actions=["leave"],
+                    )
+                    for output_channel, agent_name in self.agent_mapping.items()
+                }
+            )
+
         observations_map: dict[str, Observation] = {}
         for output_channel, output_channel_type in self.output_channel_types.items():
             agent_name = self.agent_mapping[output_channel]
