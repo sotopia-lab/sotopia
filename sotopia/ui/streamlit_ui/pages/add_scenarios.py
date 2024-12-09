@@ -29,19 +29,20 @@ class RelationshipType(IntEnum):
     romantic_relationship = 4
     family_member = 5
 
-The age constraint of the environment, a list of tuples, each tuple is a range of age, e.g., '[(18, 25), (30, 40)]' 
+The age constraint of the environment, a list of tuples, each tuple is a range of age, e.g., '[(18, 25), (30, 40)]'
 means the environment is only available to agent one between 18 and 25, and agent two between 30 and 40
 """
 
 import streamlit as st
 from sotopia.ui.fastapi_server import EnvironmentProfileWrapper
-from sotopia.database import EnvironmentProfile, RelationshipType
+from sotopia.database import RelationshipType
 import requests
+
 
 def local_css(file_name: str) -> None:
     with open(file_name) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    
+
 
 def rendering_scenario_form() -> None:
     local_css("././css/style.css")
@@ -65,7 +66,7 @@ def rendering_scenario_form() -> None:
         list(relationship_mapping.keys()),
     )
     relationship = relationship_mapping[selected_relationship]
-    
+
     # first choose whether to use age constraint and then choose age range
     use_age_constraint = st.checkbox("Use Age Constraint")
     if use_age_constraint:
@@ -78,7 +79,9 @@ def rendering_scenario_form() -> None:
         age_constraint = None
 
     # first choose whether to use occupation constraint and then choose occupation
-    use_occupation_constraint = st.checkbox("Use Occupation Constraint, use comma to separate multiple occupations")
+    use_occupation_constraint = st.checkbox(
+        "Use Occupation Constraint, use comma to separate multiple occupations"
+    )
     if use_occupation_constraint:
         occupation = st.text_input("Occupation")
         occupation_constraint = f"[{occupation}]"
@@ -115,6 +118,6 @@ def rendering_scenario_form() -> None:
                 f"{st.session_state.API_BASE}/scenarios/id/{scenario_id}"
             )
             st.write(retrieved_scenario.json())
-        
+
 
 rendering_scenario_form()

@@ -1,6 +1,5 @@
-
 """
-Definition 
+Definition
 @app.post("/agents/", response_model=str)
 async def create_agent(agent: AgentProfileWrapper) -> str:
     agent_profile = AgentProfile(**agent.model_dump())
@@ -36,9 +35,11 @@ import requests
 from sotopia.ui.fastapi_server import AgentProfileWrapper
 # add fields for agent profiles
 
+
 def local_css(file_name: str) -> None:
     with open(file_name) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 
 def rendering_character_form() -> None:
     local_css("././css/style.css")
@@ -72,7 +73,7 @@ def rendering_character_form() -> None:
 
         if response.status_code != 200:
             st.error("Failed to create character. Error message: " + response.text)
-        
+
         else:
             agent_id = response.json()
             st.success("Character created successfully! ID: " + agent_id)
@@ -80,5 +81,6 @@ def rendering_character_form() -> None:
                 f"{st.session_state.API_BASE}/agents/id/{agent_id}"
             )
             st.write(retrieved_agent.json())
+
 
 rendering_character_form()

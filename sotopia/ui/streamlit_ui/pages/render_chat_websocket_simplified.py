@@ -6,21 +6,26 @@ import aiohttp
 import requests
 import streamlit as st
 
+
 def get_scenarios() -> dict[str, dict[Any, Any]]:
     with requests.get(f"{st.session_state.API_BASE}/scenarios") as resp:
         scenarios = resp.json()
     return {scenario["codename"]: scenario for scenario in scenarios}
 
+
 def get_agents() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
     with requests.get(f"{st.session_state.API_BASE}/agents") as resp:
         agents = resp.json()
-    return {f"{agent['first_name']} {agent['last_name']}": agent for agent in agents}, \
-           {f"{agent['first_name']} {agent['last_name']}": agent for agent in agents}
+    return {f"{agent['first_name']} {agent['last_name']}": agent for agent in agents}, {
+        f"{agent['first_name']} {agent['last_name']}": agent for agent in agents
+    }
+
 
 def get_models() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
     with requests.get(f"{st.session_state.API_BASE}/models") as resp:
         models = resp.json()
     return {model: model for model in models}, {model: model for model in models}
+
 
 async def websocket_client(url: str, initial_message: dict, timeout: int = 300) -> None:
     start_time = time.time()
@@ -29,7 +34,7 @@ async def websocket_client(url: str, initial_message: dict, timeout: int = 300) 
             async with session.ws_connect(url) as ws:
                 # Send initial message
                 await ws.send_str(json.dumps(initial_message))
-                
+
                 # Receive messages until timeout
                 while time.time() - start_time < timeout:
                     try:
@@ -37,7 +42,10 @@ async def websocket_client(url: str, initial_message: dict, timeout: int = 300) 
                         if msg.type == aiohttp.WSMsgType.TEXT:
                             data = json.loads(msg.data)
                             handle_message(data)
-                        elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                        elif msg.type in (
+                            aiohttp.WSMsgType.CLOSED,
+                            aiohttp.WSMsgType.ERROR,
+                        ):
                             break
                     except asyncio.TimeoutError:
                         continue
@@ -49,20 +57,26 @@ async def websocket_client(url: str, initial_message: dict, timeout: int = 300) 
     finally:
         st.session_state.active = False
 
+
 def initialize_session_state() -> None:
     if "active" not in st.session_state:
         st.session_state.scenarios = get_scenarios()
         st.session_state.agent_list_1, st.session_state.agent_list_2 = get_agents()
         st.session_state.agent_model_1, st.session_state.agent_model_2 = get_models()
-        
+
         st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
         st.session_state.agent_choice_1 = list(st.session_state.agent_list_1.keys())[0]
         st.session_state.agent_choice_2 = list(st.session_state.agent_list_2.keys())[0]
-        st.session_state.agent1_model_choice = list(st.session_state.agent_model_1.keys())[0]
-        st.session_state.agent2_model_choice = list(st.session_state.agent_model_2.keys())[0]
-        
+        st.session_state.agent1_model_choice = list(
+            st.session_state.agent_model_1.keys()
+        )[0]
+        st.session_state.agent2_model_choice = list(
+            st.session_state.agent_model_2.keys()
+        )[0]
+
         st.session_state.messages = []
         st.session_state.active = False
+
 
 def handle_message(message: dict[str, Any]) -> None:
     match message["type"]:
@@ -80,35 +94,39 @@ def handle_message(message: dict[str, Any]) -> None:
             print(f"Error in message: {message['data']}")
             st.error(f"Error: {message['data']}")
 
+
 def start_simulation() -> None:
     if st.session_state.agent_choice_1 == st.session_state.agent_choice_2:
         st.error("Please select different agents")
         return
-        
+
     st.session_state.active = True
     st.session_state.messages = []
-    
+
     initial_message = {
         "type": "START_SIM",
         "data": {
-            "env_id": st.session_state.scenarios[st.session_state.scenario_choice]["pk"],
+            "env_id": st.session_state.scenarios[st.session_state.scenario_choice][
+                "pk"
+            ],
             "agent_ids": [
                 st.session_state.agent_list_1[st.session_state.agent_choice_1]["pk"],
-                st.session_state.agent_list_2[st.session_state.agent_choice_2]["pk"]
+                st.session_state.agent_list_2[st.session_state.agent_choice_2]["pk"],
             ],
             "agent_models": [
                 st.session_state.agent_model_1[st.session_state.agent1_model_choice],
-                st.session_state.agent_model_2[st.session_state.agent2_model_choice]
-            ]
-        }
+                st.session_state.agent_model_2[st.session_state.agent2_model_choice],
+            ],
+        },
     }
-    
-    asyncio.run(websocket_client(
-        f"{st.session_state.WS_BASE}/ws/simulation?token=demo-token",
-        initial_message,
-        timeout=20 
-    ))
 
+    asyncio.run(
+        websocket_client(
+            f"{st.session_state.WS_BASE}/ws/simulation?token=demo-token",
+            initial_message,
+            timeout=20,
+        )
+    )
 
 
 def chat_demo() -> None:
@@ -120,42 +138,42 @@ def chat_demo() -> None:
                 "Choose a scenario:",
                 st.session_state.scenarios.keys(),
                 key="scenario_choice",
-                disabled=st.session_state.active
+                disabled=st.session_state.active,
             )
-            
+
             col1, col2 = st.columns(2)
             with col1:
                 st.selectbox(
                     "Choose Agent 1:",
                     st.session_state.agent_list_1.keys(),
                     key="agent_choice_1",
-                    disabled=st.session_state.active
+                    disabled=st.session_state.active,
                 )
                 st.selectbox(
                     "Agent 1 Model:",
                     st.session_state.agent_model_1.keys(),
                     key="agent1_model_choice",
-                    disabled=st.session_state.active
+                    disabled=st.session_state.active,
                 )
-            
+
             with col2:
                 st.selectbox(
                     "Choose Agent 2:",
                     st.session_state.agent_list_2.keys(),
                     key="agent_choice_2",
-                    disabled=st.session_state.active
+                    disabled=st.session_state.active,
                 )
                 st.selectbox(
                     "Agent 2 Model:",
                     st.session_state.agent_model_2.keys(),
                     key="agent2_model_choice",
-                    disabled=st.session_state.active
+                    disabled=st.session_state.active,
                 )
 
         st.button(
             "Start Simulation",
             disabled=st.session_state.active,
-            on_click=start_simulation
+            on_click=start_simulation,
         )
 
     chat_container = st.container()
@@ -166,5 +184,6 @@ def chat_demo() -> None:
 
     with chat_container:
         st.write(st.session_state.messages)
+
 
 chat_demo()
