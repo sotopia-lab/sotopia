@@ -2,6 +2,14 @@
 > [!CAUTION]
 > Work in progress: the API endpoints are being implemented. And will be released in the future major version.
 
+## Streamlit UI
+To run the Streamlit UI, run the following command:
+```bash
+cd sotopia/ui/streamlit_ui
+uv run streamlit run app.py
+```
+
+
 ## FastAPI Server
 
 The API server is a FastAPI application that is used to connect the Sotopia UI to the Sotopia backend.

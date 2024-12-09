@@ -40,6 +40,8 @@ examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 api = [
     "fastapi[standard]",
     "uvicorn",
+    "streamlit",
+    "websockets"
 ]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 
