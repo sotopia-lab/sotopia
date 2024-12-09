@@ -1,4 +1,4 @@
-from typing import Literal, cast, Dict
+from typing import Literal, cast, Dict, Self
 from sotopia.database import (
     EnvironmentProfile,
     AgentProfile,
@@ -18,7 +18,7 @@ from sotopia.agents import LLMAgent, Agents
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator, field_validator
 
 from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
@@ -98,6 +98,25 @@ class SimulateRequest(BaseModel):
     models: list[str]
     max_turns: int
     tag: str
+
+    @field_validator("agent_ids")
+    @classmethod
+    def validate_agent_ids(cls, v: list[str]) -> list[str]:
+        if len(v) != 2:
+            raise ValueError(
+                "Currently only 2 agents are supported, we are working on supporting more agents"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def validate_models(self) -> Self:
+        models = self.models
+        agent_ids = self.agent_ids
+        if len(models) != len(agent_ids) + 1:
+            raise ValueError(
+                f"models must have exactly {len(agent_ids) + 1} elements, if there are {len(agent_ids)} agents, the first model is the evaluator model"
+            )
+        return self
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -216,8 +235,30 @@ async def create_relationship(relationship: RelationshipWrapper) -> str:
 
 @app.post("/simulate/", response_model=str)
 async def simulate(simulate_request: SimulateRequest) -> str:
-    assert len(simulate_request.models) == 3, "There should be three models"
-    env_profile: EnvironmentProfile = EnvironmentProfile.get(pk=simulate_request.env_id)
+    try:
+        env_profile: EnvironmentProfile = EnvironmentProfile.get(
+            pk=simulate_request.env_id
+        )
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Environment with id={simulate_request.env_id} not found",
+        )
+    try:
+        agent_1_profile = AgentProfile.get(pk=simulate_request.agent_ids[0])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulate_request.agent_ids[0]} not found",
+        )
+    try:
+        agent_2_profile = AgentProfile.get(pk=simulate_request.agent_ids[1])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulate_request.agent_ids[1]} not found",
+        )
+
     env_params: dict[str, Any] = {
         "model_name": simulate_request.models[0],
         "action_order": "round-robin",
@@ -239,12 +280,12 @@ async def simulate(simulate_request: SimulateRequest) -> str:
             "agent1": LLMAgent(
                 "agent1",
                 model_name=simulate_request.models[1],
-                agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[0]),
+                agent_profile=agent_1_profile,
             ),
             "agent2": LLMAgent(
                 "agent2",
                 model_name=simulate_request.models[2],
-                agent_profile=AgentProfile.get(pk=simulate_request.agent_ids[1]),
+                agent_profile=agent_2_profile,
             ),
         }
     )
