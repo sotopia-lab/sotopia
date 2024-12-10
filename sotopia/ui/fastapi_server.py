@@ -38,8 +38,10 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 import logging
+from fastapi.responses import Response
 
 logger = logging.getLogger(__name__)
+
 
 app = FastAPI()
 
@@ -53,6 +55,7 @@ app.add_middleware(
 
 
 class RelationshipWrapper(BaseModel):
+    pk: str = ""
     agent_1_id: str = ""
     agent_2_id: str = ""
     relationship: Literal[0, 1, 2, 3, 4, 5] = 0
@@ -65,6 +68,7 @@ class AgentProfileWrapper(BaseModel):
     Wrapper for AgentProfile to avoid pydantic v2 issues
     """
 
+    pk: str = ""
     first_name: str
     last_name: str
     age: int = 0
@@ -88,6 +92,7 @@ class EnvironmentProfileWrapper(BaseModel):
     Wrapper for EnvironmentProfile to avoid pydantic v2 issues
     """
 
+    pk: str = ""
     codename: str
     source: str = ""
     scenario: str = ""
@@ -243,7 +248,7 @@ async def create_relationship(relationship: RelationshipWrapper) -> str:
 @app.post("/simulate/", response_model=str)
 async def simulate(
     simulate_request: SimulateRequest, background_tasks: BackgroundTasks
-) -> str:
+) -> Response:
     try:
         env_profile: EnvironmentProfile = EnvironmentProfile.get(
             pk=simulate_request.env_id
@@ -314,7 +319,7 @@ async def simulate(
             status="Started",
         )
         simulation_status.save()
-
+        print(f"Starting background task for {simulate_request.tag}")
         background_tasks.add_task(
             arun_one_episode,
             env=env,
@@ -330,7 +335,16 @@ async def simulate(
         setattr(simulation_status, "status", "Error")
         simulation_status.save()
     assert isinstance(episode_pk, str)
-    return episode_pk
+    return Response(content=episode_pk, status_code=202)
+
+
+@app.get("/simulation_status/{episode_pk}", response_model=str)
+async def get_simulation_status(episode_pk: str) -> str:
+    status = NonStreamingSimulationStatus.find(
+        NonStreamingSimulationStatus.episode_pk == episode_pk
+    ).all()[0]
+    assert isinstance(status, NonStreamingSimulationStatus)
+    return status.status
 
 
 @app.delete("/agents/{agent_id}", response_model=str)

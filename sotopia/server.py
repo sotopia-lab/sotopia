@@ -127,6 +127,7 @@ async def arun_one_episode(
     AsyncGenerator[list[list[tuple[str, str, Message]]], None],
 ]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
+    print(f"Running episode with tag: {tag}------------------")
 
     async def generate_messages() -> (
         AsyncGenerator[list[list[tuple[str, str, Message]]], None]
@@ -231,12 +232,12 @@ async def arun_one_episode(
         if push_to_db:
             try:
                 if episode_pk:
-                    setattr(epilog, "pk", episode_pk)
+                    epilog.pk = episode_pk
                     epilog.save()
                 else:
                     epilog.save()
                 if simulation_status:
-                    setattr(simulation_status, "status", "Completed")
+                    simulation_status.status = "Completed"
                     simulation_status.save()
             except Exception as e:
                 logging.error(f"Failed to save episode log: {e}")
