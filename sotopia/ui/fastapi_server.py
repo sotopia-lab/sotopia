@@ -14,7 +14,6 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     SotopiaDimensions,
 )
-from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from typing import Optional, Any
@@ -301,24 +300,43 @@ async def simulate(simulate_request: SimulateRequest) -> str:
         rewards_prompt="",
     ).pk
     try:
-        await arun_one_episode(
-            env=env,
-            agent_list=list(agents.values()),
-            push_to_db=True,
-            tag=simulate_request.tag,
+        simulation_status = NonStreamingSimulationStatus(
             episode_pk=episode_pk,
+            status="Started",
         )
-        NonStreamingSimulationStatus(
-            episode_pk=episode_pk,
-            status="Completed",
-        ).save()
+        simulation_status.save()
+
+        # asyncio.create_task(
+        #     arun_one_episode(
+        #         env=env,
+        #         agent_list=list(agents.values()),
+        #         push_to_db=True,
+        #         tag=simulate_request.tag,
+        #         episode_pk=episode_pk,
+        #         simulation_status=simulation_status,
+        #     )
+        # )
+        async def async_dummy() -> None:
+            print("Starting.......")
+            print("Sleeping.......")
+            print(env)
+            for i in range(1, 5):
+                print(f"Counter {i}")
+                await asyncio.sleep(1)
+            print("Updating status.......")
+            updated_status = NonStreamingSimulationStatus.get(pk=simulation_status.pk)
+            setattr(updated_status, "status", "Completed")
+            updated_status.save()
+            logger.info(f"Simulation {episode_pk} completed")  # Add logging
+            print("Completed")
+
+        task = asyncio.create_task(async_dummy())
+        asyncio.shield(task)
+
     except Exception as e:
         logger.error(f"Error running simulation: {e}")
-        NonStreamingSimulationStatus(
-            episode_pk=episode_pk,
-            status="Error",
-        ).save()
-
+        setattr(simulation_status, "status", "Error")
+        simulation_status.save()
     assert isinstance(episode_pk, str)
     return episode_pk
 

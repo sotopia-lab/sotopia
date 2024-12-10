@@ -15,7 +15,7 @@ from sotopia.agents import (
     ScriptWritingAgent,
 )
 from sotopia.agents.base_agent import BaseAgent
-from sotopia.database import EpisodeLog
+from sotopia.database import EpisodeLog, NonStreamingSimulationStatus
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
@@ -121,6 +121,7 @@ async def arun_one_episode(
     push_to_db: bool = False,
     episode_pk: str | None = None,
     streaming: bool = False,
+    simulation_status: NonStreamingSimulationStatus | None = None,
 ) -> Union[
     list[tuple[str, str, Message]],
     AsyncGenerator[list[list[tuple[str, str, Message]]], None],
@@ -234,6 +235,9 @@ async def arun_one_episode(
                     epilog.save()
                 else:
                     epilog.save()
+                if simulation_status:
+                    setattr(simulation_status, "status", "Completed")
+                    simulation_status.save()
             except Exception as e:
                 logging.error(f"Failed to save episode log: {e}")
 

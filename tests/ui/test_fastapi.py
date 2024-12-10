@@ -10,6 +10,7 @@ from sotopia.messages import SimpleMessage
 from sotopia.ui.fastapi_server import app
 import pytest
 from typing import Generator, Callable
+import time
 
 client = TestClient(app)
 
@@ -299,11 +300,26 @@ def test_simulate(create_mock_data: Callable[[], None]) -> None:
     )
     assert response.status_code == 200
     assert isinstance(response.json(), str)
-    episode = EpisodeLog.get(response.json())
-    try:
-        status = NonStreamingSimulationStatus.get(episode.pk)
-        assert status.status == "Completed"
-        NonStreamingSimulationStatus.delete(episode.pk)
-    except Exception as e:
-        print(e)
-    print(episode)
+    max_retries = 20
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            status = NonStreamingSimulationStatus.find(
+                NonStreamingSimulationStatus.episode_pk == response.json()
+            ).all()[0]
+            assert isinstance(status, NonStreamingSimulationStatus)
+            print(status)
+            if status.status == "Error":
+                raise Exception("Error running simulation")
+            elif status.status == "Completed":
+                EpisodeLog.get(response.json())
+                break
+            # Status is "Started", keep polling
+            time.sleep(1)
+            retry_count += 1
+        except Exception as e:
+            print(f"Error checking simulation status: {e}")
+            time.sleep(1)
+            retry_count += 1
+    else:
+        raise TimeoutError("Simulation timed out after 10 retries")
