@@ -1,10 +1,18 @@
 import asyncio
 import json
 from typing import Any
-import time
+
 import aiohttp
 import requests
 import streamlit as st
+
+from sotopia.ui.streamlit_ui.utils import get_abstract
+
+chat_container = st.empty()
+
+
+def compose_agent_names(agent_dict: dict[Any, Any]) -> str:
+    return f"{agent_dict['first_name']} {agent_dict['last_name']}"
 
 
 def get_scenarios() -> dict[str, dict[Any, Any]]:
@@ -16,8 +24,8 @@ def get_scenarios() -> dict[str, dict[Any, Any]]:
 def get_agents() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
     with requests.get(f"{st.session_state.API_BASE}/agents") as resp:
         agents = resp.json()
-    return {f"{agent['first_name']} {agent['last_name']}": agent for agent in agents}, {
-        f"{agent['first_name']} {agent['last_name']}": agent for agent in agents
+    return {compose_agent_names(agent): agent for agent in agents}, {
+        compose_agent_names(agent): agent for agent in agents
     }
 
 
@@ -27,43 +35,14 @@ def get_models() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
     return {model: model for model in models}, {model: model for model in models}
 
 
-async def websocket_client(url: str, initial_message: dict, timeout: int = 300) -> None:
-    start_time = time.time()
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.ws_connect(url) as ws:
-                # Send initial message
-                await ws.send_str(json.dumps(initial_message))
-
-                # Receive messages until timeout
-                while time.time() - start_time < timeout:
-                    try:
-                        msg = await ws.receive(timeout=1.0)
-                        if msg.type == aiohttp.WSMsgType.TEXT:
-                            data = json.loads(msg.data)
-                            handle_message(data)
-                        elif msg.type in (
-                            aiohttp.WSMsgType.CLOSED,
-                            aiohttp.WSMsgType.ERROR,
-                        ):
-                            break
-                    except asyncio.TimeoutError:
-                        continue
-                    except Exception as e:
-                        print(f"Error receiving message: {e}")
-                        break
-    except Exception as e:
-        print(f"WebSocket connection error: {e}")
-    finally:
-        st.session_state.active = False
-
-
 def initialize_session_state() -> None:
     if "active" not in st.session_state:
+        # Initialize base state
         st.session_state.scenarios = get_scenarios()
         st.session_state.agent_list_1, st.session_state.agent_list_2 = get_agents()
         st.session_state.agent_model_1, st.session_state.agent_model_2 = get_models()
 
+        # Use first items as default choices
         st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
         st.session_state.agent_choice_1 = list(st.session_state.agent_list_1.keys())[0]
         st.session_state.agent_choice_2 = list(st.session_state.agent_list_2.keys())[0]
@@ -74,116 +53,196 @@ def initialize_session_state() -> None:
             st.session_state.agent_model_2.keys()
         )[0]
 
+        # Initialize websocket manager and message list
         st.session_state.messages = []
+        # Set initial active state
         st.session_state.active = False
 
-
-def handle_message(message: dict[str, Any]) -> None:
-    match message["type"]:
-        case "END_SIM":
-            st.session_state.active = False
-            st.rerun()
-        case "SERVER_MSG":
-            st.session_state.messages = message["data"]
-            # st.session_state.messages.append({
-            #     "role": message["data"]["role"],
-            #     "content": message["data"]["content"],
-            #     "type": message["data"]["type"]
-            # })
-        case "ERROR":
-            print(f"Error in message: {message['data']}")
-            st.error(f"Error: {message['data']}")
+        print("Session state initialized")
 
 
-def start_simulation() -> None:
+def parse_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    chat_messages = []
+    messages = messages[1:]
+    evaluation_available = len(messages) >= 2 and "Agent 1 comments" in messages[-2]
+    evaluations = [] if not evaluation_available else messages[-2:]
+    conversations = messages if not evaluation_available else messages[:-2]
+
+    # print(messages)
+    chat_messages = [
+        {"role": "human", "content": message} for message in conversations
+    ] + [
+        {
+            "role": "assistant",
+            "content": message,
+        }
+        for message in evaluations
+    ]
+
+    return chat_messages
+
+
+async def run_simulation():
+    async with aiohttp.ClientSession() as session:
+        async with session.ws_connect(
+            f"{st.session_state.WS_BASE}/ws/simulation?token=demo-token"
+        ) as ws:
+            await ws.send_str(
+                json.dumps(
+                    {
+                        "type": "START_SIM",
+                        "data": {
+                            "env_id": st.session_state.scenarios[
+                                st.session_state.scenario_choice
+                            ]["pk"],
+                            "agent_ids": [
+                                st.session_state.agent_list_1[
+                                    st.session_state.agent_choice_1
+                                ]["pk"],
+                                st.session_state.agent_list_2[
+                                    st.session_state.agent_choice_2
+                                ]["pk"],
+                            ],
+                            "agent_models": [
+                                st.session_state.agent_model_1[
+                                    st.session_state.agent_model_choice_1
+                                ],
+                                st.session_state.agent_model_2[
+                                    st.session_state.agent_model_choice_2
+                                ],
+                            ],
+                        },
+                    }
+                )
+            )
+
+            while True:
+                msg = await ws.receive()
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    message = json.loads(msg.data)
+                    if message["type"] == "END_SIM":
+                        break
+
+                    if message["data"]["type"] == "messages":
+                        st.session_state.messages = parse_messages(
+                            message["data"]["messages"]
+                        )
+                elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                    break
+
+                if st.session_state.get("stop_sim", False):
+                    await ws.send_str(json.dumps({"type": "FINISH_SIM", "data": ""}))
+
+                with chat_container.container():
+                    for msg in st.session_state.messages:
+                        st.chat_message(msg["role"]).write(msg["content"])
+
+
+def start_callback() -> None:
     if st.session_state.agent_choice_1 == st.session_state.agent_choice_2:
         st.error("Please select different agents")
-        return
+    else:
+        st.session_state.active = True
+        st.session_state.stop_sim = False
+        st.session_state.messages = []
+        try:
+            asyncio.run(run_simulation())
+        except Exception as e:
+            st.error(f"Error running simulation: {e}")
+        finally:
+            st.session_state.active = False
 
-    st.session_state.active = True
-    st.session_state.messages = []
 
-    initial_message = {
-        "type": "START_SIM",
-        "data": {
-            "env_id": st.session_state.scenarios[st.session_state.scenario_choice][
-                "pk"
-            ],
-            "agent_ids": [
-                st.session_state.agent_list_1[st.session_state.agent_choice_1]["pk"],
-                st.session_state.agent_list_2[st.session_state.agent_choice_2]["pk"],
-            ],
-            "agent_models": [
-                st.session_state.agent_model_1[st.session_state.agent1_model_choice],
-                st.session_state.agent_model_2[st.session_state.agent2_model_choice],
-            ],
-        },
-    }
-
-    asyncio.run(
-        websocket_client(
-            f"{st.session_state.WS_BASE}/ws/simulation?token=demo-token",
-            initial_message,
-            timeout=20,
-        )
+def stop_callback() -> None:
+    st.session_state.stop_sim = True
+    st.session_state.websocket_manager.send_message(
+        {
+            "type": "FINISH_SIM",
+            "data": "",
+        }
     )
+
+
+def is_active() -> bool:
+    return st.session_state.active
 
 
 def chat_demo() -> None:
     initialize_session_state()
 
     with st.sidebar:
-        with st.expander("Simulation Setup", expanded=True):
-            st.selectbox(
-                "Choose a scenario:",
-                st.session_state.scenarios.keys(),
-                key="scenario_choice",
-                disabled=st.session_state.active,
+        with st.container():
+            # Scenario and Agent Selection
+            with st.expander("Simulation Setup", expanded=True):
+                scenario_col, scenario_desc_col = st.columns(2)
+                with scenario_col:
+                    st.selectbox(
+                        "Choose a scenario:",
+                        st.session_state.scenarios.keys(),
+                        key="scenario_choice",
+                        disabled=is_active(),
+                    )
+
+                with scenario_desc_col:
+                    st.markdown(
+                        f"""**Description:** {get_abstract(st.session_state.scenarios[st.session_state.scenario_choice]["scenario"])}""",
+                        unsafe_allow_html=True,
+                    )
+
+                agent1_col, agent2_col = st.columns(2)
+                with agent1_col:
+                    st.selectbox(
+                        "Choose Agent 1:",
+                        st.session_state.agent_list_1.keys(),
+                        key="agent_choice_1",
+                        disabled=is_active(),
+                    )
+
+                with agent2_col:
+                    st.selectbox(
+                        "Choose Agent 2:",
+                        st.session_state.agent_list_2.keys(),
+                        key="agent_choice_2",
+                        disabled=is_active(),
+                    )
+
+                model1_col, model2_col = st.columns(2)
+                with model1_col:
+                    st.selectbox(
+                        "Choose Agent 1 Model:",
+                        st.session_state.agent_model_1.keys(),
+                        key="agent_model_choice_1",
+                        disabled=is_active(),
+                    )
+
+                with model2_col:
+                    st.selectbox(
+                        "Choose Agent 2 Model:",
+                        st.session_state.agent_model_2.keys(),
+                        key="agent_model_choice_2",
+                        disabled=is_active(),
+                    )
+
+        # Control Buttons
+        col1, col2, col3 = st.columns([1, 1, 3])
+
+        with col1:
+            st.button(
+                "Start Simulation",
+                disabled=is_active(),
+                on_click=start_callback,
             )
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.selectbox(
-                    "Choose Agent 1:",
-                    st.session_state.agent_list_1.keys(),
-                    key="agent_choice_1",
-                    disabled=st.session_state.active,
-                )
-                st.selectbox(
-                    "Agent 1 Model:",
-                    st.session_state.agent_model_1.keys(),
-                    key="agent1_model_choice",
-                    disabled=st.session_state.active,
-                )
+        with col2:
+            st.button(
+                "Stop Simulation",
+                disabled=not is_active(),
+                on_click=stop_callback,
+            )
 
-            with col2:
-                st.selectbox(
-                    "Choose Agent 2:",
-                    st.session_state.agent_list_2.keys(),
-                    key="agent_choice_2",
-                    disabled=st.session_state.active,
-                )
-                st.selectbox(
-                    "Agent 2 Model:",
-                    st.session_state.agent_model_2.keys(),
-                    key="agent2_model_choice",
-                    disabled=st.session_state.active,
-                )
-
-        st.button(
-            "Start Simulation",
-            disabled=st.session_state.active,
-            on_click=start_simulation,
-        )
-
-    chat_container = st.container()
-    while st.session_state.active:
-        with chat_container:
-            st.write(st.session_state.messages)
-        time.sleep(1)
-
-    with chat_container:
-        st.write(st.session_state.messages)
+        with chat_container.container():
+            for msg in st.session_state.messages:
+                st.chat_message(msg["role"]).write(msg["content"])
 
 
 chat_demo()

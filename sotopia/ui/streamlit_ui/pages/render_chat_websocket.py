@@ -19,14 +19,14 @@ def compose_agent_names(agent_dict: dict[Any, Any]) -> str:
 
 def get_scenarios() -> dict[str, dict[Any, Any]]:
     # use synchronous code to get the scenarios
-    with requests.get("http://localhost:8000/scenarios") as resp:
+    with requests.get(f"{st.session_state.API_BASE}/scenarios") as resp:
         scenarios = resp.json()
     return {scenario["codename"]: scenario for scenario in scenarios}
 
 
 def get_agents() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
     # use synchronous code to get the agents
-    with requests.get("http://localhost:8000/agents") as resp:
+    with requests.get(f"{st.session_state.API_BASE}/agents") as resp:
         agents = resp.json()
     return {compose_agent_names(agent): agent for agent in agents}, {
         compose_agent_names(agent): agent for agent in agents
@@ -35,7 +35,7 @@ def get_agents() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
 
 def get_models() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
     # use synchronous code to get the agents
-    with requests.get("http://localhost:8000/models") as resp:
+    with requests.get(f"{st.session_state.API_BASE}/models") as resp:
         models = resp.json()
     return {model: model for model in models}, {model: model for model in models}
 
@@ -64,7 +64,7 @@ def initialize_session_state() -> None:
         st.session_state.active = False
 
         st.session_state.websocket_manager = WebSocketManager(
-            "ws://localhost:8000/ws/simulation?token=demo-token"
+            f"{st.session_state.WS_BASE}/ws/simulation?token=demo-token"
         )
         print("Session state initialized")
 
