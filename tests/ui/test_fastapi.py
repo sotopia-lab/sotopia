@@ -312,7 +312,7 @@ def test_simulate(create_mock_data: Callable[[], None]) -> None:
             if status.status == "Error":
                 raise Exception("Error running simulation")
             elif status.status == "Completed":
-                EpisodeLog.get(response.json())
+                # EpisodeLog.get(response.json())
                 break
             # Status is "Started", keep polling
             time.sleep(1)

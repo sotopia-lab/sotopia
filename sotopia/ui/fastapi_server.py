@@ -15,7 +15,7 @@ from sotopia.envs.evaluators import (
     SotopiaDimensions,
 )
 from sotopia.agents import LLMAgent, Agents
-from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect, BackgroundTasks
 from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, model_validator, field_validator
@@ -233,8 +233,19 @@ async def create_relationship(relationship: RelationshipWrapper) -> str:
     return pk
 
 
+async def async_dummy(episode_pk: str) -> None:
+    print("Starting.......")
+    print("Sleeping.......")
+    await asyncio.sleep(5)
+    print("Updating status.......")
+    updated_status = NonStreamingSimulationStatus.get(pk=episode_pk)
+    setattr(updated_status, "status", "Completed")
+    updated_status.save()
+    logger.info(f"Simulation {episode_pk} completed")  # Add logging
+    print("Completed")
+
 @app.post("/simulate/", response_model=str)
-async def simulate(simulate_request: SimulateRequest) -> str:
+async def simulate(simulate_request: SimulateRequest, background_tasks: BackgroundTasks) -> str:
     try:
         env_profile: EnvironmentProfile = EnvironmentProfile.get(
             pk=simulate_request.env_id
@@ -316,22 +327,8 @@ async def simulate(simulate_request: SimulateRequest) -> str:
         #         simulation_status=simulation_status,
         #     )
         # )
-        async def async_dummy() -> None:
-            print("Starting.......")
-            print("Sleeping.......")
-            print(env)
-            for i in range(1, 5):
-                print(f"Counter {i}")
-                await asyncio.sleep(1)
-            print("Updating status.......")
-            updated_status = NonStreamingSimulationStatus.get(pk=simulation_status.pk)
-            setattr(updated_status, "status", "Completed")
-            updated_status.save()
-            logger.info(f"Simulation {episode_pk} completed")  # Add logging
-            print("Completed")
 
-        task = asyncio.create_task(async_dummy())
-        asyncio.shield(task)
+        background_tasks.add_task(async_dummy, simulation_status.pk)
 
     except Exception as e:
         logger.error(f"Error running simulation: {e}")
