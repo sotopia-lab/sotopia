@@ -15,7 +15,13 @@ from sotopia.envs.evaluators import (
     SotopiaDimensions,
 )
 from sotopia.agents import LLMAgent, Agents
-from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect, BackgroundTasks
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    HTTPException,
+    WebSocketDisconnect,
+    BackgroundTasks,
+)
 from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, model_validator, field_validator
@@ -244,8 +250,11 @@ async def async_dummy(episode_pk: str) -> None:
     logger.info(f"Simulation {episode_pk} completed")  # Add logging
     print("Completed")
 
+
 @app.post("/simulate/", response_model=str)
-async def simulate(simulate_request: SimulateRequest, background_tasks: BackgroundTasks) -> str:
+async def simulate(
+    simulate_request: SimulateRequest, background_tasks: BackgroundTasks
+) -> str:
     try:
         env_profile: EnvironmentProfile = EnvironmentProfile.get(
             pk=simulate_request.env_id
