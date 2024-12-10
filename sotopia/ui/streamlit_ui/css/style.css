@@ -8,11 +8,27 @@
     white-space: nowrap;
     transition: max-height 1s, white-space 1s;
 }
-.truncate:hover{
+.truncate:hover, .character-truncate:hover{
     overflow: auto;
     overflow-y: scroll;
     white-space: normal;
     max-height: 200px;
+}
+
+.character-truncate{
+    max-height: 8em;
+    cursor: pointer;
+    word-break: break-all;
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: max-height 1s, white-space 1s;
+}
+
+.character-truncate{
+    display: block;
+    overflow: hidden;
+    transition: max-height 1s ease, white-space 1s ease;
 }
 /*
 [data-testid="stAppViewContainer"] {
