@@ -14,6 +14,7 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     SotopiaDimensions,
 )
+from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
 from fastapi import (
     FastAPI,
@@ -239,18 +240,6 @@ async def create_relationship(relationship: RelationshipWrapper) -> str:
     return pk
 
 
-async def async_dummy(episode_pk: str) -> None:
-    print("Starting.......")
-    print("Sleeping.......")
-    await asyncio.sleep(5)
-    print("Updating status.......")
-    updated_status = NonStreamingSimulationStatus.get(pk=episode_pk)
-    setattr(updated_status, "status", "Completed")
-    updated_status.save()
-    logger.info(f"Simulation {episode_pk} completed")  # Add logging
-    print("Completed")
-
-
 @app.post("/simulate/", response_model=str)
 async def simulate(
     simulate_request: SimulateRequest, background_tasks: BackgroundTasks
@@ -326,18 +315,15 @@ async def simulate(
         )
         simulation_status.save()
 
-        # asyncio.create_task(
-        #     arun_one_episode(
-        #         env=env,
-        #         agent_list=list(agents.values()),
-        #         push_to_db=True,
-        #         tag=simulate_request.tag,
-        #         episode_pk=episode_pk,
-        #         simulation_status=simulation_status,
-        #     )
-        # )
-
-        background_tasks.add_task(async_dummy, simulation_status.pk)
+        background_tasks.add_task(
+            arun_one_episode,
+            env=env,
+            agent_list=list(agents.values()),
+            push_to_db=True,
+            tag=simulate_request.tag,
+            episode_pk=episode_pk,
+            simulation_status=simulation_status,
+        )
 
     except Exception as e:
         logger.error(f"Error running simulation: {e}")
