@@ -45,6 +45,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
             "leave",
         ],
         max_turns: int = 20,
+        push_to_db: bool = False,
     ):
         super().__init__(
             input_channel_types=[
@@ -74,6 +75,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
         self.message_history: list[list[tuple[str, str, str]]] = [
             [("Environment", "Environment", self.scenario)]
         ]
+        self.push_to_db = push_to_db
 
     async def send(self, action: Observations) -> None:
         for output_channel, output_channel_type in self.output_channel_types.items():
@@ -116,7 +118,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
                     }
                 )
             )
-            await asyncio.sleep(5)
+            await asyncio.sleep(0.1)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
                 self.agents_awake[agent_action.agent_name] = True
@@ -141,7 +143,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
                 break
         self.current_agent_index += 1
 
-    async def save(self) -> None:
+    async def save(self) -> EpisodeLog:
         """
         save the EpisodeLog to redis, without evaluating
         TODO: specify what to be added inside tag
@@ -162,6 +164,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
         )
         epilog.save()
         # print(epilog.render_for_humans())
+        return epilog
 
     async def aact(self, agent_action: AgentAction) -> Observations | None:
         if agent_action.action_type == "none":
