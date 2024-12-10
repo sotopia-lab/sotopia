@@ -18,6 +18,7 @@
  * - socket: A socket object to handle communication with the backend.
  *
  */
+"use client"
 
 import React, { useState } from 'react';
 import { ChevronRight, ChevronDown, File, RefreshCw, Check, X } from 'lucide-react';
@@ -25,7 +26,7 @@ import {
   SiHtml5, SiCss3, SiJavascript, SiPython,
   SiTypescript, SiJson, SiMarkdown
 } from 'react-icons/si';
-import './FileSystem.css'; // Import the CSS file
+import '../../styles/globals.css'; // Import the CSS file
 import { FileNode } from '../../types/FileSystem'; // Import the FileNode type
 import { Socket } from 'socket.io-client';
 import { Plus, FilePlus } from 'lucide-react'; // Import the Plus icon

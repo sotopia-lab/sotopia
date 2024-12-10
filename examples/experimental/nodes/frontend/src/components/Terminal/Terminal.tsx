@@ -16,10 +16,11 @@
  * - socket: The WebSocket connection used to send commands to the server.
  *
  */
+"use client"
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import './Terminal.css';
+import '../../styles/globals.css';
 import { FaTerminal } from 'react-icons/fa';
 
 // Define the props for the Terminal component

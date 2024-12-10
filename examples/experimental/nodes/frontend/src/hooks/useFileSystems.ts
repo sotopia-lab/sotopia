@@ -23,6 +23,7 @@
  * - updateFileSystemFromList: Function to update the file system state when receiving the file list from the server.
  *
  */
+"use client"
 
 import { useState } from 'react';
 import { FileSystemState, FileNode, OpenFile } from '../types/FileSystem';

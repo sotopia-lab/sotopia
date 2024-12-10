@@ -20,6 +20,7 @@
  * - onChange: A callback function to handle changes in the content of the active file.
  *
  */
+"use client"
 
 import React, { useState } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -29,7 +30,7 @@ import { css } from '@codemirror/lang-css';
 import { python } from '@codemirror/lang-python';
 import { githubDark } from '@uiw/codemirror-theme-github';
 import { EditorView } from '@codemirror/view';
-import './CodeEditor.css'; // Import the CSS file
+import '../../styles/globals.css'; // Import the CSS file
 import { X } from 'lucide-react';
 import { File } from 'lucide-react';
 import { SiHtml5, SiCss3, SiJavascript, SiPython, SiTypescript } from 'react-icons/si'; // Import icons

@@ -1,0 +1,35 @@
+"use strict";
+/*
+ * ATTENTION: An "eval-source-map" devtool has been used.
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
+exports.id = "vendor-chunks/style-to-object";
+exports.ids = ["vendor-chunks/style-to-object"];
+exports.modules = {
+
+/***/ "(ssr)/./node_modules/style-to-object/cjs/index.js":
+/*!***************************************************!*\
+  !*** ./node_modules/style-to-object/cjs/index.js ***!
+  \***************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+eval("\nvar __importDefault = (this && this.__importDefault) || function (mod) {\n    return (mod && mod.__esModule) ? mod : { \"default\": mod };\n};\nObject.defineProperty(exports, \"__esModule\", ({ value: true }));\nexports[\"default\"] = StyleToObject;\nvar inline_style_parser_1 = __importDefault(__webpack_require__(/*! inline-style-parser */ \"(ssr)/./node_modules/inline-style-parser/index.js\"));\n/**\n * Parses inline style to object.\n *\n * @param style - Inline style.\n * @param iterator - Iterator.\n * @returns - Style object or null.\n *\n * @example Parsing inline style to object:\n *\n * ```js\n * import parse from 'style-to-object';\n * parse('line-height: 42;'); // { 'line-height': '42' }\n * ```\n */\nfunction StyleToObject(style, iterator) {\n    var styleObject = null;\n    if (!style || typeof style !== 'string') {\n        return styleObject;\n    }\n    var declarations = (0, inline_style_parser_1.default)(style);\n    var hasIterator = typeof iterator === 'function';\n    declarations.forEach(function (declaration) {\n        if (declaration.type !== 'declaration') {\n            return;\n        }\n        var property = declaration.property, value = declaration.value;\n        if (hasIterator) {\n            iterator(property, value, declaration);\n        }\n        else if (value) {\n            styleObject = styleObject || {};\n            styleObject[property] = value;\n        }\n    });\n    return styleObject;\n}\n//# sourceMappingURL=index.js.map//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKHNzcikvLi9ub2RlX21vZHVsZXMvc3R5bGUtdG8tb2JqZWN0L2Nqcy9pbmRleC5qcyIsIm1hcHBpbmdzIjoiQUFBYTtBQUNiO0FBQ0EsNkNBQTZDO0FBQzdDO0FBQ0EsOENBQTZDLEVBQUUsYUFBYSxFQUFDO0FBQzdELGtCQUFlO0FBQ2YsNENBQTRDLG1CQUFPLENBQUMsOEVBQXFCO0FBQ3pFO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQSwwQkFBMEIsSUFBSSxLQUFLO0FBQ25DO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBLEtBQUs7QUFDTDtBQUNBO0FBQ0EiLCJzb3VyY2VzIjpbIi9Vc2Vycy9hamVvbi9zb3RvcGlhL2V4YW1wbGVzL2V4cGVyaW1lbnRhbC9ub2Rlcy9mcm9udGVuZC9ub2RlX21vZHVsZXMvc3R5bGUtdG8tb2JqZWN0L2Nqcy9pbmRleC5qcyJdLCJzb3VyY2VzQ29udGVudCI6WyJcInVzZSBzdHJpY3RcIjtcbnZhciBfX2ltcG9ydERlZmF1bHQgPSAodGhpcyAmJiB0aGlzLl9faW1wb3J0RGVmYXVsdCkgfHwgZnVuY3Rpb24gKG1vZCkge1xuICAgIHJldHVybiAobW9kICYmIG1vZC5fX2VzTW9kdWxlKSA/IG1vZCA6IHsgXCJkZWZhdWx0XCI6IG1vZCB9O1xufTtcbk9iamVjdC5kZWZpbmVQcm9wZXJ0eShleHBvcnRzLCBcIl9fZXNNb2R1bGVcIiwgeyB2YWx1ZTogdHJ1ZSB9KTtcbmV4cG9ydHMuZGVmYXVsdCA9IFN0eWxlVG9PYmplY3Q7XG52YXIgaW5saW5lX3N0eWxlX3BhcnNlcl8xID0gX19pbXBvcnREZWZhdWx0KHJlcXVpcmUoXCJpbmxpbmUtc3R5bGUtcGFyc2VyXCIpKTtcbi8qKlxuICogUGFyc2VzIGlubGluZSBzdHlsZSB0byBvYmplY3QuXG4gKlxuICogQHBhcmFtIHN0eWxlIC0gSW5saW5lIHN0eWxlLlxuICogQHBhcmFtIGl0ZXJhdG9yIC0gSXRlcmF0b3IuXG4gKiBAcmV0dXJucyAtIFN0eWxlIG9iamVjdCBvciBudWxsLlxuICpcbiAqIEBleGFtcGxlIFBhcnNpbmcgaW5saW5lIHN0eWxlIHRvIG9iamVjdDpcbiAqXG4gKiBgYGBqc1xuICogaW1wb3J0IHBhcnNlIGZyb20gJ3N0eWxlLXRvLW9iamVjdCc7XG4gKiBwYXJzZSgnbGluZS1oZWlnaHQ6IDQyOycpOyAvLyB7ICdsaW5lLWhlaWdodCc6ICc0MicgfVxuICogYGBgXG4gKi9cbmZ1bmN0aW9uIFN0eWxlVG9PYmplY3Qoc3R5bGUsIGl0ZXJhdG9yKSB7XG4gICAgdmFyIHN0eWxlT2JqZWN0ID0gbnVsbDtcbiAgICBpZiAoIXN0eWxlIHx8IHR5cGVvZiBzdHlsZSAhPT0gJ3N0cmluZycpIHtcbiAgICAgICAgcmV0dXJuIHN0eWxlT2JqZWN0O1xuICAgIH1cbiAgICB2YXIgZGVjbGFyYXRpb25zID0gKDAsIGlubGluZV9zdHlsZV9wYXJzZXJfMS5kZWZhdWx0KShzdHlsZSk7XG4gICAgdmFyIGhhc0l0ZXJhdG9yID0gdHlwZW9mIGl0ZXJhdG9yID09PSAnZnVuY3Rpb24nO1xuICAgIGRlY2xhcmF0aW9ucy5mb3JFYWNoKGZ1bmN0aW9uIChkZWNsYXJhdGlvbikge1xuICAgICAgICBpZiAoZGVjbGFyYXRpb24udHlwZSAhPT0gJ2RlY2xhcmF0aW9uJykge1xuICAgICAgICAgICAgcmV0dXJuO1xuICAgICAgICB9XG4gICAgICAgIHZhciBwcm9wZXJ0eSA9IGRlY2xhcmF0aW9uLnByb3BlcnR5LCB2YWx1ZSA9IGRlY2xhcmF0aW9uLnZhbHVlO1xuICAgICAgICBpZiAoaGFzSXRlcmF0b3IpIHtcbiAgICAgICAgICAgIGl0ZXJhdG9yKHByb3BlcnR5LCB2YWx1ZSwgZGVjbGFyYXRpb24pO1xuICAgICAgICB9XG4gICAgICAgIGVsc2UgaWYgKHZhbHVlKSB7XG4gICAgICAgICAgICBzdHlsZU9iamVjdCA9IHN0eWxlT2JqZWN0IHx8IHt9O1xuICAgICAgICAgICAgc3R5bGVPYmplY3RbcHJvcGVydHldID0gdmFsdWU7XG4gICAgICAgIH1cbiAgICB9KTtcbiAgICByZXR1cm4gc3R5bGVPYmplY3Q7XG59XG4vLyMgc291cmNlTWFwcGluZ1VSTD1pbmRleC5qcy5tYXAiXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbMF0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///(ssr)/./node_modules/style-to-object/cjs/index.js\n");
+
+/***/ }),
+
+/***/ "(ssr)/./node_modules/style-to-object/esm/index.mjs":
+/*!****************************************************!*\
+  !*** ./node_modules/style-to-object/esm/index.mjs ***!
+  \****************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony import */ var _cjs_index_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../cjs/index.js */ \"(ssr)/./node_modules/style-to-object/cjs/index.js\");\n\n\n// ensure compatibility with rollup umd build\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_cjs_index_js__WEBPACK_IMPORTED_MODULE_0__[\"default\"] || _cjs_index_js__WEBPACK_IMPORTED_MODULE_0__);\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKHNzcikvLi9ub2RlX21vZHVsZXMvc3R5bGUtdG8tb2JqZWN0L2VzbS9pbmRleC5tanMiLCJtYXBwaW5ncyI6Ijs7Ozs7QUFBNEM7O0FBRTVDO0FBQ0EsaUVBQWUscURBQXFCLElBQUksMENBQWEsRUFBQyIsInNvdXJjZXMiOlsiL1VzZXJzL2FqZW9uL3NvdG9waWEvZXhhbXBsZXMvZXhwZXJpbWVudGFsL25vZGVzL2Zyb250ZW5kL25vZGVfbW9kdWxlcy9zdHlsZS10by1vYmplY3QvZXNtL2luZGV4Lm1qcyJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgU3R5bGVUb09iamVjdCBmcm9tICcuLi9janMvaW5kZXguanMnO1xuXG4vLyBlbnN1cmUgY29tcGF0aWJpbGl0eSB3aXRoIHJvbGx1cCB1bWQgYnVpbGRcbmV4cG9ydCBkZWZhdWx0IFN0eWxlVG9PYmplY3QuZGVmYXVsdCB8fCBTdHlsZVRvT2JqZWN0O1xuIl0sIm5hbWVzIjpbXSwiaWdub3JlTGlzdCI6WzBdLCJzb3VyY2VSb290IjoiIn0=\n//# sourceURL=webpack-internal:///(ssr)/./node_modules/style-to-object/esm/index.mjs\n");
+
+/***/ })
+
+};
+;

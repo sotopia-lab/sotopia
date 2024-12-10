@@ -17,7 +17,7 @@
 
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import './SceneContext.css';
+import '../../styles/globals.css';
 
 // Define the structure of the props for the SceneContext component
 interface SceneContextProps {

@@ -17,8 +17,9 @@
  * - onSendMessage: A callback function to handle the sending of messages.
  *
  */
+"use client"
 
-import './ChatInterface.css';
+import '../../styles/globals.css';
 import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client'; // Import the Socket type
 import { FaComments } from 'react-icons/fa'; // Import the chat and send icons

@@ -15,9 +15,10 @@
  * - url: The initial URL to be loaded in the browser.
  *
  */
+"use client"
 
 import React, { useState } from 'react';
-import './Browser.css'; // Import the CSS file
+import '../../styles/globals.css';
 
 // Define the props for the Browser component
 interface BrowserProps {
