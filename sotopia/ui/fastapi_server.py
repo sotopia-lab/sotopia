@@ -5,6 +5,7 @@ from sotopia.database import (
     EpisodeLog,
     RelationshipProfile,
     RelationshipType,
+    NonStreamingSimulationStatus,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
@@ -289,13 +290,35 @@ async def simulate(simulate_request: SimulateRequest) -> str:
             ),
         }
     )
-    episode_pk = await arun_one_episode(
-        env=env,
-        agent_list=list(agents.values()),
-        only_return_episode_pk=True,
-        push_to_db=True,
+    episode_pk = EpisodeLog(
+        environment=env_profile.codename,
+        agents=simulate_request.agent_ids,
         tag=simulate_request.tag,
-    )
+        models=simulate_request.models,
+        messages=[],
+        reasoning="",
+        rewards=[0.0 for _ in agents],  # Pseudorewards
+        rewards_prompt="",
+    ).pk
+    try:
+        await arun_one_episode(
+            env=env,
+            agent_list=list(agents.values()),
+            push_to_db=True,
+            tag=simulate_request.tag,
+            episode_pk=episode_pk,
+        )
+        NonStreamingSimulationStatus(
+            episode_pk=episode_pk,
+            status="Completed",
+        ).save()
+    except Exception as e:
+        logger.error(f"Error running simulation: {e}")
+        NonStreamingSimulationStatus(
+            episode_pk=episode_pk,
+            status="Error",
+        ).save()
+
     assert isinstance(episode_pk, str)
     return episode_pk
 

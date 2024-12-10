@@ -4,6 +4,7 @@ from sotopia.database import (
     AgentProfile,
     EpisodeLog,
     RelationshipProfile,
+    NonStreamingSimulationStatus,
 )
 from sotopia.messages import SimpleMessage
 from sotopia.ui.fastapi_server import app
@@ -299,4 +300,10 @@ def test_simulate(create_mock_data: Callable[[], None]) -> None:
     assert response.status_code == 200
     assert isinstance(response.json(), str)
     episode = EpisodeLog.get(response.json())
+    try:
+        status = NonStreamingSimulationStatus.get(episode.pk)
+        assert status.status == "Completed"
+        NonStreamingSimulationStatus.delete(episode.pk)
+    except Exception as e:
+        print(e)
     print(episode)
