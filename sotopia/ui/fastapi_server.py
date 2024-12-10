@@ -1,9 +1,31 @@
-from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
-from typing import Literal, cast, Optional, Any
+from typing import Literal, cast, Dict, Self
+from sotopia.database import (
+    EnvironmentProfile,
+    AgentProfile,
+    EpisodeLog,
+    RelationshipProfile,
+    RelationshipType,
+    NonStreamingSimulationStatus,
+)
+from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.envs.evaluators import (
+    RuleBasedTerminatedEvaluator,
+    ReachGoalLLMEvaluator,
+    EvaluationForTwoAgents,
+    SotopiaDimensions,
+)
+from sotopia.agents import LLMAgent, Agents
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    HTTPException,
+    WebSocketDisconnect,
+    BackgroundTasks,
+)
+from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator, field_validator
 
-from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
 from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
     WSMessageType,
@@ -27,6 +49,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )  # TODO: Whether allowing CORS for all origins
+
+
+class RelationshipWrapper(BaseModel):
+    agent_1_id: str = ""
+    agent_2_id: str = ""
+    relationship: Literal[0, 1, 2, 3, 4, 5] = 0
+    backstory: str = ""
+    tag: str = ""
 
 
 class AgentProfileWrapper(BaseModel):
@@ -66,6 +96,33 @@ class EnvironmentProfileWrapper(BaseModel):
     occupation_constraint: str | None = None
     agent_constraint: list[list[str]] | None = None
     tag: str = ""
+
+
+class SimulateRequest(BaseModel):
+    env_id: str
+    agent_ids: list[str]
+    models: list[str]
+    max_turns: int
+    tag: str
+
+    @field_validator("agent_ids")
+    @classmethod
+    def validate_agent_ids(cls, v: list[str]) -> list[str]:
+        if len(v) != 2:
+            raise ValueError(
+                "Currently only 2 agents are supported, we are working on supporting more agents"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def validate_models(self) -> Self:
+        models = self.models
+        agent_ids = self.agent_ids
+        if len(models) != len(agent_ids) + 1:
+            raise ValueError(
+                f"models must have exactly {len(agent_ids) + 1} elements, if there are {len(agent_ids)} agents, the first model is the evaluator model"
+            )
+        return self
 
 
 @app.get("/scenarios", response_model=list[EnvironmentProfile])
@@ -122,6 +179,18 @@ async def get_agents(
     return agents_profiles
 
 
+@app.get("/relationship/{agent_1_id}/{agent_2_id}", response_model=str)
+async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
+    relationship_profiles = RelationshipProfile.find(
+        (RelationshipProfile.agent_1_id == agent_1_id)
+        & (RelationshipProfile.agent_2_id == agent_2_id)
+    ).all()
+    assert len(relationship_profiles) == 1
+    relationship_profile = relationship_profiles[0]
+    assert isinstance(relationship_profile, RelationshipProfile)
+    return f"{str(relationship_profile.relationship)}: {RelationshipType(relationship_profile.relationship).name}"
+
+
 @app.get("/episodes", response_model=list[EpisodeLog])
 async def get_episodes_all() -> list[EpisodeLog]:
     return EpisodeLog.all()
@@ -143,15 +212,6 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     return episodes
 
 
-@app.post("/agents/", response_model=str)
-async def create_agent(agent: AgentProfileWrapper) -> str:
-    agent_profile = AgentProfile(**agent.model_dump())
-    agent_profile.save()
-    pk = agent_profile.pk
-    assert pk is not None
-    return pk
-
-
 @app.post("/scenarios/", response_model=str)
 async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
     scenario_profile = EnvironmentProfile(**scenario.model_dump())
@@ -161,30 +221,130 @@ async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
     return pk
 
 
-@app.put("/agents/{agent_id}", response_model=str)
-async def update_agent(agent_id: str, agent: AgentProfileWrapper) -> str:
-    try:
-        old_agent = AgentProfile.get(pk=agent_id)
-    except Exception:  # TODO Check the exception type
-        raise HTTPException(
-            status_code=404, detail=f"Agent with id={agent_id} not found"
-        )
-    old_agent.update(**agent.model_dump())  # type: ignore
-    assert old_agent.pk is not None
-    return old_agent.pk
+@app.post("/agents/", response_model=str)
+async def create_agent(agent: AgentProfileWrapper) -> str:
+    agent_profile = AgentProfile(**agent.model_dump())
+    agent_profile.save()
+    pk = agent_profile.pk
+    assert pk is not None
+    return pk
 
 
-@app.put("/scenarios/{scenario_id}", response_model=str)
-async def update_scenario(scenario_id: str, scenario: EnvironmentProfileWrapper) -> str:
+@app.post("/relationship/", response_model=str)
+async def create_relationship(relationship: RelationshipWrapper) -> str:
+    relationship_profile = RelationshipProfile(**relationship.model_dump())
+    relationship_profile.save()
+    pk = relationship_profile.pk
+    assert pk is not None
+    return pk
+
+
+async def async_dummy(episode_pk: str) -> None:
+    print("Starting.......")
+    print("Sleeping.......")
+    await asyncio.sleep(5)
+    print("Updating status.......")
+    updated_status = NonStreamingSimulationStatus.get(pk=episode_pk)
+    setattr(updated_status, "status", "Completed")
+    updated_status.save()
+    logger.info(f"Simulation {episode_pk} completed")  # Add logging
+    print("Completed")
+
+
+@app.post("/simulate/", response_model=str)
+async def simulate(
+    simulate_request: SimulateRequest, background_tasks: BackgroundTasks
+) -> str:
     try:
-        old_scenario = EnvironmentProfile.get(pk=scenario_id)
+        env_profile: EnvironmentProfile = EnvironmentProfile.get(
+            pk=simulate_request.env_id
+        )
     except Exception:  # TODO Check the exception type
         raise HTTPException(
-            status_code=404, detail=f"Scenario with id={scenario_id} not found"
+            status_code=404,
+            detail=f"Environment with id={simulate_request.env_id} not found",
         )
-    old_scenario.update(**scenario.model_dump())  # type: ignore
-    assert old_scenario.pk is not None
-    return old_scenario.pk
+    try:
+        agent_1_profile = AgentProfile.get(pk=simulate_request.agent_ids[0])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulate_request.agent_ids[0]} not found",
+        )
+    try:
+        agent_2_profile = AgentProfile.get(pk=simulate_request.agent_ids[1])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulate_request.agent_ids[1]} not found",
+        )
+
+    env_params: dict[str, Any] = {
+        "model_name": simulate_request.models[0],
+        "action_order": "round-robin",
+        "evaluators": [
+            RuleBasedTerminatedEvaluator(
+                max_turn_number=simulate_request.max_turns, max_stale_turn=2
+            ),
+        ],
+        "terminal_evaluators": [
+            ReachGoalLLMEvaluator(
+                simulate_request.models[0],
+                EvaluationForTwoAgents[SotopiaDimensions],
+            ),
+        ],
+    }
+    env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
+    agents = Agents(
+        {
+            "agent1": LLMAgent(
+                "agent1",
+                model_name=simulate_request.models[1],
+                agent_profile=agent_1_profile,
+            ),
+            "agent2": LLMAgent(
+                "agent2",
+                model_name=simulate_request.models[2],
+                agent_profile=agent_2_profile,
+            ),
+        }
+    )
+    episode_pk = EpisodeLog(
+        environment=env_profile.codename,
+        agents=simulate_request.agent_ids,
+        tag=simulate_request.tag,
+        models=simulate_request.models,
+        messages=[],
+        reasoning="",
+        rewards=[0.0 for _ in agents],  # Pseudorewards
+        rewards_prompt="",
+    ).pk
+    try:
+        simulation_status = NonStreamingSimulationStatus(
+            episode_pk=episode_pk,
+            status="Started",
+        )
+        simulation_status.save()
+
+        # asyncio.create_task(
+        #     arun_one_episode(
+        #         env=env,
+        #         agent_list=list(agents.values()),
+        #         push_to_db=True,
+        #         tag=simulate_request.tag,
+        #         episode_pk=episode_pk,
+        #         simulation_status=simulation_status,
+        #     )
+        # )
+
+        background_tasks.add_task(async_dummy, simulation_status.pk)
+
+    except Exception as e:
+        logger.error(f"Error running simulation: {e}")
+        setattr(simulation_status, "status", "Error")
+        simulation_status.save()
+    assert isinstance(episode_pk, str)
+    return episode_pk
 
 
 @app.delete("/agents/{agent_id}", response_model=str)
@@ -211,6 +371,23 @@ async def delete_scenario(scenario_id: str) -> str:
     EnvironmentProfile.delete(scenario.pk)
     assert scenario.pk is not None
     return scenario.pk
+
+
+@app.delete("/relationship/{relationship_id}", response_model=str)
+async def delete_relationship(relationship_id: str) -> str:
+    RelationshipProfile.delete(relationship_id)
+    return relationship_id
+
+
+@app.delete("/episodes/{episode_id}", response_model=str)
+async def delete_episode(episode_id: str) -> str:
+    EpisodeLog.delete(episode_id)
+    return episode_id
+
+
+active_simulations: Dict[
+    str, bool
+] = {}  # TODO check whether this is the correct way to store the active simulations
 
 
 @app.get("/models", response_model=list[str])
