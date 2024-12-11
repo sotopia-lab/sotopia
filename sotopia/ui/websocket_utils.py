@@ -158,11 +158,11 @@ class WebSocketSotopiaSimulator:
 
         async for messages in await generator:  # type: ignore
             reasoning, rewards = "", [0.0, 0.0]
-            eval_available = False
+            # eval_available = False
             if messages[-1][0][0] == "Evaluation":
                 reasoning = messages[-1][0][2].to_natural_language()
                 rewards = eval(messages[-2][0][2].to_natural_language())
-                eval_available = True
+                # eval_available = True
 
             epilog = EpisodeLog(
                 environment=self.env.profile.pk,
@@ -177,11 +177,11 @@ class WebSocketSotopiaSimulator:
                 rewards=rewards,
                 rewards_prompt="",
             )
-            agent_profiles, parsed_messages = epilog.render_for_humans()
-            if not eval_available:
-                parsed_messages = parsed_messages[:-2]
+            # agent_profiles, parsed_messages = epilog.render_for_humans()
+            # if not eval_available:
+            #     parsed_messages = parsed_messages[:-2]
 
             yield {
                 "type": "messages",
-                "messages": parsed_messages,
+                "messages": epilog.dict(),
             }

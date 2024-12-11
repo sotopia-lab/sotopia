@@ -5,10 +5,11 @@ from typing import Any
 import aiohttp
 import requests
 import streamlit as st
+import time
 
 from sotopia.ui.streamlit_ui.utils import get_abstract
-
-chat_container = st.empty()
+from sotopia.ui.streamlit_ui.rendering.render_episode import rendering_episode_full
+from sotopia.database import EpisodeLog
 
 
 def compose_agent_names(agent_dict: dict[Any, Any]) -> str:
@@ -61,14 +62,16 @@ def initialize_session_state() -> None:
         print("Session state initialized")
 
 
-def parse_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+chat_history_container = st.empty()
+
+
+def parse_messages(messages: list[str]) -> list[dict[str, Any]]:
     chat_messages = []
-    messages = messages[1:]
+    messages = [message for message in messages[1:] if message != ""]
     evaluation_available = len(messages) >= 2 and "Agent 1 comments" in messages[-2]
     evaluations = [] if not evaluation_available else messages[-2:]
     conversations = messages if not evaluation_available else messages[:-2]
 
-    # print(messages)
     chat_messages = [
         {"role": "human", "content": message} for message in conversations
     ] + [
@@ -124,18 +127,16 @@ async def run_simulation():
                         break
 
                     if message["data"]["type"] == "messages":
-                        st.session_state.messages = parse_messages(
-                            message["data"]["messages"]
-                        )
+                        epilog = EpisodeLog(**message["data"]["messages"])
+                        st.session_state.messages = epilog
+                        with chat_history_container.container():
+                            rendering_episode_full(epilog)
+
                 elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                     break
 
                 if st.session_state.get("stop_sim", False):
                     await ws.send_str(json.dumps({"type": "FINISH_SIM", "data": ""}))
-
-                with chat_container.container():
-                    for msg in st.session_state.messages:
-                        st.chat_message(msg["role"]).write(msg["content"])
 
 
 def start_callback() -> None:
@@ -144,7 +145,7 @@ def start_callback() -> None:
     else:
         st.session_state.active = True
         st.session_state.stop_sim = False
-        st.session_state.messages = []
+        st.session_state.messages = None
         try:
             asyncio.run(run_simulation())
         except Exception as e:
@@ -155,12 +156,6 @@ def start_callback() -> None:
 
 def stop_callback() -> None:
     st.session_state.stop_sim = True
-    st.session_state.websocket_manager.send_message(
-        {
-            "type": "FINISH_SIM",
-            "data": "",
-        }
-    )
 
 
 def is_active() -> bool:
@@ -240,9 +235,22 @@ def chat_demo() -> None:
                 on_click=stop_callback,
             )
 
-        with chat_container.container():
-            for msg in st.session_state.messages:
-                st.chat_message(msg["role"]).write(msg["content"])
+        # if is_active():
+        #     try:
+        #         asyncio.run(run_simulation())
+        #     except Exception as e:
+        #         st.error(f"Error running simulation: {e}")
+        #     finally:
+        #         st.session_state.active = False
+
+        while is_active() and st.session_state.messages:
+            with chat_history_container.container():
+                rendering_episode_full(st.session_state.messages)
+            time.sleep(1)
+
+        if st.session_state.messages:
+            with chat_history_container.container():
+                rendering_episode_full(st.session_state.messages)
 
 
 chat_demo()
