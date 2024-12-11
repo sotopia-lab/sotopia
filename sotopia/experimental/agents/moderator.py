@@ -8,14 +8,13 @@ else:
     pass
 
 
-from aact import Message, NodeFactory
+from aact import Message, NodeFactory, Node
 from aact.messages import DataModel, DataModelFactory
 
-from typing import Literal, Self
+from typing import Literal, Self, Any, AsyncIterator
 from pydantic import Field
 
 from sotopia.database import EpisodeLog
-from .base_agent import BaseAgent
 from .datamodels import AgentAction, Observation
 from sotopia.messages import ActionType
 
@@ -28,7 +27,7 @@ class Observations(DataModel):
 
 
 @NodeFactory.register("moderator")
-class Moderator(BaseAgent[AgentAction, Observation]):
+class Moderator(Node[AgentAction, Observation]):
     def __init__(
         self,
         input_channels: list[str],
@@ -86,6 +85,18 @@ class Moderator(BaseAgent[AgentAction, Observation]):
                 "the selected action order is currently not implemented"
             )
 
+    async def __aenter__(self) -> Self:
+        print(self.scenario)
+        asyncio.create_task(self.booting())
+        self.task_scheduler = asyncio.create_task(self._task_scheduler())
+        return await super().__aenter__()
+
+    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.shutdown_event.set()
+        if self.task_scheduler is not None:
+            self.task_scheduler.cancel()
+        return await super().__aexit__(exc_type, exc_value, traceback)
+
     async def send(self, action: Observations) -> None:
         for output_channel, output_channel_type in self.output_channel_types.items():
             if output_channel in action.observations_map:
@@ -96,15 +107,23 @@ class Moderator(BaseAgent[AgentAction, Observation]):
                     ).model_dump_json(),
                 )
 
-    async def __aenter__(self) -> Self:
-        print(self.scenario)
-        asyncio.create_task(self.booting())
-        self.task_scheduler = asyncio.create_task(self._task_scheduler())
-        return await super().__aenter__()
+    async def event_handler(
+        self, channel: str, message: Message[AgentAction]
+    ) -> AsyncIterator[tuple[str, Message[Observation]]]:
+        if channel in self.input_channel_types:
+            await self.observation_queue.put(message.data)
+        else:
+            raise ValueError(f"Invalid channel: {channel}")
+            yield "", self.output_type()
 
     async def _task_scheduler(self) -> None:
         await self.all_agents_awake.wait()
-        return await super()._task_scheduler()
+        while not self.shutdown_event.is_set():
+            observation = await self.observation_queue.get()
+            action_or_none = await self.aact(observation)
+            if action_or_none is not None:
+                await self.send(action_or_none)
+            self.observation_queue.task_done()
 
     async def booting(self) -> None:
         """
