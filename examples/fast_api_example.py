@@ -2,7 +2,7 @@
 import requests
 import time
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8080"
 
 
 def _create_mock_agent_profile() -> None:
@@ -63,7 +63,7 @@ _create_mock_env_profile()
 data = {
     "env_id": "tmppk_env_profile",
     "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-    "models": ["gpt-4o-mini", "gpt-4o-mini", "gpt-4o-mini"],
+    "models": ["custom/structured-llama3.2:1b@http://localhost:8000/v1"] * 3,
     "max_turns": 10,
     "tag": "test_tag",
 }
@@ -76,7 +76,7 @@ try:
     assert isinstance(response.content.decode(), str)
     episode_pk = response.content.decode()
     print(episode_pk)
-    max_retries = 20
+    max_retries = 200
     retry_count = 0
     while retry_count < max_retries:
         try:

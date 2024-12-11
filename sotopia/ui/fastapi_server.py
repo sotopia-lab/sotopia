@@ -1,4 +1,7 @@
 from typing import Literal, cast, Dict, Self
+
+from redis_om import get_redis_connection
+import rq
 from sotopia.database import (
     EnvironmentProfile,
     AgentProfile,
@@ -21,7 +24,6 @@ from fastapi import (
     WebSocket,
     HTTPException,
     WebSocketDisconnect,
-    BackgroundTasks,
 )
 from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
@@ -104,7 +106,7 @@ class EnvironmentProfileWrapper(BaseModel):
     tag: str = ""
 
 
-class SimulateRequest(BaseModel):
+class SimulationRequest(BaseModel):
     env_id: str
     agent_ids: list[str]
     models: list[str]
@@ -245,45 +247,46 @@ async def create_relationship(relationship: RelationshipWrapper) -> str:
     return pk
 
 
-@app.post("/simulate/", response_model=str)
-async def simulate(
-    simulate_request: SimulateRequest, background_tasks: BackgroundTasks
-) -> Response:
+async def run_simulation(
+    episode_pk: str,
+    simulation_request: SimulationRequest,
+    simulation_status: NonStreamingSimulationStatus,
+) -> None:
     try:
         env_profile: EnvironmentProfile = EnvironmentProfile.get(
-            pk=simulate_request.env_id
+            pk=simulation_request.env_id
         )
     except Exception:  # TODO Check the exception type
         raise HTTPException(
             status_code=404,
-            detail=f"Environment with id={simulate_request.env_id} not found",
-        )
-    try:
-        agent_1_profile = AgentProfile.get(pk=simulate_request.agent_ids[0])
-    except Exception:  # TODO Check the exception type
-        raise HTTPException(
-            status_code=404,
-            detail=f"Agent with id={simulate_request.agent_ids[0]} not found",
+            detail=f"Environment with id={simulation_request.env_id} not found",
         )
     try:
-        agent_2_profile = AgentProfile.get(pk=simulate_request.agent_ids[1])
+        agent_1_profile = AgentProfile.get(pk=simulation_request.agent_ids[0])
     except Exception:  # TODO Check the exception type
         raise HTTPException(
             status_code=404,
-            detail=f"Agent with id={simulate_request.agent_ids[1]} not found",
+            detail=f"Agent with id={simulation_request.agent_ids[0]} not found",
+        )
+    try:
+        agent_2_profile = AgentProfile.get(pk=simulation_request.agent_ids[1])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulation_request.agent_ids[1]} not found",
         )
 
     env_params: dict[str, Any] = {
-        "model_name": simulate_request.models[0],
+        "model_name": simulation_request.models[0],
         "action_order": "round-robin",
         "evaluators": [
             RuleBasedTerminatedEvaluator(
-                max_turn_number=simulate_request.max_turns, max_stale_turn=2
+                max_turn_number=simulation_request.max_turns, max_stale_turn=2
             ),
         ],
         "terminal_evaluators": [
             ReachGoalLLMEvaluator(
-                simulate_request.models[0],
+                simulation_request.models[0],
                 EvaluationForTwoAgents[SotopiaDimensions],
             ),
         ],
@@ -293,24 +296,58 @@ async def simulate(
         {
             "agent1": LLMAgent(
                 "agent1",
-                model_name=simulate_request.models[1],
+                model_name=simulation_request.models[1],
                 agent_profile=agent_1_profile,
             ),
             "agent2": LLMAgent(
                 "agent2",
-                model_name=simulate_request.models[2],
+                model_name=simulation_request.models[2],
                 agent_profile=agent_2_profile,
             ),
         }
     )
+
+    await arun_one_episode(
+        env=env,
+        agent_list=list(agents.values()),
+        push_to_db=True,
+        tag=simulation_request.tag,
+        episode_pk=episode_pk,
+        simulation_status=simulation_status,
+    )
+
+
+@app.post("/simulate/", response_model=str)
+def simulate(simulation_request: SimulationRequest) -> Response:
+    try:
+        _: EnvironmentProfile = EnvironmentProfile.get(pk=simulation_request.env_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Environment with id={simulation_request.env_id} not found",
+        )
+    try:
+        __ = AgentProfile.get(pk=simulation_request.agent_ids[0])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulation_request.agent_ids[0]} not found",
+        )
+    try:
+        ___ = AgentProfile.get(pk=simulation_request.agent_ids[1])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulation_request.agent_ids[1]} not found",
+        )
+
     episode_pk = EpisodeLog(
-        environment=env_profile.codename,
-        agents=simulate_request.agent_ids,
-        tag=simulate_request.tag,
-        models=simulate_request.models,
+        environment="",
+        agents=[],
+        models=[],
         messages=[],
         reasoning="",
-        rewards=[0.0 for _ in agents],  # Pseudorewards
+        rewards=[],  # Pseudorewards
         rewards_prompt="",
     ).pk
     try:
@@ -319,22 +356,18 @@ async def simulate(
             status="Started",
         )
         simulation_status.save()
-        print(f"Starting background task for {simulate_request.tag}")
-        background_tasks.add_task(
-            arun_one_episode,
-            env=env,
-            agent_list=list(agents.values()),
-            push_to_db=True,
-            tag=simulate_request.tag,
+        queue = rq.Queue("default", connection=get_redis_connection())
+        queue.enqueue(
+            run_simulation,
             episode_pk=episode_pk,
+            simulation_request=simulation_request,
             simulation_status=simulation_status,
         )
 
     except Exception as e:
-        logger.error(f"Error running simulation: {e}")
-        setattr(simulation_status, "status", "Error")
+        logger.error(f"Error starting simulation: {e}")
+        simulation_status.status = "Error"
         simulation_status.save()
-    assert isinstance(episode_pk, str)
     return Response(content=episode_pk, status_code=202)
 
 
