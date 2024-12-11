@@ -181,7 +181,10 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
 def rendering_episodes() -> None:
     local_css("./././css/style.css")
 
-    tags = ["gpt-4_gpt-4_v0.0.1_clean"]
+    tags = [
+        "gpt-4_gpt-4_v0.0.1_clean",
+        "1019_hiring_equal_cooperative_salary_start_date_trust-bigfive-low_transparency-high_competence-low_adaptability-Agreeableness",
+    ]
     if "current_episodes" not in st.session_state:
         st.session_state["current_episodes"] = EpisodeLog.find(
             EpisodeLog.tag == tags[0]
@@ -217,7 +220,7 @@ def rendering_episodes() -> None:
             environment = EnvironmentProfile.get(episode.environment)
 
             avatar_mapping = {
-                agent_names[0]: "🧔🏻",
+                agent_names[0]: "🤖",
                 agent_names[1]: "🧑",
             }
 
