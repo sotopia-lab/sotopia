@@ -5,8 +5,9 @@ from sotopia.database import AgentProfile
 # Importing avatars
 from pathlib import Path
 
-avatar_path = Path("./assets/avatars")
-avatars = {
+def get_avatar_icons() -> dict:
+    avatar_path = Path("./assets/avatars")
+    avatar_mapping = {
     "Samuel Anderson": avatar_path / "male/avatar-svgrepo-com_1_blue.svg",
     "Zane Bennett": avatar_path / "male/avatar-svgrepo-com_2_blue.svg",
     "William Brown": avatar_path / "male/avatar-svgrepo-com_3_blue.svg",
@@ -48,6 +49,7 @@ avatars = {
     "Imelda Thorne": avatar_path / "female/avatar-svgrepo-com_8_green.svg",
     "Isabella White": avatar_path / "female/avatar-svgrepo-com_9_green.svg",
 }
+    return avatar_mapping
 
 
 def local_css(file_name: str) -> None:
@@ -56,6 +58,7 @@ def local_css(file_name: str) -> None:
 
 
 def display_characters() -> None:
+    avatar_mapping = get_avatar_icons()
     st.title("Characters")
     all_characters = AgentProfile.find().all()
 
@@ -63,7 +66,7 @@ def display_characters() -> None:
     for i, character in enumerate(all_characters):
         with col1 if i % 2 == 0 else col2:
             assert isinstance(character, AgentProfile)
-            rendering_character(character)
+            rendering_character(character, avatar_mapping)
             st.write("---")
 
 
@@ -73,11 +76,11 @@ def display_field(label: str, value: str) -> str:
     return ""
 
 
-def rendering_character(character: AgentProfile) -> None:
+def rendering_character(character: AgentProfile, avatar_mapping: dict) -> None:
     local_css("././css/style.css")
 
     full_name = f"{character.first_name} {character.last_name}"
-    avatar_file = avatars.get(full_name, avatars["Samuel Anderson"])
+    avatar_file = avatar_mapping.get(full_name, avatar_mapping["Samuel Anderson"])
 
     # Create two columns: one for the avatar and one for the markdown
     col1, col2 = st.columns([1, 3])  # Adjust the ratio to control column width
