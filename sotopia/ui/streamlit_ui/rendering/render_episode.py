@@ -3,6 +3,7 @@ import json
 import streamlit as st
 from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 from sotopia.envs.parallel import render_text_for_agent, render_text_for_environment
+from sotopia.ui.streamlit_ui.pages.display_characters import get_avatar_icons
 
 from sotopia.ui.streamlit_ui.rendering.rendering_utils import (
     _agent_profile_to_friendabove_self,
@@ -216,10 +217,12 @@ def rendering_episodes() -> None:
             agent_names = [get_full_name(agent) for agent in agents]
             environment = EnvironmentProfile.get(episode.environment)
 
-            avatar_mapping = {
-                agent_names[0]: "🧔🏻",
-                agent_names[1]: "🧑",
-            }
+            # avatar_mapping = {
+            #     agent_names[0]: "🧔🏻",
+            #     agent_names[1]: "🧑",
+            # }
+
+            avatar_mapping = get_avatar_icons()
 
             messages = render_for_humans(episode)
 
