@@ -2,7 +2,7 @@ from typing import TypeVar
 from redis_om import JsonModel, Migrator
 from .annotators import Annotator
 from .env_agent_combo_storage import EnvAgentComboStorage
-from .logs import AnnotationForEpisode, EpisodeLog
+from .logs import AnnotationForEpisode, EpisodeLog, NonStreamingSimulationStatus
 from .persistent_profile import (
     AgentProfile,
     EnvironmentProfile,
@@ -44,6 +44,7 @@ __all__ = [
     "AgentProfile",
     "EnvironmentProfile",
     "EpisodeLog",
+    "NonStreamingSimulationStatus",
     "EnvAgentComboStorage",
     "AnnotationForEpisode",
     "Annotator",
@@ -73,6 +74,7 @@ __all__ = [
     "EvaluationDimensionBuilder",
     "CustomEvaluationDimension",
     "CustomEvaluationDimensionList",
+    "NonStreamingSimulationStatus",
 ]
 
 InheritedJsonModel = TypeVar("InheritedJsonModel", bound="JsonModel")

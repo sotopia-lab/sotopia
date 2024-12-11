@@ -8,8 +8,13 @@ else:
 from pydantic import model_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
-
+from typing import Literal
 from sotopia.database.persistent_profile import AgentProfile
+
+
+class NonStreamingSimulationStatus(JsonModel):
+    episode_pk: str = Field(index=True)
+    status: Literal["Started", "Error", "Completed"]
 
 
 class EpisodeLog(JsonModel):
