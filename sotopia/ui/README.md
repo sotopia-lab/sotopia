@@ -4,6 +4,17 @@
 
 ## FastAPI Server
 
+To run the FastAPI server, you can use the following command:
+```bash
+uv run rq worker
+uv run fastapi run sotopia/ui/fastapi_server.py --workers 4 --port 8080
+```
+
+Here is also an example of using the FastAPI server:
+```bash
+uv run python examples/fast_api_example.py
+```
+
 The API server is a FastAPI application that is used to connect the Sotopia UI to the Sotopia backend.
 This could also help with other projects that need to connect to the Sotopia backend through HTTP requests.
 

@@ -191,7 +191,7 @@ async def arun_one_episode(
                     for agent_name in env.agents
                 ]
             )
-
+            print(f"Messages: {messages}")
             yield messages
             rewards.append([rewards_in_turn[agent_name] for agent_name in env.agents])
             reasons.append(
