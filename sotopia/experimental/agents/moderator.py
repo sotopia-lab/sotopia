@@ -35,6 +35,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
         output_channels: list[str],
         scenario: str,
         agent_mapping: dict[str, str],
+        agent_backgrounds: dict[str, str],
         redis_url: str = "redis://localhost:6379/0",
         action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
         available_actions: list[ActionType] = [
@@ -76,6 +77,14 @@ class Moderator(BaseAgent[AgentAction, Observation]):
             [("Environment", "Environment", self.scenario)]
         ]
         self.push_to_db = push_to_db
+        self.agent_backgrounds = agent_backgrounds
+
+        if self.action_order == "round-robin":
+            pass
+        else:
+            raise NotImplementedError(
+                "the selected action order is currently not implemented"
+            )
 
     async def send(self, action: Observations) -> None:
         for output_channel, output_channel_type in self.output_channel_types.items():
@@ -99,10 +108,10 @@ class Moderator(BaseAgent[AgentAction, Observation]):
 
     async def booting(self) -> None:
         """
-        1. send checking message to agents for every 5 seconds, until all agents are awake
-        - the agent should use this waking message to send their information to moderator for record
-        - if further information of the agents are needed, should be communicated through the booting process
-        2. after all agents are awake, send agent[0] a message to allow the agent to start speaking
+        1. send checking message to agents for every 0.1 seconds, until all agents are awake
+        - this message has turn_number of -1 for identification, agents should not record this into actual message_history
+        - if the agent booted succesfully, he is expected to return its model name for record.
+        2. (under round-robin action order)after all agents are awake, send agent[0] a message to allow the agent to start speaking
         """
         while not self.all_agents_awake.is_set():
             await self.send(
@@ -111,7 +120,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
                         output_channel: Observation(
                             agent_name="moderator",
                             last_turn=self.scenario,
-                            turn_number=0,
+                            turn_number=-1,
                             available_actions=["none"],
                         )
                         for output_channel, agent_name in self.agent_mapping.items()
@@ -126,22 +135,23 @@ class Moderator(BaseAgent[AgentAction, Observation]):
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
 
-        for output_channel, agent_name in self.agent_mapping.items():
-            if agent_name == self.agents[0]:
-                await self.send(
-                    Observations(
-                        observations_map={
-                            output_channel: Observation(
-                                agent_name="moderator",
-                                last_turn=self.scenario,
-                                turn_number=0,
-                                available_actions=self.available_actions,
-                            )
-                        }
-                    )
+        if self.action_order == "round-robin":
+            await self.send(
+                Observations(
+                    observations_map={
+                        output_channel: Observation(
+                            agent_name="moderator",
+                            last_turn=self.agent_backgrounds[agent_name],
+                            turn_number=0,
+                            available_actions=self.available_actions
+                            if agent_name == self.agents[0]
+                            else ["none"],
+                        )
+                        for output_channel, agent_name in self.agent_mapping.items()
+                    }
                 )
-                break
-        self.current_agent_index += 1
+            )
+            self.current_agent_index += 1
 
     async def save(self) -> EpisodeLog:
         """
@@ -189,9 +199,7 @@ class Moderator(BaseAgent[AgentAction, Observation]):
                 ]
             )
 
-        if (
-            self.turn_number < self.max_turns
-        ):  # minor changes: from 20 to self.max_turns
+        if self.turn_number < self.max_turns:
             self.turn_number += 1
         else:
             await self.save()

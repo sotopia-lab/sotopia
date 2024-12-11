@@ -10,7 +10,6 @@ from sotopia.experimental.agents.datamodels import Observation, AgentAction
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
 
-
 # Check Python version
 if sys.version_info >= (3, 11):
     pass
@@ -57,6 +56,14 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         return "\n".join(message.to_natural_language() for message in message_history)
 
     async def aact(self, obs: Observation) -> AgentAction:
+        if obs.turn_number == -1:
+            return AgentAction(
+                agent_name=self.name,
+                output_channel=self.output_channel,
+                action_type="none",
+                argument=self.model_name,
+            )
+
         self.message_history.append(obs)
 
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
@@ -64,7 +71,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="none",
-                argument=self.model_name,
+                argument="",
             )
         elif len(obs.available_actions) == 1 and "leave" in obs.available_actions:
             self.shutdown_event.set()
