@@ -102,15 +102,18 @@ def rendering_character(character: AgentProfile) -> None:
 
         sub_header = " · ".join(filter(None, basic_info))
 
-        
+        secret = getattr(character, "secret", "")
+        secret_header = ""
+        if secret:
+            secret_header = f"Secret: {secret}"
         st.markdown(
             f"""
-            <div style="background-color: #f9f9f9; padding: 10px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 10px;">
+            <div style="background-color: #f9f9f9; padding: 10px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 10px; margin-left: 10px;">
                 <p><strong>{sub_header}</strong></p>
                 <div class="character-truncate">
-                    <p style="text-overflow: ellipsis; overflow-hidden;"> {display_field("Public Info", character.public_info)} </p>
-                    <div style="background-color: #FFB6B6 ; padding: 10px; border-radius: 10px; margin-bottom: 5px;">
-                        {display_field("Secret", character.secret)}
+                    <p style="text-overflow: ellipsis; overflow: hidden;">{getattr(character, "public_info", "")}</p>
+                    <div style="background-color: #FFB6B6 ; padding: 10px; border-radius: 10px; margin-bottom: 5px; margin-top: 5px;">
+                        <p style="text-overflow: ellipsis; overflow: hidden;"> {secret_header} </p>
                     </div>
                 </div>
             </div>

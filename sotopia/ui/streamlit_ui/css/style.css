@@ -1,6 +1,11 @@
-.truncate{
+.truncate {
     max-height: 2em;
-    text-overflow: ellipsis;
+}
+
+.character-truncate {
+    max-height: 8em;
+}
+.truncate, .character-truncate{
     margin-bottom: 12px;
     cursor: pointer;
     word-break: break-all;
@@ -15,21 +20,6 @@
     max-height: 200px;
 }
 
-.character-truncate{
-    max-height: 8em;
-    cursor: pointer;
-    word-break: break-all;
-    display: block;
-    overflow: hidden;
-    white-space: nowrap;
-    transition: max-height 1s, white-space 1s;
-}
-
-.character-truncate{
-    display: block;
-    overflow: hidden;
-    transition: max-height 1s ease, white-space 1s ease;
-}
 /*
 [data-testid="stAppViewContainer"] {
     background-image: url("https://images.unsplash.com/photo-1729096532452-50549f2bb63c");
