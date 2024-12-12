@@ -25,7 +25,7 @@ dist/
 # misc
 .DS_Store
 docker-compose.yml
-kubernetes-development.yaml
+kubernetes-deployment.yaml
 .env.local
 .env.development.local
 .env.test.local
