@@ -242,7 +242,6 @@ def test_create_scenario(create_mock_data: Callable[[], None]) -> None:
         "tag": "test",
     }
     response = client.post("/scenarios/", json=scenario_data)
-    EnvironmentProfile.delete("tmppk_env_profile")
     assert response.status_code == 200
     assert isinstance(response.json(), str)
 
