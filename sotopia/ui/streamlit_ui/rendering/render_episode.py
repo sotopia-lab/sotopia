@@ -3,7 +3,7 @@ import json
 import streamlit as st
 from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 from sotopia.envs.parallel import render_text_for_agent, render_text_for_environment
-from sotopia.ui.streamlit_ui.pages.display_characters import get_avatar_icons
+# from sotopia.ui.streamlit_ui.pages.display_characters import get_avatar_icons
 
 from sotopia.ui.streamlit_ui.rendering.rendering_utils import (
     _agent_profile_to_friendabove_self,
@@ -12,6 +12,8 @@ from sotopia.ui.streamlit_ui.rendering.rendering_utils import (
 from sotopia.ui.streamlit_ui.utils import (
     get_full_name,
 )
+
+from .rendering_utils import avatar_mapping
 
 
 role_mapping = {
@@ -33,7 +35,7 @@ def update_database_callback() -> None:
     pass
 
 
-def rendering_episode(episode: EpisodeLog) -> None:
+def rendering_scenario(episode: EpisodeLog) -> None:
     local_css("./././css/style.css")
 
     agents = [AgentProfile.get(agent) for agent in episode.agents]
@@ -99,11 +101,6 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
     agent_names = [get_full_name(agent) for agent in agents]
     environment = EnvironmentProfile.get(episode.environment)
 
-    avatar_mapping = {
-        agent_names[0]: "🧔🏻",
-        agent_names[1]: "🧑",
-    }
-
     messages = render_for_humans(episode)
 
     background_messages = [
@@ -124,7 +121,7 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
 
     print(f"\n\ENVIRONMENT {environment}")
 
-    rendering_episode(episode)
+    rendering_scenario(episode)
 
     st.markdown("---")
 
@@ -141,7 +138,7 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
                     print(e)
 
             with st.chat_message(
-                role, avatar=avatar_mapping.get(message["role"], None)
+                role, avatar=str(avatar_mapping.get(message["role"], "default"))
             ):
                 if isinstance(content, dict):
                     st.json(content)
@@ -219,14 +216,6 @@ def rendering_episodes() -> None:
             agents = [AgentProfile.get(agent) for agent in episode.agents]
             agent_names = [get_full_name(agent) for agent in agents]
             environment = EnvironmentProfile.get(episode.environment)
-
-            # avatar_mapping = {
-            #     agent_names[0]: "🧔🏻",
-            #     agent_names[1]: "🧑",
-            # }
-
-            avatar_mapping = get_avatar_icons()
-
             messages = render_for_humans(episode)
 
             background_messages = [
@@ -248,7 +237,7 @@ def rendering_episodes() -> None:
 
             print(f"\n\ENVIRONMENT {environment}")
 
-            rendering_episode(episode)
+            rendering_scenario(episode)
 
     st.markdown("---")
 
@@ -264,8 +253,9 @@ def rendering_episodes() -> None:
                 except Exception as e:
                     print(e)
 
-            avatar_path = avatar_mapping.get(message["role"], None)
-            with st.chat_message(role, avatar=avatar_path):
+            avatar_path = avatar_mapping.get(message["role"], avatar_mapping["default"])
+
+            with st.chat_message(role, avatar=str(avatar_path)):
                 if isinstance(content, dict):
                     st.json(content)
                 elif role == "info":
