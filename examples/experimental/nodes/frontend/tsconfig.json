@@ -35,7 +35,7 @@
   "include": [
     "src",
     ".next/types/**/*.ts"
-, "server.js"  ],
+, "_next_server.js", "next.config.js"  ],
   "exclude": [
     "node_modules"
   ]

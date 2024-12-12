@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextjs-socketio-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nextjs-socketio
+  template:
+    metadata:
+      labels:
+        app: nextjs-socketio
+    spec:
+      containers:
+      - name: nextjs-app
+        image: gcr.io/gcp-multi-agent/next-server
+        ports:
+        - containerPort: 8000
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: connection-string
+        - name: NODE_ENV
+          value: production
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextjs-socketio-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: nextjs-socketio
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-secret
+type: Opaque
+stringData:
+  connection-string: redis://localhost:6379

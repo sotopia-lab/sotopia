@@ -15,8 +15,17 @@
 /.next/
 /out/
 
+# Docker
+.dockerignore
+Dockerfile.*
+*.swp
+build/
+dist/
+
 # misc
 .DS_Store
+docker-compose.yml
+kubernetes-development.yaml
 .env.local
 .env.development.local
 .env.test.local

@@ -38,7 +38,7 @@ import { SceneContext } from '../components/Sidebar/SceneContext';
 import { useFileSystem } from '../hooks/useFileSystems';
 
 // Initialize socket connection to the server
-const socket = io('http://localhost:3000', {
+const socket = io('http://localhost:8000', {
   transports: ['websocket'],
   reconnection: true
 });
