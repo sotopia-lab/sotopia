@@ -17,7 +17,7 @@
 
 # Docker
 .dockerignore
-Dockerfile*
+Dockerfile
 *.swp
 build/
 dist/
