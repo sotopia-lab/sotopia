@@ -33,7 +33,7 @@ def rendering_character(character: AgentProfile) -> None:
     local_css("././css/style.css")
 
     full_name = f"{character.first_name} {character.last_name}"
-    avatar_file = avatar_mapping.get(full_name, avatar_mapping["default"])
+    avatar_file = avatar_mapping.get(full_name, avatar_mapping["default_avatar"])
 
     # Create two columns: one for the avatar and one for the markdown
     col1, col2 = st.columns([1, 3])  # Adjust the ratio to control column width

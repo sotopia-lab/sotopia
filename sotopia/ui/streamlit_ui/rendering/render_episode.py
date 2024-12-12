@@ -138,7 +138,10 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
                     print(e)
 
             with st.chat_message(
-                role, avatar=str(avatar_mapping.get(message["role"], "default"))
+                role,
+                avatar=str(
+                    avatar_mapping.get(message["role"], avatar_mapping["default"])
+                ),
             ):
                 if isinstance(content, dict):
                     st.json(content)

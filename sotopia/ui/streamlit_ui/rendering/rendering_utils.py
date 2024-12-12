@@ -22,6 +22,7 @@ class messageForRendering(TypedDict):
 avatar_path = Path("./assets/avatars")
 avatar_mapping = {
     "default": "assistant",
+    "default_avatar": avatar_path / "male/avatar-svgrepo-com_1_blue.svg",
     "Samuel Anderson": avatar_path / "male/avatar-svgrepo-com_1_blue.svg",
     "Zane Bennett": avatar_path / "male/avatar-svgrepo-com_2_blue.svg",
     "William Brown": avatar_path / "male/avatar-svgrepo-com_3_blue.svg",
