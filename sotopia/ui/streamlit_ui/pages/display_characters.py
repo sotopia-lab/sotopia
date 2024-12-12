@@ -9,6 +9,7 @@ from pathlib import Path
 def get_avatar_icons() -> dict[str, Path]:
     avatar_path = Path("./assets/avatars")
     avatar_mapping = {
+        "default": avatar_path / "male/avatar-svgrepo-com_1_blue.svg",
         "Samuel Anderson": avatar_path / "male/avatar-svgrepo-com_1_blue.svg",
         "Zane Bennett": avatar_path / "male/avatar-svgrepo-com_2_blue.svg",
         "William Brown": avatar_path / "male/avatar-svgrepo-com_3_blue.svg",
@@ -83,7 +84,7 @@ def rendering_character(
     local_css("././css/style.css")
 
     full_name = f"{character.first_name} {character.last_name}"
-    avatar_file = avatar_mapping.get(full_name, avatar_mapping["Samuel Anderson"])
+    avatar_file = avatar_mapping.get(full_name, avatar_mapping["default"])
 
     # Create two columns: one for the avatar and one for the markdown
     col1, col2 = st.columns([1, 3])  # Adjust the ratio to control column width

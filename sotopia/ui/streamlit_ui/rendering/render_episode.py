@@ -264,9 +264,8 @@ def rendering_episodes() -> None:
                 except Exception as e:
                     print(e)
 
-            with st.chat_message(
-                role, avatar=avatar_mapping.get(message["role"], None)
-            ):
+            avatar_path = avatar_mapping.get(message["role"], None)
+            with st.chat_message(role, avatar=avatar_path):
                 if isinstance(content, dict):
                     st.json(content)
                 elif role == "info":
