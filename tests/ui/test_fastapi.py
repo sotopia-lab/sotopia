@@ -108,9 +108,10 @@ def create_mock_data(for_posting: bool = False) -> Generator[None, None, None]:
             relationship=1.0,
         ).save()
 
-    _create_mock_agent_profile()
-    _create_mock_env_profile()
-    _create_mock_relationship()
+    if not for_posting:
+        _create_mock_agent_profile()
+        _create_mock_env_profile()
+        _create_mock_relationship()
     yield
 
     try:
