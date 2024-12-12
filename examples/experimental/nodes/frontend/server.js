@@ -13,8 +13,8 @@ app.use(express.static('public'));
 
 // Connect to Redis
 const redisClient = createClient({
-  // url: 'redis://localhost:6379/0', only for local
-  url: "redis://redis:6379"
+  url: 'redis://localhost:6379/0'
+  // url: "redis://redis:6379"
 });
 
 redisClient.on('error', (err) => {
