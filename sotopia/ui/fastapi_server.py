@@ -1,4 +1,10 @@
-from typing import Literal, cast, Dict, Self
+from typing import Literal, cast, Dict
+import sys
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 from redis_om import get_redis_connection
 import rq
@@ -193,7 +199,9 @@ async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
         (RelationshipProfile.agent_1_id == agent_1_id)
         & (RelationshipProfile.agent_2_id == agent_2_id)
     ).all()
-    assert len(relationship_profiles) == 1
+    assert (
+        len(relationship_profiles) == 1
+    ), f"{len(relationship_profiles)} relationship profiles found for agents {agent_1_id} and {agent_2_id}, expected 1"
     relationship_profile = relationship_profiles[0]
     assert isinstance(relationship_profile, RelationshipProfile)
     return f"{str(relationship_profile.relationship)}: {RelationshipType(relationship_profile.relationship).name}"
