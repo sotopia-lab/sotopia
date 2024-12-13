@@ -221,7 +221,8 @@ class Moderator(Node[AgentAction, Observation]):
         if self.turn_number < self.max_turns:
             self.turn_number += 1
         else:
-            await self.save()
+            if self.push_to_db:
+                await self.save()
             self.shutdown_event.set()
             return Observations(
                 observations_map={
