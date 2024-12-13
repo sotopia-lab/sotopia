@@ -13,7 +13,7 @@ agent_backgrounds = {"Jane" = "", "Jack" = ""}
 agent_mapping = {"moderator:Jane" = "Jane", "moderator:Jack" = "Jack"}
 scenario = "Two friends are sitting in a cafe and catching up with each other's lives."
 max_turns = 20
-push_to_db = true
+push_to_db = false
 
 [[nodes]]
 node_name = "Jack"
