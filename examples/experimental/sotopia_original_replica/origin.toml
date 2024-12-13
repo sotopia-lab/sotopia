@@ -9,9 +9,11 @@ node_class = "moderator"
 [nodes.node_args]
 output_channels = ["moderator:Jane", "moderator:Jack"]
 input_channels = ["Jane:moderator", "Jack:moderator"]
+agent_backgrounds = {"Jane" = "", "Jack" = ""}
 agent_mapping = {"moderator:Jane" = "Jane", "moderator:Jack" = "Jack"}
 scenario = "Two friends are sitting in a cafe and catching up with each other's lives."
 max_turns = 20
+push_to_db = true
 
 [[nodes]]
 node_name = "Jack"
