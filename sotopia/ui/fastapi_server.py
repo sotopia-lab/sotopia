@@ -411,7 +411,7 @@ async def get_models() -> list[str]:
 
 
 class SotopiaFastAPI(FastAPI):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:  # type: ignore
         super().__init__(*args, **kwargs)
         self.add_middleware(
             CORSMiddleware,
@@ -422,7 +422,7 @@ class SotopiaFastAPI(FastAPI):
         )
         self.setup_routes()
 
-    def setup_routes(self):
+    def setup_routes(self) -> None:
         self.get("/scenarios", response_model=list[EnvironmentProfile])(
             get_scenarios_all
         )

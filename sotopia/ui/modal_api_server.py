@@ -10,7 +10,7 @@ from sotopia.ui.fastapi_server import SotopiaFastAPI
 redis_volume = modal.Volume.from_name("sotopia-api", create_if_missing=True)
 
 
-def initialize_redis_data():
+def initialize_redis_data() -> None:
     """Download Redis data if it doesn't exist"""
     if not os.path.exists("/vol/redis/dump.rdb"):
         os.makedirs("/vol/redis", exist_ok=True)
@@ -77,13 +77,18 @@ redis_volume = modal.Volume.from_name("sotopia-api", create_if_missing=True)
 app = modal.App("sotopia-fastapi", image=image, volumes={"/vol/redis": redis_volume})
 
 
-@app.cls(image=image)
+@app.cls(
+    image=image,
+    concurrency_limit=1,
+    allow_concurrent_inputs=5,
+    secrets=[modal.Secret.from_name("openai-secret")],
+)
 class WebAPI:
-    def __init__(self):
+    def __init__(self) -> None:
         self.web_app = SotopiaFastAPI()
 
     @modal.enter()
-    def setup(self):
+    def setup(self) -> None:
         # Start Redis server
         subprocess.Popen(
             ["redis-stack-server", "--dir", "/vol/redis", "--port", "6379"]
@@ -107,10 +112,10 @@ class WebAPI:
         raise Exception("Could not connect to Redis after multiple attempts")
 
     @modal.exit()
-    def cleanup(self):
+    def cleanup(self) -> None:
         if hasattr(self, "redis_client"):
             self.redis_client.close()
 
     @modal.asgi_app()
-    def serve(self):
+    def serve(self) -> modal.AsgiApp:
         return self.web_app
