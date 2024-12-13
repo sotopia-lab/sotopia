@@ -245,8 +245,11 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
 )
 async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
     custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
-    custom_evaluation_dimension_list = CustomEvaluationDimensionList.all()
-    for custom_evaluation_dimension_list in custom_evaluation_dimension_list:
+    all_custom_evaluation_dimension_list = CustomEvaluationDimensionList.all()
+    for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
+        assert isinstance(
+            custom_evaluation_dimension_list, CustomEvaluationDimensionList
+        )
         custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = [
             CustomEvaluationDimension.get(pk=pk)
             for pk in custom_evaluation_dimension_list.dimension_pks
