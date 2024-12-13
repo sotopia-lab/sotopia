@@ -4,6 +4,8 @@ from sotopia.database import (
     AgentProfile,
     EpisodeLog,
     RelationshipProfile,
+    CustomEvaluationDimension,
+    CustomEvaluationDimensionList,
 )
 from sotopia.messages import SimpleMessage
 from sotopia.ui.fastapi_server import app
@@ -68,7 +70,9 @@ def create_dummy_episode_log() -> None:
 
 
 @pytest.fixture
-def create_mock_data(for_posting: bool = False) -> Generator[None, None, None]:
+def create_mock_data(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+    for_posting = request.param if hasattr(request, "param") else False
+
     def _create_mock_agent_profile() -> None:
         AgentProfile(
             first_name="John",
@@ -108,10 +112,26 @@ def create_mock_data(for_posting: bool = False) -> Generator[None, None, None]:
             relationship=1.0,
         ).save()
 
+    def _create_mock_evaluation_dimension() -> None:
+        CustomEvaluationDimension(
+            pk="tmppk_evaluation_dimension",
+            name="test_dimension",
+            description="test_description",
+            range_high=10,
+            range_low=-10,
+        ).save()
+        CustomEvaluationDimensionList(
+            pk="tmppk_evaluation_dimension_list",
+            name="test_dimension_list",
+            dimension_pks=["tmppk_evaluation_dimension"],
+        ).save()
+
     if not for_posting:
         _create_mock_agent_profile()
         _create_mock_env_profile()
         _create_mock_relationship()
+        _create_mock_evaluation_dimension()
+        print("created mock data")
     yield
 
     try:
@@ -144,6 +164,15 @@ def create_mock_data(for_posting: bool = False) -> Generator[None, None, None]:
         episodes = EpisodeLog.find(EpisodeLog.tag == "test_tag").all()
         for episode in episodes:
             EpisodeLog.delete(episode.pk)
+    except Exception as e:
+        print(e)
+
+    try:
+        CustomEvaluationDimension.delete("tmppk_evaluation_dimension")
+    except Exception as e:
+        print(e)
+    try:
+        CustomEvaluationDimensionList.delete("tmppk_evaluation_dimension_list")
     except Exception as e:
         print(e)
 
@@ -221,6 +250,13 @@ def test_get_relationship(create_mock_data: Callable[[], None]) -> None:
     assert response.json() == "1: know_by_name"
 
 
+def test_get_evaluation_dimensions(create_mock_data: Callable[[], None]) -> None:
+    response = client.get("/evaluation_dimensions/")
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
+    assert response.json()["test_dimension_list"][0]["name"] == "test_dimension"
+
+
 @pytest.mark.parametrize("create_mock_data", [True], indirect=True)
 def test_create_agent(create_mock_data: Callable[[], None]) -> None:
     agent_data = {
@@ -260,6 +296,27 @@ def test_create_relationship(create_mock_data: Callable[[], None]) -> None:
     assert isinstance(response.json(), str)
 
 
+@pytest.mark.parametrize("create_mock_data", [True], indirect=True)
+def test_create_evaluation_dimensions(create_mock_data: Callable[[], None]) -> None:
+    evaluation_dimension_data = {
+        "pk": "tmppk_evaluation_dimension_list",
+        "name": "test_dimension_list",
+        "dimensions": [
+            {
+                "pk": "tmppk_evaluation_dimension",
+                "name": "test_dimension",
+                "description": "test_description",
+                "range_high": 10,
+                "range_low": -10,
+            }
+        ],
+    }
+    response = client.post("/evaluation_dimensions", json=evaluation_dimension_data)
+    print(response.json())
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+
+
 def test_delete_agent(create_mock_data: Callable[[], None]) -> None:
     response = client.delete("/agents/tmppk_agent1")
     assert response.status_code == 200
@@ -274,6 +331,12 @@ def test_delete_scenario(create_mock_data: Callable[[], None]) -> None:
 
 def test_delete_relationship(create_mock_data: Callable[[], None]) -> None:
     response = client.delete("/relationship/tmppk_relationship")
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+
+
+def test_delete_evaluation_dimension(create_mock_data: Callable[[], None]) -> None:
+    response = client.delete("/evaluation_dimensions/tmppk_evaluation_dimension_list")
     assert response.status_code == 200
     assert isinstance(response.json(), str)
 

@@ -15,6 +15,8 @@ from sotopia.database import (
     RelationshipProfile,
     RelationshipType,
     NonStreamingSimulationStatus,
+    CustomEvaluationDimensionList,
+    CustomEvaluationDimension,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
@@ -33,7 +35,7 @@ from fastapi import (
 )
 from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, model_validator, field_validator
+from pydantic import BaseModel, model_validator, field_validator, Field
 
 from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
@@ -110,6 +112,16 @@ class EnvironmentProfileWrapper(BaseModel):
     occupation_constraint: str | None = None
     agent_constraint: list[list[str]] | None = None
     tag: str = ""
+
+
+class CustomEvaluationDimensionsWrapper(BaseModel):
+    pk: str = ""
+    name: str = Field(
+        default="", description="The name of the custom evaluation dimension list"
+    )
+    dimensions: list[CustomEvaluationDimension] = Field(
+        default=[], description="The dimensions of the custom evaluation dimension list"
+    )
 
 
 class SimulationRequest(BaseModel):
@@ -228,6 +240,20 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     return episodes
 
 
+@app.get(
+    "/evaluation_dimensions/", response_model=dict[str, list[CustomEvaluationDimension]]
+)
+async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
+    custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
+    custom_evaluation_dimension_list = CustomEvaluationDimensionList.all()
+    for custom_evaluation_dimension_list in custom_evaluation_dimension_list:
+        custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = [
+            CustomEvaluationDimension.get(pk=pk)
+            for pk in custom_evaluation_dimension_list.dimension_pks
+        ]
+    return custom_evaluation_dimensions
+
+
 @app.post("/scenarios/", response_model=str)
 async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
     scenario_profile = EnvironmentProfile(**scenario.model_dump())
@@ -251,6 +277,49 @@ async def create_relationship(relationship: RelationshipWrapper) -> str:
     relationship_profile = RelationshipProfile(**relationship.model_dump())
     relationship_profile.save()
     pk = relationship_profile.pk
+    assert pk is not None
+    return pk
+
+
+@app.post("/evaluation_dimensions/", response_model=str)
+async def create_evaluation_dimensions(
+    evaluation_dimensions: CustomEvaluationDimensionsWrapper,
+) -> str:
+    dimension_list = CustomEvaluationDimensionList.find(
+        CustomEvaluationDimensionList.name == evaluation_dimensions.name
+    ).all()
+
+    if len(dimension_list) == 0:
+        all_dimensions_pks = []
+        for dimension in evaluation_dimensions.dimensions:
+            find_dimension = CustomEvaluationDimension.find(
+                CustomEvaluationDimension.name == dimension.name
+            ).all()
+            if len(find_dimension) == 0:
+                dimension.save()
+                all_dimensions_pks.append(dimension.pk)
+            elif len(find_dimension) == 1:
+                all_dimensions_pks.append(find_dimension[0].pk)
+            else:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Evaluation dimension with name={dimension.name} already exists",
+                )
+
+        custom_evaluation_dimension_list = CustomEvaluationDimensionList(
+            pk=evaluation_dimensions.pk,
+            name=evaluation_dimensions.name,
+            dimension_pks=all_dimensions_pks,
+        )
+        custom_evaluation_dimension_list.save()
+        logger.info(f"Created evaluation dimension list {evaluation_dimensions.name}")
+    else:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Evaluation dimension list with name={evaluation_dimensions.name} already exists",
+        )
+
+    pk = custom_evaluation_dimension_list.pk
     assert pk is not None
     return pk
 
@@ -424,6 +493,16 @@ async def delete_relationship(relationship_id: str) -> str:
 async def delete_episode(episode_id: str) -> str:
     EpisodeLog.delete(episode_id)
     return episode_id
+
+
+@app.delete("/evaluation_dimensions/{evaluation_dimension_list_pk}", response_model=str)
+async def delete_evaluation_dimension_list(evaluation_dimension_list_pk: str) -> str:
+    for dimension_pk in CustomEvaluationDimensionList.get(
+        evaluation_dimension_list_pk
+    ).dimension_pks:
+        CustomEvaluationDimension.delete(dimension_pk)
+    CustomEvaluationDimensionList.delete(evaluation_dimension_list_pk)
+    return evaluation_dimension_list_pk
 
 
 active_simulations: Dict[
