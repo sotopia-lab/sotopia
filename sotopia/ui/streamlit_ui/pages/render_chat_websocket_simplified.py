@@ -85,7 +85,7 @@ def parse_messages(messages: list[str]) -> list[dict[str, Any]]:
     return chat_messages
 
 
-async def run_simulation():
+async def run_simulation() -> None:
     async with aiohttp.ClientSession() as session:
         async with session.ws_connect(
             f"{st.session_state.WS_BASE}/ws/simulation?token=demo-token"
@@ -159,6 +159,7 @@ def stop_callback() -> None:
 
 
 def is_active() -> bool:
+    assert isinstance(st.session_state.active, bool)
     return st.session_state.active
 
 
@@ -219,7 +220,7 @@ def chat_demo() -> None:
                     )
 
         # Control Buttons
-        col1, col2, col3 = st.columns([1, 1, 3])
+        col1, col2 = st.columns([1, 1])
 
         with col1:
             st.button(

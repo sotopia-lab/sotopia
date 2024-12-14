@@ -3,6 +3,7 @@ import json
 import streamlit as st
 from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 from sotopia.envs.parallel import render_text_for_agent, render_text_for_environment
+# from sotopia.ui.streamlit_ui.pages.display_characters import get_avatar_icons
 
 from sotopia.ui.streamlit_ui.rendering.rendering_utils import (
     _agent_profile_to_friendabove_self,
@@ -11,6 +12,8 @@ from sotopia.ui.streamlit_ui.rendering.rendering_utils import (
 from sotopia.ui.streamlit_ui.utils import (
     get_full_name,
 )
+
+from .rendering_utils import avatar_mapping
 
 
 role_mapping = {
@@ -32,7 +35,7 @@ def update_database_callback() -> None:
     pass
 
 
-def rendering_background(episode: EpisodeLog) -> None:
+def rendering_scenario(episode: EpisodeLog) -> None:
     local_css("./././css/style.css")
 
     agents = [AgentProfile.get(agent) for agent in episode.agents]
@@ -97,11 +100,6 @@ def rendering_conversation_and_evaluation(episode: EpisodeLog) -> None:
     agent_names = [get_full_name(agent) for agent in agents]
     environment = EnvironmentProfile.get(episode.environment)
 
-    avatar_mapping = {
-        agent_names[0]: "🧔🏻",
-        agent_names[1]: "🧑",
-    }
-
     messages = render_for_humans(episode)
 
     background_messages = [
@@ -122,6 +120,10 @@ def rendering_conversation_and_evaluation(episode: EpisodeLog) -> None:
 
     print(f"\n\ENVIRONMENT {environment}")
 
+    rendering_scenario(episode)
+
+    st.markdown("---")
+
     st.subheader("Conversation & Evaluation")
     with st.expander("Conversation", expanded=True):
         for index, message in enumerate(conversation_messages):
@@ -135,7 +137,10 @@ def rendering_conversation_and_evaluation(episode: EpisodeLog) -> None:
                     print(e)
 
             with st.chat_message(
-                role, avatar=avatar_mapping.get(message["role"], None)
+                role,
+                avatar=str(
+                    avatar_mapping.get(message["role"], avatar_mapping["default"])
+                ),
             ):
                 if isinstance(content, dict):
                     st.json(content)
@@ -174,7 +179,7 @@ def rendering_conversation_and_evaluation(episode: EpisodeLog) -> None:
 
 
 def rendering_episode_full(episode: EpisodeLog) -> None:
-    rendering_background(episode)
+    rendering_scenario(episode)
     st.markdown("---")
     rendering_conversation_and_evaluation(episode)
 
@@ -182,7 +187,10 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
 def rendering_episodes() -> None:
     local_css("./././css/style.css")
 
-    tags = ["gpt-4_gpt-4_v0.0.1_clean"]
+    tags = [
+        "gpt-4_gpt-4_v0.0.1_clean",
+        "1019_hiring_equal_cooperative_salary_start_date_trust-bigfive-low_transparency-high_competence-low_adaptability-Agreeableness",
+    ]
     if "current_episodes" not in st.session_state:
         st.session_state["current_episodes"] = EpisodeLog.find(
             EpisodeLog.tag == tags[0]
@@ -211,9 +219,8 @@ def rendering_episodes() -> None:
         )
 
         if selected_index < len(st.session_state.current_episodes):
-            # TODO unify the display function across render and chat
             episode = st.session_state.current_episodes[selected_index]
-            rendering_background(episode)
+            rendering_scenario(episode)
 
     st.markdown("---")
 

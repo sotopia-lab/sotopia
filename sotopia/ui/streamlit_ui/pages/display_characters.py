@@ -3,51 +3,7 @@ import streamlit as st
 from sotopia.database import AgentProfile
 
 # Importing avatars
-from pathlib import Path
-
-avatar_path = Path("./assets/avatars")
-avatars = {
-    "Samuel Anderson": avatar_path / "male/avatar-svgrepo-com_1_blue.svg",
-    "Zane Bennett": avatar_path / "male/avatar-svgrepo-com_2_blue.svg",
-    "William Brown": avatar_path / "male/avatar-svgrepo-com_3_blue.svg",
-    "Rafael Cortez": avatar_path / "male/avatar-svgrepo-com_4_blue.svg",
-    "Noah Davis": avatar_path / "male/avatar-svgrepo-com_5_blue.svg",
-    "Eli Dawson": avatar_path / "male/avatar-svgrepo-com_6_blue.svg",
-    "Miles Hawkins": avatar_path / "male/avatar-svgrepo-com_7_blue.svg",
-    "Hendrick Heinz": avatar_path / "male/avatar-svgrepo-com_8_blue.svg",
-    "Benjamin Jackson": avatar_path / "male/avatar-svgrepo-com_1_green.svg",
-    "Ethan Johnson": avatar_path / "male/avatar-svgrepo-com_2_green.svg",
-    "Liam Johnson": avatar_path / "male/avatar-svgrepo-com_3_green.svg",
-    "Leo Williams": avatar_path / "male/avatar-svgrepo-com_4_green.svg",
-    "Finnegan O'Malley": avatar_path / "male/avatar-svgrepo-com_4_purple.svg",
-    "Jaxon Prentice": avatar_path / "male/avatar-svgrepo-com_5_green.svg",
-    "Donovan Reeves": avatar_path / "male/avatar-svgrepo-com_6_green.svg",
-    "Micah Stevens": avatar_path / "male/avatar-svgrepo-com_7_green.svg",
-    "Oliver Thompson": avatar_path / "male/avatar-svgrepo-com_8_green.svg",
-    "Ethan Smith": avatar_path / "male/avatar-svgrepo-com_1_purple.svg",
-    "Oliver Smith": avatar_path / "male/avatar-svgrepo-com_2_purple.svg",
-    "Baxter Sterling": avatar_path / "male/avatar-svgrepo-com_3_purple.svg",
-    "Jasmine Blake": avatar_path / "female/avatar-svgrepo-com_10_green.svg",
-    "Sophia Brown": avatar_path / "female/avatar-svgrepo-com_1_blue.svg",
-    "Mia Davis": avatar_path / "female/avatar-svgrepo-com_2_blue.svg",
-    "Naomi Fletcher": avatar_path / "female/avatar-svgrepo-com_3_blue.svg",
-    "Lena Goodwin": avatar_path / "female/avatar-svgrepo-com_4_blue.svg",
-    "Lily Greenberg": avatar_path / "female/avatar-svgrepo-com_5_blue.svg",
-    "Emily Harrison": avatar_path / "female/avatar-svgrepo-com_6_blue.svg",
-    "Amara Hartley": avatar_path / "female/avatar-svgrepo-com_7_blue.svg",
-    "Sophia James": avatar_path / "female/avatar-svgrepo-com_8_blue.svg",
-    "Ava Martinez": avatar_path / "female/avatar-svgrepo-com_9_blue.svg",
-    "Isabelle Martinez": avatar_path / "female/avatar-svgrepo-com_10_blue.svg",
-    "Gwen Pierce": avatar_path / "female/avatar-svgrepo-com_1_green.svg",
-    "Sasha Ramirez": avatar_path / "female/avatar-svgrepo-com_2_green.svg",
-    "Giselle Rousseau": avatar_path / "female/avatar-svgrepo-com_3_green.svg",
-    "Mia Sanders": avatar_path / "female/avatar-svgrepo-com_4_green.svg",
-    "Calista Sinclair": avatar_path / "female/avatar-svgrepo-com_5_green.svg",
-    "Esmeralda Solis": avatar_path / "female/avatar-svgrepo-com_6_green.svg",
-    "Ava Thompson": avatar_path / "female/avatar-svgrepo-com_7_green.svg",
-    "Imelda Thorne": avatar_path / "female/avatar-svgrepo-com_8_green.svg",
-    "Isabella White": avatar_path / "female/avatar-svgrepo-com_9_green.svg",
-}
+from sotopia.ui.streamlit_ui.rendering import avatar_mapping
 
 
 def local_css(file_name: str) -> None:
@@ -77,7 +33,7 @@ def rendering_character(character: AgentProfile) -> None:
     local_css("././css/style.css")
 
     full_name = f"{character.first_name} {character.last_name}"
-    avatar_file = avatars.get(full_name, avatars["Samuel Anderson"])
+    avatar_file = avatar_mapping.get(full_name, avatar_mapping["default_avatar"])
 
     # Create two columns: one for the avatar and one for the markdown
     col1, col2 = st.columns([1, 3])  # Adjust the ratio to control column width
