@@ -22,11 +22,13 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
         input_channel_types: list[tuple[str, type[T_agent_observation]]],
         output_channel_types: list[tuple[str, type[T_agent_action]]],
         redis_url: str = "redis://localhost:6379/0",
+        node_name: str = "base_agent",
     ):
         super().__init__(
             input_channel_types=input_channel_types,
             output_channel_types=output_channel_types,
             redis_url=redis_url,
+            node_name=node_name,
         )
 
         self.observation_queue: asyncio.Queue[T_agent_observation] = asyncio.Queue()

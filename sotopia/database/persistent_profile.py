@@ -94,6 +94,11 @@ class RelationshipProfile(JsonModel):
         description="0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
     )  # this could be improved by limiting str to a relationship Enum
     background_story: str | None = Field(default_factory=lambda: None)
+    tag: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The tag of the relationship, used for searching, could be convenient to document relationship profiles from different works and sources",
+    )
 
 
 class EnvironmentList(JsonModel):

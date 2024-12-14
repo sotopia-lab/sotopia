@@ -19,11 +19,13 @@ class ReturnPlusOneAgent(BaseAgent[Tick, Tick]):
 @pytest.mark.asyncio
 async def test_base_agent() -> None:
     async with ReturnPlusOneAgent(
+        node_name="test_base_agent",
         input_channel_types=[("input", Tick)],
         output_channel_types=[("output", Tick)],
         redis_url="redis://localhost:6379/0",
     ) as agent1:
         async with ReturnPlusOneAgent(
+            node_name="test_base_agent_2",
             input_channel_types=[("output", Tick)],
             output_channel_types=[("final", Tick)],
             redis_url="redis://localhost:6379/0",

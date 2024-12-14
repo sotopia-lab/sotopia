@@ -2,6 +2,7 @@ import abc
 from typing import Any, Generator, TypeVar
 
 from pydantic import BaseModel
+import redis
 from redis_om.model.model import Field
 from pydantic._internal._model_construction import ModelMetaclass
 from redis_om.model.model import FindQuery
@@ -37,3 +38,5 @@ class EmbeddedJsonModel(JsonModel): ...
 
 class Migrator:
     def run(self) -> None: ...
+
+def get_redis_connection() -> redis.Redis[bytes]: ...

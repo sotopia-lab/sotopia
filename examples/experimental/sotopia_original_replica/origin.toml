@@ -1,0 +1,52 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.sotopia_original_replica.llm_agent_sotopia", "examples.experimental.nodes.chat_print_node", "sotopia.experimental.agents.moderator"]
+
+
+[[nodes]]
+node_name = "moderator"
+node_class = "moderator"
+
+[nodes.node_args]
+output_channels = ["moderator:Jane", "moderator:Jack"]
+input_channels = ["Jane:moderator", "Jack:moderator"]
+agent_backgrounds = {"Jane" = "", "Jack" = ""}
+agent_mapping = {"moderator:Jane" = "Jane", "moderator:Jack" = "Jack"}
+scenario = "Two friends are sitting in a cafe and catching up with each other's lives."
+max_turns = 2
+push_to_db = false
+
+[[nodes]]
+node_name = "Jack"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 5
+input_channels = ["moderator:Jack"]
+output_channel = "Jack:moderator"
+goal = "Your goal is to borrow 5000 dollars from Jane."
+model_name = "gpt-4o-mini"
+agent_name = "Jack"
+
+
+[[nodes]]
+node_name = "Jane"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 7
+output_channel = "Jane:moderator"
+input_channels = ["moderator:Jane"]
+goal = "Your goal is to help Jack however, you are in a finicial crisis yourself and can only afford to give him 500 dollars."
+model_name = "gpt-4o-mini"
+agent_name = "Jane"
+
+[[nodes]]
+node_name = "chat_print"
+node_class = "chat_print"
+
+[nodes.node_args.print_channel_types]
+"Jane:moderator" = "agent_action"
+"Jack:moderator" = "agent_action"
+
+[nodes.node_args]
+env_agents = ["Jack", "Jane"]

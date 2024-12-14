@@ -1,5 +1,12 @@
 from fastapi.testclient import TestClient
-from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from sotopia.database import (
+    EnvironmentProfile,
+    AgentProfile,
+    EpisodeLog,
+    RelationshipProfile,
+    CustomEvaluationDimension,
+    CustomEvaluationDimensionList,
+)
 from sotopia.messages import SimpleMessage
 from sotopia.ui.fastapi_server import app
 import pytest
@@ -63,7 +70,9 @@ def create_dummy_episode_log() -> None:
 
 
 @pytest.fixture
-def create_mock_data() -> Generator[None, None, None]:
+def create_mock_data(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+    for_posting = request.param if hasattr(request, "param") else False
+
     def _create_mock_agent_profile() -> None:
         AgentProfile(
             first_name="John",
@@ -71,6 +80,7 @@ def create_mock_data() -> Generator[None, None, None]:
             occupation="test_occupation",
             gender="test_gender",
             pk="tmppk_agent1",
+            tag="test_tag",
         ).save()
         AgentProfile(
             first_name="Jane",
@@ -78,6 +88,7 @@ def create_mock_data() -> Generator[None, None, None]:
             occupation="test_occupation",
             gender="test_gender",
             pk="tmppk_agent2",
+            tag="test_tag",
         ).save()
 
     def _create_mock_env_profile() -> None:
@@ -89,18 +100,81 @@ def create_mock_data() -> Generator[None, None, None]:
                 "C",
             ],
             pk="tmppk_env_profile",
+            tag="test_tag",
         )
         env_profile.save()
 
-    _create_mock_agent_profile()
-    _create_mock_env_profile()
+    def _create_mock_relationship() -> None:
+        RelationshipProfile(
+            pk="tmppk_relationship",
+            agent_1_id="tmppk_agent1",
+            agent_2_id="tmppk_agent2",
+            relationship=1.0,
+        ).save()
 
+    def _create_mock_evaluation_dimension() -> None:
+        CustomEvaluationDimension(
+            pk="tmppk_evaluation_dimension",
+            name="test_dimension",
+            description="test_description",
+            range_high=10,
+            range_low=-10,
+        ).save()
+        CustomEvaluationDimensionList(
+            pk="tmppk_evaluation_dimension_list",
+            name="test_dimension_list",
+            dimension_pks=["tmppk_evaluation_dimension"],
+        ).save()
+
+    if not for_posting:
+        _create_mock_agent_profile()
+        _create_mock_env_profile()
+        _create_mock_relationship()
+        _create_mock_evaluation_dimension()
+        print("created mock data")
     yield
 
-    AgentProfile.delete("tmppk_agent1")
-    AgentProfile.delete("tmppk_agent2")
-    EnvironmentProfile.delete("tmppk_env_profile")
-    EpisodeLog.delete("tmppk_episode_log")
+    try:
+        AgentProfile.delete("tmppk_agent1")
+    except Exception as e:
+        print(e)
+    try:
+        AgentProfile.delete("tmppk_agent2")
+    except Exception as e:
+        print(e)
+    try:
+        EnvironmentProfile.delete("tmppk_env_profile")
+    except Exception as e:
+        print(e)
+    try:
+        RelationshipProfile.delete("tmppk_relationship")
+    except Exception as e:
+        print(e)
+    try:
+        EpisodeLog.delete("tmppk_episode_log")
+    except Exception as e:
+        print(e)
+
+    try:
+        EpisodeLog.delete("tmppk_episode_log")
+    except Exception as e:
+        print(e)
+
+    try:
+        episodes = EpisodeLog.find(EpisodeLog.tag == "test_tag").all()
+        for episode in episodes:
+            EpisodeLog.delete(episode.pk)
+    except Exception as e:
+        print(e)
+
+    try:
+        CustomEvaluationDimension.delete("tmppk_evaluation_dimension")
+    except Exception as e:
+        print(e)
+    try:
+        CustomEvaluationDimensionList.delete("tmppk_evaluation_dimension_list")
+    except Exception as e:
+        print(e)
 
 
 def test_get_scenarios_all(create_mock_data: Callable[[], None]) -> None:
@@ -169,8 +243,24 @@ def test_get_episodes_by_tag(create_mock_data: Callable[[], None]) -> None:
     assert response.json()[0]["tag"] == tag
 
 
+def test_get_relationship(create_mock_data: Callable[[], None]) -> None:
+    response = client.get("/relationship/tmppk_agent1/tmppk_agent2")
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+    assert response.json() == "1: know_by_name"
+
+
+def test_get_evaluation_dimensions(create_mock_data: Callable[[], None]) -> None:
+    response = client.get("/evaluation_dimensions/")
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
+    assert response.json()["test_dimension_list"][0]["name"] == "test_dimension"
+
+
+@pytest.mark.parametrize("create_mock_data", [True], indirect=True)
 def test_create_agent(create_mock_data: Callable[[], None]) -> None:
     agent_data = {
+        "pk": "tmppk_agent1",
         "first_name": "test_first_name",
         "last_name": "test_last_name",
     }
@@ -179,13 +269,50 @@ def test_create_agent(create_mock_data: Callable[[], None]) -> None:
     assert isinstance(response.json(), str)
 
 
+@pytest.mark.parametrize("create_mock_data", [True], indirect=True)
 def test_create_scenario(create_mock_data: Callable[[], None]) -> None:
     scenario_data = {
+        "pk": "tmppk_env_profile",
         "codename": "test_codename",
         "scenario": "test_scenario",
         "tag": "test",
     }
     response = client.post("/scenarios/", json=scenario_data)
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+
+
+@pytest.mark.parametrize("create_mock_data", [True], indirect=True)
+def test_create_relationship(create_mock_data: Callable[[], None]) -> None:
+    relationship_data = {
+        "pk": "tmppk_relationship",
+        "agent_1_id": "tmppk_agent1",
+        "agent_2_id": "tmppk_agent2",
+        "relationship": 1.0,
+        "tag": "test_tag",
+    }
+    response = client.post("/relationship", json=relationship_data)
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+
+
+@pytest.mark.parametrize("create_mock_data", [True], indirect=True)
+def test_create_evaluation_dimensions(create_mock_data: Callable[[], None]) -> None:
+    evaluation_dimension_data = {
+        "pk": "tmppk_evaluation_dimension_list",
+        "name": "test_dimension_list",
+        "dimensions": [
+            {
+                "pk": "tmppk_evaluation_dimension",
+                "name": "test_dimension",
+                "description": "test_description",
+                "range_high": 10,
+                "range_low": -10,
+            }
+        ],
+    }
+    response = client.post("/evaluation_dimensions", json=evaluation_dimension_data)
+    print(response.json())
     assert response.status_code == 200
     assert isinstance(response.json(), str)
 
@@ -200,3 +327,60 @@ def test_delete_scenario(create_mock_data: Callable[[], None]) -> None:
     response = client.delete("/scenarios/tmppk_env_profile")
     assert response.status_code == 200
     assert isinstance(response.json(), str)
+
+
+def test_delete_relationship(create_mock_data: Callable[[], None]) -> None:
+    response = client.delete("/relationship/tmppk_relationship")
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+
+
+def test_delete_evaluation_dimension(create_mock_data: Callable[[], None]) -> None:
+    response = client.delete("/evaluation_dimensions/tmppk_evaluation_dimension_list")
+    assert response.status_code == 200
+    assert isinstance(response.json(), str)
+
+
+# def test_simulate(create_mock_data: Callable[[], None]) -> None:
+#     response = client.post(
+#         "/simulate",
+#         json={
+#             "env_id": "tmppk_env_profile",
+#             "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
+#             "models": [
+#                 # "custom/llama3.2:1b@http://localhost:8000/v1",
+#                 # "custom/llama3.2:1b@http://localhost:8000/v1",
+#                 # "custom/llama3.2:1b@http://localhost:8000/v1"
+#                 "gpt-4o-mini",
+#                 "gpt-4o-mini",
+#                 "gpt-4o-mini",
+#             ],
+#             "max_turns": 2,
+#             "tag": "test_tag",
+#         },
+#     )
+#     assert response.status_code == 200
+#     assert isinstance(response.json(), str)
+#     max_retries = 20
+#     retry_count = 0
+#     while retry_count < max_retries:
+#         try:
+#             status = NonStreamingSimulationStatus.find(
+#                 NonStreamingSimulationStatus.episode_pk == response.json()
+#             ).all()[0]
+#             assert isinstance(status, NonStreamingSimulationStatus)
+#             print(status)
+#             if status.status == "Error":
+#                 raise Exception("Error running simulation")
+#             elif status.status == "Completed":
+#                 # EpisodeLog.get(response.json())
+#                 break
+#             # Status is "Started", keep polling
+#             time.sleep(1)
+#             retry_count += 1
+#         except Exception as e:
+#             print(f"Error checking simulation status: {e}")
+#             time.sleep(1)
+#             retry_count += 1
+#     else:
+#         raise TimeoutError("Simulation timed out after 10 retries")
