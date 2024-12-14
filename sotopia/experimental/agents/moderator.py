@@ -179,13 +179,10 @@ class Moderator(Node[AgentAction, Observation]):
             await self.save()
         await asyncio.sleep(0.5)
         print("stopping all agents")
-        for output_channel, output_channel_type in self.output_channel_types.items():
-            await self.r.publish(
-                output_channel,
-                Message[output_channel_type](  # type:ignore[valid-type]
-                    data=f"shutdown:{self.node_name}"
-                ).model_dump_json(),
-            )
+        await self.r.publish(
+            f"shutdown:{self.node_name}",
+            "shutdown",
+        )
 
     async def save(self) -> EpisodeLog:
         """
