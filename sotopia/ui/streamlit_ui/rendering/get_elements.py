@@ -18,8 +18,12 @@ def get_scenarios() -> dict[str, dict[Any, Any]]:
     return {scenario["codename"]: scenario for scenario in scenarios}
 
 
-def get_agents() -> dict[str, dict[Any, Any]]:
+def get_agents(id: str = "") -> dict[str, dict[Any, Any]]:
     # use synchronous code to get the agents
-    with requests.get(f"{st.session_state.API_BASE}/agents") as resp:
-        agents = resp.json()
+    if id:
+        with requests.get(f"{st.session_state.API_BASE}/agents/{id}") as resp:
+            agents = resp.json()
+    else:
+        with requests.get(f"{st.session_state.API_BASE}/agents") as resp:
+            agents = resp.json()
     return {get_full_name(agent): agent for agent in agents}

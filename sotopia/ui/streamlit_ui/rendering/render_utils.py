@@ -1,5 +1,5 @@
-from typing import TypedDict
-from sotopia.database import EpisodeLog, AgentProfile
+from typing import TypedDict, Any
+from sotopia.database import EpisodeLog
 from pathlib import Path
 import streamlit as st
 
@@ -82,8 +82,8 @@ def local_css(file_name: str) -> None:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
-def get_full_name(agent_profile: AgentProfile) -> str:
-    return f"{agent_profile.first_name} {agent_profile.last_name}"
+def get_full_name(agent_profile: dict[str, Any]) -> str:
+    return f"{agent_profile['first_name']} {agent_profile['last_name']}"
 
 
 def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:

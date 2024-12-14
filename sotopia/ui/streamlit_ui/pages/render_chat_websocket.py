@@ -182,18 +182,18 @@ def start_callback() -> None:
                         st.session_state.scenario_choice
                     ]["pk"],
                     "agent_ids": [
-                        st.session_state.agent_list_1[st.session_state.agent_choice_1][
+                        st.session_state.agent_dict[st.session_state.agent_choice_1][
                             "pk"
                         ],
-                        st.session_state.agent_list_2[st.session_state.agent_choice_2][
+                        st.session_state.agent_dict[st.session_state.agent_choice_2][
                             "pk"
                         ],
                     ],
                     "agent_models": [
-                        st.session_state.agent_model_1[
+                        st.session_state.agent_model_dict[
                             st.session_state.agent_model_choice_1
                         ],
-                        st.session_state.agent_model_2[
+                        st.session_state.agent_model_dict[
                             st.session_state.agent_model_choice_2
                         ],
                     ],
@@ -244,7 +244,7 @@ def chat_demo() -> None:
                 with agent1_col:
                     st.selectbox(
                         "Choose Agent 1:",
-                        st.session_state.agent_list_1.keys(),
+                        list(st.session_state.agent_dict.keys()),
                         key="agent_choice_1",
                         disabled=is_active(),
                     )
@@ -252,7 +252,7 @@ def chat_demo() -> None:
                 with agent2_col:
                     st.selectbox(
                         "Choose Agent 2:",
-                        st.session_state.agent_list_2.keys(),
+                        list(st.session_state.agent_dict.keys()),
                         key="agent_choice_2",
                         disabled=is_active(),
                     )
@@ -261,7 +261,7 @@ def chat_demo() -> None:
                 with model1_col:
                     st.selectbox(
                         "Choose Agent 1 Model:",
-                        st.session_state.agent_model_1.keys(),
+                        list(st.session_state.agent_model_dict.keys()),
                         key="agent_model_choice_1",
                         disabled=is_active(),
                     )
@@ -269,13 +269,13 @@ def chat_demo() -> None:
                 with model2_col:
                     st.selectbox(
                         "Choose Agent 2 Model:",
-                        st.session_state.agent_model_2.keys(),
+                        list(st.session_state.agent_model_dict.keys()),
                         key="agent_model_choice_2",
                         disabled=is_active(),
                     )
 
         # Control Buttons
-        col1, col2, col3 = st.columns([1, 1, 3])
+        col1, col2, col3 = st.columns([2, 2, 2])
 
         with col1:
             st.button(

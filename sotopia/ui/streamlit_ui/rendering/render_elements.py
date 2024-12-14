@@ -6,10 +6,11 @@ from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 from sotopia.envs.parallel import render_text_for_environment
 
 from sotopia.ui.streamlit_ui.rendering.render_utils import (
-    render_messages,
     get_full_name,
+    render_messages,
     local_css,
 )
+from sotopia.ui.streamlit_ui.rendering.get_elements import get_agents
 
 from .render_utils import avatar_mapping
 
@@ -175,7 +176,7 @@ def render_environment_profile(profile: EnvironmentProfile) -> None:
 
 def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
     local_css("./././css/style.css")
-    agents = [AgentProfile.get(agent) for agent in episode.agents]
+    agents = [list(get_agents(agent).values())[0] for agent in episode.agents]
     agent_names = [get_full_name(agent) for agent in agents]
     environment = EnvironmentProfile.get(episode.environment)
 
