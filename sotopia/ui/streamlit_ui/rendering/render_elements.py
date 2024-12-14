@@ -72,7 +72,7 @@ def render_character(character: AgentProfile) -> None:
                 <p><strong>{sub_header}</strong></p>
                 <div class="character-truncate">
                     <p style="text-overflow: ellipsis; overflow: hidden;">{getattr(character, "public_info", "")}</p>
-                    <div style="background-color: #FFB6B6 ; padding: 10px; border-radius: 10px; margin-bottom: 5px; margin-top: 5px;">
+                    <div style="background-color: #e5dbff ; padding: 10px; border-radius: 10px; margin-bottom: 5px; margin-top: 5px;">
                         <p style="text-overflow: ellipsis; overflow: hidden;"> {secret_header} </p>
                     </div>
                 </div>

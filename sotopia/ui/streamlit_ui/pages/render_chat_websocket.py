@@ -6,56 +6,29 @@ from queue import Queue
 from typing import Any, Optional
 
 import aiohttp
-import requests
 import streamlit as st
 
 from sotopia.ui.streamlit_ui.rendering import render_episode, get_abstract
 from sotopia.database import EpisodeLog
-
-
-def compose_agent_names(agent_dict: dict[Any, Any]) -> str:
-    return f"{agent_dict['first_name']} {agent_dict['last_name']}"
-
-
-def get_scenarios() -> dict[str, dict[Any, Any]]:
-    # use synchronous code to get the scenarios
-    with requests.get(f"{st.session_state.API_BASE}/scenarios") as resp:
-        scenarios = resp.json()
-    return {scenario["codename"]: scenario for scenario in scenarios}
-
-
-def get_agents() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
-    # use synchronous code to get the agents
-    with requests.get(f"{st.session_state.API_BASE}/agents") as resp:
-        agents = resp.json()
-    return {compose_agent_names(agent): agent for agent in agents}, {
-        compose_agent_names(agent): agent for agent in agents
-    }
-
-
-def get_models() -> tuple[dict[str, dict[Any, Any]], dict[str, dict[Any, Any]]]:
-    # use synchronous code to get the agents
-    with requests.get(f"{st.session_state.API_BASE}/models") as resp:
-        models = resp.json()
-    return {model: model for model in models}, {model: model for model in models}
+from sotopia.ui.streamlit_ui.rendering import get_scenarios, get_agents, get_models
 
 
 def initialize_session_state() -> None:
     if "active" not in st.session_state:
         # Initialize base state
         st.session_state.scenarios = get_scenarios()
-        st.session_state.agent_list_1, st.session_state.agent_list_2 = get_agents()
-        st.session_state.agent_model_1, st.session_state.agent_model_2 = get_models()
+        st.session_state.agent_dict = get_agents()
+        st.session_state.agent_model_dict = get_models()
 
         # Use first items as default choices
         st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
-        st.session_state.agent_choice_1 = list(st.session_state.agent_list_1.keys())[0]
-        st.session_state.agent_choice_2 = list(st.session_state.agent_list_2.keys())[0]
+        st.session_state.agent_choice_1 = list(st.session_state.agent_dict.keys())[0]
+        st.session_state.agent_choice_2 = list(st.session_state.agent_dict.keys())[0]
         st.session_state.agent1_model_choice = list(
-            st.session_state.agent_model_1.keys()
+            st.session_state.agent_model_dict.keys()
         )[0]
         st.session_state.agent2_model_choice = list(
-            st.session_state.agent_model_2.keys()
+            st.session_state.agent_model_dict.keys()
         )[0]
 
         # Initialize websocket manager and message list
@@ -88,10 +61,6 @@ class WebSocketManager:
         self.thread = threading.Thread(target=self._run_event_loop)
         self.thread.start()
 
-    # def stop(self):
-    #     """Stop the client"""
-    #     self.running = False
-    #     self.thread.join()
     def stop(self) -> None:
         """Stop the client"""
         print("Stopping websocket manager...")

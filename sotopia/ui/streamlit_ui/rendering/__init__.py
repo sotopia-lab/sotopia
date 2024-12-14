@@ -12,6 +12,8 @@ from .render_utils import (
     local_css,
 )
 
+from .get_elements import get_scenarios, get_agents, get_models
+
 __all__ = [
     "render_conversation_and_evaluation",
     "avatar_mapping",
@@ -22,4 +24,7 @@ __all__ = [
     "get_full_name",
     "get_abstract",
     "local_css",
+    "get_scenarios",
+    "get_agents",
+    "get_models",
 ]
