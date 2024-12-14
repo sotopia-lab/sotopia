@@ -7,9 +7,15 @@ from sotopia.ui.streamlit_ui.utils import reset_database
 # Page Configuration
 st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wide")
 
-PORT = 8800
-st.session_state.API_BASE = f"http://localhost:{PORT}"
-st.session_state.WS_BASE = f"ws://localhost:{PORT}"
+# PORT = 8800
+# st.session_state.API_BASE = f"http://localhost:{PORT}"
+# st.session_state.WS_BASE = f"ws://localhost:{PORT}"
+
+# Modal Configuration
+st.session_state.API_BASE = (
+    "https://sotopia-lab--sotopia-fastapi-webapi-serve.modal.run"
+)
+st.session_state.WS_BASE = "ws://sotopia-lab--sotopia-fastapi-webapi-serve.modal.run"
 
 
 def update_database_callback() -> None:
