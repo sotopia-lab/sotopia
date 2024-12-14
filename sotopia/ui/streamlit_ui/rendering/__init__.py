@@ -1,13 +1,16 @@
-from .render_episode import (
-    rendering_scenario,
-    rendering_conversation_and_evaluation,
-    rendering_episode_full,
+from .render_elements import (
+    render_environment_profile,
+    render_conversation_and_evaluation,
+    render_episode,
+    render_character,
 )
-from .rendering_utils import avatar_mapping
+from .render_utils import avatar_mapping, render_messages
 
 __all__ = [
-    "rendering_scenario",
-    "rendering_conversation_and_evaluation",
+    "render_conversation_and_evaluation",
     "avatar_mapping",
-    "rendering_episode_full",
+    "render_character",
+    "render_environment_profile",
+    "render_episode",
+    "render_messages",
 ]

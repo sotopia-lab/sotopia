@@ -9,7 +9,7 @@ import aiohttp
 import requests
 import streamlit as st
 
-from sotopia.ui.streamlit_ui.rendering import rendering_episode_full
+from sotopia.ui.streamlit_ui.rendering import render_episode
 from sotopia.ui.streamlit_ui.utils import get_abstract
 from sotopia.database import EpisodeLog
 
@@ -337,12 +337,12 @@ def chat_demo() -> None:
 
         with chat_history_container.container():
             if st.session_state.messages:
-                rendering_episode_full(st.session_state.messages[-1])
+                render_episode(st.session_state.messages[-1])
         time.sleep(1)
 
     with chat_history_container.container():
         if st.session_state.messages:
-            rendering_episode_full(st.session_state.messages[-1])
+            render_episode(st.session_state.messages[-1])
 
 
 chat_demo()

@@ -16,10 +16,7 @@ image = (
         "procps",  # for ps command
         "redis-tools",  # for redis-cli
     )
-    .pip_install(
-        "sotopia",
-        "streamlit~=1.40.2"
-    )
+    .pip_install("sotopia", "streamlit~=1.40.2")
     .pip_install(
         "pydantic>=2.5.0,<3.0.0",
         "aiohttp>=3.9.3,<4.0.0",
@@ -43,7 +40,7 @@ image = (
         "hiredis>=3.0.0",
         "aact",
         "gin",
-    ) # TODO similarly we need to solve this
+    )  # TODO similarly we need to solve this
     .run_commands(
         "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e .",
     )
@@ -59,18 +56,19 @@ if not streamlit_script_local_path.exists():
     )
 
 streamlit_script_mount = modal.Mount.from_local_file(
-    streamlit_script_local_path,
-    streamlit_script_remote_path,
+    str(streamlit_script_local_path),
+    str(streamlit_script_remote_path),
 )
 
 app = modal.App(name="example-modal-streamlit", image=image)
+
 
 @app.function(
     allow_concurrent_inputs=100,
     mounts=[streamlit_script_mount],
 )
 @modal.web_server(8000)
-def run():
+def run() -> None:
     target = shlex.quote(str(streamlit_script_remote_path))
     cmd = f"streamlit run {target} --server.port 8000 --server.enableCORS=false --server.enableXsrfProtection=false"
     subprocess.Popen(cmd, shell=True)

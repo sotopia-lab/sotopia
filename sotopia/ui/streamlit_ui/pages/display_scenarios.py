@@ -1,6 +1,6 @@
 import requests
 import streamlit as st
-from sotopia.ui.streamlit_ui.rendering.rendering_utils import render_environment_profile
+from sotopia.ui.streamlit_ui.rendering import render_environment_profile
 from sotopia.database import EnvironmentProfile
 
 
