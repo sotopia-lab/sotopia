@@ -34,6 +34,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         output_channel: str,
         query_interval: int,
         agent_name: str,
+        node_name: str,
         goal: str,
         model_name: str,
         redis_url: str,
@@ -42,6 +43,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             [(input_channel, Observation) for input_channel in input_channels],
             [(output_channel, AgentAction)],
             redis_url,
+            node_name,
         )
         self.output_channel = output_channel
         self.query_interval = query_interval

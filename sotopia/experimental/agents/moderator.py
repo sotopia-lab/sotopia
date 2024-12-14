@@ -34,6 +34,7 @@ class Moderator(Node[AgentAction, Observation]):
         output_channels: list[str],
         scenario: str,
         agent_mapping: dict[str, str],
+        node_name: str,
         agent_backgrounds: dict[str, str],
         redis_url: str = "redis://localhost:6379/0",
         action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
@@ -55,6 +56,7 @@ class Moderator(Node[AgentAction, Observation]):
                 (output_channel, Observation) for output_channel in output_channels
             ],
             redis_url=redis_url,
+            node_name=node_name,
         )
         self.observation_queue: asyncio.Queue[AgentAction] = asyncio.Queue()
         self.task_scheduler: asyncio.Task[None] | None = None
@@ -97,13 +99,13 @@ class Moderator(Node[AgentAction, Observation]):
             self.task_scheduler.cancel()
         return await super().__aexit__(exc_type, exc_value, traceback)
 
-    async def send(self, action: Observations) -> None:
+    async def send(self, observations: Observations) -> None:
         for output_channel, output_channel_type in self.output_channel_types.items():
-            if output_channel in action.observations_map:
+            if output_channel in observations.observations_map:
                 await self.r.publish(
                     output_channel,
                     Message[output_channel_type](  # type:ignore[valid-type]
-                        data=action.observations_map[output_channel]
+                        data=observations.observations_map[output_channel]
                     ).model_dump_json(),
                 )
 
@@ -172,6 +174,19 @@ class Moderator(Node[AgentAction, Observation]):
             )
             self.current_agent_index += 1
 
+    async def wrap_up_and_stop(self) -> None:
+        if self.push_to_db:
+            await self.save()
+        await asyncio.sleep(0.5)
+        print("stopping all agents")
+        for output_channel, output_channel_type in self.output_channel_types.items():
+            await self.r.publish(
+                output_channel,
+                Message[output_channel_type](  # type:ignore[valid-type]
+                    data=f"shutdown:{self.node_name}"
+                ).model_dump_json(),
+            )
+
     async def save(self) -> EpisodeLog:
         """
         save the EpisodeLog to redis, without evaluating
@@ -196,6 +211,11 @@ class Moderator(Node[AgentAction, Observation]):
         return epilog
 
     async def aact(self, agent_action: AgentAction) -> Observations | None:
+        if agent_action.action_type == "leave":
+            self.agents_awake[agent_action.agent_name] = False
+            if True not in self.agents_awake.values():
+                await self.wrap_up_and_stop()
+                return None
         if agent_action.action_type == "none":
             return None
 
@@ -221,9 +241,6 @@ class Moderator(Node[AgentAction, Observation]):
         if self.turn_number < self.max_turns:
             self.turn_number += 1
         else:
-            if self.push_to_db:
-                await self.save()
-            self.shutdown_event.set()
             return Observations(
                 observations_map={
                     output_channel: Observation(
