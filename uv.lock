@@ -10,9 +10,10 @@ resolution-markers = [
 [[package]]
 name = "aact"
 version = "0.0.10"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/ProKil/aact?branch=feature%2Fnode-manager#56cd2a2aad8a0e806e4f3a170e848cb1e1ad0720" }
 dependencies = [
     { name = "aiofiles" },
+    { name = "aiohttp" },
     { name = "aiostream" },
     { name = "numpy" },
     { name = "pydantic" },
@@ -21,10 +22,6 @@ dependencies = [
     { name = "rq" },
     { name = "tomlkit", marker = "python_full_version < '3.11'" },
     { name = "typer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/9f/2b32aca3e2fe614df4e04a074870b6b27ef037af62f639b0e4d0b33abb31/aact-0.0.10.tar.gz", hash = "sha256:0cde5360d27bab002a43e9895c4006bfa541f6c2db798412f4aad1fdb685632e", size = 113329 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/18/32beed32416f8c9618ed4fc42e33eef94d7c181caf59c6909b3841047006/aact-0.0.10-py3-none-any.whl", hash = "sha256:2c1959666270acc681aafc1452aa089cb26a24a0871b01faa7761fa300b2fc9a", size = 29102 },
 ]
 
 [[package]]
@@ -3144,7 +3141,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aact" },
+    { name = "aact", git = "https://github.com/ProKil/aact?branch=feature%2Fnode-manager" },
     { name = "absl-py", specifier = ">=2.0.0,<3.0.0" },
     { name = "anthropic", marker = "extra == 'anthropic'" },
     { name = "beartype", specifier = ">=0.14.0,<0.20.0" },
