@@ -117,5 +117,5 @@ class WebAPI:
             self.redis_client.close()
 
     @modal.asgi_app()
-    def serve(self) -> modal.AsgiApp:
+    def serve(self) -> SotopiaFastAPI:
         return self.web_app
