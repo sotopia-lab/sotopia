@@ -5,8 +5,13 @@ import streamlit as st
 from sotopia.ui.streamlit_ui.utils import reset_database
 
 PORT = 8800
-st.session_state.API_BASE = f"http://localhost:{PORT}"
-st.session_state.WS_BASE = f"ws://localhost:{PORT}"
+# st.session_state.API_BASE = f"http://localhost:{PORT}"
+# st.session_state.WS_BASE = f"ws://localhost:{PORT}"
+
+st.session_state.API_BASE = (
+    "https://sotopia-lab--sotopia-fastapi-webapi-serve.modal.run"
+)
+st.session_state.WS_BASE = "ws://sotopia-lab--sotopia-fastapi-webapi-serve.modal.run"
 
 
 def update_database_callback() -> None:
@@ -42,7 +47,7 @@ display_characters = st.Page(
 )
 
 display_chat = st.Page(
-    "./pages/render_chat_websocket_simplified.py",
+    "./pages/render_chat_websocket.py",
     title="Simulation",
     icon=":material/add:",
 )

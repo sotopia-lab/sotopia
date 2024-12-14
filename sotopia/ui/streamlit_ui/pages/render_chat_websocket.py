@@ -9,8 +9,9 @@ import aiohttp
 import requests
 import streamlit as st
 
-from sotopia.ui.streamlit_ui.rendering.rendering_utils import messageForRendering
+from sotopia.ui.streamlit_ui.rendering import rendering_episode_full
 from sotopia.ui.streamlit_ui.utils import get_abstract
+from sotopia.database import EpisodeLog
 
 
 def compose_agent_names(agent_dict: dict[Any, Any]) -> str:
@@ -69,59 +70,7 @@ def initialize_session_state() -> None:
         print("Session state initialized")
 
 
-def streamlit_rendering(
-    messages: list[messageForRendering], agent_names: tuple[str, str]
-) -> None:
-    agent1_name, agent2_name = agent_names
-    avatar_mapping = {
-        "env": "🌍",
-        "obs": "🌍",
-    }
-
-    avatar_mapping = {agent_name: "🤖" for idx, agent_name in enumerate(agent_names)}
-    role_mapping = {
-        "Background Info": "background",
-        "System": "info",
-        "Environment": "env",
-        "Observation": "obs",
-        "General": "eval",
-        "Agent 1": agent1_name,
-        "Agent 2": agent2_name,
-        agent1_name: agent1_name,
-        agent2_name: agent2_name,
-    }
-
-    for index, message in enumerate(messages):
-        role = role_mapping.get(message["role"], "info")
-        content = message["content"]
-
-        if role == "background":
-            continue
-
-        if role == "obs" or message.get("type") == "action":
-            try:
-                content = json.loads(content)
-            except Exception:
-                print("Error in parsing JSON content")
-                print("Content:", content)
-
-        with st.chat_message(role, avatar=avatar_mapping.get(role, None)):
-            if isinstance(content, dict):
-                st.json(content)
-            elif role == "info":
-                st.markdown(
-                    f"""
-                    <div style="background-color: lightblue; padding: 10px; border-radius: 5px;">
-                        {content}
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            elif role in [agent1_name, agent2_name]:
-                st.write(f"**{role}**")
-                st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
-            else:
-                st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
+chat_history_container = st.empty()
 
 
 class WebSocketManager:
@@ -222,20 +171,17 @@ def handle_end(message: dict[str, Any]) -> None:
     st.session_state.websocket_manager.stop()
 
 
-def handle_server_msg(message: dict[str, Any]) -> None:
-    st.session_state.messages.append(
-        messageForRendering(
-            role=message["data"]["role"],
-            content=message["data"]["content"],
-            type=message["data"]["type"],
-        )
-    )
-
-
 def handle_error_msg(message: dict[str, Any]) -> None:
     # TODO handle different error
     print("[!!] Error in message: ", message)
     st.error(f"Error in message: {message['data']['content']}")
+
+
+def handle_server_msg(message: dict[str, Any]) -> None:
+    msg_type = message["data"]["type"]
+    if msg_type == "messages":
+        epilog = EpisodeLog(**message["data"]["messages"])
+        st.session_state.messages.append(epilog)
 
 
 def handle_message(message: dict[str, Any]) -> None:
@@ -258,6 +204,7 @@ def start_callback() -> None:
     else:
         st.session_state.active = True
         st.session_state.messages = []
+        chat_history_container.empty()
         st.session_state.websocket_manager.start()
         st.session_state.websocket_manager.send_message(
             {
@@ -387,26 +334,15 @@ def chat_demo() -> None:
             while not st.session_state.websocket_manager.receive_queue.empty():
                 message = st.session_state.websocket_manager.receive_queue.get()
                 handle_message(message)
-                breakpoint()
 
         with chat_history_container.container():
-            streamlit_rendering(
-                messages=st.session_state.messages,
-                agent_names=(
-                    st.session_state.agent_choice_1,
-                    st.session_state.agent_choice_2,
-                ),
-            )
+            if st.session_state.messages:
+                rendering_episode_full(st.session_state.messages[-1])
         time.sleep(1)
 
     with chat_history_container.container():
-        streamlit_rendering(
-            messages=st.session_state.messages,
-            agent_names=(
-                st.session_state.agent_choice_1,
-                st.session_state.agent_choice_2,
-            ),
-        )
+        if st.session_state.messages:
+            rendering_episode_full(st.session_state.messages[-1])
 
 
 chat_demo()

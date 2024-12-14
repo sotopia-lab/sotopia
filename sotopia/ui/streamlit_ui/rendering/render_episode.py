@@ -32,7 +32,7 @@ def update_database_callback() -> None:
     pass
 
 
-def rendering_episode(episode: EpisodeLog) -> None:
+def rendering_background(episode: EpisodeLog) -> None:
     local_css("./././css/style.css")
 
     agents = [AgentProfile.get(agent) for agent in episode.agents]
@@ -92,8 +92,7 @@ def rendering_episode(episode: EpisodeLog) -> None:
             )
 
 
-def rendering_episode_full(episode: EpisodeLog) -> None:
-    print("Episode: ", episode)
+def rendering_conversation_and_evaluation(episode: EpisodeLog) -> None:
     agents = [AgentProfile.get(agent) for agent in episode.agents]
     agent_names = [get_full_name(agent) for agent in agents]
     environment = EnvironmentProfile.get(episode.environment)
@@ -122,10 +121,6 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
     ), f"Need 2 background messages, but got {len(background_messages)}"
 
     print(f"\n\ENVIRONMENT {environment}")
-
-    rendering_episode(episode)
-
-    st.markdown("---")
 
     st.subheader("Conversation & Evaluation")
     with st.expander("Conversation", expanded=True):
@@ -176,6 +171,12 @@ def rendering_episode_full(episode: EpisodeLog) -> None:
             st.markdown(
                 message["content"].replace("\n", "<br />"), unsafe_allow_html=True
             )
+
+
+def rendering_episode_full(episode: EpisodeLog) -> None:
+    rendering_background(episode)
+    st.markdown("---")
+    rendering_conversation_and_evaluation(episode)
 
 
 def rendering_episodes() -> None:
@@ -212,86 +213,8 @@ def rendering_episodes() -> None:
         if selected_index < len(st.session_state.current_episodes):
             # TODO unify the display function across render and chat
             episode = st.session_state.current_episodes[selected_index]
-            agents = [AgentProfile.get(agent) for agent in episode.agents]
-            agent_names = [get_full_name(agent) for agent in agents]
-            environment = EnvironmentProfile.get(episode.environment)
-
-            avatar_mapping = {
-                agent_names[0]: "🧔🏻",
-                agent_names[1]: "🧑",
-            }
-
-            messages = render_for_humans(episode)
-
-            background_messages = [
-                message for message in messages if message["role"] == "Background Info"
-            ]
-            evaluation_messages = [
-                message for message in messages if message["type"] == "comment"
-            ]
-            conversation_messages = [
-                message
-                for message in messages
-                if message not in background_messages
-                and message not in evaluation_messages
-            ]
-
-            assert (
-                len(background_messages) == 2
-            ), f"Need 2 background messages, but got {len(background_messages)}"
-
-            print(f"\n\ENVIRONMENT {environment}")
-
-            rendering_episode(episode)
+            rendering_background(episode)
 
     st.markdown("---")
 
-    st.subheader("Conversation & Evaluation")
-    with st.expander("Conversation", expanded=True):
-        for index, message in enumerate(conversation_messages):
-            role = role_mapping.get(message["role"], message["role"])
-            content = message["content"]
-
-            if role == "obs" or message.get("type") == "action":
-                try:
-                    content = json.loads(content)
-                except Exception as e:
-                    print(e)
-
-            with st.chat_message(
-                role, avatar=avatar_mapping.get(message["role"], None)
-            ):
-                if isinstance(content, dict):
-                    st.json(content)
-                elif role == "info":
-                    st.markdown(
-                        f"""
-                        <div style="background-color: lightblue; padding: 10px; border-radius: 5px;">
-                            {content}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    if role == agent_names[1]:
-                        # add background grey color
-                        st.write(f"**{role}**")
-                        st.markdown(
-                            f"""
-                            <div style="background-color: lightgrey; padding: 10px; border-radius: 5px;">
-                                {content}
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.write(f"**{role}**")
-                        st.markdown(
-                            content.replace("\n", "<br />"), unsafe_allow_html=True
-                        )
-
-    with st.expander("Evaluation Results", expanded=True):
-        for message in evaluation_messages:
-            st.markdown(
-                message["content"].replace("\n", "<br />"), unsafe_allow_html=True
-            )
+    rendering_conversation_and_evaluation(episode)

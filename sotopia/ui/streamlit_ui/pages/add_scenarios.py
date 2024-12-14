@@ -93,13 +93,14 @@ def rendering_scenario_form() -> None:
 
     if st.button("Create Scenario"):
         scenario_profile = EnvironmentProfileWrapper(
-            codename=codename,
+            codename="[Customize]" + codename,
             source=source,
             scenario=scenario,
             relationship=relationship,
             age_constraint=age_constraint,
             occupation_constraint=occupation_constraint,
             agent_goals=[agent1_goal, agent2_goal],
+            tag="customized_scenario",
         )
 
         response = requests.post(

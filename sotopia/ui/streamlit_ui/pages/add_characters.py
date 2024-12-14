@@ -63,6 +63,7 @@ def rendering_character_form() -> None:
             gender=gender,
             gender_pronoun=gender_pronoun,
             public_info=public_info,
+            tag="customized_agent",
         )
         print(agent_profile)
 
