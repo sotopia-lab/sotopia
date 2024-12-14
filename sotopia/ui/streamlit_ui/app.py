@@ -2,8 +2,6 @@ import os
 
 import streamlit as st
 
-from sotopia.ui.streamlit_ui.utils import reset_database
-
 # Page Configuration
 st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wide")
 
@@ -24,7 +22,7 @@ def update_database_callback() -> None:
         new_database_url if new_database_url != "" else st.session_state.DEFAULT_DB_URL
     )
     try:
-        reset_database(updated_url)
+        pass
     except Exception as e:
         st.error(f"Error occurred while updating database: {e}, please try again.")
 

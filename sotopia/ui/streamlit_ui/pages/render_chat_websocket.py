@@ -9,8 +9,7 @@ import aiohttp
 import requests
 import streamlit as st
 
-from sotopia.ui.streamlit_ui.rendering import render_episode
-from sotopia.ui.streamlit_ui.utils import get_abstract
+from sotopia.ui.streamlit_ui.rendering import render_episode, get_abstract
 from sotopia.database import EpisodeLog
 
 

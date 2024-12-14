@@ -4,7 +4,13 @@ from .render_elements import (
     render_episode,
     render_character,
 )
-from .render_utils import avatar_mapping, render_messages
+from .render_utils import (
+    avatar_mapping,
+    render_messages,
+    get_full_name,
+    get_abstract,
+    local_css,
+)
 
 __all__ = [
     "render_conversation_and_evaluation",
@@ -13,4 +19,7 @@ __all__ = [
     "render_environment_profile",
     "render_episode",
     "render_messages",
+    "get_full_name",
+    "get_abstract",
+    "local_css",
 ]

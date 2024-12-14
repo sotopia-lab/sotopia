@@ -7,9 +7,8 @@ from sotopia.envs.parallel import render_text_for_environment
 
 from sotopia.ui.streamlit_ui.rendering.render_utils import (
     render_messages,
-)
-from sotopia.ui.streamlit_ui.utils import (
     get_full_name,
+    local_css,
 )
 
 from .render_utils import avatar_mapping
@@ -22,12 +21,6 @@ role_mapping = {
     "Observation": "obs",
     "General": "eval",
 }
-
-
-def local_css(file_name: str) -> None:
-    with open(file_name) as f:
-        # print("\n\n STYLING", f.read())
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 def update_database_callback() -> None:

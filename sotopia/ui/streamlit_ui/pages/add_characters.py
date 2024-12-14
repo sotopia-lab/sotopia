@@ -33,12 +33,9 @@ import streamlit as st
 import requests
 
 from sotopia.ui.fastapi_server import AgentProfileWrapper
+from sotopia.ui.streamlit_ui.rendering import local_css
+
 # add fields for agent profiles
-
-
-def local_css(file_name: str) -> None:
-    with open(file_name) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 def rendering_character_form() -> None:

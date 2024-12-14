@@ -1,6 +1,7 @@
 from typing import TypedDict
-from sotopia.database import EpisodeLog
+from sotopia.database import EpisodeLog, AgentProfile
 from pathlib import Path
+import streamlit as st
 
 
 class messageForRendering(TypedDict):
@@ -70,6 +71,19 @@ avatar_mapping = {
     "Imelda Thorne": female_links[3],
     "Isabella White": female_links[4],
 }
+
+
+def get_abstract(description: str) -> str:
+    return " ".join(description.split()[:50]) + "..."
+
+
+def local_css(file_name: str) -> None:
+    with open(file_name) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+
+def get_full_name(agent_profile: AgentProfile) -> str:
+    return f"{agent_profile.first_name} {agent_profile.last_name}"
 
 
 def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:

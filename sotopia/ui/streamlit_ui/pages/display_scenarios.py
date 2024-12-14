@@ -1,12 +1,7 @@
 import requests
 import streamlit as st
-from sotopia.ui.streamlit_ui.rendering import render_environment_profile
+from sotopia.ui.streamlit_ui.rendering import render_environment_profile, local_css
 from sotopia.database import EnvironmentProfile
-
-
-def local_css(file_name: str) -> None:
-    with open(file_name) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 local_css("./css/style.css")

@@ -34,14 +34,10 @@ means the environment is only available to agent one between 18 and 25, and agen
 """
 
 import streamlit as st
+from sotopia.ui.streamlit_ui.rendering import local_css
 from sotopia.ui.fastapi_server import EnvironmentProfileWrapper
 from sotopia.database import RelationshipType
 import requests
-
-
-def local_css(file_name: str) -> None:
-    with open(file_name) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 def rendering_scenario_form() -> None:
