@@ -3,15 +3,15 @@ import sys
 
 
 if sys.version_info < (3, 11):
-    pass
+    from typing_extensions import Self
 else:
-    pass
+    from typing import Self
 
 
 from aact import Message, NodeFactory, Node
 from aact.messages import DataModel, DataModelFactory
 
-from typing import Literal, Self, Any, AsyncIterator
+from typing import Literal, Any, AsyncIterator
 from pydantic import Field
 
 from sotopia.database import EpisodeLog
