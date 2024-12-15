@@ -155,7 +155,7 @@ returns:
 **WSMessageType**
 | Type | Direction   | Description |
 |-----------|--------|-------------|
-| SERVER_MSG | Server → Client | Standard message from server (payload: `messageForRendering` [here](https://github.com/sotopia-lab/sotopia-demo/blob/main/socialstream/rendering_utils.py) ) |
+| SERVER_MSG | Server → Client | Standard message from server (payload: `EpisodeLog`) |
 | CLIENT_MSG | Client → Server | Standard message from client (payload: TBD) |
 | ERROR      | Server → Client | Error notification (payload: TBD) |
 | START_SIM  | Client → Server | Initialize simulation (payload: `SimulationEpisodeInitialization`) |
@@ -178,6 +178,13 @@ returns:
 
 
 **Implementation plan**: Currently only support LLM-LLM simulation based on [this function](https://github.com/sotopia-lab/sotopia/blob/19d39e068c3bca9246fc366e5759414f62284f93/sotopia/server.py#L108).
+
+**SERVER_MSG payload**
+The server message is a dictionary that has the following keys:
+- type: str, indicates the type of the message, typically it is "messages"
+- messages: Any. Typically this is the dictionary of the `EpisodeLog` for the current simulation state. (Which means the reward part could be empty)
+
+
 
 
 ## An example to run simulation with the API
