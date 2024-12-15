@@ -28,6 +28,20 @@ def initialize_session_state() -> None:
         st.session_state.agent_model_dict = get_models()
         st.session_state.evaluation_dimension_dict = get_evaluation_dimensions()
 
+        st.session_state.scenarios = dict(
+            sorted(
+                st.session_state.scenarios.items(),
+                key=lambda item: item[0],
+                reverse=True,
+            )
+        )
+        st.session_state.agent_dict = dict(
+            sorted(
+                st.session_state.agent_dict.items(),
+                key=lambda item: item[0],
+            )
+        )
+
         # Use first items as default choices
         st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[1]
         st.session_state.agent_choice_1 = list(st.session_state.agent_dict.keys())[0]
