@@ -2,6 +2,24 @@
 > [!CAUTION]
 > Work in progress: the API endpoints are being implemented. And will be released in the future major version.
 
+## Deploy to Modal
+To deploy the FastAPI server to Modal, run the following command:
+```bash
+cd sotopia/ui/fastapi_server
+modal deploy modal_api_server.py
+```
+
+To deploy the Streamlit UI to Modal, run the following command:
+```bash
+cd sotopia/ui/streamlit_ui
+modal deploy modal_streamlit_app.py
+```
+
+To serve the Streamlit UI, run the following command:
+```bash
+modal serve modal_streamlit_app.py
+```
+
 ## Streamlit UI
 To run the Streamlit UI, run the following command:
 ```bash
