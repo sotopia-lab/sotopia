@@ -25,3 +25,27 @@ class CustomEvaluationDimensionsWrapper(BaseModel):
         default=[], description="The dimensions of the custom evaluation dimension list"
     )
 """
+
+import streamlit as st
+
+
+def add_evaluation_dimension() -> None:
+    st.title("Add Evaluation Dimension")
+
+    with st.expander("Evaluation Dimension List", expanded=True):
+        st.text_input("Name", key="name_list")
+        st.text_input("Description", key="description_list")
+        st.text_input("Evaluation Dimension", key="evaluation_dimension_list")
+
+    with st.expander("Evaluation Dimension", expanded=True):
+        st.text_input("Name", key="name_list_item")
+        st.text_input("Description", key="description_list_item")
+        st.text_input("Evaluation Dimension", key="evaluation_dimension_list_item")
+        st.button(
+            "Add another Evaluation Dimension", key="add_another_evaluation_dimension"
+        )
+
+    st.button("Add Evaluation Dimension", key="add_evaluation_dimension")
+
+
+add_evaluation_dimension()

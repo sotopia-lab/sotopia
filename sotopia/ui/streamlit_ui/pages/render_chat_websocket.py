@@ -325,6 +325,10 @@ def chat_demo() -> None:
                     disabled=is_active(),
                 )
 
+        with st.expander("Other Options", expanded=False):
+            st.text_input("Max Turns", key="max_turns", value="20")
+            st.text_input("Max Stale Turns", key="max_stale_turns", value="3")
+
         # Control Buttons
         col1, col2, col3 = st.columns([2, 2, 2])
 

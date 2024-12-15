@@ -58,7 +58,7 @@ def display_scenarios() -> None:
         print(f"Redis Connection Error: {message}************************")
         st.stop()
     else:
-        st.success(f"Redis Connection Successful: {message}")
+        # st.success(f"Redis Connection Successful: {message}")
         print(f"Redis Connection Successful: {message}************************")
 
     st.title("Scenarios")

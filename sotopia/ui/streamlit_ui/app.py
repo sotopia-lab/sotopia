@@ -36,9 +36,7 @@ page_path = os.path.join(base_path, "pages")
 display_intro = st.Page(
     f"{page_path}/intro.py", title="Introduction", icon=":material/home:"
 )
-display_episodes = st.Page(
-    f"{page_path}/display_episodes.py", title="Episode", icon=":material/photo_library:"
-)
+
 display_scenarios = st.Page(
     f"{page_path}/display_scenarios.py",
     title="Scenarios",
@@ -46,6 +44,9 @@ display_scenarios = st.Page(
 )
 display_characters = st.Page(
     f"{page_path}/display_characters.py", title="Characters", icon=":material/people:"
+)
+display_episodes = st.Page(
+    f"{page_path}/display_episodes.py", title="Episode", icon=":material/photo_library:"
 )
 
 display_chat = st.Page(
@@ -61,16 +62,22 @@ add_characters = st.Page(
 add_scenarios = st.Page(
     f"{page_path}/add_scenarios.py", title="Add Scenarios", icon=":material/add:"
 )
+add_evaluation_dimensions = st.Page(
+    f"{page_path}/add_evaluation_dimension.py",
+    title="Add Evaluation Dimensions",
+    icon=":material/add:",
+)
 
 pg = st.navigation(
     [
         display_intro,
         display_scenarios,
-        display_episodes,
         display_characters,
+        display_episodes,
         display_chat,
         add_characters,
         add_scenarios,
+        add_evaluation_dimensions,
     ]
 )
 
