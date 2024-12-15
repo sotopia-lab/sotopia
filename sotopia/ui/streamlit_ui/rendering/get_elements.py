@@ -27,3 +27,11 @@ def get_agents(id: str = "") -> dict[str, dict[Any, Any]]:
         with requests.get(f"{st.session_state.API_BASE}/agents") as resp:
             agents = resp.json()
     return {get_full_name(agent): agent for agent in agents}
+
+
+def get_evaluation_dimensions() -> dict[str, dict[Any, Any]]:
+    # use synchronous code to get the evaluation dimensions
+    with requests.get(f"{st.session_state.API_BASE}/evaluation_dimensions") as resp:
+        evaluation_dimensions = resp.json()
+
+    return evaluation_dimensions

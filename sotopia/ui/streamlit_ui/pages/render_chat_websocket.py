@@ -13,6 +13,7 @@ from sotopia.ui.streamlit_ui.rendering import (
     get_scenarios,
     get_agents,
     get_models,
+    get_evaluation_dimensions,
     render_environment_profile,
     get_abstract,
     render_conversation_and_evaluation,
@@ -25,6 +26,7 @@ def initialize_session_state() -> None:
         st.session_state.scenarios = get_scenarios()
         st.session_state.agent_dict = get_agents()
         st.session_state.agent_model_dict = get_models()
+        st.session_state.evaluation_dimension_dict = get_evaluation_dimensions()
 
         # Use first items as default choices
         st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[1]
@@ -35,6 +37,9 @@ def initialize_session_state() -> None:
         )[0]
         st.session_state.agent2_model_choice = list(
             st.session_state.agent_model_dict.keys()
+        )[0]
+        st.session_state.evaluation_dimension_choice = list(
+            st.session_state.evaluation_dimension_dict.keys()
         )[0]
 
         # Initialize websocket manager and message list
@@ -203,6 +208,7 @@ def start_callback() -> None:
                             st.session_state.agent_model_choice_2
                         ],
                     ],
+                    "evaluation_dimension_list_name": st.session_state.evaluation_dimension_choice,
                 },
             }
         )
@@ -253,6 +259,17 @@ def chat_demo() -> None:
                         unsafe_allow_html=True,
                     )
 
+                evaluation_dimension_str = f"**Evaluation Dimensions:** {st.session_state.evaluation_dimension_choice}, including<br>"
+                for eval_dim in st.session_state.evaluation_dimension_dict[
+                    st.session_state.evaluation_dimension_choice
+                ]:
+                    evaluation_dimension_str += f"{eval_dim['name']}, "
+
+                st.markdown(
+                    evaluation_dimension_str[:-2] + ".",
+                    unsafe_allow_html=True,
+                )
+
                 agent1_col, agent2_col = st.columns(2)
                 with agent1_col:
                     st.selectbox(
@@ -289,8 +306,8 @@ def chat_demo() -> None:
 
                 st.selectbox(
                     "Choose evaluation dimensions:",
-                    ["Sotopia-Original", "Success Rate", "Coherence", "Engagement"],
-                    key="evaluation_dimensions",
+                    list(st.session_state.evaluation_dimension_dict.keys()),
+                    key="evaluation_dimension_choice",
                     disabled=is_active(),
                 )
 

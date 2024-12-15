@@ -11,7 +11,12 @@ from .render_utils import (
     local_css,
 )
 
-from .get_elements import get_scenarios, get_agents, get_models
+from .get_elements import (
+    get_scenarios,
+    get_agents,
+    get_models,
+    get_evaluation_dimensions,
+)
 
 __all__ = [
     "render_conversation_and_evaluation",
@@ -25,4 +30,5 @@ __all__ = [
     "get_scenarios",
     "get_agents",
     "get_models",
+    "get_evaluation_dimensions",
 ]
