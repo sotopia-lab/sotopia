@@ -42,7 +42,7 @@ image = (
         "gin",
     )  # TODO similarly we need to solve this
     .run_commands(
-        "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip uninstall sotopia && pip install -e .",
+        "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e .",
     )
 )
 
