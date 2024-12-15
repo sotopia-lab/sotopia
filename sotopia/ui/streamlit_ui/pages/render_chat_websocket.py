@@ -8,9 +8,15 @@ from typing import Any, Optional
 import aiohttp
 import streamlit as st
 
-from sotopia.ui.streamlit_ui.rendering import render_episode, get_abstract
-from sotopia.database import EpisodeLog
-from sotopia.ui.streamlit_ui.rendering import get_scenarios, get_agents, get_models
+from sotopia.database import EpisodeLog, EnvironmentProfile
+from sotopia.ui.streamlit_ui.rendering import (
+    get_scenarios,
+    get_agents,
+    get_models,
+    render_environment_profile,
+    get_abstract,
+    render_conversation_and_evaluation,
+)
 
 
 def initialize_session_state() -> None:
@@ -212,6 +218,12 @@ def stop_callback() -> None:
     )
 
 
+def update_scenario_description() -> None:
+    scenario = st.session_state.scenarios[st.session_state.scenario_choice]
+    environment_profile = EnvironmentProfile(**scenario)
+    render_environment_profile(environment_profile)
+
+
 def is_active() -> bool:
     active_state = st.session_state.websocket_manager.running
     assert isinstance(active_state, bool)
@@ -220,6 +232,7 @@ def is_active() -> bool:
 
 def chat_demo() -> None:
     initialize_session_state()
+    update_scenario_description()
 
     with st.sidebar:
         with st.container():
@@ -305,12 +318,12 @@ def chat_demo() -> None:
 
         with chat_history_container.container():
             if st.session_state.messages:
-                render_episode(st.session_state.messages[-1])
+                render_conversation_and_evaluation(st.session_state.messages[-1])
         time.sleep(1)
 
     with chat_history_container.container():
         if st.session_state.messages:
-            render_episode(st.session_state.messages[-1])
+            render_conversation_and_evaluation(st.session_state.messages[-1])
 
 
 chat_demo()

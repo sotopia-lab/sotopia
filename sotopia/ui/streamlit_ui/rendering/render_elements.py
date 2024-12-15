@@ -1,5 +1,4 @@
 import json
-import requests
 
 import streamlit as st
 from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
@@ -178,7 +177,6 @@ def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
     local_css("./././css/style.css")
     agents = [list(get_agents(agent).values())[0] for agent in episode.agents]
     agent_names = [get_full_name(agent) for agent in agents]
-    environment = EnvironmentProfile.get(episode.environment)
 
     messages = render_messages(episode)
 
@@ -197,8 +195,6 @@ def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
     assert (
         len(background_messages) == 2
     ), f"Need 2 background messages, but got {len(background_messages)}"
-
-    print(f"\n\ENVIRONMENT {environment}")
 
     st.markdown("---")
 
@@ -254,16 +250,3 @@ def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
             st.markdown(
                 message["content"].replace("\n", "<br />"), unsafe_allow_html=True
             )
-
-
-def render_episode(episode: EpisodeLog) -> None:
-    response = requests.get(
-        f"{st.session_state.API_BASE}/scenarios/id/{episode.environment}"
-    )
-    scenario = response.json() if response.status_code == 200 else []
-    scenario = scenario[0]
-    assert isinstance(scenario, dict)
-    environment_profile = EnvironmentProfile(**scenario)
-    render_environment_profile(environment_profile)
-    st.markdown("---")
-    render_conversation_and_evaluation(episode)
