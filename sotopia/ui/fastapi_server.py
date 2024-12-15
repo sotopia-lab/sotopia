@@ -186,10 +186,21 @@ class SimulationManager:
         return {"is_valid": is_valid, "msg": msg}
 
     async def create_simulator(
-        self, env_id: str, agent_ids: list[str]
+        self,
+        env_id: str,
+        agent_ids: list[str],
+        agent_models: list[str],
+        evaluator_model: str,
+        evaluation_dimension_list_name: str,
     ) -> WebSocketSotopiaSimulator:
         try:
-            return WebSocketSotopiaSimulator(env_id=env_id, agent_ids=agent_ids)
+            return WebSocketSotopiaSimulator(
+                env_id=env_id,
+                agent_ids=agent_ids,
+                agent_models=agent_models,
+                evaluator_model=evaluator_model,
+                evaluation_dimension_list_name=evaluation_dimension_list_name,
+            )
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
             logger.error(error_msg)
@@ -584,6 +595,15 @@ class SotopiaFastAPI(FastAPI):
                         simulator = await manager.create_simulator(
                             env_id=start_msg["data"]["env_id"],
                             agent_ids=start_msg["data"]["agent_ids"],
+                            agent_models=start_msg["data"].get(
+                                "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
+                            ),
+                            evaluator_model=start_msg["data"].get(
+                                "evaluator_model", "gpt-4o"
+                            ),
+                            evaluation_dimension_list_name=start_msg["data"].get(
+                                "evaluation_dimension_list_name", "sotopia"
+                            ),
                         )
                         await manager.run_simulation(websocket, simulator)
 

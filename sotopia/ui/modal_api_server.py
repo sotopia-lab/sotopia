@@ -16,7 +16,7 @@ def initialize_redis_data() -> None:
         os.makedirs("/vol/redis", exist_ok=True)
         print("Downloading initial Redis data...")
         subprocess.run(
-            "curl -L https://cmu.box.com/shared/static/xiivc5z8rnmi1zr6vmk1ohxslylvynur --output /vol/redis/dump.rdb",
+            "curl -L https://cmu.box.com/shared/static/e3vd31r7916jb70j9cgtcq9etryrxml0.rdb --output /vol/redis/dump.rdb",
             shell=True,
             check=True,
         )

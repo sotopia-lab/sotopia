@@ -2,16 +2,20 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.agents import Agents, LLMAgent
 from sotopia.messages import Observation
 from sotopia.envs import ParallelSotopiaEnv
-from sotopia.database import EnvironmentProfile, AgentProfile, EpisodeLog
+from sotopia.database import (
+    EnvironmentProfile,
+    AgentProfile,
+    EpisodeLog,
+    EvaluationDimensionBuilder,
+)
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import TypedDict, Any, AsyncGenerator
+from typing import Type, TypedDict, Any, AsyncGenerator
 from pydantic import BaseModel
 
 
@@ -57,6 +61,7 @@ def get_env_agents(
     agent_ids: list[str],
     agent_models: list[str],
     evaluator_model: str,
+    evaluation_dimension_list_name: str,
 ) -> tuple[ParallelSotopiaEnv, Agents, dict[str, Observation]]:
     # environment_profile = EnvironmentProfile.find().all()[0]
     # agent_profiles = AgentProfile.find().all()[:2]
@@ -79,6 +84,12 @@ def get_env_agents(
     for idx, goal in enumerate(environment_profile.agent_goals):
         agent_list[idx].goal = goal
 
+    evaluation_dimensions: Type[BaseModel] = (
+        EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
+            list_name=evaluation_dimension_list_name
+        )
+    )
+
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     env = ParallelSotopiaEnv(
         action_order="round-robin",
@@ -89,7 +100,7 @@ def get_env_agents(
         terminal_evaluators=[
             ReachGoalLLMEvaluator(
                 evaluator_model,
-                EvaluationForTwoAgents[SotopiaDimensions],
+                EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
             ),
         ],
         env_profile=environment_profile,
@@ -124,9 +135,14 @@ class WebSocketSotopiaSimulator:
         agent_ids: list[str],
         agent_models: list[str] = ["gpt-4o-mini", "gpt-4o-mini"],
         evaluator_model: str = "gpt-4o",
+        evaluation_dimension_list_name: str = "sotopia",
     ) -> None:
         self.env, self.agents, self.environment_messages = get_env_agents(
-            env_id, agent_ids, agent_models, evaluator_model
+            env_id,
+            agent_ids,
+            agent_models,
+            evaluator_model,
+            evaluation_dimension_list_name,
         )
         self.messages: list[list[tuple[str, str, str]]] = []
         self.messages.append(
