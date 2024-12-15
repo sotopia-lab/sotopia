@@ -27,7 +27,7 @@ def initialize_session_state() -> None:
         st.session_state.agent_model_dict = get_models()
 
         # Use first items as default choices
-        st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
+        st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[1]
         st.session_state.agent_choice_1 = list(st.session_state.agent_dict.keys())[0]
         st.session_state.agent_choice_2 = list(st.session_state.agent_dict.keys())[0]
         st.session_state.agent1_model_choice = list(
@@ -286,6 +286,13 @@ def chat_demo() -> None:
                         key="agent_model_choice_2",
                         disabled=is_active(),
                     )
+
+                st.selectbox(
+                    "Choose evaluation dimensions:",
+                    ["Sotopia-Original", "Success Rate", "Coherence", "Engagement"],
+                    key="evaluation_dimensions",
+                    disabled=is_active(),
+                )
 
         # Control Buttons
         col1, col2, col3 = st.columns([2, 2, 2])
