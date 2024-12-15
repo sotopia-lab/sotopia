@@ -42,33 +42,39 @@ image = (
         "gin",
     )  # TODO similarly we need to solve this
     .run_commands(
-        "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e .",
+        "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip uninstall sotopia && pip install -e .",
     )
 )
 
 
-streamlit_script_local_path = Path(__file__).parent / "app.py"
-streamlit_script_remote_path = Path("/root/app.py")
+streamlit_script_local_path = Path(__file__).parent
+streamlit_script_remote_path = Path("/root/streamlit_ui")
+
 
 if not streamlit_script_local_path.exists():
     raise RuntimeError(
         "app.py not found! Place the script with your streamlit app in the same directory."
     )
 
-streamlit_script_mount = modal.Mount.from_local_file(
-    str(streamlit_script_local_path),
-    str(streamlit_script_remote_path),
+streamlit_project_mount = modal.Mount.from_local_dir(
+    local_path=f"{str(streamlit_script_local_path)}",
+    remote_path=f"{str(streamlit_script_remote_path)}",
 )
+
+# streamlit_script_mount = modal.Mount.from_local_file(
+#     local_path=f"{str(streamlit_script_local_path)}/app.py",
+#     remote_path=f"{str(streamlit_script_remote_path)}/app.py",
+# )
 
 app = modal.App(name="example-modal-streamlit", image=image)
 
 
 @app.function(
     allow_concurrent_inputs=100,
-    mounts=[streamlit_script_mount],
+    mounts=[streamlit_project_mount],
 )
 @modal.web_server(8000)
 def run() -> None:
-    target = shlex.quote(str(streamlit_script_remote_path))
-    cmd = f"streamlit run {target} --server.port 8000 --server.enableCORS=false --server.enableXsrfProtection=false"
+    target = shlex.quote(f"{str(streamlit_script_remote_path)}/app.py")
+    cmd = f"streamlit run {target} --server.port 8000 --server.enableCORS=true --server.enableXsrfProtection=false"
     subprocess.Popen(cmd, shell=True)

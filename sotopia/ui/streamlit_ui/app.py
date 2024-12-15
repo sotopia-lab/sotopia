@@ -30,33 +30,36 @@ def update_database_callback() -> None:
     print("Updated DB URL: ", st.session_state.current_database_url)
 
 
+base_path = os.path.dirname(os.path.abspath(__file__))
+page_path = os.path.join(base_path, "pages")
+
 display_intro = st.Page(
-    "./pages/intro.py", title="Introduction", icon=":material/home:"
+    f"{page_path}/intro.py", title="Introduction", icon=":material/home:"
 )
 display_episodes = st.Page(
-    "./pages/display_episodes.py", title="Episode", icon=":material/photo_library:"
+    f"{page_path}/display_episodes.py", title="Episode", icon=":material/photo_library:"
 )
 display_scenarios = st.Page(
-    "./pages/display_scenarios.py",
+    f"{page_path}/display_scenarios.py",
     title="Scenarios",
     icon=":material/insert_drive_file:",
 )
 display_characters = st.Page(
-    "./pages/display_characters.py", title="Characters", icon=":material/people:"
+    f"{page_path}/display_characters.py", title="Characters", icon=":material/people:"
 )
 
 display_chat = st.Page(
-    "./pages/render_chat_websocket.py",
+    f"{page_path}/render_chat_websocket.py",
     title="Simulation",
     icon=":material/add:",
 )
 
 add_characters = st.Page(
-    "./pages/add_characters.py", title="Add Characters", icon=":material/add:"
+    f"{page_path}/add_characters.py", title="Add Characters", icon=":material/add:"
 )
 
 add_scenarios = st.Page(
-    "./pages/add_scenarios.py", title="Add Scenarios", icon=":material/add:"
+    f"{page_path}/add_scenarios.py", title="Add Scenarios", icon=":material/add:"
 )
 
 pg = st.navigation(
