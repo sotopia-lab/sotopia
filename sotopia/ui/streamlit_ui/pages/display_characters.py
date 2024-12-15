@@ -15,8 +15,8 @@ def display_characters() -> None:
     col1, col2 = st.columns(2, gap="medium")
     for i, (name, character) in enumerate(all_characters.items()):
         with col1 if i % 2 == 0 else col2:
-            assert isinstance(character, AgentProfile)
-            render_character(character)
+            character_profile = AgentProfile(**character)
+            render_character(character_profile)
             st.write("---")
 
 
