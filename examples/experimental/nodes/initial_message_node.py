@@ -18,6 +18,7 @@ class InitialMessageNode(Node[DataModel, Text]):
         input_tick_channel: str,
         output_channels: list[str],
         env_scenario: str,
+        node_name: str,
         redis_url: str = "redis://localhost:6379/0",
     ):
         super().__init__(
@@ -26,6 +27,7 @@ class InitialMessageNode(Node[DataModel, Text]):
                 (output_channel, Text) for output_channel in output_channels
             ],
             redis_url=redis_url,
+            node_name=node_name,
         )
         self.env_scenario = env_scenario
         self.output_channels = output_channels

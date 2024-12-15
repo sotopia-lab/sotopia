@@ -45,7 +45,6 @@ def save_dimensions(dimensions: list[dict[str, Union[str, int]]]) -> None:
 def save_dimension_list(
     dimensions: list[dict[str, Union[str, int]]], list_name: str
 ) -> None:
-    Migrator().run()
     dimension_list = CustomEvaluationDimensionList.find(
         CustomEvaluationDimensionList.name == list_name
     ).all()

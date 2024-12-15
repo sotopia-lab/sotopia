@@ -15,6 +15,8 @@ from sotopia.database import (
     RelationshipProfile,
     RelationshipType,
     NonStreamingSimulationStatus,
+    CustomEvaluationDimensionList,
+    CustomEvaluationDimension,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
@@ -33,7 +35,7 @@ from fastapi import (
 )
 from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, model_validator, field_validator
+from pydantic import BaseModel, model_validator, field_validator, Field
 
 from sotopia.ui.websocket_utils import (
     WebSocketSotopiaSimulator,
@@ -114,6 +116,16 @@ class EnvironmentProfileWrapper(BaseModel):
     occupation_constraint: str | None = None
     agent_constraint: list[list[str]] | None = None
     tag: str = ""
+
+
+class CustomEvaluationDimensionsWrapper(BaseModel):
+    pk: str = ""
+    name: str = Field(
+        default="", description="The name of the custom evaluation dimension list"
+    )
+    dimensions: list[CustomEvaluationDimension] = Field(
+        default=[], description="The dimensions of the custom evaluation dimension list"
+    )
 
 
 class SimulationRequest(BaseModel):
@@ -416,6 +428,20 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
     return episodes
 
 
+async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
+    custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
+    all_custom_evaluation_dimension_list = CustomEvaluationDimensionList.all()
+    for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
+        assert isinstance(
+            custom_evaluation_dimension_list, CustomEvaluationDimensionList
+        )
+        custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = [
+            CustomEvaluationDimension.get(pk=pk)
+            for pk in custom_evaluation_dimension_list.dimension_pks
+        ]
+    return custom_evaluation_dimensions
+
+
 async def get_models() -> list[str]:
     # TODO figure out how to get the available models
     return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
@@ -452,6 +478,10 @@ class SotopiaFastAPI(FastAPI):
             get_episodes
         )
         self.get("/models", response_model=list[str])(get_models)
+        self.get(
+            "/evaluation_dimensions",
+            response_model=dict[str, list[CustomEvaluationDimension]],
+        )(get_evaluation_dimensions)
 
         @self.post("/scenarios/", response_model=str)
         async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
@@ -474,6 +504,50 @@ class SotopiaFastAPI(FastAPI):
             relationship_profile = RelationshipProfile(**relationship.model_dump())
             relationship_profile.save()
             pk = relationship_profile.pk
+            assert pk is not None
+            return pk
+
+        @self.post("/evaluation_dimensions/", response_model=str)
+        async def create_evaluation_dimensions(
+            evaluation_dimensions: CustomEvaluationDimensionsWrapper,
+        ) -> str:
+            dimension_list = CustomEvaluationDimensionList.find(
+                CustomEvaluationDimensionList.name == evaluation_dimensions.name
+            ).all()
+
+            if len(dimension_list) == 0:
+                all_dimensions_pks = []
+                for dimension in evaluation_dimensions.dimensions:
+                    find_dimension = CustomEvaluationDimension.find(
+                        CustomEvaluationDimension.name == dimension.name
+                    ).all()
+                    if len(find_dimension) == 0:
+                        dimension.save()
+                        all_dimensions_pks.append(dimension.pk)
+                    elif len(find_dimension) == 1:
+                        all_dimensions_pks.append(find_dimension[0].pk)
+                    else:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"Evaluation dimension with name={dimension.name} already exists",
+                        )
+
+                custom_evaluation_dimension_list = CustomEvaluationDimensionList(
+                    pk=evaluation_dimensions.pk,
+                    name=evaluation_dimensions.name,
+                    dimension_pks=all_dimensions_pks,
+                )
+                custom_evaluation_dimension_list.save()
+                logger.info(
+                    f"Created evaluation dimension list {evaluation_dimensions.name}"
+                )
+            else:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Evaluation dimension list with name={evaluation_dimensions.name} already exists",
+                )
+
+            pk = custom_evaluation_dimension_list.pk
             assert pk is not None
             return pk
 
