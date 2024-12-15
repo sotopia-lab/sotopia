@@ -33,16 +33,24 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None
         age_constraint="[(18, 70), (18, 70)]",
     ).save()
     RelationshipProfile(
-        agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent2", relationship=2
+        agent_1_id="tmppk_agent1",
+        agent_2_id="tmppk_agent2",
+        relationship=2,
+        pk="tmppk_relationship1",
     ).save()
     RelationshipProfile(
-        agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent3", relationship=2
+        agent_1_id="tmppk_agent1",
+        agent_2_id="tmppk_agent3",
+        relationship=2,
+        pk="tmppk_relationship2",
     ).save()
     yield
     AgentProfile.delete("tmppk_agent1")
     AgentProfile.delete("tmppk_agent2")
     AgentProfile.delete("tmppk_agent3")
     EnvironmentProfile.delete("tmppk_environment")
+    RelationshipProfile.delete("tmppk_relationship1")
+    RelationshipProfile.delete("tmppk_relationship2")
 
 
 def _generate_name() -> str:
