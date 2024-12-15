@@ -42,13 +42,15 @@ image = (
         "gin",
     )  # TODO similarly we need to solve this
     .run_commands(
-        "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e .",
+        "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e . && cd sotopia/ui/streamlit_ui"
     )
 )
 
 
 streamlit_script_local_path = Path(__file__).parent
-streamlit_script_remote_path = Path("/root/streamlit_ui")
+print("streamlit_script_local_path************************")
+print(streamlit_script_local_path)
+streamlit_script_remote_path = Path("/root")
 
 
 if not streamlit_script_local_path.exists():
@@ -76,5 +78,7 @@ app = modal.App(name="example-modal-streamlit", image=image)
 @modal.web_server(8000)
 def run() -> None:
     target = shlex.quote(f"{str(streamlit_script_remote_path)}/app.py")
+    print("target************************")
+    print(target)
     cmd = f"streamlit run {target} --server.port 8000 --server.enableCORS=true --server.enableXsrfProtection=false"
     subprocess.Popen(cmd, shell=True)
