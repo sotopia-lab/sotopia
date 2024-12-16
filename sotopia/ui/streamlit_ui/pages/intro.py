@@ -3,7 +3,7 @@ import streamlit as st
 st.title("Sotopia Demo App")
 st.markdown(
     """
-    Sotopia is a place where you can create and explore social interactions between agents. 
+    Sotopia is a place where you can create and explore social interactions between agents.
     You can build your own **agents**, **scenarios**, and **evaluation dimensions**.
     Then try out your ideas and evaluate the results with your custom settings.
     For more interesting projects using Sotopia, check out [our website](https://sotopia.world).
