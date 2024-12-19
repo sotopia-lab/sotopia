@@ -30,3 +30,4 @@ st.markdown(
         - Also see [Sotopia examples](https://github.com/sotopia-lab/sotopia/example) for more information.
     """
 )
+st.markdown("Current API Base: " + st.session_state.API_BASE)

@@ -273,17 +273,6 @@ def chat_demo() -> None:
                         unsafe_allow_html=True,
                     )
 
-                evaluation_dimension_str = f"**Evaluation Dimensions:** {st.session_state.evaluation_dimension_choice}, including<br>"
-                for eval_dim in st.session_state.evaluation_dimension_dict[
-                    st.session_state.evaluation_dimension_choice
-                ]:
-                    evaluation_dimension_str += f"{eval_dim['name']}, "
-
-                st.markdown(
-                    evaluation_dimension_str[:-2] + ".",
-                    unsafe_allow_html=True,
-                )
-
                 agent1_col, agent2_col = st.columns(2)
                 with agent1_col:
                     st.selectbox(
@@ -323,6 +312,17 @@ def chat_demo() -> None:
                     list(st.session_state.evaluation_dimension_dict.keys()),
                     key="evaluation_dimension_choice",
                     disabled=is_active(),
+                )
+
+                evaluation_dimension_str = f"**Evaluation Dimensions:** {st.session_state.evaluation_dimension_choice}. <br>**Metric includes:** "
+                for eval_dim in st.session_state.evaluation_dimension_dict[
+                    st.session_state.evaluation_dimension_choice
+                ]:
+                    evaluation_dimension_str += f"{eval_dim['name']}, "
+
+                st.markdown(
+                    evaluation_dimension_str[:-2] + ".",
+                    unsafe_allow_html=True,
                 )
 
         with st.expander("Other Options", expanded=False):

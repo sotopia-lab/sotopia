@@ -1,7 +1,12 @@
 import json
 
 import streamlit as st
-from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
+from sotopia.database import (
+    AgentProfile,
+    EnvironmentProfile,
+    EpisodeLog,
+    CustomEvaluationDimension,
+)
 from sotopia.envs.parallel import render_text_for_environment
 
 from sotopia.ui.streamlit_ui.rendering.render_utils import (
@@ -31,6 +36,46 @@ def display_field(label: str, value: str) -> str:
     if value:
         return f"<p><strong>{label}:</strong> {value}</p>"
     return ""
+
+
+def render_evaluation_dimension(dimension: CustomEvaluationDimension) -> None:
+    local_css("././css/style.css")
+
+    st.markdown(
+        f"""
+        <div style="background-color: #f9f9f9; padding: 10px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 10px; margin-left: 10px;">
+            <p><strong>{dimension.name}:</strong></p>
+            <div class="character-truncate">
+                <p style="text-overflow: ellipsis; overflow: hidden;">{dimension.description}</p>
+                <div style="background-color: #e5dbff ; padding: 10px; border-radius: 10px; margin-bottom: 5px; margin-top: 5px;">
+                    <p style="text-overflow: ellipsis; overflow: hidden;"> Range: [{dimension.range_low}, {dimension.range_high}] </p>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_evaluation_dimension_list(
+    name: str,
+    dimensions: list[CustomEvaluationDimension],
+) -> None:
+    local_css("././css/style.css")
+
+    all_dimension_names = [dimension.name for dimension in dimensions]
+
+    st.markdown(
+        f"""
+        <div style="background-color: #f9f9f9; padding: 10px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 10px; margin-left: 10px;">
+            <p><strong>{name}:</strong></p>
+            <div class="character-truncate">
+                <p style="text-overflow: ellipsis; overflow: hidden;">Includes: {', '.join(all_dimension_names)}</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_character(character: AgentProfile) -> None:
