@@ -1,5 +1,17 @@
-To run this example, please use aact to launch.
+```bash
+uvicorn group_discussion_agents:app --reload --port 8080
+```
+
+Minecraft Singleplayer 
+
+Open to LAN 55916
 
 ```bash
-aact run-dataflow examples/experimental/group_discussion_agents/group_discussion_agents.toml
+node src/agent/index.js
 ```
+
+```bash
+export OPENAI_API_KEY=sk-
+uv run aact run-dataflow group_discussion_agents.toml
+```
+
