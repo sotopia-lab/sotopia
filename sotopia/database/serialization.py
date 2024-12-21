@@ -49,6 +49,7 @@ class AgentProfileWithPersonalInformation(BaseModel):
     secret: str = Field()
     mbti: str = Field()
     model_id: str = Field()
+
     class Config:
         protected_namespaces = ()
 

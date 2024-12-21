@@ -92,7 +92,7 @@ item_name: (string) The name of the input item to smelt.
 num: (number) The number of times to smelt the item.
 !clearFurnace: Take all items out of the nearest furnace.
 Params:
-!placeHere: Place a given block in the current location. Do NOT use to build structures, only use for single blocks/torches.      
+!placeHere: Place a given block in the current location. Do NOT use to build structures, only use for single blocks/torches.
 Params:
 type: (string) The block type to place.
 !attack: Attack and kill the nearest entity of a given type.
@@ -108,7 +108,7 @@ type: (string) The type of object to activate.
 !stay: Stay in the current location no matter what. Pauses all modes.
 Params:
 type: (number) The number of seconds to stay. -1 for forever.
-!setMode: Set a mode to on or off. A mode is an automatic behavior that constantly checks and responds to the environment.        
+!setMode: Set a mode to on or off. A mode is an automatic behavior that constantly checks and responds to the environment.
 Params:
 mode_name: (string) The name of the mode to enable.
 on: (bool) Whether to enable or disable the mode.
@@ -168,6 +168,7 @@ client_data = {}
 subscribed_channels = set()
 listener_task = None
 
+
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
     agent_name: str = Field(description="the name of the agent")
@@ -191,22 +192,34 @@ class AgentAction(DataModel):
             case "leave":
                 return "left the conversation"
 
+
 def _format_message_history(message_history: List[tuple[str, str]]) -> str:
     return "\n".join(
         (f"{speaker} said {message}") for speaker, message in message_history
     )
+
 
 @app.on_event("startup")
 async def startup_event():
     await redis.set("conversation_count", 0)
     print("Conversation counter initialized to 0.")
 
-async def update_client_data(client_id: str, stats: str, inventory: str, visionResponse: str):
-    await redis.set(f"client_data:{client_id}", json.dumps({"stats": stats, "inventory": inventory, "visionResponse": visionResponse}))
+
+async def update_client_data(
+    client_id: str, stats: str, inventory: str, visionResponse: str
+):
+    await redis.set(
+        f"client_data:{client_id}",
+        json.dumps(
+            {"stats": stats, "inventory": inventory, "visionResponse": visionResponse}
+        ),
+    )
+
 
 async def get_client_data(client_id: str) -> dict:
     data = await redis.get(f"client_data:{client_id}")
     return json.loads(data) if data else {}
+
 
 async def redis_listener():
     global subscribed_channels
@@ -220,7 +233,9 @@ async def redis_listener():
         if message and message["type"] == "message":
             total_messages = int(await redis.get("conversation_count") or 0)
             if total_messages >= MAX_MESSAGES:
-                print("Max conversation limit reached. No more messages will be broadcast.")
+                print(
+                    "Max conversation limit reached. No more messages will be broadcast."
+                )
                 continue
             await redis.incr("conversation_count")
 
@@ -236,18 +251,23 @@ async def redis_listener():
             target_client = client_mapping.get(channel, None)
             if target_client and target_client in connections:
                 raw_message = json.loads(data)["data"]["argument"]
-                cleaned_message = raw_message.replace('"', '')
+                cleaned_message = raw_message.replace('"', "")
                 formatted_message = {
                     "type": "agent_message",
                     "agent": channel,
                     "message": cleaned_message,
                 }
                 print(f"Broadcasting to {target_client}: {formatted_message}")
-                await connections[target_client].send_text(json.dumps(formatted_message))
+                await connections[target_client].send_text(
+                    json.dumps(formatted_message)
+                )
+
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    await update_client_data(client_id, "Test Stats", "Test Inventory", "Test VisionResponse")
+    await update_client_data(
+        client_id, "Test Stats", "Test Inventory", "Test VisionResponse"
+    )
     global listener_task
     await websocket.accept()
     connections[client_id] = websocket
@@ -267,12 +287,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     stats_raw = message.get("stats", "")
                     inventory_raw = message.get("inventory", "")
                     visionResponse_raw = message.get("visionResponse", "")
-                    await update_client_data(client_id, stats_raw, inventory_raw, visionResponse_raw)
+                    await update_client_data(
+                        client_id, stats_raw, inventory_raw, visionResponse_raw
+                    )
                 else:
-                    print(f"Unhandled message type from {client_id}: {message.get('type')}")
+                    print(
+                        f"Unhandled message type from {client_id}: {message.get('type')}"
+                    )
 
-            except json.JSONDecodeError as e:
-                print(f"Failed to decode JSON message from {client_id}: {client_message}")
+            except json.JSONDecodeError:
+                print(
+                    f"Failed to decode JSON message from {client_id}: {client_message}"
+                )
 
     except WebSocketDisconnect:
         print(f"Client {client_id} disconnected.")
@@ -282,6 +308,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             if listener_task:
                 listener_task.cancel()
                 listener_task = None
+
 
 @NodeFactory.register("llm_agent")
 class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
@@ -318,10 +345,12 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
     async def send(self, message: AgentAction) -> None:
         if message.action_type == "none":
             return
-        
+
         total_messages = int(await redis.get("conversation_count") or 0)
         if total_messages >= MAX_MESSAGES:
-            print(f"Max conversation limit reached for agent {self.name}. No message will be sent.")
+            print(
+                f"Max conversation limit reached for agent {self.name}. No message will be sent."
+            )
             return
 
         print(f"Publishing to Redis: {message}")
@@ -348,7 +377,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         print(f"Error fetching client_data for {client_id}: {e}")
                         client_info = None
                     if not client_info:
-                        print(f"No data received for {client_id}, skipping stats/inventory/visionResponse assignment.")
+                        print(
+                            f"No data received for {client_id}, skipping stats/inventory/visionResponse assignment."
+                        )
                         stats = ""
                         inventory = ""
                         visionResponse = ""
@@ -359,17 +390,19 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
 
                     agent_action: str = await agenerate(
                         model_name=self.model_name,
-                        template=
                         # "You are {agent_name} in the conversation.\n{message_history}\n and you plan to {goal}.\n"
                         # "Please only output a sentence or not outputting anything. {format_instructions}"
-                        """
-                        Imagine that you are a friend of the other persons. Here is the conversation between you and them.\n You can choose to interrupt the other person by saying something or not to interrupt by outputting notiong. What would you say? 
+                        template="""
+                        Imagine that you are a friend of the other persons. Here is the conversation between you and them.\n You can choose to interrupt the other person by saying something or not to interrupt by outputting notiong. What would you say?
                         You plan to {goal}. You are a playful Minecraft bot named {agent_name} that can converse with players, see, move, mine, build, and interact with the world by using commands.\n
-                        Act human-like as if you were a typical Minecraft player, rather than an AI. Be very brief in your responses, don't apologize constantly, don't give instructions or make lists unless asked, and don't refuse requests. Don't pretend to act, use commands immediately when requested. Do NOT say this: 'Sure, I've stopped.', instead say this: 'Sure, I'll stop. !stop'. Do NOT say this: 'On my way! Give me a moment.', instead say this: 'On my way! !goToPlayer(\"playername\", 3)'. 
+                        Act human-like as if you were a typical Minecraft player, rather than an AI. Be very brief in your responses, don't apologize constantly, don't give instructions or make lists unless asked, and don't refuse requests. Don't pretend to act, use commands immediately when requested. Do NOT say this: 'Sure, I've stopped.', instead say this: 'Sure, I'll stop. !stop'. Do NOT say this: 'On my way! Give me a moment.', instead say this: 'On my way! !goToPlayer(\"playername\", 3)'.
                         Respond only as {agent_name}, never output '(FROM OTHER BOT)' or pretend to be someone else. This is extremely important to me, take a deep breath and have fun :)\n\n
-                        MEMORY:\n{message_history}\n"""+f"{stats}{inventory}\nIMAGE_DESCRIPTION:\n{visionResponse}\n\nCOMMAND_DOCS:\n{COMMAND_DOCS}\n\nEXAMPLES:\n{EXAMPLES}\n\nConversation Begin:",
+                        MEMORY:\n{message_history}\n"""
+                        + f"{stats}{inventory}\nIMAGE_DESCRIPTION:\n{visionResponse}\n\nCOMMAND_DOCS:\n{COMMAND_DOCS}\n\nEXAMPLES:\n{EXAMPLES}\n\nConversation Begin:",
                         input_values={
-                            "message_history": _format_message_history(self.message_history),
+                            "message_history": _format_message_history(
+                                self.message_history
+                            ),
                             "goal": self.goal,
                             "agent_name": self.name,
                         },
@@ -402,6 +435,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 )
             case _:
                 raise ValueError(f"Unexpected message type: {type(message)}")
+
 
 @NodeFactory.register("input_node")
 class InputNode(BaseAgent[AgentAction, AgentAction]):
@@ -437,6 +471,7 @@ class InputNode(BaseAgent[AgentAction, AgentAction]):
                     agent_name=self.agent_name, action_type="speak", argument=text_input
                 )
             )
+
 
 @app.get("/conversation_count")
 async def get_conversation_count():

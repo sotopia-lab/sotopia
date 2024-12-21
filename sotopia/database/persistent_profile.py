@@ -36,6 +36,7 @@ class AgentProfile(JsonModel):
     secret: str = Field(default_factory=lambda: "")
     model_id: str = Field(default_factory=lambda: "")
     mbti: str = Field(default_factory=lambda: "")
+
     class Config:
         protected_namespaces = ()
 
