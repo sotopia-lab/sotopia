@@ -36,7 +36,11 @@ class AgentProfile(JsonModel):
     secret: str = Field(default_factory=lambda: "")
     model_id: str = Field(default_factory=lambda: "")
     mbti: str = Field(default_factory=lambda: "")
-
+    tag: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The tag of the agent, used for searching, could be convenient to document agent profiles from different works and sources",
+    )
     class Config:
         protected_namespaces = ()
 
