@@ -42,7 +42,7 @@ image = (
         "gin",
     )  # TODO similarly we need to solve this
     .run_commands(
-        "git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e . && cd sotopia/ui/streamlit_ui"
+        "rm -rf sotopia &&git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e . && cd sotopia/ui/streamlit_ui"
     )
 )
 
@@ -68,7 +68,7 @@ streamlit_project_mount = modal.Mount.from_local_dir(
 #     remote_path=f"{str(streamlit_script_remote_path)}/app.py",
 # )
 
-app = modal.App(name="example-modal-streamlit", image=image)
+app = modal.App(name="example-modal-streamlit-dev", image=image)
 
 
 @app.function(
