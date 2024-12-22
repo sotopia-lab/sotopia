@@ -1,6 +1,7 @@
 import asyncio
 import websockets
 
+
 async def test_client():
     uri = "ws://localhost:8000/ws/test_client"  # WebSocket server (default listening port for Uvicorn is 8000)
     try:
@@ -16,6 +17,7 @@ async def test_client():
                 print(f"Received: {response}")
     except Exception as e:
         print(f"WebSocket error: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(test_client())
