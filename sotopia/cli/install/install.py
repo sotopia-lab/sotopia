@@ -314,7 +314,9 @@ def install(
                     )
                     exit(0)
             else:
-                shutil.move(Path(tmpdir) / "dump.rdb", Path(directory) / "redis-data/dump.rdb")
+                shutil.move(
+                    Path(tmpdir) / "dump.rdb", Path(directory) / "redis-data/dump.rdb"
+                )
         try:
             subprocess.run(
                 f"docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v {directory}/redis-data:/data/ redis/redis-stack:latest",
