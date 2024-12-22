@@ -50,6 +50,9 @@ class AgentProfileWithPersonalInformation(BaseModel):
     mbti: str = Field()
     model_id: str = Field()
 
+    class Config:
+        protected_namespaces = ()
+
 
 class EnvironmentProfileWithTwoAgentRequirements(BaseModel):
     env_id: str = Field()

@@ -1,4 +1,5 @@
 import subprocess
+import shutil
 from typing import Literal, Optional
 from pydantic import BaseModel
 import rich
@@ -313,8 +314,8 @@ def install(
                     )
                     exit(0)
             else:
-                (Path(tmpdir) / "dump.rdb").rename(
-                    Path(directory) / "redis-data/dump.rdb"
+                shutil.move(
+                    Path(tmpdir) / "dump.rdb", Path(directory) / "redis-data/dump.rdb"
                 )
         try:
             subprocess.run(
@@ -333,9 +334,7 @@ def install(
                 subprocess.run(
                     "brew tap redis-stack/redis-stack", shell=True, check=True
                 )
-                subprocess.run(
-                    "brew install redis-stack-server", shell=True, check=True
-                )
+                subprocess.run("brew install redis-stack", shell=True, check=True)
                 if load_database:
                     if Path("/opt/homebrew/var/db/redis-stack/dump.rdb").exists():
                         cover_existing = (

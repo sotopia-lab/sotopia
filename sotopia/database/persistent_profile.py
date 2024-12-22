@@ -42,6 +42,9 @@ class AgentProfile(JsonModel):
         description="The tag of the agent, used for searching, could be convenient to document agent profiles from different works and sources",
     )
 
+    class Config:
+        protected_namespaces = ()
+
 
 class EnvironmentProfile(JsonModel):
     codename: str = Field(
