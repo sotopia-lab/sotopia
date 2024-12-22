@@ -9,12 +9,12 @@ from sotopia.database import (
 )
 from sotopia.envs.parallel import render_text_for_environment
 
-from sotopia.ui.streamlit_ui.rendering.render_utils import (
+from ui.streamlit_ui.rendering.render_utils import (
     get_full_name,
     render_messages,
     local_css,
 )
-from sotopia.ui.streamlit_ui.rendering.get_elements import get_agents
+from ui.streamlit_ui.rendering.get_elements import get_agents
 
 from .render_utils import avatar_mapping
 

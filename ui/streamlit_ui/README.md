@@ -1,6 +1,6 @@
 To deploy the Streamlit UI to Modal, run the following command:
 ```bash
-cd sotopia/ui/streamlit_ui
+cd ui/streamlit_ui
 modal deploy modal_streamlit_app.py
 ```
 

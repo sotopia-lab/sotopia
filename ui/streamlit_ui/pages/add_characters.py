@@ -33,7 +33,7 @@ import streamlit as st
 import requests
 
 from sotopia.ui.fastapi_server import AgentProfileWrapper
-from sotopia.ui.streamlit_ui.rendering import local_css
+from ..rendering import local_css
 
 # add fields for agent profiles
 
