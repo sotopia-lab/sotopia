@@ -92,7 +92,7 @@ item_name: (string) The name of the input item to smelt.
 num: (number) The number of times to smelt the item.
 !clearFurnace: Take all items out of the nearest furnace.
 Params:
-!placeHere: Place a given block in the current location. Do NOT use to build structures, only use for single blocks/torches.
+!placeHere: Place a given block in the current location. Do NOT use to build structures, only use for single blocks/torches.      
 Params:
 type: (string) The block type to place.
 !attack: Attack and kill the nearest entity of a given type.
@@ -108,7 +108,7 @@ type: (string) The type of object to activate.
 !stay: Stay in the current location no matter what. Pauses all modes.
 Params:
 type: (number) The number of seconds to stay. -1 for forever.
-!setMode: Set a mode to on or off. A mode is an automatic behavior that constantly checks and responds to the environment.
+!setMode: Set a mode to on or off. A mode is an automatic behavior that constantly checks and responds to the environment.        
 Params:
 mode_name: (string) The name of the mode to enable.
 on: (bool) Whether to enable or disable the mode.
@@ -126,26 +126,41 @@ player_name: (string) The name of the player to end the conversation with.
 """
 EXAMPLES = """
 Example 1: Let me check what's nearby. !nearbyBlocks
-Example 2: I found some birch logs! I'll collect them. !collectBlocks(\"birch_log\", 10)
-Example 3: I just got shot by a skeleton! Yikes! Time to regroup and maybe head back to my last death position for my stuff. !goToPlace(\"last_death_position\")
-Example 4: I'll grab some wood first. !collectBlocks(\"oak_log\", 4)
-Example 5: Looks like I need some planks first! !craftRecipe(\"birch_plancks\", 1)
-Example 6: Time to craft a crafting table. !craftRecipe(\"crafting_table\", 1)
-Example 7: Let me make some sticks. !craftRecipe(\"stick\", 4)
-Example 8: Sticks ready! Time to craft the wooden pickaxe. !craftRecipe(\"wooden_pickaxe\", 1)
-Example 9: On my way to collect some stone. !goToBlock(\"stone\", 2, 10)
-Example 10: I'm here at the stone! Time to start mining. !collectBlocks(\"stone\", 5)
-Example 11: Let's craft a stone pickaxe. !craftRecipe(\"stone_pickaxe\", 1)
+Example 2: Looks like I can't craft anything yet since I have no wooden planks or sticks. I need to find some wood. Let's look for trees nearby. !goToBlock(\"birch_log\", 10, 20)
+Example 3: No birch logs around here. I'll have to move a bit further. Let's search in a wider area. !goToBlock(\"oak_log\", 20, 50)
+Example 4: I found some birch logs! I'll collect them. !collectBlocks(\"birch_log\", 5)
+Example 5: I'll grab some wood first. !collectBlocks(\"oak_log\", 5)
+Example 6: Looks like I need to find a way to get gather some materials. I'll move back a little. !moveAway(10)
+Example 7: Looks like I'm out of planks. Time to gather some wood! !nearbyBlocks
+Example 8: No luck finding birch logs yet. Let's keep searching in a different direction. !moveAway(40)
+Example 9: Looks like I need some planks first! !craftRecipe(\"birch_planks\", 9)
+Example 10: Looks like I need some planks first! !craftRecipe(\"oak_planks\", 9)
+Example 11: Time to craft a crafting table. !craftRecipe(\"crafting_table\", 1)
+Example 12: I still can't mine stone without a pickaxe. I'll need to craft some sticks first. Let's check my inventory to see what I can craft. !craftable
+Example 13: Got the birch logs! Now I'll craft them into sticks. !craftRecipe(\"stick\", 4)
+Example 14: I'm missing some sticks! Let me make some sticks. !craftRecipe(\"stick\", 4)
+Example 15: I have crafted 2 sticks. Now I can craft a wooden pickaxe. !craftRecipe(\"wooden_pickaxe\", 1)
+Example 16: I need wooden pickaxe to collect stones. !craftRecipe(\"wooden_pickaxe\", 1)
+Example 17: I've crafted a wooden pickaxe! Now I can collect some stone. Let's do it. !goToBlock(\"stone\", 2, 10)
+Example 18: I'm here at the stone! Time to start mining. !collectBlocks(\"stone\", 3)
+Example 19: Let's craft a stone pickaxe. !craftRecipe(\"stone_pickaxe\", 1)
+Example 20: I'm stuck! !moveAway(5)
+Example 21: I'm stuck! !moveAway(10)
+Example 22: I'm stuck! !moveAway(20)
+Example 23: Come here Jack!
+Example 24: Okay, I'll come right to you. !goToPlayer(\"John\", 0)
+Example 25: I'll give some plancks to you. !givePlayer(\"John\", \"birch_plancks\", 5)
+Example 26: I'll give a crafting table to you. !givePlayer(\"Jane\", \"crafting_table\", 1)
+Example 27: I just got shot by a skeleton! Yikes! Time to regroup and maybe head back to my last death position for my stuff. !goToPlace(\"last_death_position\")
 """
 redis = aioredis.from_url(REDIS_URL)
 app = FastAPI()
 
-MAX_MESSAGES = 36  # 3 agents
+MAX_MESSAGES = 90  # 3 agents
 connections: Dict[str, WebSocket] = {}
 client_data = {}
 subscribed_channels = set()
 listener_task = None
-
 
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
@@ -170,34 +185,22 @@ class AgentAction(DataModel):
             case "leave":
                 return "left the conversation"
 
-
 def _format_message_history(message_history: List[tuple[str, str]]) -> str:
     return "\n".join(
         (f"{speaker} said {message}") for speaker, message in message_history
     )
-
 
 @app.on_event("startup")
 async def startup_event():
     await redis.set("conversation_count", 0)
     print("Conversation counter initialized to 0.")
 
-
-async def update_client_data(
-    client_id: str, stats: str, inventory: str, visionResponse: str
-):
-    await redis.set(
-        f"client_data:{client_id}",
-        json.dumps(
-            {"stats": stats, "inventory": inventory, "visionResponse": visionResponse}
-        ),
-    )
-
+async def update_client_data(client_id: str, stats: str, inventory: str, visionResponse: str, codeOutput: str):
+    await redis.set(f"client_data:{client_id}", json.dumps({"stats": stats, "inventory": inventory, "visionResponse": visionResponse, "codeOutput": codeOutput}))
 
 async def get_client_data(client_id: str) -> dict:
     data = await redis.get(f"client_data:{client_id}")
     return json.loads(data) if data else {}
-
 
 async def redis_listener():
     global subscribed_channels
@@ -211,9 +214,7 @@ async def redis_listener():
         if message and message["type"] == "message":
             total_messages = int(await redis.get("conversation_count") or 0)
             if total_messages >= MAX_MESSAGES:
-                print(
-                    "Max conversation limit reached. No more messages will be broadcast."
-                )
+                print("Max conversation limit reached. No more messages will be broadcast.")
                 continue
             await redis.incr("conversation_count")
 
@@ -235,16 +236,11 @@ async def redis_listener():
                     "message": raw_message,
                 }
                 print(f"Broadcasting to {target_client}: {formatted_message}")
-                await connections[target_client].send_text(
-                    json.dumps(formatted_message)
-                )
-
+                await connections[target_client].send_text(json.dumps(formatted_message))
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    await update_client_data(
-        client_id, "Test Stats", "Test Inventory", "Test VisionResponse"
-    )
+    await update_client_data(client_id, "Test Stats", "Test Inventory", "Test VisionResponse", "Test codeOutput")
     global listener_task
     await websocket.accept()
     connections[client_id] = websocket
@@ -264,18 +260,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     stats_raw = message.get("stats", "")
                     inventory_raw = message.get("inventory", "")
                     visionResponse_raw = message.get("visionResponse", "")
-                    await update_client_data(
-                        client_id, stats_raw, inventory_raw, visionResponse_raw
-                    )
+                    codeOutput_raw = message.get("codeOutput", "")
+                    await update_client_data(client_id, stats_raw, inventory_raw, visionResponse_raw, codeOutput_raw)
                 else:
-                    print(
-                        f"Unhandled message type from {client_id}: {message.get('type')}"
-                    )
+                    print(f"Unhandled message type from {client_id}: {message.get('type')}")
 
-            except json.JSONDecodeError:
-                print(
-                    f"Failed to decode JSON message from {client_id}: {client_message}"
-                )
+            except json.JSONDecodeError as e:
+                print(f"Failed to decode JSON message from {client_id}: {client_message}")
 
     except WebSocketDisconnect:
         print(f"Client {client_id} disconnected.")
@@ -285,7 +276,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             if listener_task:
                 listener_task.cancel()
                 listener_task = None
-
 
 @NodeFactory.register("llm_agent")
 class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
@@ -322,12 +312,10 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
     async def send(self, message: AgentAction) -> None:
         if message.action_type == "none":
             return
-
+        
         total_messages = int(await redis.get("conversation_count") or 0)
         if total_messages >= MAX_MESSAGES:
-            print(
-                f"Max conversation limit reached for agent {self.name}. No message will be sent."
-            )
+            print(f"Max conversation limit reached for agent {self.name}. No message will be sent.")
             return
 
         print(f"Publishing to Redis: {message}")
@@ -354,32 +342,31 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         print(f"Error fetching client_data for {client_id}: {e}")
                         client_info = None
                     if not client_info:
-                        print(
-                            f"No data received for {client_id}, skipping stats/inventory/visionResponse assignment."
-                        )
+                        print(f"No data received for {client_id}, skipping stats/inventory/visionResponse/codeOutput assignment.")
                         stats = ""
                         inventory = ""
                         visionResponse = ""
+                        codeOutput = ""
                     else:
                         stats = client_info.get("stats", "")
                         inventory = client_info.get("inventory", "")
                         visionResponse = client_info.get("visionResponse", "")
+                        codeOutput = client_info.get("codeOutput", "")
+                        codeOutput = codeOutput.removeprefix("Code output: ")
 
                     agent_action: str = await agenerate(
                         model_name=self.model_name,
+                        template=
                         # "You are {agent_name} in the conversation.\n{message_history}\n and you plan to {goal}.\n"
                         # "Please only output a sentence or not outputting anything. {format_instructions}"
-                        template="""
-                        Imagine that you are a friend of the other persons. Here is the conversation between you and them.\n You can choose to interrupt the other person by saying something or not to interrupt by outputting notiong. What would you say?
+                        codeOutput+"""\n\n
+                        Imagine that you are a friend of the other persons. Here is the conversation between you and them.\n You can choose to interrupt the other person by saying something or not to interrupt by outputting notiong. What would you say? No need to mention your own name, just output the content directly.
                         You plan to {goal}. You are a playful Minecraft bot named {agent_name} that can converse with players, see, move, mine, build, and interact with the world by using commands.\n
-                        Act human-like as if you were a typical Minecraft player, rather than an AI. Be very brief in your responses, don't apologize constantly, don't give instructions or make lists unless asked, and don't refuse requests. Don't pretend to act, use commands immediately when requested. Do NOT say this: 'Sure, I've stopped.', instead say this: 'Sure, I'll stop. !stop'. Do NOT say this: 'On my way! Give me a moment.', instead say this: 'On my way! !goToPlayer(\"playername\", 3)'.
+                        Act human-like as if you were a typical Minecraft player, rather than an AI. Be very brief in your responses, don't apologize constantly, don't give instructions or make lists unless asked, and don't refuse requests. Don't pretend to act, use commands immediately when requested. Do NOT say this: 'Sure, I've stopped.', instead say this: 'Sure, I'll stop. !stop'. Do NOT say this: 'On my way! Give me a moment.', instead say this: 'On my way! !goToPlayer(\"playername\", 3)'. 
                         Respond only as {agent_name}, never output '(FROM OTHER BOT)' or pretend to be someone else. This is extremely important to me, take a deep breath and have fun :)\n\n
-                        MEMORY:\n{message_history}\n"""
-                        + f"{stats}{inventory}\nIMAGE_DESCRIPTION:\n{visionResponse}\n\nEXAMPLES:\n{EXAMPLES}\n\nCOMMAND_DOCS:\n{COMMAND_DOCS}\n\nConversation Begin:",
+                        MEMORY:\n{message_history}\n"""+f"{stats}{inventory}\nIMAGE_DESCRIPTION:\n{visionResponse}\n\nEXAMPLES:\n{EXAMPLES}\n\nCOMMAND_DOCS:\n{COMMAND_DOCS}\n\nConversation Begin:",
                         input_values={
-                            "message_history": _format_message_history(
-                                self.message_history
-                            ),
+                            "message_history": _format_message_history(self.message_history),
                             "goal": self.goal,
                             "agent_name": self.name,
                         },
@@ -412,7 +399,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                 )
             case _:
                 raise ValueError(f"Unexpected message type: {type(message)}")
-
 
 @NodeFactory.register("input_node")
 class InputNode(BaseAgent[AgentAction, AgentAction]):
@@ -448,7 +434,6 @@ class InputNode(BaseAgent[AgentAction, AgentAction]):
                     agent_name=self.agent_name, action_type="speak", argument=text_input
                 )
             )
-
 
 @app.get("/conversation_count")
 async def get_conversation_count():
