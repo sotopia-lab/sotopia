@@ -6,7 +6,7 @@ redis_url = "redis://:QzmCUD3C3RdsR@midnights.sp.cs.cmu.edu:6386"
 os.environ["REDIS_OM_URL"] = redis_url
 
 import streamlit as st
-from sotopia.ui.streamlit_ui.rendering import (
+from ui.streamlit_ui.rendering import (
     render_environment_profile,
     local_css,
     get_scenarios,

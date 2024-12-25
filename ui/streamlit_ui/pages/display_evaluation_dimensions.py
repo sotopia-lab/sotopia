@@ -2,7 +2,7 @@ import streamlit as st
 
 from sotopia.database import CustomEvaluationDimension
 
-from sotopia.ui.streamlit_ui.rendering import (
+from ui.streamlit_ui.rendering import (
     get_evaluation_dimensions,
     render_evaluation_dimension,
     get_distinct_evaluation_dimensions,

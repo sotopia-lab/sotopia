@@ -1,7 +1,7 @@
 import requests
 import streamlit as st
 from typing import Any
-from sotopia.ui.streamlit_ui.rendering.render_utils import get_full_name
+from ui.streamlit_ui.rendering.render_utils import get_full_name
 from sotopia.database import CustomEvaluationDimension
 
 

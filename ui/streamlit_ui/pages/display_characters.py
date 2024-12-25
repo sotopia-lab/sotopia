@@ -3,7 +3,7 @@ import streamlit as st
 from sotopia.database import AgentProfile
 
 # Importing avatars
-from sotopia.ui.streamlit_ui.rendering import render_character, local_css, get_agents
+from ui.streamlit_ui.rendering import render_character, local_css, get_agents
 
 
 local_css("./css/style.css")

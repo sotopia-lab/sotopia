@@ -1,5 +1,5 @@
 import streamlit as st
-from sotopia.ui.streamlit_ui.rendering import (
+from ui.streamlit_ui.rendering import (
     render_environment_profile,
     render_conversation_and_evaluation,
 )

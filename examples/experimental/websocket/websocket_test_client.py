@@ -6,7 +6,7 @@ import json
 from sotopia.database import EnvironmentProfile, AgentProfile
 
 import asyncio
-import websockets
+import aiohttp
 import sys
 from pathlib import Path
 
@@ -28,40 +28,39 @@ class WebSocketClient:
         url_with_token = f"{self.url}?token=test_token_{self.client_id}"
 
         try:
-            async with websockets.connect(url_with_token) as websocket:
-                print(f"Client {self.client_id}: Connected to {self.url}")
+            async with aiohttp.ClientSession() as session:
+                async with session.ws_connect(url_with_token) as ws:
+                    print(f"Client {self.client_id}: Connected to {self.url}")
 
-                # Send initial message
-                # Note: You'll need to implement the logic to get agent_ids and env_id
-                # This is just an example structure
-                agent_ids = [agent.pk for agent in AgentProfile.find().all()[:2]]
-                env_id = EnvironmentProfile.find().all()[0].pk
-                start_message = {
-                    "type": "START_SIM",
-                    "data": {
-                        "env_id": env_id,  # Replace with actual env_id
-                        "agent_ids": agent_ids,  # Replace with actual agent_ids
-                    },
-                }
-                await websocket.send(json.dumps(start_message))
-                print(f"Client {self.client_id}: Sent START_SIM message")
+                    # Send initial message
+                    # Note: You'll need to implement the logic to get agent_ids and env_id
+                    # This is just an example structure
+                    agent_ids = [agent.pk for agent in AgentProfile.find().all()[:2]]
+                    env_id = EnvironmentProfile.find().all()[0].pk
+                    start_message = {
+                        "type": "START_SIM",
+                        "data": {
+                            "env_id": env_id,  # Replace with actual env_id
+                            "agent_ids": agent_ids,  # Replace with actual agent_ids
+                        },
+                    }
+                    await ws.send_json(start_message)
+                    print(f"Client {self.client_id}: Sent START_SIM message")
 
-                # Receive and process messages
-                while True:
-                    try:
-                        message = await websocket.recv()
-                        print(
-                            f"\nClient {self.client_id} received message:",
-                            json.dumps(json.loads(message), indent=2),
-                        )
-                        assert isinstance(message, str)
-                        await self.save_message(message)
-                    except websockets.ConnectionClosed:
-                        print(f"Client {self.client_id}: Connection closed")
-                        break
-                    except Exception as e:
-                        print(f"Client {self.client_id} error:", str(e))
-                        break
+                    # Receive and process messages
+                    async for msg in ws:
+                        if msg.type == aiohttp.WSMsgType.TEXT:
+                            print(
+                                f"\nClient {self.client_id} received message:",
+                                json.dumps(json.loads(msg.data), indent=2),
+                            )
+                            await self.save_message(msg.data)
+                        elif msg.type == aiohttp.WSMsgType.CLOSED:
+                            print(f"Client {self.client_id}: Connection closed")
+                            break
+                        elif msg.type == aiohttp.WSMsgType.ERROR:
+                            print(f"Client {self.client_id}: Connection error")
+                            break
 
         except Exception as e:
             print(f"Client {self.client_id} connection error:", str(e))

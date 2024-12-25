@@ -9,7 +9,7 @@ import aiohttp
 import streamlit as st
 
 from sotopia.database import EpisodeLog, EnvironmentProfile
-from sotopia.ui.streamlit_ui.rendering import (
+from ui.streamlit_ui.rendering import (
     get_scenarios,
     get_agents,
     get_models,
