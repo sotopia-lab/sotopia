@@ -2,6 +2,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import redis.asyncio as aioredis
 import asyncio
 import json
+import os
+import re
+import aiofiles
+from datetime import datetime
 from typing import Dict, List, AsyncIterator
 from aact import Message, NodeFactory
 from aact.messages import Tick, DataModel, DataModelFactory
@@ -157,7 +161,8 @@ Then, inquire about what materials they are missing and use a command like !give
 Example 26: Come here Jack!
 Example 27: Okay, I'll come right to you. !goToPlayer(\"John\", 0)
 Example 28: I'll give some plancks to you. !givePlayer(\"John\", \"birch_plancks\", 5)
-Example 29: I'll give a crafting table to you. !givePlayer(\"Jane\", \"crafting_table\", 1)
+Example 29: I'll give some stones to you. !givePlayer(\"Jack\", \"stone\", 3)
+Example 30: I'll give a crafting table to you. !givePlayer(\"Jane\", \"crafting_table\", 1)
 """
 redis = aioredis.from_url(REDIS_URL)
 app = FastAPI()
@@ -167,6 +172,7 @@ connections: Dict[str, WebSocket] = {}
 client_data = {}
 subscribed_channels = set()
 listener_task = None
+OUTPUT_FILE = f"agent_output_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
 
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
@@ -199,7 +205,8 @@ def _format_message_history(message_history: List[tuple[str, str]]) -> str:
 @app.on_event("startup")
 async def startup_event():
     await redis.set("conversation_count", 0)
-    print("Conversation counter initialized to 0.")
+    await redis.set("status_count", 0)
+    print("Conversation and status counter initialized to 0.")
 
 async def update_client_data(client_id: str, stats: str, inventory: str, visionResponse: str, codeOutput: str):
     await redis.set(f"client_data:{client_id}", json.dumps({"stats": stats, "inventory": inventory, "visionResponse": visionResponse, "codeOutput": codeOutput}))
@@ -207,6 +214,40 @@ async def update_client_data(client_id: str, stats: str, inventory: str, visionR
 async def get_client_data(client_id: str) -> dict:
     data = await redis.get(f"client_data:{client_id}")
     return json.loads(data) if data else {}
+
+async def log_to_file(agent_name: str, agent_message_history: List[tuple[str, str]], generated_text: str):
+    try:
+        history_str = _format_message_history(agent_message_history)
+        log_content = (
+            f"Agent: {agent_name}\n\n"
+            f"Message History:\n{history_str}\n\n"
+            f"Generated Text:\n{generated_text}\n"
+            f"{'-'*40}\n"
+        )
+        async with aiofiles.open(OUTPUT_FILE, mode="a") as file:
+            await file.write(log_content)
+        print(f"Successfully logged output for {agent_name} to {OUTPUT_FILE}.")
+    except Exception as e:
+        print(f"Error logging output for {agent_name}: {e}")
+
+async def check_and_generate(agent_name: str, agent_message_history: List[tuple[str, str]]):
+    count = len(re.findall(r"system: The status of", _format_message_history(agent_message_history)))
+    if count % 4 == 0 and count != 0:  # Multiple of 4 but not 0
+        targets = ["Jack", "Jane", "John"]
+        for target in targets:
+            if target == agent_name.lower():
+                continue
+            template = f"What should {target} do immediately next? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
+            print(f"\033[1;32m{template}\033[0m")
+            generated_text = await agenerate(
+                model_name="gpt-4o-2024-11-20",
+                template=template,
+                input_values={"agent_message_history": _format_message_history(agent_message_history)},
+                temperature=0.7,
+                output_parser=StrOutputParser(),
+            )
+            await log_to_file(agent_name, agent_message_history, generated_text)
+            print(f"\033[1;32m{generated_text}\033[0m")  # Green bold output
 
 async def redis_listener():
     global subscribed_channels
@@ -246,7 +287,7 @@ async def redis_listener():
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    await update_client_data(client_id, "Test Stats", "Test Inventory", "Test VisionResponse", "Test codeOutput")
+    await update_client_data(client_id, "Test Stats", "Test Inventory", "Test VisionResponse", "You did not take any action last time.")
     global listener_task
     await websocket.accept()
     connections[client_id] = websocket
@@ -254,7 +295,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     # Start the Redis listener only once
     if not listener_task:
         listener_task = asyncio.create_task(redis_listener())
-
     try:
         while True:
             client_message = await websocket.receive_text()
@@ -360,10 +400,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
 
                     if codeOutput:
                         system_message = f"The status of {self.name}'s action execution: {codeOutput}"
-                        last_self_message_index = next(
-                            (i for i in reversed(range(len(self.message_history))) if self.message_history[i][0] == self.name),
-                            -1
-                        )
+                        last_self_message_index = next((i for i in reversed(range(len(self.message_history))) if self.message_history[i][0] == self.name), -1)
                         if last_self_message_index != -1:
                             self.message_history.insert(last_self_message_index + 1, ("system", system_message))
                         else:
@@ -394,6 +431,9 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         output_parser=StrOutputParser(),
                     )
                     print(f"Generated action for {self.name}: {agent_action}")
+
+                    await check_and_generate(self.name, agent_message_history)
+
                     if agent_action != "none" and agent_action != "":
                         self.message_history.append((self.name, agent_action))
                         return AgentAction(
