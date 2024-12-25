@@ -129,34 +129,40 @@ Example 1: Let me check what's nearby. !nearbyBlocks
 Example 2: Looks like I can't craft anything yet since I have no wooden planks or sticks. I need to find some wood. Let's look for trees nearby. !goToBlock(\"birch_log\", 10, 20)
 Example 3: No birch logs around here. I'll have to move a bit further. Let's search in a wider area. !goToBlock(\"oak_log\", 20, 50)
 Example 4: I found some birch logs! I'll collect them. !collectBlocks(\"birch_log\", 5)
-Example 5: I'll grab some wood first. !collectBlocks(\"oak_log\", 5)
-Example 6: Looks like I need to find a way to get gather some materials. I'll move back a little. !moveAway(10)
-Example 7: Looks like I'm out of planks. Time to gather some wood! !nearbyBlocks
-Example 8: No luck finding birch logs yet. Let's keep searching in a different direction. !moveAway(40)
-Example 9: Looks like I need some planks first! !craftRecipe(\"birch_planks\", 9)
-Example 10: Looks like I need some planks first! !craftRecipe(\"oak_planks\", 9)
-Example 11: Time to craft a crafting table. !craftRecipe(\"crafting_table\", 1)
-Example 12: I still can't mine stone without a pickaxe. I'll need to craft some sticks first. Let's check my inventory to see what I can craft. !craftable
+Example 5: I found some birch logs! I'll collect them. !collectBlocks(\"spruce_log\", 5)
+Example 6: I'll grab some wood first. !collectBlocks(\"oak_log\", 5)
+Example 7: Looks like I need to find a way to get gather some materials. I'll move back a little. !moveAway(10)
+Example 8: Looks like I'm out of planks. Time to gather some wood! !nearbyBlocks
+Example 9: No luck finding birch logs yet. Let's keep searching in a different direction. !moveAway(40)
+Example 10: Looks like I need some planks first! !craftRecipe(\"birch_planks\", 9)
+Example 11: Looks like I need some planks first! !craftRecipe(\"oak_planks\", 9)
+Example 12: Looks like I need some planks first! !craftRecipe(\"spruce_planks\", 9)
 Example 13: Got the birch logs! Now I'll craft them into sticks. !craftRecipe(\"stick\", 4)
 Example 14: I'm missing some sticks! Let me make some sticks. !craftRecipe(\"stick\", 4)
-Example 15: I have crafted 2 sticks. Now I can craft a wooden pickaxe. !craftRecipe(\"wooden_pickaxe\", 1)
-Example 16: I need wooden pickaxe to collect stones. !craftRecipe(\"wooden_pickaxe\", 1)
-Example 17: I've crafted a wooden pickaxe! Now I can collect some stone. Let's do it. !goToBlock(\"stone\", 2, 10)
-Example 18: I'm here at the stone! Time to start mining. !collectBlocks(\"stone\", 3)
-Example 19: Let's craft a stone pickaxe. !craftRecipe(\"stone_pickaxe\", 1)
-Example 20: I'm stuck! !moveAway(5)
-Example 21: I'm stuck! !moveAway(10)
-Example 22: I'm stuck! !moveAway(20)
-Example 23: Come here Jack!
-Example 24: Okay, I'll come right to you. !goToPlayer(\"John\", 0)
-Example 25: I'll give some plancks to you. !givePlayer(\"John\", \"birch_plancks\", 5)
-Example 26: I'll give a crafting table to you. !givePlayer(\"Jane\", \"crafting_table\", 1)
-Example 27: I just got shot by a skeleton! Yikes! Time to regroup and maybe head back to my last death position for my stuff. !goToPlace(\"last_death_position\")
+Example 15: I need a crafting table and some sticks to craft a wooden pickaxe! !craftRecipe(\"crafting_table\", 1)
+Example 16: I still can't mine stone without a pickaxe. I'll need to craft some sticks first. Let's check my inventory to see what I can craft. !craftable
+Example 17: I need wooden pickaxe to collect stones! I have crafted 2 sticks. Now I can craft a wooden pickaxe. !craftRecipe(\"wooden_pickaxe\", 1)
+Example 18: I need wooden pickaxe to collect stones! !craftRecipe(\"wooden_pickaxe\", 1)
+Example 19: I've crafted a wooden pickaxe! Now I can collect some stone. Let's do it. !goToBlock(\"stone\", 2, 10)
+Example 20: I'm here at the stone! Time to start mining. !collectBlocks(\"stone\", 3)
+Example 21: Let's craft a stone pickaxe. !craftRecipe(\"stone_pickaxe\", 1)
+Example 22: I'm stuck! !moveAway(5)
+Example 23: I'm stuck! !moveAway(10)
+Example 24: I'm stuck! !moveAway(20)
+Example 25: I just got shot by a skeleton! Yikes! Time to regroup and maybe head back to my last death position for my stuff. !goToPlace(\"last_death_position\")
+
+After crafting one stone pickaxe yourself (If the condition is that the inventory shows stone_pickaxe: 1, rather than just having previously outputted !craftRecipe(\"stone_pickaxe\", 1)), ask who hasn't crafted theirs yet and use a command like !goToPlayer(\"John\", 0) to go to that person's location. 
+Then, inquire about what materials they are missing and use a command like !givePlayer(\"John\", \"stone\", 3) to give them the materials.
+
+Example 26: Come here Jack!
+Example 27: Okay, I'll come right to you. !goToPlayer(\"John\", 0)
+Example 28: I'll give some plancks to you. !givePlayer(\"John\", \"birch_plancks\", 5)
+Example 29: I'll give a crafting table to you. !givePlayer(\"Jane\", \"crafting_table\", 1)
 """
 redis = aioredis.from_url(REDIS_URL)
 app = FastAPI()
 
-MAX_MESSAGES = 90  # 3 agents
+MAX_MESSAGES = 120  # 3 agents
 connections: Dict[str, WebSocket] = {}
 client_data = {}
 subscribed_channels = set()
@@ -187,7 +193,7 @@ class AgentAction(DataModel):
 
 def _format_message_history(message_history: List[tuple[str, str]]) -> str:
     return "\n".join(
-        (f"{speaker} said {message}") for speaker, message in message_history
+        (f"{speaker}: {message}") for speaker, message in message_history
     )
 
 @app.on_event("startup")
@@ -337,7 +343,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                     client_id = f"{self.name}_client"
                     try:
                         client_info = await get_client_data(client_id)
-                        print(f"Accessing client_data for {client_id}: {client_info}")
                     except Exception as e:
                         print(f"Error fetching client_data for {client_id}: {e}")
                         client_info = None
@@ -351,22 +356,37 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         stats = client_info.get("stats", "")
                         inventory = client_info.get("inventory", "")
                         visionResponse = client_info.get("visionResponse", "")
-                        codeOutput = client_info.get("codeOutput", "")
-                        codeOutput = codeOutput.removeprefix("Code output: ")
+                        codeOutput = client_info.get("codeOutput", "").removeprefix("Code output: ")
 
+                    if codeOutput:
+                        system_message = f"The status of {self.name}'s action execution: {codeOutput}"
+                        last_self_message_index = next(
+                            (i for i in reversed(range(len(self.message_history))) if self.message_history[i][0] == self.name),
+                            -1
+                        )
+                        if last_self_message_index != -1:
+                            self.message_history.insert(last_self_message_index + 1, ("system", system_message))
+                        else:
+                            self.message_history.append(("system", system_message))
+
+                    agent_message_history = [
+                        (speaker, message) for speaker, message in self.message_history
+                        if speaker != "system" or (speaker == "system" and f"{self.name}'s action execution" in message)
+                    ]
+                    
                     agent_action: str = await agenerate(
                         model_name=self.model_name,
                         template=
                         # "You are {agent_name} in the conversation.\n{message_history}\n and you plan to {goal}.\n"
                         # "Please only output a sentence or not outputting anything. {format_instructions}"
-                        codeOutput+"""\n\n
+                        f"(The status of the last action execution: {codeOutput})"+"""\n\n
                         Imagine that you are a friend of the other persons. Here is the conversation between you and them.\n You can choose to interrupt the other person by saying something or not to interrupt by outputting notiong. What would you say? No need to mention your own name, just output the content directly.
                         You plan to {goal}. You are a playful Minecraft bot named {agent_name} that can converse with players, see, move, mine, build, and interact with the world by using commands.\n
                         Act human-like as if you were a typical Minecraft player, rather than an AI. Be very brief in your responses, don't apologize constantly, don't give instructions or make lists unless asked, and don't refuse requests. Don't pretend to act, use commands immediately when requested. Do NOT say this: 'Sure, I've stopped.', instead say this: 'Sure, I'll stop. !stop'. Do NOT say this: 'On my way! Give me a moment.', instead say this: 'On my way! !goToPlayer(\"playername\", 3)'. 
                         Respond only as {agent_name}, never output '(FROM OTHER BOT)' or pretend to be someone else. This is extremely important to me, take a deep breath and have fun :)\n\n
                         MEMORY:\n{message_history}\n"""+f"{stats}{inventory}\nIMAGE_DESCRIPTION:\n{visionResponse}\n\nEXAMPLES:\n{EXAMPLES}\n\nCOMMAND_DOCS:\n{COMMAND_DOCS}\n\nConversation Begin:",
                         input_values={
-                            "message_history": _format_message_history(self.message_history),
+                            "message_history": _format_message_history(agent_message_history),
                             "goal": self.goal,
                             "agent_name": self.name,
                         },

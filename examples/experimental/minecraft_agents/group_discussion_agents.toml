@@ -6,18 +6,19 @@ node_name = "Jack"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 15
+query_interval = 10
 output_channel = "Jack"
 input_text_channels = ["Jane", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """want to craft a Stone Pickaxe with your friends. 
-The complete process for crafting a "stone_pickaxe" in Minecraft is as follows:
-1. Collect logs, such as "oak_log" or "birch_log" with at least 2 pieces.
-2. Convert logs into planks ("birch_planks" or "oak_planks"). Each log can produce 4 planks.
-3. Use 4 planks to craft a "crafting_table".
-4. Use 2 planks to create 4 "stick".
-5. Use 3 planks and 2 sticks to craft a "wooden_pickaxe".
-6. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces.
+goal = """
+You and your friends need to craft a total of 3 stone pickaxes. 
+The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 2 pieces.
+2. Convert logs into planks ("birch_planks", "spruce_planks" or "oak_planks"). Each log can produce 4 planks.
+3. Use 4 planks to craft a "crafting_table"!!!
+4. Use 2 planks to create 4 "stick"!!!!
+5. Use 3 planks and 2 sticks to craft a "wooden_pickaxe"!!!
+6. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before obtaining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don’t, type !craftable to check if you can craft a "wooden_pickaxe".
 7. Open the "crafting_table" and use 3 pieces of stone and 2 sticks to craft a "stone_pickaxe"."""
 model_name = "gpt-4o-2024-11-20"
 agent_name = "Jack"
@@ -27,18 +28,19 @@ node_name = "Jane"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 21
+query_interval = 14
 output_channel = "Jane"
 input_text_channels = ["Jack", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """want to craft a Stone Pickaxe with your friends. 
-The complete process for crafting a "stone_pickaxe" in Minecraft is as follows:
-1. Collect logs, such as "oak_log" or "birch_log" with at least 2 pieces.
-2. Convert logs into planks ("birch_planks" or "oak_planks"). Each log can produce 4 planks.
-3. Use 4 planks to craft a "crafting_table".
-4. Use 2 planks to create 4 "stick".
-5. Use 3 planks and 2 sticks to craft a "wooden_pickaxe".
-6. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces.
+goal = """
+You and your friends need to craft a total of 3 stone pickaxes. 
+The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 2 pieces.
+2. Convert logs into planks ("birch_planks", "spruce_planks" or "oak_planks"). Each log can produce 4 planks.
+3. Use 4 planks to craft a "crafting_table"!!!
+4. Use 2 planks to create 4 "stick"!!!!
+5. Use 3 planks and 2 sticks to craft a "wooden_pickaxe"!!!
+6. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before obtaining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don’t, type !craftable to check if you can craft a "wooden_pickaxe".
 7. Open the "crafting_table" and use 3 pieces of stone and 2 sticks to craft a "stone_pickaxe"."""
 model_name = "gpt-4o-2024-11-20"
 agent_name = "Jane"
@@ -48,18 +50,19 @@ node_name = "John"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 30
+query_interval = 20
 output_channel = "John"
 input_text_channels = ["Jack", "Jane"]
 input_tick_channel = "tick/secs/1"
-goal = """want to craft a Stone Pickaxe with your friends. 
-The complete process for crafting a "stone_pickaxe" in Minecraft is as follows:
-1. Collect logs, such as "oak_log" or "birch_log" with at least 2 pieces.
-2. Convert logs into planks ("birch_planks" or "oak_planks"). Each log can produce 4 planks.
-3. Use 4 planks to craft a "crafting_table".
-4. Use 2 planks to create 4 "stick".
-5. Use 3 planks and 2 sticks to craft a "wooden_pickaxe".
-6. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces.
+goal = """
+You and your friends need to craft a total of 3 stone pickaxes. 
+The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 2 pieces.
+2. Convert logs into planks ("birch_planks", "spruce_planks" or "oak_planks"). Each log can produce 4 planks.
+3. Use 4 planks to craft a "crafting_table"!!!
+4. Use 2 planks to create 4 "stick"!!!!
+5. Use 3 planks and 2 sticks to craft a "wooden_pickaxe"!!!
+6. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before obtaining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don’t, type !craftable to check if you can craft a "wooden_pickaxe".
 7. Open the "crafting_table" and use 3 pieces of stone and 2 sticks to craft a "stone_pickaxe"."""
 model_name = "gpt-4o-2024-11-20"
 agent_name = "John"
