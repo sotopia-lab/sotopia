@@ -16,6 +16,7 @@ image = (
         "procps",  # for ps command
         "redis-tools",  # for redis-cli
     )
+    # .pip_install("streamlit~=1.40.2", "uv")
     .pip_install("sotopia", "streamlit~=1.40.2")
     .pip_install(
         "pydantic>=2.5.0,<3.0.0",
@@ -40,10 +41,13 @@ image = (
         "hiredis>=3.0.0",
         "aact",
         "gin",
-    )  # TODO similarly we need to solve this
-    .run_commands(
-        "rm -rf sotopia &&git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && pip install -e . && cd sotopia/ui/streamlit_ui"
-    )
+    )  # TODO similarly we need to solve 
+    .run_commands("rm -rf sotopia && git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && git status && pip install -e . && cd ui/streamlit_ui")
+    # .run_commands(
+    #     "rm -rf sotopia && git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && uv pip install pyproject.toml --system && ls sotopia/ui && git status && pip install -e . && cd ui/streamlit_ui"
+    # )
+    # .pip_install("pydantic==2.8.2")
+    .run_commands("pip list")
 )
 
 
