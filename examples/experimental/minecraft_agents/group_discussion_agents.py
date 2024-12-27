@@ -2,7 +2,6 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import redis.asyncio as aioredis
 import asyncio
 import json
-import os
 import re
 import aiofiles
 from datetime import datetime
@@ -160,7 +159,7 @@ Then, inquire about what materials they are missing and use a command like !give
 
 Example 26: Come here Jack!
 Example 27: Okay, I'll come right to you. !goToPlayer(\"John\", 0)
-Example 28: I'll give some plancks to you. !givePlayer(\"John\", \"birch_plancks\", 5)
+Example 28: I'll give some plancks to you. !givePlayer(\"John\", \"stick\", 4)
 Example 29: I'll give some stones to you. !givePlayer(\"Jack\", \"stone\", 3)
 Example 30: I'll give a crafting table to you. !givePlayer(\"Jane\", \"crafting_table\", 1)
 """
