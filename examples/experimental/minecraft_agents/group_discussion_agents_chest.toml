@@ -1,0 +1,80 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.group_discussion_agents.group_discussion_agents"]
+
+[[nodes]]
+node_name = "Jack"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 15
+output_channel = "Jack"
+input_text_channels = ["Jane", "John"]
+input_tick_channel = "tick/secs/1"
+goal = """
+You and your friends need to craft 2 "chest". YOUR TASK IS TO CRAFT A "crafting_table".
+After crafting a "crafting_table" yourself (If the condition is that the inventory shows crafting_table: 1, rather than just having previously outputted !craftRecipe(\"crafting_table\", 1)), use the command !placeHere(\"crafting_table\"). 
+
+The complete process for crafting a "crafting_table" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 1 piece.
+2. Convert logs into planks ("birch_planks", "spruce_planks" or "oak_planks"). Each log can produce 4 planks.
+3. Use 4 planks to craft a "crafting_table"."""
+model_name = "gpt-4o-2024-11-20"
+agent_name = "Jack"
+
+[[nodes]]
+node_name = "Jane"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 19
+output_channel = "Jane"
+input_text_channels = ["Jack", "John"]
+input_tick_channel = "tick/secs/1"
+goal = """
+You and your friends need to craft 2 "chest". YOUR TASK IS TO CRAFT ONE "chest".
+Once you have crafted at least 8 planks (If the condition is that the inventory shows oak_planks: 8, birch_planks: 8 or spruce_planks: 8), use the command !goToPlayer("Jack", 0) to go to Jack's location. 
+Then, use the command !goToBlock("crafting_table", 10, 20) to locate a nearby "crafting_table". Next, use !craftRecipe("chest", 1) to craft a chest, then use the command !placeHere(\"chest\") to place it.
+
+The complete process for crafting a "chest" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect at least 2 logs, such as "oak_log", "spruce_log" or "birch_log".
+2. Convert logs into planks ("birch_planks", "spruce_planks" or "oak_planks"). Each log can produce 4 planks.
+3. After finding Jack and a nearby "crafting_table", use 8 planks to create a "chest"."""
+model_name = "gpt-4o-2024-11-20"
+agent_name = "Jane"
+
+[[nodes]]
+node_name = "John"
+node_class = "llm_agent"
+
+[nodes.node_args]
+query_interval = 23
+output_channel = "John"
+input_text_channels = ["Jack", "Jane"]
+input_tick_channel = "tick/secs/1"
+goal = """
+You and your friends need to craft 2 "chest". YOUR TASK IS TO CRAFT ONE "chest".
+Once you have crafted at least 8 planks (If the condition is that the inventory shows oak_planks: 8, birch_planks: 8 or spruce_planks: 8), use the command !goToPlayer("Jack", 0) to go to Jack's location. 
+Then, use the command !goToBlock("crafting_table", 10, 20) to locate a nearby "crafting_table". Next, use !craftRecipe("chest", 1) to craft a chest, then use the command !placeHere(\"chest\") to place it.
+
+The complete process for crafting a "chest" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect at least 2 logs, such as "oak_log", "spruce_log" or "birch_log".
+2. Convert logs into planks ("birch_planks", "spruce_planks" or "oak_planks"). Each log can produce 4 planks.
+3. After finding Jack and a nearby "crafting_table", use 8 planks to create a "chest"."""
+model_name = "gpt-4o-2024-11-20"
+agent_name = "John"
+
+[[nodes]]
+node_name = "record"
+node_class = "record"
+
+[nodes.node_args]
+jsonl_file_path = "log.jsonl"
+
+[nodes.node_args.record_channel_types]
+"Jack" = "agent_action"
+"Jane" = "agent_action"
+"John" = "agent_action"
+
+[[nodes]]
+node_name = "tick"
+node_class = "tick"
