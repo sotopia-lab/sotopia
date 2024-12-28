@@ -160,18 +160,16 @@ class WebSocketSotopiaSimulator:
 
     async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
         # Use sotopia to run the simulation
-        generator = arun_one_episode(
+        generator = await arun_one_episode(
             env=self.env,
             agent_list=list(self.agents.values()),
             push_to_db=False,
             streaming=True,
         )
 
-        # assert isinstance(
-        #     generator, AsyncGenerator
-        # ), "generator should be async generator, but got {}".format(
-        #     type(generator)
-        # )
+        assert isinstance(
+            generator, AsyncGenerator
+        ), "generator should be async generator, but got {}".format(type(generator))
 
         async for messages in generator:
             reasoning, rewards = "", [0.0, 0.0]
@@ -192,9 +190,6 @@ class WebSocketSotopiaSimulator:
                 rewards=rewards,
                 rewards_prompt="",
             )
-            # agent_profiles, parsed_messages = epilog.render_for_humans()
-            # if not eval_available:
-            #     parsed_messages = parsed_messages[:-2]
 
             yield {
                 "type": "messages",

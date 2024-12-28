@@ -9,7 +9,7 @@ st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wid
 # st.session_state.API_BASE = f"http://localhost:{PORT}"
 # st.session_state.WS_BASE = f"ws://localhost:{PORT}"
 
-DEFAULT_BASE = "sotopia-lab--sotopia-fastapi-dev-webapi-serve.modal.run"
+DEFAULT_BASE = "sotopia-lab--sotopia-fastapi-webapi-serve-dev.modal.run"
 
 # Modal Configuration
 
