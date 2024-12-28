@@ -37,7 +37,7 @@ from typing import Optional, Any
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, model_validator, field_validator, Field
 
-from sotopia.ui.websocket_utils import (
+from sotopia.api.websocket_utils import (
     WebSocketSotopiaSimulator,
     WSMessageType,
     ErrorType,

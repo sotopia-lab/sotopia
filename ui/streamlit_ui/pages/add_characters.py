@@ -32,7 +32,7 @@ class AgentProfileWrapper(BaseModel):
 import streamlit as st
 import requests
 
-from sotopia.ui.fastapi_server import AgentProfileWrapper
+from sotopia.api.fastapi_server import AgentProfileWrapper
 from ..rendering import local_css
 
 # add fields for agent profiles
