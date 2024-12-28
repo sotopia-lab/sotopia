@@ -1,17 +1,12 @@
 # isort: skip_file
 # ruff: noqa: E402
-import os
-
-redis_url = "redis://:QzmCUD3C3RdsR@midnights.sp.cs.cmu.edu:6386"
-os.environ["REDIS_OM_URL"] = redis_url
-
 import streamlit as st
 from ui.streamlit_ui.rendering import (
     render_environment_profile,
     local_css,
     get_scenarios,
 )
-from sotopia.database import EnvironmentProfile
+from sotopia.database import BaseEnvironmentProfile
 from redis import Redis, ConnectionError, AuthenticationError
 
 
@@ -51,15 +46,15 @@ def verify_redis_connection(url: str) -> tuple[bool, str]:
 
 def display_scenarios() -> None:
     # Set Redis connection URL
-    connection_successful, message = verify_redis_connection(redis_url)
+    # connection_successful, message = verify_redis_connection(redis_url)
 
-    if not connection_successful:
-        st.error(f"Redis Connection Error: {message}")
-        print(f"Redis Connection Error: {message}************************")
-        st.stop()
-    else:
-        # st.success(f"Redis Connection Successful: {message}")
-        print(f"Redis Connection Successful: {message}************************")
+    # if not connection_successful:
+    #     st.error(f"Redis Connection Error: {message}")
+    #     print(f"Redis Connection Error: {message}************************")
+    #     st.stop()
+    # else:
+    # st.success(f"Redis Connection Successful: {message}")
+    #    print(f"Redis Connection Successful: {message}************************")
 
     st.title("Scenarios")
     scenarios = get_scenarios()
@@ -67,7 +62,7 @@ def display_scenarios() -> None:
         col1, col2 = st.columns(2, gap="medium")
         for index, (codename, scenario) in enumerate(scenarios.items()):
             with col1 if index % 2 == 0 else col2:
-                environment_profile = EnvironmentProfile(**scenario)
+                environment_profile = BaseEnvironmentProfile(**scenario)
                 render_environment_profile(environment_profile)
                 st.write("---")
     except Exception as e:

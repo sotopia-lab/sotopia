@@ -43,6 +43,7 @@ logger = Logger("sotopia.database")
 __all__ = [
     "AgentProfile",
     "EnvironmentProfile",
+    "BaseEnvironmentProfile",
     "EpisodeLog",
     "NonStreamingSimulationStatus",
     "EnvAgentComboStorage",
