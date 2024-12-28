@@ -3,7 +3,7 @@ import json
 import streamlit as st
 from sotopia.database import (
     AgentProfile,
-    EnvironmentProfile,
+    BaseEnvironmentProfile,
     EpisodeLog,
     CustomEvaluationDimension,
 )
@@ -154,7 +154,7 @@ def render_character(character: AgentProfile) -> None:
         )
 
 
-def render_environment_profile(profile: EnvironmentProfile) -> None:
+def render_environment_profile(profile: BaseEnvironmentProfile) -> None:
     # Render the codename as a subheader
     # Render the scenario with domain and realism in styled tags
     if len(profile.agent_goals) == 2:
@@ -196,8 +196,6 @@ def render_environment_profile(profile: EnvironmentProfile) -> None:
         st.write(
             f"""
             <div style="background-color: #d0f5d0; padding: 10px; border-radius: 10px;">
-                <h4>Primary Key</h4>
-                <p>{profile.pk}</p>
                 <h4>Codename</h4>
                 <p>{profile.codename}</p>
                 <h4>Source</h4>

@@ -2,10 +2,18 @@ from typing import TypeVar
 from redis_om import JsonModel, Migrator
 from .annotators import Annotator
 from .env_agent_combo_storage import EnvAgentComboStorage
-from .logs import AnnotationForEpisode, EpisodeLog, NonStreamingSimulationStatus
+from .logs import (
+    AnnotationForEpisode,
+    BaseEpisodeLog,
+    NonStreamingSimulationStatus,
+    EpisodeLog,
+)
 from .persistent_profile import (
     AgentProfile,
+    BaseAgentProfile,
     EnvironmentProfile,
+    BaseEnvironmentProfile,
+    BaseRelationshipProfile,
     RelationshipProfile,
     RelationshipType,
 )
@@ -42,13 +50,16 @@ logger = Logger("sotopia.database")
 
 __all__ = [
     "AgentProfile",
+    "BaseAgentProfile",
     "EnvironmentProfile",
     "BaseEnvironmentProfile",
     "EpisodeLog",
+    "BaseEpisodeLog",
     "NonStreamingSimulationStatus",
     "EnvAgentComboStorage",
     "AnnotationForEpisode",
     "Annotator",
+    "BaseRelationshipProfile",
     "RelationshipProfile",
     "RelationshipType",
     "RedisCommunicationMixin",

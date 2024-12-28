@@ -17,6 +17,9 @@ from sotopia.database import (
     NonStreamingSimulationStatus,
     CustomEvaluationDimensionList,
     CustomEvaluationDimension,
+    BaseEnvironmentProfile,
+    BaseAgentProfile,
+    BaseRelationshipProfile,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
@@ -66,56 +69,6 @@ logger = logging.getLogger(__name__)
 active_simulations: Dict[
     str, bool
 ] = {}  # TODO check whether this is the correct way to store the active simulations
-
-
-class RelationshipWrapper(BaseModel):
-    pk: str = ""
-    agent_1_id: str = ""
-    agent_2_id: str = ""
-    relationship: Literal[0, 1, 2, 3, 4, 5] = 0
-    backstory: str = ""
-    tag: str = ""
-
-
-class AgentProfileWrapper(BaseModel):
-    """
-    Wrapper for AgentProfile to avoid pydantic v2 issues
-    """
-
-    pk: str = ""
-    first_name: str
-    last_name: str
-    age: int = 0
-    occupation: str = ""
-    gender: str = ""
-    gender_pronoun: str = ""
-    public_info: str = ""
-    big_five: str = ""
-    moral_values: list[str] = []
-    schwartz_personal_values: list[str] = []
-    personality_and_values: str = ""
-    decision_making_style: str = ""
-    secret: str = ""
-    model_id: str = ""
-    mbti: str = ""
-    tag: str = ""
-
-
-class EnvironmentProfileWrapper(BaseModel):
-    """
-    Wrapper for EnvironmentProfile to avoid pydantic v2 issues
-    """
-
-    pk: str = ""
-    codename: str
-    source: str = ""
-    scenario: str = ""
-    agent_goals: list[str] = []
-    relationship: Literal[0, 1, 2, 3, 4, 5] = 0
-    age_constraint: str | None = None
-    occupation_constraint: str | None = None
-    agent_constraint: list[list[str]] | None = None
-    tag: str = ""
 
 
 class CustomEvaluationDimensionsWrapper(BaseModel):
@@ -484,7 +437,7 @@ class SotopiaFastAPI(FastAPI):
         )(get_evaluation_dimensions)
 
         @self.post("/scenarios/", response_model=str)
-        async def create_scenario(scenario: EnvironmentProfileWrapper) -> str:
+        async def create_scenario(scenario: BaseEnvironmentProfile) -> str:
             scenario_profile = EnvironmentProfile(**scenario.model_dump())
             scenario_profile.save()
             pk = scenario_profile.pk
@@ -492,7 +445,7 @@ class SotopiaFastAPI(FastAPI):
             return pk
 
         @self.post("/agents/", response_model=str)
-        async def create_agent(agent: AgentProfileWrapper) -> str:
+        async def create_agent(agent: BaseAgentProfile) -> str:
             agent_profile = AgentProfile(**agent.model_dump())
             agent_profile.save()
             pk = agent_profile.pk
@@ -500,7 +453,7 @@ class SotopiaFastAPI(FastAPI):
             return pk
 
         @self.post("/relationship/", response_model=str)
-        async def create_relationship(relationship: RelationshipWrapper) -> str:
+        async def create_relationship(relationship: BaseRelationshipProfile) -> str:
             relationship_profile = RelationshipProfile(**relationship.model_dump())
             relationship_profile.save()
             pk = relationship_profile.pk

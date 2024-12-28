@@ -20,7 +20,7 @@ class RelationshipType(IntEnum):
     family_member = 5
 
 
-class AgentProfile(JsonModel):
+class BaseAgentProfile(BaseModel):
     first_name: str = Field(index=True)
     last_name: str = Field(index=True)
     age: int = Field(index=True, default_factory=lambda: 0)
@@ -41,6 +41,10 @@ class AgentProfile(JsonModel):
         default_factory=lambda: "",
         description="The tag of the agent, used for searching, could be convenient to document agent profiles from different works and sources",
     )
+
+
+class AgentProfile(BaseAgentProfile, JsonModel):
+    pass
 
 
 class BaseEnvironmentProfile(BaseModel):
@@ -90,7 +94,7 @@ class EnvironmentProfile(BaseEnvironmentProfile, JsonModel):
     pass
 
 
-class RelationshipProfile(BaseEnvironmentProfile, JsonModel):
+class BaseRelationshipProfile(BaseModel):
     agent_1_id: str = Field(index=True)
     agent_2_id: str = Field(index=True)
     relationship: RelationshipType = Field(
@@ -103,6 +107,10 @@ class RelationshipProfile(BaseEnvironmentProfile, JsonModel):
         default_factory=lambda: "",
         description="The tag of the relationship, used for searching, could be convenient to document relationship profiles from different works and sources",
     )
+
+
+class RelationshipProfile(BaseRelationshipProfile, JsonModel):
+    pass
 
 
 class EnvironmentList(JsonModel):

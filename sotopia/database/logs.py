@@ -5,7 +5,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
-from pydantic import model_validator
+from pydantic import model_validator, BaseModel
 from redis_om import JsonModel
 from redis_om.model.model import Field
 from typing import Literal
@@ -17,7 +17,7 @@ class NonStreamingSimulationStatus(JsonModel):
     status: Literal["Started", "Error", "Completed"]
 
 
-class EpisodeLog(JsonModel):
+class BaseEpisodeLog(BaseModel):
     # Note that we did not validate the following constraints:
     # 1. The number of turns in messages and rewards should be the same or off by 1
     # 2. The agents in the messages are the same as the agetns
@@ -75,6 +75,10 @@ class EpisodeLog(JsonModel):
             f"The rewards are:\nAgent 1: {self.rewards[0]}\nAgent 2: {self.rewards[1]}"
         )
         return agent_profiles, messages_and_rewards
+
+
+class EpisodeLog(BaseEpisodeLog, JsonModel):
+    pass
 
 
 class AnnotationForEpisode(JsonModel):

@@ -1,38 +1,18 @@
 """
 Definition
 @app.post("/agents/", response_model=str)
-async def create_agent(agent: AgentProfileWrapper) -> str:
-    agent_profile = AgentProfile(**agent.model_dump())
+async def create_agent(agent: BaseAgentProfile) -> str:
+    agent_profile = BaseAgentProfile(**agent.model_dump())
     agent_profile.save()
     pk = agent_profile.pk
     assert pk is not None
     return pk
-
-class AgentProfileWrapper(BaseModel):
-    Wrapper for AgentProfile to avoid pydantic v2 issues
-
-    first_name: str
-    last_name: str
-    age: int = 0
-    occupation: str = ""
-    gender: str = ""
-    gender_pronoun: str = ""
-    public_info: str = ""
-    big_five: str = ""
-    moral_values: list[str] = []
-    schwartz_personal_values: list[str] = []
-    personality_and_values: str = ""
-    decision_making_style: str = ""
-    secret: str = ""
-    model_id: str = ""
-    mbti: str = ""
-    tag: str = ""
 """
 
 import streamlit as st
 import requests
 
-from sotopia.api.fastapi_server import AgentProfileWrapper
+from sotopia.database import BaseAgentProfile
 from ..rendering import local_css
 
 # add fields for agent profiles
@@ -52,7 +32,7 @@ def rendering_character_form() -> None:
     public_info = st.text_area("Public Info")
 
     if st.button("Create Character"):
-        agent_profile = AgentProfileWrapper(
+        agent_profile = BaseAgentProfile(
             first_name=first_name,
             last_name=last_name,
             age=age,

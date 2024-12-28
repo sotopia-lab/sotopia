@@ -3,7 +3,7 @@ from ui.streamlit_ui.rendering import (
     render_environment_profile,
     render_conversation_and_evaluation,
 )
-from sotopia.database import EpisodeLog, EnvironmentProfile
+from sotopia.database import BaseEnvironmentProfile
 import requests
 
 st.title("Episode")
@@ -17,13 +17,25 @@ def render_episodes() -> None:
         "1019_hiring_equal_cooperative_salary_start_date_trust-bigfive-low_transparency-high_competence-low_adaptability-Agreeableness",
     ]
     if "current_episodes" not in st.session_state:
-        st.session_state["current_episodes"] = EpisodeLog.find(
-            EpisodeLog.tag == tags[0]
-        ).all()
+        response = requests.get(
+            f"{st.session_state.API_BASE}/episodes", params={"tag": tags[0]}
+        )
+        if response.status_code == 200:
+            st.session_state["current_episodes"] = response.json()
+        else:
+            st.error("Failed to fetch episodes")
+            st.session_state["current_episodes"] = []
 
     def update() -> None:
         tag = st.session_state.selected_tag
-        st.session_state.current_episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()
+        response = requests.get(
+            f"{st.session_state.API_BASE}/episodes", params={"tag": tag}
+        )
+        if response.status_code == 200:
+            st.session_state.current_episodes = response.json()
+        else:
+            st.error("Failed to fetch episodes")
+            st.session_state.current_episodes = []
 
     with st.container():
         # Dropdown for codename selection
@@ -50,7 +62,7 @@ def render_episodes() -> None:
             )  # return a list of scenarios
             scenario = response.json() if response.status_code == 200 else []
             scenario = scenario[0]
-            environment_profile = EnvironmentProfile(**scenario)
+            environment_profile = BaseEnvironmentProfile(**scenario)
             render_environment_profile(environment_profile)
 
     st.markdown("---")

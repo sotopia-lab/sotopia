@@ -1,6 +1,6 @@
 import streamlit as st
 
-from sotopia.database import AgentProfile
+from sotopia.database import BaseAgentProfile
 
 # Importing avatars
 from ui.streamlit_ui.rendering import render_character, local_css, get_agents
@@ -15,7 +15,7 @@ def display_characters() -> None:
     col1, col2 = st.columns(2, gap="medium")
     for i, (name, character) in enumerate(all_characters.items()):
         with col1 if i % 2 == 0 else col2:
-            character_profile = AgentProfile(**character)
+            character_profile = BaseAgentProfile(**character)
             render_character(character_profile)
             st.write("---")
 
