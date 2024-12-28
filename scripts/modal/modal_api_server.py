@@ -47,28 +47,9 @@ image = (
         "apt-get install -y redis-stack-server",
     )
     .pip_install(
-        "pydantic>=2.5.0,<3.0.0",
-        "aiohttp>=3.9.3,<4.0.0",
-        "rich>=13.8.1,<14.0.0",
-        "typer>=0.12.5",
-        "aiostream>=0.5.2",
-        "fastapi[all]",
-        "uvicorn",
-        "redis>=5.0.0",
-        "rq",
-        "lxml>=4.9.3,<6.0.0",
-        "openai>=1.11.0,<2.0.0",
-        "langchain>=0.2.5,<0.4.0",
-        "PettingZoo==1.24.3",
-        "redis-om>=0.3.0,<0.4.0",
-        "gin-config>=0.5.0,<0.6.0",
-        "absl-py>=2.0.0,<3.0.0",
-        "together>=0.2.4,<1.4.0",
-        "beartype>=0.14.0,<0.20.0",
-        "langchain-openai>=0.1.8,<0.2",
-        "hiredis>=3.0.0",
-        "aact",
-        "gin",
+        "sotopia>=0.1.2",
+        "fastapi>0.100",  # TODO: remove this dependency after pypi release
+        "uvicorn",  # TODO: remove this dependency after pypi release
     )
 )
 redis_volume = modal.Volume.from_name("sotopia-api", create_if_missing=True)
