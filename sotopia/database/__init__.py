@@ -41,7 +41,9 @@ from .aggregate_annotations import map_human_annotations_to_episode_logs
 from .evaluation_dimensions import (
     EvaluationDimensionBuilder,
     CustomEvaluationDimension,
+    BaseCustomEvaluationDimension,
     CustomEvaluationDimensionList,
+    BaseCustomEvaluationDimensionList,
 )
 
 from logging import Logger
@@ -85,7 +87,9 @@ __all__ = [
     "get_rewards_from_episode",
     "EvaluationDimensionBuilder",
     "CustomEvaluationDimension",
+    "BaseCustomEvaluationDimension",
     "CustomEvaluationDimensionList",
+    "BaseCustomEvaluationDimensionList",
     "NonStreamingSimulationStatus",
 ]
 

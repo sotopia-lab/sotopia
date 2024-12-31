@@ -35,8 +35,7 @@ class CustomEvaluationDimension(JsonModel):
 
 import streamlit as st
 import requests
-from sotopia.database import CustomEvaluationDimension
-from sotopia.api.fastapi_server import CustomEvaluationDimensionsWrapper
+from sotopia.database import BaseCustomEvaluationDimension
 from ui.streamlit_ui.rendering.get_elements import (
     get_distinct_evaluation_dimensions,
 )
@@ -70,7 +69,7 @@ def add_evaluation_dimension() -> None:
             add_dimension = st.form_submit_button("Add Dimension")
 
             if add_dimension and dim_name and dim_description:
-                new_dimension = CustomEvaluationDimension(
+                new_dimension = BaseCustomEvaluationDimension(
                     name=dim_name,
                     description=dim_description,
                     range_low=range_low,
@@ -156,7 +155,7 @@ def add_evaluation_dimension() -> None:
 
             if submit_button and list_name:
                 try:
-                    wrapper = CustomEvaluationDimensionsWrapper(
+                    wrapper = BaseCustomEvaluationDimension(
                         name=list_name, dimensions=st.session_state.dimensions
                     )
                     # st.write(wrapper.dict())

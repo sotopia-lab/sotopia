@@ -8,7 +8,7 @@ from typing import Any, Optional
 import aiohttp
 import streamlit as st
 
-from sotopia.database import EpisodeLog, EnvironmentProfile
+from sotopia.database import BaseEpisodeLog, BaseEnvironmentProfile
 from ui.streamlit_ui.rendering import (
     get_scenarios,
     get_agents,
@@ -173,7 +173,7 @@ def handle_error_msg(message: dict[str, Any]) -> None:
 def handle_server_msg(message: dict[str, Any]) -> None:
     msg_type = message["data"]["type"]
     if msg_type == "messages":
-        epilog = EpisodeLog(**message["data"]["messages"])
+        epilog = BaseEpisodeLog(**message["data"]["messages"])
         st.session_state.messages.append(epilog)
 
 
@@ -240,7 +240,7 @@ def stop_callback() -> None:
 
 def update_scenario_description() -> None:
     scenario = st.session_state.scenarios[st.session_state.scenario_choice]
-    environment_profile = EnvironmentProfile(**scenario)
+    environment_profile = BaseEnvironmentProfile(**scenario)
     render_environment_profile(environment_profile)
 
 
