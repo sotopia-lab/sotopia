@@ -3,7 +3,7 @@ from ui.streamlit_ui.rendering import (
     render_environment_profile,
     render_conversation_and_evaluation,
 )
-from sotopia.database import BaseEnvironmentProfile
+from sotopia.database import BaseEnvironmentProfile, BaseEpisodeLog
 import requests
 
 st.title("Episode")
@@ -20,8 +20,9 @@ def render_episodes() -> None:
         response = requests.get(
             f"{st.session_state.API_BASE}/episodes", params={"tag": tags[0]}
         )
+        episodes = [BaseEpisodeLog(**episode) for episode in response.json()]
         if response.status_code == 200:
-            st.session_state["current_episodes"] = response.json()
+            st.session_state["current_episodes"] = episodes
         else:
             st.error("Failed to fetch episodes")
             st.session_state["current_episodes"] = []
@@ -32,7 +33,8 @@ def render_episodes() -> None:
             f"{st.session_state.API_BASE}/episodes", params={"tag": tag}
         )
         if response.status_code == 200:
-            st.session_state.current_episodes = response.json()
+            episodes = [BaseEpisodeLog(**episode) for episode in response.json()]
+            st.session_state.current_episodes = episodes
         else:
             st.error("Failed to fetch episodes")
             st.session_state.current_episodes = []

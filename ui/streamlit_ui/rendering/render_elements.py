@@ -247,7 +247,7 @@ def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
             role = role_mapping.get(message["role"], message["role"])
             content = message["content"]
             # escape doller sign
-            content = content.replace("$", "\$")
+            content = content.replace("$", "&#36;")
 
             if role == "obs" or message.get("type") == "action":
                 try:

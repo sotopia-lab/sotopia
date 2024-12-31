@@ -35,8 +35,7 @@ means the environment is only available to agent one between 18 and 25, and agen
 
 import streamlit as st
 from ui.streamlit_ui.rendering import local_css
-from sotopia.api.fastapi_server import EnvironmentProfileWrapper
-from sotopia.database import RelationshipType
+from sotopia.database import BaseEnvironmentProfile, RelationshipType
 import requests
 
 
@@ -88,7 +87,7 @@ def rendering_scenario_form() -> None:
     agent2_goal = st.text_input("Agent 2 Goal")
 
     if st.button("Create Scenario"):
-        scenario_profile = EnvironmentProfileWrapper(
+        scenario_profile = BaseEnvironmentProfile(
             codename="[Customize]" + codename,
             source=source,
             scenario=scenario,
