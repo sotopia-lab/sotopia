@@ -2,7 +2,7 @@ import requests
 import streamlit as st
 from typing import Any
 from ui.streamlit_ui.rendering.render_utils import get_full_name
-from sotopia.database import CustomEvaluationDimension
+from sotopia.database import BaseCustomEvaluationDimension
 
 
 def get_models() -> dict[str, dict[Any, Any]]:
@@ -38,14 +38,14 @@ def get_evaluation_dimensions() -> dict[str, dict[Any, Any]]:
     return evaluation_dimensions
 
 
-def get_distinct_evaluation_dimensions() -> list[CustomEvaluationDimension]:
+def get_distinct_evaluation_dimensions() -> list[BaseCustomEvaluationDimension]:
     all_dimension_lists: dict[str, list[Any]] = get_evaluation_dimensions()
-    distinct_dimensions: list[CustomEvaluationDimension] = []
+    distinct_dimensions: list[BaseCustomEvaluationDimension] = []
     distinct_dimension_names: set[str] = set()
 
     for dimension_list_name, dimensions in all_dimension_lists.items():
         for dimension in dimensions:
-            custom_dimension = CustomEvaluationDimension(**dimension)
+            custom_dimension = BaseCustomEvaluationDimension(**dimension)
             if custom_dimension.name not in distinct_dimension_names:
                 distinct_dimensions.append(custom_dimension)
                 distinct_dimension_names.add(custom_dimension.name)
