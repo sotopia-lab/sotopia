@@ -4,7 +4,7 @@ import time
 import os
 
 import redis
-from sotopia.ui.fastapi_server import SotopiaFastAPI
+from sotopia.api.fastapi_server import SotopiaFastAPI
 
 # Create persistent volume for Redis data
 redis_volume = modal.Volume.from_name("sotopia-api", create_if_missing=True)

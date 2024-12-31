@@ -2,6 +2,14 @@
 > [!CAUTION]
 > Work in progress: the API endpoints are being implemented. And will be released in the future major version.
 
+## Deploy to Modal
+First you need to have a Modal account and logged in with `modal setup`
+
+To deploy the FastAPI server to Modal, run the following command:
+```bash
+cd sotopia/ui/fastapi_server
+modal deploy modal_api_server.py
+```
 ## FastAPI Server
 
 To run the FastAPI server, you can use the following command:
