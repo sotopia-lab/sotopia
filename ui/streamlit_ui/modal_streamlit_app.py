@@ -18,7 +18,7 @@ image = (
     )
     .pip_install("streamlit~=1.40.2", "uv")
     .run_commands(
-        "rm -rf sotopia && git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout feature/sotopia-demo-ui && uv pip install pyproject.toml --system && git status && pip install -e . && cd ui && cd streamlit_ui"
+        "rm -rf sotopia && git clone https://github.com/sotopia-lab/sotopia.git && cd sotopia && git checkout demo && uv pip install pyproject.toml --system && git status && pip install -e . && cd ui && cd streamlit_ui"
     )
     # .pip_install("pydantic==2.8.2")
     .run_commands("pip list")
