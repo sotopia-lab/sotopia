@@ -6,6 +6,7 @@ from aact import NodeFactory
 
 from sotopia.experimental.agents.base_agent import BaseAgent
 from sotopia.experimental.agents.datamodels import Observation, AgentAction
+from sotopia.experimental.agents.logs import AgentProfile
 
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
@@ -34,8 +35,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         output_channel: str,
         query_interval: int,
         agent_name: str,
-        node_name: str,
         goal: str,
+        background: str,
+        traits: str,
         model_name: str,
         redis_url: str,
     ):
@@ -43,7 +45,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             [(input_channel, Observation) for input_channel in input_channels],
             [(output_channel, AgentAction)],
             redis_url,
-            node_name,
+            agent_name,
         )
         self.output_channel = output_channel
         self.query_interval = query_interval
@@ -52,6 +54,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.name = agent_name
         self.model_name = model_name
         self.goal = goal
+        self.agent_profile = AgentProfile(
+            name=agent_name, background=background, traits=traits, model_name=model_name
+        )
 
     def _format_message_history(self, message_history: list[Observation]) -> str:
         ## TODO: akhatua Fix the mapping of action to be gramatically correct
@@ -63,7 +68,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="none",
-                argument=self.model_name,
+                argument=self.agent_profile.pk,
             )
 
         self.message_history.append(obs)
