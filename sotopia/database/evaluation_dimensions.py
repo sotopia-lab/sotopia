@@ -1,19 +1,27 @@
 from redis_om import JsonModel
 from redis_om.model.model import Field
-from pydantic import BaseModel, create_model
+from pydantic import create_model, BaseModel
 from typing import Type, Callable, Tuple, Annotated, Union, cast, Any
 
 
-class CustomEvaluationDimension(JsonModel):
+class BaseCustomEvaluationDimension(BaseModel):
     name: str = Field(index=True)
     description: str = Field(index=True)
     range_high: int = Field(index=True)
     range_low: int = Field(index=True)
 
 
-class CustomEvaluationDimensionList(JsonModel):
+class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
+    pass
+
+
+class BaseCustomEvaluationDimensionList(BaseModel):
     name: str = Field(index=True)
     dimension_pks: list[str] = Field(default_factory=lambda: [], index=True)
+
+
+class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
+    pass
 
 
 class EvaluationDimensionBuilder:

@@ -8,7 +8,7 @@ from sotopia.database import (
     CustomEvaluationDimensionList,
 )
 from sotopia.messages import SimpleMessage
-from sotopia.ui.fastapi_server import app
+from sotopia.api.fastapi_server import app
 import pytest
 from typing import Generator, Callable
 
