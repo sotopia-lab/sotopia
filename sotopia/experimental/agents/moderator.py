@@ -30,6 +30,7 @@ class Observations(DataModel):
 class Moderator(Node[AgentAction, Observation]):
     def __init__(
         self,
+        node_name,
         input_channels: list[str],
         output_channels: list[str],
         scenario: str,
@@ -54,7 +55,7 @@ class Moderator(Node[AgentAction, Observation]):
                 (output_channel, Observation) for output_channel in output_channels
             ],
             redis_url=redis_url,
-            node_name="moderator",
+            node_name=node_name
         )
         self.observation_queue: asyncio.Queue[AgentAction] = asyncio.Queue()
         self.task_scheduler: asyncio.Task[None] | None = None
@@ -156,6 +157,7 @@ class Moderator(Node[AgentAction, Observation]):
                 ).model_name
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
+                print("all agents are awake")
 
         if self.action_order == "round-robin":
             await self.send(
@@ -199,7 +201,7 @@ class Moderator(Node[AgentAction, Observation]):
             rewards_prompt=None,
         )
         epilog.save()
-        print(epilog.model_dump_json())
+        print(epilog.model_dump_json(indent=2))
         return epilog
 
     async def aact(self, agent_action: AgentAction) -> Observations | None:

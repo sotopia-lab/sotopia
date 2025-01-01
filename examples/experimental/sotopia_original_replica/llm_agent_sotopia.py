@@ -35,6 +35,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         output_channel: str,
         query_interval: int,
         agent_name: str,
+        node_name: str,
         goal: str,
         background: str,
         traits: str,
@@ -45,18 +46,18 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             [(input_channel, Observation) for input_channel in input_channels],
             [(output_channel, AgentAction)],
             redis_url,
-            agent_name,
+            node_name,
         )
         self.output_channel = output_channel
         self.query_interval = query_interval
         self.count_ticks = 0
         self.message_history: list[Observation] = []
         self.name = agent_name
-        self.model_name = model_name
+        self.model_name=model_name
         self.goal = goal
-        self.agent_profile = AgentProfile(
+        self.agent_profile_pk = AgentProfile(
             name=agent_name, background=background, traits=traits, model_name=model_name
-        )
+        ).save().pk
 
     def _format_message_history(self, message_history: list[Observation]) -> str:
         ## TODO: akhatua Fix the mapping of action to be gramatically correct
@@ -68,7 +69,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="none",
-                argument=self.agent_profile.pk,
+                argument=self.agent_profile_pk,
             )
 
         self.message_history.append(obs)
