@@ -16,6 +16,7 @@ from pydantic import Field
 
 from .datamodels import AgentAction, Observation
 from .logs import EpisodeLog, AgentProfile
+from .evaluators import DummyEvaluator
 from sotopia.messages import ActionType
 
 
@@ -46,6 +47,8 @@ class Moderator(Node[AgentAction, Observation]):
         ],
         max_turns: int = 20,
         push_to_db: bool = False,
+        will_eval: bool = False,
+        evaluator: str = "DummyEvaluator",
     ):
         super().__init__(
             input_channel_types=[
@@ -55,7 +58,7 @@ class Moderator(Node[AgentAction, Observation]):
                 (output_channel, Observation) for output_channel in output_channels
             ],
             redis_url=redis_url,
-            node_name=node_name
+            node_name=node_name,
         )
         self.observation_queue: asyncio.Queue[AgentAction] = asyncio.Queue()
         self.task_scheduler: asyncio.Task[None] | None = None
@@ -77,7 +80,9 @@ class Moderator(Node[AgentAction, Observation]):
         self.message_history: list[tuple[str, str, str]] = [
             ("Environment", "Environment", self.scenario)
         ]
-        self.push_to_db = push_to_db
+        self.push_to_db: bool = push_to_db
+        self.will_eval: bool = will_eval
+        self.evaluator: str = evaluator
 
         if self.action_order == "round-robin":
             pass
@@ -178,14 +183,28 @@ class Moderator(Node[AgentAction, Observation]):
             self.current_agent_index += 1
 
     async def wrap_up_and_stop(self) -> None:
-        if self.push_to_db:
-            await self.save()
+        epilog = await self.save()
+        if self.will_eval:
+            epilog = await self.eval(epilog)
         await asyncio.sleep(0.5)
-        print("stopping all agents")
+        print("result of this episode:\n", epilog)
         await self.r.publish(
             "shutdown:moderator",
             "shutdown",
         )
+
+    async def eval(self, epilog: EpisodeLog) -> EpisodeLog:
+        """
+        evaluate the episode
+        """
+        if self.evaluator == "DummyEvaluator":
+            evaluator = DummyEvaluator()
+            reward, reward_prompt = evaluator.evaluate(epilog)
+            epilog.rewards = [reward]
+            epilog.rewards_prompt = reward_prompt
+        if self.push_to_db:
+            epilog.save()
+        return epilog
 
     async def save(self) -> EpisodeLog:
         """
@@ -200,8 +219,8 @@ class Moderator(Node[AgentAction, Observation]):
             rewards=None,
             rewards_prompt=None,
         )
-        epilog.save()
-        print(epilog.model_dump_json(indent=2))
+        if self.push_to_db:
+            epilog.save()
         return epilog
 
     async def aact(self, agent_action: AgentAction) -> Observations | None:
