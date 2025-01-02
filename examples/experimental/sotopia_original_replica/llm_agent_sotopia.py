@@ -53,11 +53,18 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.count_ticks = 0
         self.message_history: list[Observation] = []
         self.name = agent_name
-        self.model_name=model_name
+        self.model_name = model_name
         self.goal = goal
-        self.agent_profile_pk = AgentProfile(
-            name=agent_name, background=background, traits=traits, model_name=model_name
-        ).save().pk
+        self.agent_profile_pk = (
+            AgentProfile(
+                name=agent_name,
+                background=background,
+                traits=traits,
+                model_name=model_name,
+            )
+            .save()
+            .pk
+        )
 
     def _format_message_history(self, message_history: list[Observation]) -> str:
         ## TODO: akhatua Fix the mapping of action to be gramatically correct
