@@ -1,5 +1,4 @@
 import streamlit as st
-from typing import Any
 from sotopia.database import BaseCustomEvaluationDimension
 
 from ui.rendering import (
@@ -30,18 +29,15 @@ def display_evaluation_dimensions() -> None:
                 render_evaluation_dimension(dimension)
 
     with st.expander("Evaluation Dimension Lists", expanded=True):
-        all_dimension_lists: dict[str, list[dict[str, Any]]] = (
+        all_dimension_lists: dict[str, list[BaseCustomEvaluationDimension]] = (
             get_evaluation_dimensions()
         )
         col1, col2 = st.columns(2, gap="medium")
         for i, (dimension_list_name, dimensions) in enumerate(
             all_dimension_lists.items()
         ):
-            all_dimensions: list[BaseCustomEvaluationDimension] = [
-                BaseCustomEvaluationDimension(**dimension) for dimension in dimensions
-            ]
             with col1 if i % 2 == 0 else col2:
-                render_evaluation_dimension_list(dimension_list_name, all_dimensions)
+                render_evaluation_dimension_list(dimension_list_name, dimensions)
 
 
 display_evaluation_dimensions()

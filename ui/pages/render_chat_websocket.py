@@ -105,7 +105,7 @@ class WebSocketManager:
     def _run_event_loop(self) -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self._connect())  # type: ignore
+        loop.run_until_complete(self._connect())
 
     async def _connect(self) -> None:
         """Connect to the WebSocket server and handle messages"""
@@ -115,8 +115,8 @@ class WebSocketManager:
                     self.websocket = ws
 
                     # Start tasks for sending and receiving messages
-                    send_task = asyncio.create_task(self._send_messages())  # type: ignore
-                    receive_task = asyncio.create_task(self._receive_messages())  # type: ignore
+                    send_task = asyncio.create_task(self._send_messages())
+                    receive_task = asyncio.create_task(self._receive_messages())
 
                     # Wait for both tasks to complete
                     try:
@@ -318,7 +318,7 @@ def chat_demo() -> None:
                 for eval_dim in st.session_state.evaluation_dimension_dict[
                     st.session_state.evaluation_dimension_choice
                 ]:
-                    evaluation_dimension_str += f"{eval_dim['name']}, "
+                    evaluation_dimension_str += f"{eval_dim.name}, "
 
                 st.markdown(
                     evaluation_dimension_str[:-2] + ".",
