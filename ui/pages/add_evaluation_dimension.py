@@ -36,7 +36,7 @@ class CustomEvaluationDimension(JsonModel):
 import streamlit as st
 import requests
 from sotopia.database import BaseCustomEvaluationDimension
-from ui.streamlit_ui.rendering.get_elements import (
+from ui.rendering.get_elements import (
     get_distinct_evaluation_dimensions,
 )
 

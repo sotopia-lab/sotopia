@@ -13,7 +13,7 @@ import streamlit as st
 import requests
 
 from sotopia.database import BaseAgentProfile
-from ui.streamlit_ui.rendering import local_css
+from ui.rendering import local_css
 
 # add fields for agent profiles
 

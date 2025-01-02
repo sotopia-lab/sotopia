@@ -2,21 +2,20 @@ import json
 
 import streamlit as st
 from sotopia.database import (
-    AgentProfile,
+    BaseAgentProfile,
     BaseEnvironmentProfile,
     EpisodeLog,
-    CustomEvaluationDimension,
+    BaseCustomEvaluationDimension,
 )
 from sotopia.envs.parallel import render_text_for_environment
 
-from ui.streamlit_ui.rendering.render_utils import (
+from .render_utils import (
     get_full_name,
     render_messages,
     local_css,
+    avatar_mapping,
 )
-from ui.streamlit_ui.rendering.get_elements import get_agents
-
-from .render_utils import avatar_mapping
+from .get_elements import get_agents
 
 
 role_mapping = {
@@ -38,7 +37,7 @@ def display_field(label: str, value: str) -> str:
     return ""
 
 
-def render_evaluation_dimension(dimension: CustomEvaluationDimension) -> None:
+def render_evaluation_dimension(dimension: BaseCustomEvaluationDimension) -> None:
     local_css("././css/style.css")
 
     st.markdown(
@@ -59,7 +58,7 @@ def render_evaluation_dimension(dimension: CustomEvaluationDimension) -> None:
 
 def render_evaluation_dimension_list(
     name: str,
-    dimensions: list[CustomEvaluationDimension],
+    dimensions: list[BaseCustomEvaluationDimension],
 ) -> None:
     local_css("././css/style.css")
 
@@ -78,7 +77,7 @@ def render_evaluation_dimension_list(
     )
 
 
-def render_character(character: AgentProfile) -> None:
+def render_character(character: BaseAgentProfile) -> None:
     local_css("././css/style.css")
 
     full_name = f"{character.first_name} {character.last_name}"

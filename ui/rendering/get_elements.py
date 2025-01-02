@@ -1,7 +1,7 @@
 import requests
 import streamlit as st
 from typing import Any
-from ui.streamlit_ui.rendering.render_utils import get_full_name
+from .render_utils import get_full_name
 from sotopia.database import BaseCustomEvaluationDimension
 
 
@@ -30,12 +30,10 @@ def get_agents(id: str = "") -> dict[str, dict[Any, Any]]:
     return {get_full_name(agent): agent for agent in agents}
 
 
-def get_evaluation_dimensions() -> dict[str, dict[Any, Any]]:
-    # use synchronous code to get the evaluation dimensions
+def get_evaluation_dimensions() -> dict[str, list[dict[Any, Any]]]:
     with requests.get(f"{st.session_state.API_BASE}/evaluation_dimensions") as resp:
         evaluation_dimensions = resp.json()
-
-    return evaluation_dimensions
+    return {dimension["name"]: dimension for dimension in evaluation_dimensions}
 
 
 def get_distinct_evaluation_dimensions() -> list[BaseCustomEvaluationDimension]:

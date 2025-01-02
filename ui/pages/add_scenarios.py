@@ -34,7 +34,7 @@ means the environment is only available to agent one between 18 and 25, and agen
 """
 
 import streamlit as st
-from ui.streamlit_ui.rendering import local_css
+from ui.rendering import local_css
 from sotopia.database import BaseEnvironmentProfile, RelationshipType
 import requests
 
