@@ -251,7 +251,7 @@ def test_get_relationship(create_mock_data: Callable[[], None]) -> None:
 
 
 def test_get_evaluation_dimensions(create_mock_data: Callable[[], None]) -> None:
-    response = client.get("/evaluation_dimensions/")
+    response = client.get("/evaluation_dimensions")
     assert response.status_code == 200
     assert isinstance(response.json(), dict)
     assert response.json()["test_dimension_list"][0]["name"] == "test_dimension"
@@ -264,7 +264,7 @@ def test_create_agent(create_mock_data: Callable[[], None]) -> None:
         "first_name": "test_first_name",
         "last_name": "test_last_name",
     }
-    response = client.post("/agents/", json=agent_data)
+    response = client.post("/agents", json=agent_data)
     assert response.status_code == 200
     assert isinstance(response.json(), str)
 
@@ -277,7 +277,7 @@ def test_create_scenario(create_mock_data: Callable[[], None]) -> None:
         "scenario": "test_scenario",
         "tag": "test",
     }
-    response = client.post("/scenarios/", json=scenario_data)
+    response = client.post("/scenarios", json=scenario_data)
     assert response.status_code == 200
     assert isinstance(response.json(), str)
 

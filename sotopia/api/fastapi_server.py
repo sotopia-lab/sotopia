@@ -392,6 +392,7 @@ async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimensio
             CustomEvaluationDimension.get(pk=pk)
             for pk in custom_evaluation_dimension_list.dimension_pks
         ]
+    print(custom_evaluation_dimensions)
     return custom_evaluation_dimensions
 
 
@@ -436,7 +437,7 @@ class SotopiaFastAPI(FastAPI):
             response_model=dict[str, list[CustomEvaluationDimension]],
         )(get_evaluation_dimensions)
 
-        @self.post("/scenarios/", response_model=str)
+        @self.post("/scenarios", response_model=str)
         async def create_scenario(scenario: BaseEnvironmentProfile) -> str:
             scenario_profile = EnvironmentProfile(**scenario.model_dump())
             scenario_profile.save()
@@ -444,7 +445,7 @@ class SotopiaFastAPI(FastAPI):
             assert pk is not None
             return pk
 
-        @self.post("/agents/", response_model=str)
+        @self.post("/agents", response_model=str)
         async def create_agent(agent: BaseAgentProfile) -> str:
             agent_profile = AgentProfile(**agent.model_dump())
             agent_profile.save()
@@ -452,7 +453,7 @@ class SotopiaFastAPI(FastAPI):
             assert pk is not None
             return pk
 
-        @self.post("/relationship/", response_model=str)
+        @self.post("/relationship", response_model=str)
         async def create_relationship(relationship: BaseRelationshipProfile) -> str:
             relationship_profile = RelationshipProfile(**relationship.model_dump())
             relationship_profile.save()
@@ -460,7 +461,7 @@ class SotopiaFastAPI(FastAPI):
             assert pk is not None
             return pk
 
-        @self.post("/evaluation_dimensions/", response_model=str)
+        @self.post("/evaluation_dimensions", response_model=str)
         async def create_evaluation_dimensions(
             evaluation_dimensions: CustomEvaluationDimensionsWrapper,
         ) -> str:
@@ -504,7 +505,7 @@ class SotopiaFastAPI(FastAPI):
             assert pk is not None
             return pk
 
-        @self.post("/simulate/", response_model=str)
+        @self.post("/simulate", response_model=str)
         def simulate(simulation_request: SimulationRequest) -> Response:
             try:
                 _: EnvironmentProfile = EnvironmentProfile.get(
@@ -600,6 +601,16 @@ class SotopiaFastAPI(FastAPI):
         async def delete_episode(episode_id: str) -> str:
             EpisodeLog.delete(episode_id)
             return episode_id
+
+        @self.delete(
+            "/evaluation_dimensions/{evaluation_dimension_list_name}",
+            response_model=str,
+        )
+        async def delete_evaluation_dimension_list(
+            evaluation_dimension_list_name: str,
+        ) -> str:
+            CustomEvaluationDimensionList.delete(evaluation_dimension_list_name)
+            return evaluation_dimension_list_name
 
         @self.websocket("/ws/simulation")
         async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
