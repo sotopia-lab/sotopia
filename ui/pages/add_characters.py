@@ -1,6 +1,6 @@
 """
 Definition
-@app.post("/agents/", response_model=str)
+@app.post("/agents", response_model=str)
 async def create_agent(agent: BaseAgentProfile) -> str:
     agent_profile = BaseAgentProfile(**agent.model_dump())
     agent_profile.save()
@@ -45,7 +45,7 @@ def rendering_character_form() -> None:
         print(agent_profile)
 
         response = requests.post(
-            f"{st.session_state.API_BASE}/agents/",
+            f"{st.session_state.API_BASE}/agents",
             json=agent_profile.model_dump(),
         )
 

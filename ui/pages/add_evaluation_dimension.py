@@ -1,7 +1,7 @@
 """
 Definition
 @app.get(
-    "/evaluation_dimensions/", response_model=dict[str, list[CustomEvaluationDimension]]
+    "/evaluation_dimensions", response_model=dict[str, list[CustomEvaluationDimension]]
 )
 async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
     custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
@@ -161,7 +161,7 @@ def add_evaluation_dimension() -> None:
                     # st.write(wrapper.dict())
 
                     response = requests.post(
-                        f"{st.session_state.API_BASE}/evaluation_dimensions/",
+                        f"{st.session_state.API_BASE}/evaluation_dimensions",
                         json=wrapper.dict(),
                     )
 

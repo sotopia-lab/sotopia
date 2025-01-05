@@ -99,7 +99,7 @@ def rendering_scenario_form() -> None:
         )
 
         response = requests.post(
-            f"{st.session_state.API_BASE}/scenarios/",
+            f"{st.session_state.API_BASE}/scenarios",
             json=scenario_profile.model_dump(),
         )
 
