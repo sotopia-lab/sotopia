@@ -46,7 +46,7 @@ def test_dimension_list() -> Generator[None, None, None]:
     dimension_list = CustomEvaluationDimensionList(
         pk="tmppk_test_dimension_list",
         name="test_list",
-        dimension_pks=["tmppk_test_dimension"],  # type: ignore
+        dimension_pks=["tmppk_test_dimension"],
     )
     dimension_list.save()
     yield
@@ -56,7 +56,7 @@ def test_dimension_list() -> Generator[None, None, None]:
 
 def test_build_dimension_model(test_dimension: Callable[[], None]) -> None:
     # Test building model from dimension id
-    model = EvaluationDimensionBuilder.build_dimension_model(["tmppk_test_dimension"])  # type: ignore
+    model = EvaluationDimensionBuilder.build_dimension_model(["tmppk_test_dimension"])
     instance = model(test_dimension=("example", 5))
     assert instance.dict()["test_dimension"] == ("example", 5)
     # Test validation errors for out of range values
