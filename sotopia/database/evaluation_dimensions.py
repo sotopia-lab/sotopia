@@ -1,6 +1,6 @@
 from redis_om import JsonModel
 from redis_om.model.model import Field
-from pydantic import create_model, BaseModel
+from pydantic import create_model, BaseModel, AfterValidator
 from typing import Type, Callable, Tuple, Annotated, Union, cast, Any
 
 
@@ -56,7 +56,8 @@ class EvaluationDimensionBuilder:
             range_validator = EvaluationDimensionBuilder.create_range_validator(
                 dimension.range_low, dimension.range_high
             )
-            field_type = Annotated[Tuple[str, int], range_validator]
+            # Need to use AfterValidator to ensure validation happens after type checking
+            field_type = Annotated[Tuple[str, int], AfterValidator(range_validator)]
 
             fields[dimension.name] = (
                 field_type,
@@ -84,7 +85,8 @@ class EvaluationDimensionBuilder:
             range_validator = EvaluationDimensionBuilder.create_range_validator(
                 dimension.range_low, dimension.range_high
             )
-            field_type = Annotated[Tuple[str, int], range_validator]
+            # Need to use AfterValidator to ensure validation happens after type checking
+            field_type = Annotated[Tuple[str, int], AfterValidator(range_validator)]
 
             fields[dimension.name] = (
                 field_type,
@@ -118,7 +120,8 @@ class EvaluationDimensionBuilder:
             range_validator = EvaluationDimensionBuilder.create_range_validator(
                 dimension.range_low, dimension.range_high
             )
-            field_type = Annotated[Tuple[str, int], range_validator]
+            # Need to use AfterValidator to ensure validation happens after type checking
+            field_type = Annotated[Tuple[str, int], AfterValidator(range_validator)]
 
             fields[dimension.name] = (
                 field_type,
