@@ -11,7 +11,7 @@ class BaseEvaluator(ABC):
         """
         evaluate an episode, returns the score and reward prompt
         """
-        pass
+        raise NotImplementedError
 
 
 class DummyEvaluator(BaseEvaluator):

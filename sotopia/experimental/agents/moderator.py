@@ -1,6 +1,6 @@
 import asyncio
 import sys
-
+import json
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -15,9 +15,9 @@ from typing import Literal, Any, AsyncIterator
 from pydantic import Field
 
 from .datamodels import AgentAction, Observation
-from .logs import EpisodeLog, AgentProfile
 from .evaluators import DummyEvaluator
 from sotopia.messages import ActionType
+from .logs import EpisodeLog
 
 
 @DataModelFactory.register("observations")
@@ -36,6 +36,7 @@ class Moderator(Node[AgentAction, Observation]):
         output_channels: list[str],
         scenario: str,
         agent_mapping: dict[str, str],
+        tag: str = "",
         redis_url: str = "redis://localhost:6379/0",
         action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
         available_actions: list[ActionType] = [
@@ -48,6 +49,7 @@ class Moderator(Node[AgentAction, Observation]):
         max_turns: int = 20,
         push_to_db: bool = False,
         will_eval: bool = False,
+        use_pk_value: bool = False,
         evaluator: str = "DummyEvaluator",
     ):
         super().__init__(
@@ -64,6 +66,7 @@ class Moderator(Node[AgentAction, Observation]):
         self.task_scheduler: asyncio.Task[None] | None = None
         self.shutdown_event: asyncio.Event = asyncio.Event()
         self.agent_mapping: dict[str, str] = agent_mapping
+        self.tag: str = tag
         self.action_order: Literal["simultaneous", "round-robin", "random"] = (
             action_order
         )
@@ -77,11 +80,12 @@ class Moderator(Node[AgentAction, Observation]):
         self.agent_models: dict[str, str] = {}
         self.agents_awake: dict[str, bool] = {name: False for name in self.agents}
         self.all_agents_awake: asyncio.Event = asyncio.Event()
-        self.message_history: list[tuple[str, str, str]] = [
-            ("Environment", "Environment", self.scenario)
+        self.message_history: list[list[tuple[str, str, str]]] = [
+            [("Environment", "Environment", self.scenario)]
         ]
         self.push_to_db: bool = push_to_db
         self.will_eval: bool = will_eval
+        self.use_pk_value: bool = use_pk_value
         self.evaluator: str = evaluator
 
         if self.action_order == "round-robin":
@@ -144,7 +148,11 @@ class Moderator(Node[AgentAction, Observation]):
                     observations_map={
                         output_channel: Observation(
                             agent_name="moderator",
-                            last_turn="Checking if you are fully booted, please return pk value of your AgentProfile when awake",
+                            last_turn=json.dumps(
+                                {
+                                    "use_pk_value": self.use_pk_value,
+                                }
+                            ),
                             turn_number=-1,
                             available_actions=["none"],
                         )
@@ -156,10 +164,9 @@ class Moderator(Node[AgentAction, Observation]):
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
                 self.agents_awake[agent_action.agent_name] = True
-                self.agents_pk[agent_action.agent_name] = agent_action.argument
-                self.agent_models[agent_action.agent_name] = AgentProfile.get(
-                    agent_action.argument
-                ).model_name
+                args: dict = json.loads(agent_action.argument)
+                self.agents_pk[agent_action.agent_name] = args["pk"]
+                self.agent_models[agent_action.agent_name] = args["model_name"]
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
                 print("all agents are awake")
@@ -184,6 +191,7 @@ class Moderator(Node[AgentAction, Observation]):
 
     async def wrap_up_and_stop(self) -> None:
         epilog = await self.save()
+        print("episode saved")
         if self.will_eval:
             epilog = await self.eval(epilog)
         await asyncio.sleep(0.5)
@@ -212,12 +220,12 @@ class Moderator(Node[AgentAction, Observation]):
         """
         epilog = EpisodeLog(
             environment=self.scenario,
-            agents_pk=list(self.agents_pk.values()),
-            tag=None,
+            agents=list(self.agents_pk.values()),
+            tag=self.tag,
             models=list(self.agent_models.values()),
             messages=self.message_history,
-            rewards=None,
-            rewards_prompt=None,
+            rewards=[0.0] * len(self.agents),
+            rewards_prompt="",
         )
         if self.push_to_db:
             epilog.save()
@@ -233,11 +241,13 @@ class Moderator(Node[AgentAction, Observation]):
             return None
 
         self.message_history.append(
-            (
-                agent_action.agent_name,
-                "Environment",
-                agent_action.to_natural_language(),
-            )
+            [
+                (
+                    agent_action.agent_name,
+                    "Environment",
+                    agent_action.to_natural_language(),
+                )
+            ]
         )
 
         if self.turn_number < self.max_turns:
