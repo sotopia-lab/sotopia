@@ -192,24 +192,7 @@ def run_simple_sample_with_custom_samples(
 
 
 if __name__ == "__main__":
-    """
-        A sample dimension:
-            custom_dimensions: list[dict[str, Union[str, int]]] = [
-                {
-                    "name": "transactivity",
-                    "description": "Analyze the provided social interaction episode between the given pair/team, focusing on identifying instances of transactive exchanges. Evaluate the level of transactivity by considering the following aspects: elaboration, building upon ideas, questioning, argumentation. Analyze whether these transactive patterns persist consistently across the entire interaction or if there are notable variations throughout the exchange. In the 'reasoning' field, provide a comprehensive account of the logic and thought process that led to your conclusion. Consider how the observed instances of transactivity contribute to or detract from the overall quality and depth of the interaction. In the 'score' field, provide an integer score ranging from 0 to 10, where a higher score indicates a higher level of transactivity.",
-                    "range_high": 10,
-                    "range_low": 0,
-                },
-                {
-                    "name": "verbal_equity",
-                    "description": "Analyze the script and measure the level of verbal equity reflected in the interaction between the agents. And then analyze the extent to which the interaction shows a balanced distribution of speaking opportunities among team members. In the 'reasoning' field, provide a comprehensive account of the logic or thought process that led you to your conclusion. Further, provide an integer score ranging from 0 and 10 in the 'score' field. A higher score indicates a higher level of verbal equity.",
-                    "range_high": 10,
-                    "range_low": 0,
-                },
-            ]
-    """
-
+    # here is a sample dimension
     custom_dimensions: list[dict[str, Union[str, int]]] = [
         {
             "name": "transactivity",

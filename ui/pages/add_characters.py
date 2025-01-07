@@ -1,14 +1,3 @@
-"""
-Definition
-@app.post("/agents", response_model=str)
-async def create_agent(agent: BaseAgentProfile) -> str:
-    agent_profile = BaseAgentProfile(**agent.model_dump())
-    agent_profile.save()
-    pk = agent_profile.pk
-    assert pk is not None
-    return pk
-"""
-
 import streamlit as st
 import requests
 
