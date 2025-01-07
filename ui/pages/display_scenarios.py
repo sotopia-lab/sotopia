@@ -1,7 +1,7 @@
 # isort: skip_file
 # ruff: noqa: E402
 import streamlit as st
-from ui.streamlit_ui.rendering import (
+from ui.rendering import (
     render_environment_profile,
     local_css,
     get_scenarios,
