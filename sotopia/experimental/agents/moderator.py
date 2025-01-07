@@ -1,6 +1,6 @@
 import asyncio
 import sys
-
+import json
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -14,9 +14,10 @@ from aact.messages import DataModel, DataModelFactory
 from typing import Literal, Any, AsyncIterator
 from pydantic import Field
 
-from sotopia.database import EpisodeLog
 from .datamodels import AgentAction, Observation
+from .evaluators import DummyEvaluator
 from sotopia.messages import ActionType
+from .logs import EpisodeLog
 
 
 @DataModelFactory.register("observations")
@@ -30,12 +31,12 @@ class Observations(DataModel):
 class Moderator(Node[AgentAction, Observation]):
     def __init__(
         self,
+        node_name,
         input_channels: list[str],
         output_channels: list[str],
         scenario: str,
         agent_mapping: dict[str, str],
-        node_name: str,
-        agent_backgrounds: dict[str, str],
+        tag: str = "",
         redis_url: str = "redis://localhost:6379/0",
         action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
         available_actions: list[ActionType] = [
@@ -47,6 +48,9 @@ class Moderator(Node[AgentAction, Observation]):
         ],
         max_turns: int = 20,
         push_to_db: bool = False,
+        will_eval: bool = False,
+        use_pk_value: bool = False,
+        evaluator: str = "DummyEvaluator",
     ):
         super().__init__(
             input_channel_types=[
@@ -62,6 +66,7 @@ class Moderator(Node[AgentAction, Observation]):
         self.task_scheduler: asyncio.Task[None] | None = None
         self.shutdown_event: asyncio.Event = asyncio.Event()
         self.agent_mapping: dict[str, str] = agent_mapping
+        self.tag: str = tag
         self.action_order: Literal["simultaneous", "round-robin", "random"] = (
             action_order
         )
@@ -71,14 +76,17 @@ class Moderator(Node[AgentAction, Observation]):
         self.current_agent_index: int = 0
         self.scenario: str = scenario
         self.agents: list[str] = list(agent_mapping.values())
+        self.agents_pk: dict[str, str] = {}
         self.agent_models: dict[str, str] = {}
         self.agents_awake: dict[str, bool] = {name: False for name in self.agents}
         self.all_agents_awake: asyncio.Event = asyncio.Event()
         self.message_history: list[list[tuple[str, str, str]]] = [
             [("Environment", "Environment", self.scenario)]
         ]
-        self.push_to_db = push_to_db
-        self.agent_backgrounds = agent_backgrounds
+        self.push_to_db: bool = push_to_db
+        self.will_eval: bool = will_eval
+        self.use_pk_value: bool = use_pk_value
+        self.evaluator: str = evaluator
 
         if self.action_order == "round-robin":
             pass
@@ -131,7 +139,7 @@ class Moderator(Node[AgentAction, Observation]):
         """
         1. send checking message to agents for every 0.1 seconds, until all agents are awake
         - this message has turn_number of -1 for identification, agents should not record this into actual message_history
-        - if the agent booted succesfully, he is expected to return its model name for record.
+        - if the agent booted succesfully, he is expected to return its agent_profile's pk for record.
         2. (under round-robin action order)after all agents are awake, send agent[0] a message to allow the agent to start speaking
         """
         while not self.all_agents_awake.is_set():
@@ -140,7 +148,11 @@ class Moderator(Node[AgentAction, Observation]):
                     observations_map={
                         output_channel: Observation(
                             agent_name="moderator",
-                            last_turn=self.scenario,
+                            last_turn=json.dumps(
+                                {
+                                    "use_pk_value": self.use_pk_value,
+                                }
+                            ),
                             turn_number=-1,
                             available_actions=["none"],
                         )
@@ -152,9 +164,12 @@ class Moderator(Node[AgentAction, Observation]):
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
                 self.agents_awake[agent_action.agent_name] = True
-                self.agent_models[agent_action.agent_name] = agent_action.argument
+                args: dict = json.loads(agent_action.argument)
+                self.agents_pk[agent_action.agent_name] = args["pk"]
+                self.agent_models[agent_action.agent_name] = args["model_name"]
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
+                print("all agents are awake")
 
         if self.action_order == "round-robin":
             await self.send(
@@ -162,7 +177,7 @@ class Moderator(Node[AgentAction, Observation]):
                     observations_map={
                         output_channel: Observation(
                             agent_name="moderator",
-                            last_turn=self.agent_backgrounds[agent_name],
+                            last_turn="conversation start",
                             turn_number=0,
                             available_actions=self.available_actions
                             if agent_name == self.agents[0]
@@ -175,36 +190,45 @@ class Moderator(Node[AgentAction, Observation]):
             self.current_agent_index += 1
 
     async def wrap_up_and_stop(self) -> None:
-        if self.push_to_db:
-            await self.save()
+        epilog = await self.save()
+        print("episode saved")
+        if self.will_eval:
+            epilog = await self.eval(epilog)
         await asyncio.sleep(0.5)
-        print("stopping all agents")
+        print("result of this episode:\n", epilog)
         await self.r.publish(
-            f"shutdown:{self.node_name}",
+            "shutdown:moderator",
             "shutdown",
         )
 
+    async def eval(self, epilog: EpisodeLog) -> EpisodeLog:
+        """
+        evaluate the episode
+        """
+        if self.evaluator == "DummyEvaluator":
+            evaluator = DummyEvaluator()
+            reward, reward_prompt = evaluator.evaluate(epilog)
+            epilog.rewards = [reward]
+            epilog.rewards_prompt = reward_prompt
+        if self.push_to_db:
+            epilog.save()
+        return epilog
+
     async def save(self) -> EpisodeLog:
         """
-        save the EpisodeLog to redis, without evaluating
-        TODO: specify what to be added inside tag
-        TODO: update the code so that EpisodeLog.render_for_humans() can work
-            -currently it cannot work because no AgentProfile has been uploaded to redis
-            -such a process should be done back in the agents' end
-            -also the current agentslist is consist of names, but not uuid's of agents
+        save the EpisodeLog to redis
         """
         epilog = EpisodeLog(
             environment=self.scenario,
-            agents=self.agents,
-            tag=None,
+            agents=list(self.agents_pk.values()),
+            tag=self.tag,
             models=list(self.agent_models.values()),
             messages=self.message_history,
-            reasoning="",
-            rewards=[0] * len(self.agents),
+            rewards=[0.0] * len(self.agents),
             rewards_prompt="",
         )
-        epilog.save()
-        # print(epilog.render_for_humans())
+        if self.push_to_db:
+            epilog.save()
         return epilog
 
     async def aact(self, agent_action: AgentAction) -> Observations | None:
@@ -216,24 +240,15 @@ class Moderator(Node[AgentAction, Observation]):
         if agent_action.action_type == "none":
             return None
 
-        if len(self.message_history) == 1:
-            self.message_history[0].append(
+        self.message_history.append(
+            [
                 (
                     agent_action.agent_name,
                     "Environment",
                     agent_action.to_natural_language(),
                 )
-            )
-        else:
-            self.message_history.append(
-                [
-                    (
-                        agent_action.agent_name,
-                        "Environment",
-                        agent_action.to_natural_language(),
-                    )
-                ]
-            )
+            ]
+        )
 
         if self.turn_number < self.max_turns:
             self.turn_number += 1

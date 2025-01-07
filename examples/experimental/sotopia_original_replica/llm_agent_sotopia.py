@@ -1,11 +1,13 @@
 import logging
 import sys
+import json
 from rich.logging import RichHandler
 
 from aact import NodeFactory
 
 from sotopia.experimental.agents.base_agent import BaseAgent
 from sotopia.experimental.agents.datamodels import Observation, AgentAction
+from sotopia.database.persistent_profile import AgentProfile
 
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
@@ -33,11 +35,13 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         input_channels: list[str],
         output_channel: str,
         query_interval: int,
-        agent_name: str,
         node_name: str,
-        goal: str,
         model_name: str,
-        redis_url: str,
+        goal: str,
+        agent_name: str | None = None,
+        background: dict | None = None,
+        agent_pk: str | None = None,
+        redis_url: str = "redis://localhost:6379/0",
     ):
         super().__init__(
             [(input_channel, Observation) for input_channel in input_channels],
@@ -47,11 +51,32 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         )
         self.output_channel = output_channel
         self.query_interval = query_interval
-        self.count_ticks = 0
+        self.count_ticks: int = 0
         self.message_history: list[Observation] = []
-        self.name = agent_name
-        self.model_name = model_name
-        self.goal = goal
+        self.goal: str = goal
+        self.model_name: str = model_name
+        self.agent_profile_pk: str = agent_pk
+        self.name: str = agent_name
+        self.background: dict = background
+
+    def set_profile(self, use_pk_value: bool):
+        profile: AgentProfile = None
+        if not use_pk_value:
+            if " " in self.name:
+                first_name, last_name = self.name.split(" ", 1)
+            else:
+                first_name = self.name
+                last_name = ""
+            profile = AgentProfile(
+                first_name=first_name, last_name=last_name, **self.background
+            )
+            profile.save()
+        else:
+            profile = AgentProfile.get(pk=self.agent_profile_pk)
+
+        self.agent_profile_pk = profile.pk
+        self.name = " ".join([profile.first_name, profile.last_name]).strip()
+        self.background = profile.model_dump()
 
     def _format_message_history(self, message_history: list[Observation]) -> str:
         ## TODO: akhatua Fix the mapping of action to be gramatically correct
@@ -59,11 +84,15 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     async def aact(self, obs: Observation) -> AgentAction:
         if obs.turn_number == -1:
+            args = json.loads(obs.last_turn)
+            self.set_profile(args["use_pk_value"])
             return AgentAction(
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="none",
-                argument=self.model_name,
+                argument=json.dumps(
+                    {"pk": self.agent_profile_pk, "model_name": self.model_name}
+                ),
             )
 
         self.message_history.append(obs)
