@@ -3,7 +3,7 @@ import random
 from sotopia.database import BaseAgentProfile
 
 # Importing avatars
-from ui.streamlit_ui.rendering import render_character, local_css, get_agents
+from ui.rendering import render_character, local_css, get_agents
 
 
 local_css("./css/style.css")

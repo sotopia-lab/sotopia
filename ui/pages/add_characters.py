@@ -1,19 +1,8 @@
-"""
-Definition
-@app.post("/agents/", response_model=str)
-async def create_agent(agent: BaseAgentProfile) -> str:
-    agent_profile = BaseAgentProfile(**agent.model_dump())
-    agent_profile.save()
-    pk = agent_profile.pk
-    assert pk is not None
-    return pk
-"""
-
 import streamlit as st
 import requests
 
 from sotopia.database import BaseAgentProfile
-from ui.streamlit_ui.rendering import local_css
+from ui.rendering import local_css
 
 # add fields for agent profiles
 
@@ -45,7 +34,7 @@ def rendering_character_form() -> None:
         print(agent_profile)
 
         response = requests.post(
-            f"{st.session_state.API_BASE}/agents/",
+            f"{st.session_state.API_BASE}/agents",
             json=agent_profile.model_dump(),
         )
 
