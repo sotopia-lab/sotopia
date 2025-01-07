@@ -15,9 +15,10 @@ from typing import Literal, Any, AsyncIterator
 from pydantic import Field
 
 from .datamodels import AgentAction, Observation
-from .evaluators import DummyEvaluator
+from sotopia.envs.evaluators import Evaluator, unweighted_aggregate_evaluate
 from sotopia.messages import ActionType
 from .logs import EpisodeLog
+import itertools
 
 
 @DataModelFactory.register("observations")
@@ -31,7 +32,7 @@ class Observations(DataModel):
 class Moderator(Node[AgentAction, Observation]):
     def __init__(
         self,
-        node_name,
+        node_name: str,
         input_channels: list[str],
         output_channels: list[str],
         scenario: str,
@@ -48,10 +49,11 @@ class Moderator(Node[AgentAction, Observation]):
         ],
         max_turns: int = 20,
         push_to_db: bool = False,
-        will_eval: bool = False,
+        evaluators: list[Evaluator] = [],
+        terminal_evaluators: list[Evaluator] = [],
         use_pk_value: bool = False,
         evaluator: str = "DummyEvaluator",
-    ):
+    ) -> None:
         super().__init__(
             input_channel_types=[
                 (input_channel, AgentAction) for input_channel in input_channels
@@ -84,7 +86,8 @@ class Moderator(Node[AgentAction, Observation]):
             [("Environment", "Environment", self.scenario)]
         ]
         self.push_to_db: bool = push_to_db
-        self.will_eval: bool = will_eval
+        self.evaluators: list[Evaluator] = evaluators
+        self.terminal_evaluators: list[Evaluator] = terminal_evaluators
         self.use_pk_value: bool = use_pk_value
         self.evaluator: str = evaluator
 
@@ -130,7 +133,7 @@ class Moderator(Node[AgentAction, Observation]):
         await self.all_agents_awake.wait()
         while not self.shutdown_event.is_set():
             observation = await self.observation_queue.get()
-            action_or_none = await self.aact(observation)
+            action_or_none = await self.astep(observation)
             if action_or_none is not None:
                 await self.send(action_or_none)
             self.observation_queue.task_done()
@@ -164,7 +167,7 @@ class Moderator(Node[AgentAction, Observation]):
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
                 self.agents_awake[agent_action.agent_name] = True
-                args: dict = json.loads(agent_action.argument)
+                args: dict[str, Any] = json.loads(agent_action.argument)
                 self.agents_pk[agent_action.agent_name] = args["pk"]
                 self.agent_models[agent_action.agent_name] = args["model_name"]
             if False not in self.agents_awake.values():
@@ -192,7 +195,7 @@ class Moderator(Node[AgentAction, Observation]):
     async def wrap_up_and_stop(self) -> None:
         epilog = await self.save()
         print("episode saved")
-        if self.will_eval:
+        if self.terminal_evaluators:
             epilog = await self.eval(epilog)
         await asyncio.sleep(0.5)
         print("result of this episode:\n", epilog)
@@ -201,15 +204,38 @@ class Moderator(Node[AgentAction, Observation]):
             "shutdown",
         )
 
+    async def episode_log_to_messages(
+        self, epilog: EpisodeLog
+    ) -> list[tuple[str, str, str]]:
+        messages = []
+        for turn_number, turn in enumerate(epilog.messages):
+            for message in turn:
+                messages.append((message[0], message[1], message[2]))
+        return messages
+
     async def eval(self, epilog: EpisodeLog) -> EpisodeLog:
         """
         evaluate the episode
         """
-        if self.evaluator == "DummyEvaluator":
-            evaluator = DummyEvaluator()
-            reward, reward_prompt = evaluator.evaluate(epilog)
-            epilog.rewards = [reward]
-            epilog.rewards_prompt = reward_prompt
+        messages = await self.episode_log_to_messages(epilog)
+        if self.terminal_evaluators:
+            response = unweighted_aggregate_evaluate(
+                list(
+                    itertools.chain(
+                        *await asyncio.gather(
+                            *[
+                                evaluator.__acall__(
+                                    turn_number=self.turn_number,
+                                    messages=messages,  # type: ignore
+                                )
+                                for evaluator in self.evaluators
+                            ]
+                        )
+                    )
+                )
+            )
+            epilog.rewards = response.p1_rate  # type: ignore
+            epilog.rewards_prompt = response.comments  # type: ignore
         if self.push_to_db:
             epilog.save()
         return epilog
@@ -231,7 +257,7 @@ class Moderator(Node[AgentAction, Observation]):
             epilog.save()
         return epilog
 
-    async def aact(self, agent_action: AgentAction) -> Observations | None:
+    async def astep(self, agent_action: AgentAction) -> Observations | None:
         if agent_action.action_type == "leave":
             self.agents_awake[agent_action.agent_name] = False
             if True not in self.agents_awake.values():
@@ -240,6 +266,7 @@ class Moderator(Node[AgentAction, Observation]):
         if agent_action.action_type == "none":
             return None
 
+        # message (sender, receivers (seperated by comma), message content)
         self.message_history.append(
             [
                 (

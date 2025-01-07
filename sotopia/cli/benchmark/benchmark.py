@@ -26,7 +26,7 @@ from sotopia.database import (
 from sotopia.database.serialization import get_rewards_from_episode
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
@@ -363,7 +363,7 @@ def _list_all_env_agent_combo_not_in_db(
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             terminal_evaluators=[
-                ReachGoalLLMEvaluator(
+                EpisodeLLMEvaluator(
                     model_names["env"],
                     EvaluationForTwoAgents[SotopiaDimensions],
                 ),
