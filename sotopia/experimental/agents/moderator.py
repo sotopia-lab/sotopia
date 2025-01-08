@@ -7,7 +7,6 @@ if sys.version_info < (3, 11):
 else:
     from typing import Self
 
-
 from aact import Message, NodeFactory, Node
 from aact.messages import DataModel, DataModelFactory
 
@@ -15,10 +14,8 @@ from typing import Literal, Any, AsyncIterator
 from pydantic import Field
 
 from .datamodels import AgentAction, Observation
-from sotopia.envs.evaluators import Evaluator, unweighted_aggregate_evaluate
 from sotopia.messages import ActionType
 from .logs import EpisodeLog
-import itertools
 
 
 @DataModelFactory.register("observations")
@@ -37,6 +34,7 @@ class Moderator(Node[AgentAction, Observation]):
         output_channels: list[str],
         scenario: str,
         agent_mapping: dict[str, str],
+        evaluator_channels: list[str] = [],
         tag: str = "",
         redis_url: str = "redis://localhost:6379/0",
         action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
@@ -49,10 +47,7 @@ class Moderator(Node[AgentAction, Observation]):
         ],
         max_turns: int = 20,
         push_to_db: bool = False,
-        evaluators: list[Evaluator] = [],
-        terminal_evaluators: list[Evaluator] = [],
         use_pk_value: bool = False,
-        evaluator: str = "DummyEvaluator",
     ) -> None:
         super().__init__(
             input_channel_types=[
@@ -82,14 +77,10 @@ class Moderator(Node[AgentAction, Observation]):
         self.agent_models: dict[str, str] = {}
         self.agents_awake: dict[str, bool] = {name: False for name in self.agents}
         self.all_agents_awake: asyncio.Event = asyncio.Event()
-        self.message_history: list[list[tuple[str, str, str]]] = [
-            [("Environment", "Environment", self.scenario)]
-        ]
+        self.evaluator_channels: list[str] = evaluator_channels
         self.push_to_db: bool = push_to_db
-        self.evaluators: list[Evaluator] = evaluators
-        self.terminal_evaluators: list[Evaluator] = terminal_evaluators
         self.use_pk_value: bool = use_pk_value
-        self.evaluator: str = evaluator
+        self.epilog: EpisodeLog = EpisodeLog(messages=[], rewards=[], rewards_prompt="")
 
         if self.action_order == "round-robin":
             pass
@@ -193,10 +184,10 @@ class Moderator(Node[AgentAction, Observation]):
             self.current_agent_index += 1
 
     async def wrap_up_and_stop(self) -> None:
-        epilog = await self.save()
-        print("episode saved")
-        if self.terminal_evaluators:
-            epilog = await self.eval(epilog)
+        if self.evaluator_channels:
+            epilog = await self.aeval(self.epilog)
+        if self.push_to_db:
+            epilog.save()
         await asyncio.sleep(0.5)
         print("result of this episode:\n", epilog)
         await self.r.publish(
@@ -213,48 +204,19 @@ class Moderator(Node[AgentAction, Observation]):
                 messages.append((message[0], message[1], message[2]))
         return messages
 
-    async def eval(self, epilog: EpisodeLog) -> EpisodeLog:
+    async def aeval(self, epilog: EpisodeLog) -> EpisodeLog:
         """
         evaluate the episode
         """
-        messages = await self.episode_log_to_messages(epilog)
-        if self.terminal_evaluators:
-            response = unweighted_aggregate_evaluate(
-                list(
-                    itertools.chain(
-                        *await asyncio.gather(
-                            *[
-                                evaluator.__acall__(
-                                    turn_number=self.turn_number,
-                                    messages=messages,  # type: ignore
-                                )
-                                for evaluator in self.evaluators
-                            ]
-                        )
-                    )
-                )
-            )
-            epilog.rewards = response.p1_rate  # type: ignore
-            epilog.rewards_prompt = response.comments  # type: ignore
-        if self.push_to_db:
-            epilog.save()
-        return epilog
+        for evaluator_channel in self.evaluator_channels:
+            await self.r.publish(evaluator_channel, epilog.model_dump_json())
+        print("episode eval started")
 
-    async def save(self) -> EpisodeLog:
-        """
-        save the EpisodeLog to redis
-        """
-        epilog = EpisodeLog(
-            environment=self.scenario,
-            agents=list(self.agents_pk.values()),
-            tag=self.tag,
-            models=list(self.agent_models.values()),
-            messages=self.message_history,
-            rewards=[0.0] * len(self.agents),
-            rewards_prompt="",
-        )
-        if self.push_to_db:
-            epilog.save()
+        for evaluator_channel in self.evaluator_channels:
+            await self.observation_queue.get()
+        print("episode eval finished")
+        epilog.rewards = [0.0] * len(self.agents)  # TODO: get real rewards
+        epilog.rewards_prompt = ""  # TODO: get real rewards_prompt
         return epilog
 
     async def astep(self, agent_action: AgentAction) -> Observations | None:
@@ -267,7 +229,7 @@ class Moderator(Node[AgentAction, Observation]):
             return None
 
         # message (sender, receivers (seperated by comma), message content)
-        self.message_history.append(
+        self.epilog.messages.append(
             [
                 (
                     agent_action.agent_name,

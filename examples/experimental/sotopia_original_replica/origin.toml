@@ -9,6 +9,7 @@ node_class = "moderator"
 [nodes.node_args]
 output_channels = ["moderator:Jane", "moderator:Jack"]
 input_channels = ["Jane:moderator", "Jack:moderator"]
+evaluator_channels = ["evaluator:moderator"]
 agent_mapping = {"moderator:Jane" = "Jane", "moderator:Jack" = "Jack"}
 scenario = "Two friends are sitting in a cafe and catching up with each other's lives."
 max_turns = 2
@@ -55,3 +56,11 @@ node_class = "chat_print"
 
 [nodes.node_args]
 env_agents = ["Jack", "Jane"]
+
+[[nodes]]
+node_name = "evaluator"
+node_class = "evaluator"
+
+[nodes.node_args]
+input_channels = ["moderator:evaluator"]
+output_channels = ["moderator:evaluator"]
