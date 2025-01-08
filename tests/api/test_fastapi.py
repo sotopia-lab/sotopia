@@ -341,6 +341,37 @@ def test_delete_evaluation_dimension(create_mock_data: Callable[[], None]) -> No
     assert isinstance(response.json(), str)
 
 
+def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
+    LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
+    with client.websocket_connect("/ws/simulation?token=test") as websocket:
+        start_msg = {
+            "type": "START_SIM",
+            "data": {
+                "env_id": "tmppk_env_profile",
+                "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
+                "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
+                "evaluator_model": LOCAL_MODEL,
+                "evaluation_dimension_list_name": "test_dimension_list",
+            },
+        }
+        websocket.send_json(start_msg)
+
+        # check the streaming response, stop when we received 2 messages
+        messages = []
+        while len(messages) < 2:
+            message = websocket.receive_json()
+            assert (
+                message["type"] == "SERVER_MSG"
+            ), f"Expected SERVER_MSG, got {message['type']}, full msg: {message}"
+            messages.append(message)
+
+        # send the end message
+        end_msg = {
+            "type": "FINISH_SIM",
+        }
+        websocket.send_json(end_msg)
+
+
 # def test_simulate(create_mock_data: Callable[[], None]) -> None:
 #     response = client.post(
 #         "/simulate",
