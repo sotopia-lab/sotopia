@@ -10,7 +10,7 @@ from sotopia.database import (
 from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
 import pytest
-from typing import Generator, Callable
+from typing import Generator, Callable, Any
 
 client = TestClient(app)
 
@@ -357,7 +357,7 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
         websocket.send_json(start_msg)
 
         # check the streaming response, stop when we received 2 messages
-        messages = []
+        messages: list[dict[str, Any]] = []
         while len(messages) < 2:
             message = websocket.receive_json()
             assert (
