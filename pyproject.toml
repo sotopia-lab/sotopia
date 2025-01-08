@@ -13,7 +13,7 @@ readme = "README.md"
 dependencies = [
     "lxml>=4.9.3,<6.0.0",
     "openai>=1.11.0,<2.0.0",
-    "langchain>=0.2.5,<0.3.0",
+    "langchain>=0.2.5,<0.4.0",
     "rich>=13.6.0,<14.0.0",
     "PettingZoo==1.24.3",
     "redis-om>=0.3.0,<0.4.0",
@@ -22,7 +22,7 @@ dependencies = [
     "together>=0.2.4,<1.4.0",
     "pydantic>=2.5.0,<3.0.0",
     "beartype>=0.14.0,<0.20.0",
-    "langchain-openai>=0.1.8,<0.3.0",
+    "langchain-openai>=0.1.8,<0.2",
     "hiredis>=3.0.0",
     "aact"
 ]
@@ -37,7 +37,13 @@ groq = ["groq"]
 cohere = ["cohere"]
 google-generativeai = ["google-generativeai"]
 examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
-chat = ["fastapi"]
+api = [
+    "fastapi[standard]",
+    "uvicorn",
+    "streamlit",
+    "websockets",
+    "modal"
+]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 
 [tool.uv]
@@ -65,6 +71,9 @@ plugins = [
 [[tool.mypy.overrides]]
 module = "transformers.*"
 ignore_missing_imports = true
+
+[tool.uv.sources]
+aact = { git = "https://github.com/ProKil/aact" , branch = "feature/node-manager" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

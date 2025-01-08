@@ -2,7 +2,7 @@ from typing import AsyncIterator
 from aact import Message, NodeFactory
 from aact.messages import Text, Tick, DataModel, DataModelFactory
 from sotopia.agents.llm_agent import ainput
-from sotopia.experimental.agents import BaseAgent
+from sotopia.experimental.agents.base_agent import BaseAgent
 
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
