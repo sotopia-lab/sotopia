@@ -229,7 +229,7 @@ class SimulationManager:
         )
 
 
-async def run_simulation(
+async def nonstreaming_simulation(
     episode_pk: str,
     simulation_request: SimulationRequest,
     simulation_status: NonStreamingSimulationStatus,
@@ -548,7 +548,7 @@ class SotopiaFastAPI(FastAPI):
                 simulation_status.save()
                 queue = rq.Queue("default", connection=get_redis_connection())
                 queue.enqueue(
-                    run_simulation,
+                    nonstreaming_simulation,
                     episode_pk=episode_pk,
                     simulation_request=simulation_request,
                     simulation_status=simulation_status,
