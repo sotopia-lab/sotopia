@@ -51,7 +51,7 @@ def _map_gender_to_adj(gender: str) -> str:
         "Nonbinary": "nonbinary",
     }
     if gender:
-        return gender_to_adj[gender]
+        return gender_to_adj.get(gender, "")
     else:
         return ""
 

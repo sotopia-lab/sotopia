@@ -6,7 +6,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
-from pydantic import model_validator
+from pydantic import model_validator, BaseModel
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
@@ -20,7 +20,7 @@ class RelationshipType(IntEnum):
     family_member = 5
 
 
-class AgentProfile(JsonModel):
+class BaseAgentProfile(BaseModel):
     first_name: str = Field(index=True)
     last_name: str = Field(index=True)
     age: int = Field(index=True, default_factory=lambda: 0)
@@ -43,7 +43,11 @@ class AgentProfile(JsonModel):
     )
 
 
-class EnvironmentProfile(JsonModel):
+class AgentProfile(BaseAgentProfile, JsonModel):
+    pass
+
+
+class BaseEnvironmentProfile(BaseModel):
     codename: str = Field(
         index=True,
         default_factory=lambda: "",
@@ -86,7 +90,11 @@ class EnvironmentProfile(JsonModel):
     )
 
 
-class RelationshipProfile(JsonModel):
+class EnvironmentProfile(BaseEnvironmentProfile, JsonModel):
+    pass
+
+
+class BaseRelationshipProfile(BaseModel):
     agent_1_id: str = Field(index=True)
     agent_2_id: str = Field(index=True)
     relationship: RelationshipType = Field(
@@ -94,6 +102,15 @@ class RelationshipProfile(JsonModel):
         description="0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
     )  # this could be improved by limiting str to a relationship Enum
     background_story: str | None = Field(default_factory=lambda: None)
+    tag: str = Field(
+        index=True,
+        default_factory=lambda: "",
+        description="The tag of the relationship, used for searching, could be convenient to document relationship profiles from different works and sources",
+    )
+
+
+class RelationshipProfile(BaseRelationshipProfile, JsonModel):
+    pass
 
 
 class EnvironmentList(JsonModel):

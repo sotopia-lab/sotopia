@@ -6,6 +6,7 @@ ignore:
   - ".github" # ignore the .github directory
   - "docs" # ignore the tests directory
   - "figs" # ignore the figs directory
+  - "ui" # ignore the ui directory
 
 coverage:
   status:

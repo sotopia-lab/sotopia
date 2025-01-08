@@ -40,6 +40,9 @@ examples = ["transformers", "datasets", "scipy", "torch", "pandas"]
 api = [
     "fastapi[standard]",
     "uvicorn",
+    "streamlit",
+    "websockets",
+    "modal"
 ]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
 
@@ -68,6 +71,9 @@ plugins = [
 [[tool.mypy.overrides]]
 module = "transformers.*"
 ignore_missing_imports = true
+
+[tool.uv.sources]
+aact = { git = "https://github.com/ProKil/aact" , branch = "feature/node-manager" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
