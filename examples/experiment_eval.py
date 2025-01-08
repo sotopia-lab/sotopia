@@ -21,7 +21,7 @@ from sotopia.database import (
 )
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
@@ -164,7 +164,7 @@ def _iterate_env_agent_combo_not_in_db(
                     RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
                 ],
                 terminal_evaluators=[
-                    ReachGoalLLMEvaluator(
+                    EpisodeLLMEvaluator(
                         model_names["env"],
                         EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
                         # TODO check how to do type annotation

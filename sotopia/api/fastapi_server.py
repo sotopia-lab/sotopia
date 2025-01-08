@@ -24,7 +24,7 @@ from sotopia.database import (
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     EvaluationForTwoAgents,
     SotopiaDimensions,
 )
@@ -267,7 +267,7 @@ async def nonstreaming_simulation(
             ),
         ],
         "terminal_evaluators": [
-            ReachGoalLLMEvaluator(
+            EpisodeLLMEvaluator(
                 simulation_request.models[0],
                 EvaluationForTwoAgents[SotopiaDimensions],
             ),

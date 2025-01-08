@@ -7,7 +7,7 @@ from sotopia.database import (
 from typing import Type, Union
 from redis_om import Migrator
 from sotopia.envs.evaluators import (
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     EvaluationForTwoAgents,
     RuleBasedTerminatedEvaluator,
 )
@@ -152,7 +152,7 @@ def run_simple_sample_with_custom_samples(
         custom_dimensions, list_name="custom"
     )
     evaluator = RuleBasedTerminatedEvaluator(max_turn_number=10, max_stale_turn=2)
-    terminal_evaluator = ReachGoalLLMEvaluator(
+    terminal_evaluator = EpisodeLLMEvaluator(
         model_name="gpt-4o-mini",
         response_format_class=EvaluationForTwoAgents[custom_dimensions_type],  # type: ignore
     )

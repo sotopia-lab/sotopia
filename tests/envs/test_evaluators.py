@@ -4,7 +4,7 @@ import pytest
 
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
 )
@@ -134,7 +134,7 @@ class _ReachGoal(BaseModel):
 
 @pytest.mark.asyncio
 async def test_reach_goal_llm_evaluator_async() -> None:
-    evaluator = ReachGoalLLMEvaluator(
+    evaluator = EpisodeLLMEvaluator(
         "custom/structured@http://localhost:8000/v1",
         response_format_class=EvaluationForTwoAgents[_ReachGoal],
     )

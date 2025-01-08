@@ -20,7 +20,7 @@ from sotopia.database.persistent_profile import (
 )
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
@@ -229,7 +229,7 @@ def yield_env_agent_combo(
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             terminal_evaluators=[
-                ReachGoalLLMEvaluator(
+                EpisodeLLMEvaluator(
                     model_names["env"],
                     EvaluationForTwoAgents[SotopiaDimensions],
                 ),
