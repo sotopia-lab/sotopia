@@ -234,19 +234,74 @@ async def check_and_generate(agent_name: str, agent_message_history: List[tuple[
     if count % 4 == 0 and count != 0:  # Multiple of 4 but not 0
         targets = ["Jack", "Jane", "John"]
         for target in targets:
-            if target == agent_name.lower():
-                continue
-            template = f"What should {target} do immediately next? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
-            print(f"\033[1;32m{template}\033[0m")
-            generated_text = await agenerate(
+            # if target == agent_name.lower():
+            #     continue  # skip themselves
+
+            template_1 = f"You are {agent_name}. What should {target} do immediately next? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
+            print(f"\033[1;32m{template_1}\033[0m")
+            generated_text_1 = await agenerate(
                 model_name="gpt-4o-2024-11-20",
-                template=template,
+                template=template_1,
                 input_values={"agent_message_history": _format_message_history(agent_message_history)},
                 temperature=0.7,
                 output_parser=StrOutputParser(),
             )
-            await log_to_file(agent_name, agent_message_history, generated_text)
-            print(f"\033[1;32m{generated_text}\033[0m")  # Green bold output
+            await log_to_file(agent_name, agent_message_history, generated_text_1)
+
+            template_2 = f"You are {agent_name}. What is {target} doing right now? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
+            print(f"\033[1;32m{template_2}\033[0m")
+            generated_text_2 = await agenerate(
+                model_name="gpt-4o-2024-11-20",
+                template=template_2,
+                input_values={"agent_message_history": _format_message_history(agent_message_history)},
+                temperature=0.7,
+                output_parser=StrOutputParser(),
+            )
+            await log_to_file(agent_name, agent_message_history, generated_text_2)
+
+            template_3 = f"You are {agent_name}. What materials or tools does {target} currently have? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
+            print(f"\033[1;32m{template_3}\033[0m")
+            generated_text_3 = await agenerate(
+                model_name="gpt-4o-2024-11-20",
+                template=template_3,
+                input_values={"agent_message_history": _format_message_history(agent_message_history)},
+                temperature=0.7,
+                output_parser=StrOutputParser(),
+            )
+            await log_to_file(agent_name, agent_message_history, generated_text_3)
+
+            template_4 = f"You are {agent_name}. Is {target} in a cooperative, competitive, or independent relationship with you? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
+            print(f"\033[1;32m{template_4}\033[0m")
+            generated_text_4 = await agenerate(
+                model_name="gpt-4o-2024-11-20",
+                template=template_4,
+                input_values={"agent_message_history": _format_message_history(agent_message_history)},
+                temperature=0.7,
+                output_parser=StrOutputParser(),
+            )
+            await log_to_file(agent_name, agent_message_history, generated_text_4)
+
+            template_5 = f"""You are {agent_name}. What is {target} seeing right now? If you don’t know, please answer \"I don’t know.\" Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"""
+            print(f"\033[1;32m{template_5}\033[0m")
+            generated_text_5 = await agenerate(
+                model_name="gpt-4o-2024-11-20",
+                template=template_5,
+                input_values={"agent_message_history": _format_message_history(agent_message_history)},
+                temperature=0.7,
+                output_parser=StrOutputParser(),
+            )
+            await log_to_file(agent_name, agent_message_history, generated_text_5)
+
+            template_6 = f"""You are {agent_name}. What steps does {target} still need to take to complete the final goal? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"""
+            print(f"\033[1;32m{template_6}\033[0m")
+            generated_text_6 = await agenerate(
+                model_name="gpt-4o-2024-11-20",
+                template=template_6,
+                input_values={"agent_message_history": _format_message_history(agent_message_history)},
+                temperature=0.7,
+                output_parser=StrOutputParser(),
+            )
+            await log_to_file(agent_name, agent_message_history, generated_text_6)
 
 async def redis_listener():
     global subscribed_channels
