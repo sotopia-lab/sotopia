@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pathlib import Path
 import redis.asyncio as aioredis
 import asyncio
 import json
@@ -171,7 +172,13 @@ connections: Dict[str, WebSocket] = {}
 client_data = {}
 subscribed_channels = set()
 listener_task = None
-OUTPUT_FILE = f"agent_output_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+LOG_DIR = Path(f"agent_logs_{datetime.now().strftime('%Y%m%d_%H%M')}")
+LOG_DIR.mkdir(exist_ok=True)
+AGENT_FILES = {
+    "Jane": LOG_DIR / "jane_log.txt",
+    "John": LOG_DIR / "john_log.txt",
+    "Jack": LOG_DIR / "jack_log.txt"
+}
 
 @DataModelFactory.register("agent_action")
 class AgentAction(DataModel):
@@ -216,16 +223,19 @@ async def get_client_data(client_id: str) -> dict:
 
 async def log_to_file(agent_name: str, agent_message_history: List[tuple[str, str]], generated_text: str):
     try:
+        if agent_name not in AGENT_FILES:
+            raise ValueError(f"Unknown agent name: {agent_name}")
+        output_file = AGENT_FILES[agent_name]
         history_str = _format_message_history(agent_message_history)
         log_content = (
             f"Agent: {agent_name}\n\n"
             f"Message History:\n{history_str}\n\n"
-            f"Generated Text:\n{generated_text}\n"
+            f"ToM Q&A:\n{generated_text}\n"
             f"{'-'*40}\n"
         )
-        async with aiofiles.open(OUTPUT_FILE, mode="a") as file:
+        async with aiofiles.open(output_file, mode="a") as file:
             await file.write(log_content)
-        print(f"Successfully logged output for {agent_name} to {OUTPUT_FILE}.")
+        print(f"Successfully logged output for {agent_name} to {output_file}.")
     except Exception as e:
         print(f"Error logging output for {agent_name}: {e}")
 
@@ -246,7 +256,6 @@ async def check_and_generate(agent_name: str, agent_message_history: List[tuple[
                 temperature=0.7,
                 output_parser=StrOutputParser(),
             )
-            await log_to_file(agent_name, agent_message_history, generated_text_1)
 
             template_2 = f"You are {agent_name}. What is {target} doing right now? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
             print(f"\033[1;32m{template_2}\033[0m")
@@ -257,7 +266,6 @@ async def check_and_generate(agent_name: str, agent_message_history: List[tuple[
                 temperature=0.7,
                 output_parser=StrOutputParser(),
             )
-            await log_to_file(agent_name, agent_message_history, generated_text_2)
 
             template_3 = f"You are {agent_name}. What materials or tools does {target} currently have? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
             print(f"\033[1;32m{template_3}\033[0m")
@@ -268,7 +276,6 @@ async def check_and_generate(agent_name: str, agent_message_history: List[tuple[
                 temperature=0.7,
                 output_parser=StrOutputParser(),
             )
-            await log_to_file(agent_name, agent_message_history, generated_text_3)
 
             template_4 = f"You are {agent_name}. Is {target} in a cooperative, competitive, or independent relationship with you? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"
             print(f"\033[1;32m{template_4}\033[0m")
@@ -279,7 +286,6 @@ async def check_and_generate(agent_name: str, agent_message_history: List[tuple[
                 temperature=0.7,
                 output_parser=StrOutputParser(),
             )
-            await log_to_file(agent_name, agent_message_history, generated_text_4)
 
             template_5 = f"""You are {agent_name}. What is {target} seeing right now? If you don’t know, please answer \"I don’t know.\" Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"""
             print(f"\033[1;32m{template_5}\033[0m")
@@ -290,7 +296,6 @@ async def check_and_generate(agent_name: str, agent_message_history: List[tuple[
                 temperature=0.7,
                 output_parser=StrOutputParser(),
             )
-            await log_to_file(agent_name, agent_message_history, generated_text_5)
 
             template_6 = f"""You are {agent_name}. What steps does {target} still need to take to complete the final goal? Respond in one concise sentence. Here is the conversation history: {{agent_message_history}}"""
             print(f"\033[1;32m{template_6}\033[0m")
@@ -301,7 +306,8 @@ async def check_and_generate(agent_name: str, agent_message_history: List[tuple[
                 temperature=0.7,
                 output_parser=StrOutputParser(),
             )
-            await log_to_file(agent_name, agent_message_history, generated_text_6)
+            generated_text = template_1 + "\n" + generated_text_1 + "\n" + template_2 + "\n" + generated_text_2 + "\n" + template_3 + "\n" + generated_text_3 + "\n" + template_4 + "\n" + generated_text_4 + "\n" + template_5 + "\n" + generated_text_5 + "\n" + template_6 + "\n" + generated_text_6
+            await log_to_file(agent_name, agent_message_history, generated_text)
 
 async def redis_listener():
     global subscribed_channels
@@ -452,17 +458,23 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         visionResponse = client_info.get("visionResponse", "")
                         codeOutput = client_info.get("codeOutput", "").removeprefix("Code output: ")
 
-                    if codeOutput:
-                        system_message = f"The status of {self.name}'s action execution: {codeOutput}"
+                    if codeOutput:  # action execution
                         last_self_message_index = next((i for i in reversed(range(len(self.message_history))) if self.message_history[i][0] == self.name), -1)
                         if last_self_message_index != -1:
-                            self.message_history.insert(last_self_message_index + 1, ("system", system_message))
+                            self.message_history.insert(last_self_message_index + 1, ("system", f"The status of {self.name}'s action execution: {codeOutput}"))
                         else:
-                            self.message_history.append(("system", system_message))
+                            self.message_history.append(("system", f"The status of {self.name}'s action execution: {codeOutput}"))
+
+                    if visionResponse:  # add image description to the memory
+                        last_self_message_index = next((i for i in reversed(range(len(self.message_history))) if self.message_history[i][0] == self.name), -1)
+                        if last_self_message_index != -1:
+                            self.message_history.insert(last_self_message_index + 1, ("system", f"The following is the description of the game view {self.name} is seeing: {visionResponse}"))
+                        else:
+                            self.message_history.append(("system", f"The following is the description of the game view {self.name} is seeing: {visionResponse}"))
 
                     agent_message_history = [
                         (speaker, message) for speaker, message in self.message_history
-                        if speaker != "system" or (speaker == "system" and f"{self.name}'s action execution" in message)
+                        if speaker != "system" or (speaker == "system" and self.name in message)
                     ]
                     
                     agent_action: str = await agenerate(
