@@ -12,8 +12,8 @@ input_text_channels = ["Jane", "John"]
 input_tick_channel = "tick/secs/1"
 goal = """
 You and your friends need to craft a "stone_pickaxe". YOUR TASK IS TO CRAFT A "crafting_table".
-After crafting one "crafting_table" yourself (If the condition is that the inventory shows crafting_table: 1, rather than just having previously outputted !craftRecipe(\"crafting_table\", 1)), use the command !goToPlayer(\"John\", 0) to go to John's location. 
-Then, use the command !placeHere(\"crafting_table\") to give John the "crafting_table". Afterward, please use the command !moveAway(5) once to maintain distance. 
+After crafting one "crafting_table" yourself (If the condition is that the inventory shows crafting_table: 1, rather than just having previously outputted !craftRecipe(\"crafting_table\", 1)), use the command !goToPlayer(\"John\", 0) to go to John's location.
+Then, use the command !placeHere(\"crafting_table\") to give John the "crafting_table". Afterward, please use the command !moveAway(5) once to maintain distance.
 
 The complete process for crafting a "crafting_table" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
 1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 1 piece.
@@ -33,7 +33,7 @@ input_text_channels = ["Jack", "John"]
 input_tick_channel = "tick/secs/1"
 goal = """
 You and your friends need to craft a "stone_pickaxe". YOUR TASK IS TO CRAFT 4 "stick".
-After crafting 4 "stick" yourself (If the condition is that the inventory shows stick: 4, rather than just having previously outputted !craftRecipe("stick", 4)), use the command !goToPlayer("John", 0) to go to John's location. 
+After crafting 4 "stick" yourself (If the condition is that the inventory shows stick: 4, rather than just having previously outputted !craftRecipe("stick", 4)), use the command !goToPlayer("John", 0) to go to John's location.
 Then, use the command `!givePlayer(\"John\", \"stick\", 4)` to give John 4 "stick" (number like 4 does not need to use double quotation marks). Afterward, please use the command !moveAway(5) once to maintain distance.
 
 The complete process for crafting 4 "stick" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
