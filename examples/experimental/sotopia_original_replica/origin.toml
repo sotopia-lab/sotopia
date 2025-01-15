@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.sotopia_original_replica.llm_agent_sotopia", "examples.experimental.nodes.chat_print_node", "sotopia.experimental.agents.moderator"]
+extra_modules = ["examples.experimental.sotopia_original_replica.llm_agent_sotopia", "examples.experimental.nodes.chat_print_node", "sotopia.experimental.agents.moderator","sotopia.experimental.agents.evaluators"]
 
 
 [[nodes]]
@@ -9,10 +9,10 @@ node_class = "moderator"
 [nodes.node_args]
 output_channels = ["moderator:Jane", "moderator:Jack"]
 input_channels = ["Jane:moderator", "Jack:moderator"]
-evaluator_channels = ["evaluator:moderator"]
+evaluator_channels = [["evaluator:moderator","moderator:evaluator"]]
 agent_mapping = {"moderator:Jane" = "Jane", "moderator:Jack" = "Jack"}
 scenario = "Two friends are sitting in a cafe and catching up with each other's lives."
-max_turns = 2
+max_turns = 3
 push_to_db = false
 evaluate_episode = true
 use_pk_value = false
@@ -63,4 +63,5 @@ node_class = "evaluator"
 
 [nodes.node_args]
 input_channels = ["moderator:evaluator"]
-output_channels = ["moderator:evaluator"]
+output_channels = ["evaluator:moderator"]
+model_name = "gpt-4o-mini"

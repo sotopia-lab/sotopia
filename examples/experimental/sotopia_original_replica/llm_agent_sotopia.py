@@ -8,10 +8,12 @@ from aact import NodeFactory
 from sotopia.experimental.agents.base_agent import BaseAgent
 from sotopia.experimental.agents.datamodels import Observation, AgentAction
 from sotopia.database.persistent_profile import AgentProfile
+from typing import Any
 
 from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
 
+from time import sleep
 # Check Python version
 if sys.version_info >= (3, 11):
     pass
@@ -39,7 +41,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         model_name: str,
         goal: str,
         agent_name: str | None = None,
-        background: dict | None = None,
+        background: dict[str, Any] | None = None,
         agent_pk: str | None = None,
         redis_url: str = "redis://localhost:6379/0",
     ):
@@ -54,14 +56,15 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.count_ticks: int = 0
         self.message_history: list[Observation] = []
         self.goal: str = goal
-        self.model_name: str = model_name
-        self.agent_profile_pk: str = agent_pk
-        self.name: str = agent_name
-        self.background: dict = background
+        self.model_name: str  = model_name
+        self.agent_profile_pk: str | None = agent_pk
+        self.name: str | None = agent_name
+        self.background: dict[str,Any] | None = background
+        self.awake: bool = False
 
-    def set_profile(self, use_pk_value: bool):
-        profile: AgentProfile = None
+    def set_profile(self, use_pk_value: bool) -> None:
         if not use_pk_value:
+            assert (self.background is not None and self.name is not None), "Background and name must be provided"
             if " " in self.name:
                 first_name, last_name = self.name.split(" ", 1)
             else:
@@ -84,8 +87,16 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     async def aact(self, obs: Observation) -> AgentAction:
         if obs.turn_number == -1:
+            if(self.awake):
+                return AgentAction(
+                    agent_name=self.name,
+                    output_channel=self.output_channel,
+                    action_type="none",
+                    argument="",
+                )
             args = json.loads(obs.last_turn)
             self.set_profile(args["use_pk_value"])
+            self.awake = True
             return AgentAction(
                 agent_name=self.name,
                 output_channel=self.output_channel,

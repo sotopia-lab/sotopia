@@ -28,7 +28,7 @@ class BaseEpisodeLog(BaseModel):
     models: list[str] | None = Field(index=True, default=[])
     messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
     reasoning: str = Field(default="")
-    rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
+    rewards: list[tuple[float, dict[str, float]] | float | dict[str, dict]]  # Rewards arranged by turn
     rewards_prompt: str
 
     @model_validator(mode="after")
