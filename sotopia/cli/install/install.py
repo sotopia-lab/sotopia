@@ -383,12 +383,12 @@ def install(
                     "tar -xvzf redis-stack-server.tar.gz", shell=True, check=True
                 )
                 subprocess.run(
-                    "wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb",
+                    "wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb",
                     shell=True,
                     check=True,
                 )
                 subprocess.run(
-                    "sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb",
+                    "sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb",
                     shell=True,
                     check=True,
                 )
