@@ -1,14 +1,13 @@
 import json
 
-from aact import NodeFactory, Node, Message
+from aact import NodeFactory
 from .base_agent import BaseAgent
 from .logs import EpisodeLog
 from .datamodels import AgentAction, Observation
 from sotopia.database.persistent_profile import AgentProfile
 
-from typing import AsyncIterator, Generic, TypeVar, Type, Any
+from typing import Generic, TypeVar, Type, Any
 from pydantic import BaseModel, Field
-from asyncio import Event
 
 from sotopia.envs.evaluators import GoalDimension
 from sotopia.generation_utils.generate import agenerate
@@ -26,8 +25,12 @@ Please output your evaluation following the format:
 
 T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
+
 class EvaluationForMutiAgents(BaseModel, Generic[T_eval_dim]):
-    agents_evaluation: dict[str, T_eval_dim] = Field(description="the evaluation for each agent, the key is the agent name,be sure to include every agent in the agent list, the value should follow the evaluation dimension format")
+    agents_evaluation: dict[str, T_eval_dim] = Field(
+        description="the evaluation for each agent, the key is the agent name,be sure to include every agent in the agent list, the value should follow the evaluation dimension format"
+    )
+
 
 @NodeFactory.register("evaluator")
 class Evaluator(BaseAgent[Observation, AgentAction]):
@@ -57,10 +60,14 @@ class Evaluator(BaseAgent[Observation, AgentAction]):
         self.reward_prompt = reward_prompt
         self.temperature = temperature
         if eval_dim_class == "GoalDimension":
-            self.response_format_class:Type[BaseModel] = EvaluationForMutiAgents[GoalDimension]
+            self.response_format_class: Type[BaseModel] = EvaluationForMutiAgents[
+                GoalDimension
+            ]
         else:
-            raise ValueError(f"the eval_dim_class : {eval_dim_class} is not implemented")
-        #TODO: need a registry for the evaluation dimension class, so dimension can be initialized with a str
+            raise ValueError(
+                f"the eval_dim_class : {eval_dim_class} is not implemented"
+            )
+        # TODO: need a registry for the evaluation dimension class, so dimension can be initialized with a str
 
     async def aact(self, content: Observation) -> AgentAction:
         epilog = EpisodeLog(**json.loads(content.last_turn))
@@ -70,24 +77,24 @@ class Evaluator(BaseAgent[Observation, AgentAction]):
             agent_name="evaluator",
             output_channel=f"evaluator:{content.agent_name}",
             action_type="speak",
-            argument=json.dumps({
-                "reward":json.dumps(result),
-                "reward_prompt":self.reward_prompt
-            })
+            argument=json.dumps(
+                {"reward": json.dumps(result), "reward_prompt": self.reward_prompt}
+            ),
         )
 
-
     async def aevaluate(self, episode: EpisodeLog) -> dict[str, Any]:
-        #TODO: below is a temporary implementation, need to replaced by using render_for_humans in EpisodeLog
-        history = "\n".join(f"{msg[0][0]} said: {msg[0][2]}"for msg in episode.messages) 
+        # TODO: below is a temporary implementation, need to replaced by using render_for_humans in EpisodeLog
+        history = "\n".join(
+            f"{msg[0][0]} said: {msg[0][2]}" for msg in episode.messages
+        )
         agent_list = []
         for pk in episode.agents:
             agent = AgentProfile.get(pk)
-            name = agent.first_name+" "+agent.last_name
+            name = agent.first_name + " " + agent.last_name
             name = name.strip()
             agent_list.append(name)
 
-        res:BaseModel = await agenerate(
+        res: BaseModel = await agenerate(
             model_name=self.model_name,
             template=self.reward_prompt,
             input_values=dict(history=history, agent_list=str(agent_list)),

@@ -382,6 +382,16 @@ def install(
                 subprocess.run(
                     "tar -xvzf redis-stack-server.tar.gz", shell=True, check=True
                 )
+                subprocess.run(
+                    "wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb",
+                    shell=True,
+                    check=True,
+                )
+                subprocess.run(
+                    "sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb",
+                    shell=True,
+                    check=True,
+                )
                 if load_database:
                     Path("./redis-stack-server-7.2.0-v10/var/db/redis-stack").mkdir(
                         parents=True, exist_ok=True

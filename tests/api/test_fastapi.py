@@ -10,7 +10,7 @@ from sotopia.database import (
 from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
 import pytest
-from typing import Generator, Callable
+from typing import Generator, Callable, Any
 
 client = TestClient(app)
 
@@ -341,46 +341,32 @@ def test_delete_evaluation_dimension(create_mock_data: Callable[[], None]) -> No
     assert isinstance(response.json(), str)
 
 
-# def test_simulate(create_mock_data: Callable[[], None]) -> None:
-#     response = client.post(
-#         "/simulate",
-#         json={
-#             "env_id": "tmppk_env_profile",
-#             "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-#             "models": [
-#                 # "custom/llama3.2:1b@http://localhost:8000/v1",
-#                 # "custom/llama3.2:1b@http://localhost:8000/v1",
-#                 # "custom/llama3.2:1b@http://localhost:8000/v1"
-#                 "gpt-4o-mini",
-#                 "gpt-4o-mini",
-#                 "gpt-4o-mini",
-#             ],
-#             "max_turns": 2,
-#             "tag": "test_tag",
-#         },
-#     )
-#     assert response.status_code == 200
-#     assert isinstance(response.json(), str)
-#     max_retries = 20
-#     retry_count = 0
-#     while retry_count < max_retries:
-#         try:
-#             status = NonStreamingSimulationStatus.find(
-#                 NonStreamingSimulationStatus.episode_pk == response.json()
-#             ).all()[0]
-#             assert isinstance(status, NonStreamingSimulationStatus)
-#             print(status)
-#             if status.status == "Error":
-#                 raise Exception("Error running simulation")
-#             elif status.status == "Completed":
-#                 # EpisodeLog.get(response.json())
-#                 break
-#             # Status is "Started", keep polling
-#             time.sleep(1)
-#             retry_count += 1
-#         except Exception as e:
-#             print(f"Error checking simulation status: {e}")
-#             time.sleep(1)
-#             retry_count += 1
-#     else:
-#         raise TimeoutError("Simulation timed out after 10 retries")
+def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
+    LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
+    with client.websocket_connect("/ws/simulation?token=test") as websocket:
+        start_msg = {
+            "type": "START_SIM",
+            "data": {
+                "env_id": "tmppk_env_profile",
+                "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
+                "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
+                "evaluator_model": LOCAL_MODEL,
+                "evaluation_dimension_list_name": "test_dimension_list",
+            },
+        }
+        websocket.send_json(start_msg)
+
+        # check the streaming response, stop when we received 2 messages
+        messages: list[dict[str, Any]] = []
+        while len(messages) < 2:
+            message = websocket.receive_json()
+            assert (
+                message["type"] == "SERVER_MSG"
+            ), f"Expected SERVER_MSG, got {message['type']}, full msg: {message}"
+            messages.append(message)
+
+        # send the end message
+        end_msg = {
+            "type": "FINISH_SIM",
+        }
+        websocket.send_json(end_msg)

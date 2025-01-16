@@ -54,7 +54,8 @@ class Moderator(Node[AgentAction, Observation]):
         super().__init__(
             input_channel_types=[
                 (input_channel, AgentAction) for input_channel in input_channels
-            ]+[(channel[0], AgentAction) for channel in evaluator_channels],
+            ]
+            + [(channel[0], AgentAction) for channel in evaluator_channels],
             output_channel_types=[
                 (output_channel, Observation) for output_channel in output_channels
             ],
@@ -84,9 +85,11 @@ class Moderator(Node[AgentAction, Observation]):
         self.use_pk_value: bool = use_pk_value
 
         self.evaluate_episode: bool = evaluate_episode
-        assert (not self.evaluate_episode) or len(evaluator_channels) > 0, "if evaluate_episode is True, evaluator_channels should not be empty"
+        assert (not self.evaluate_episode) or len(
+            evaluator_channels
+        ) > 0, "if evaluate_episode is True, evaluator_channels should not be empty"
 
-        self.epilog: EpisodeLog | None = None # will be initialized in booting process
+        self.epilog: EpisodeLog | None = None  # will be initialized in booting process
 
         if self.action_order == "round-robin":
             pass
@@ -163,7 +166,7 @@ class Moderator(Node[AgentAction, Observation]):
             await asyncio.sleep(0.2)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
-                if(not self.agents_awake[agent_action.agent_name]):
+                if not self.agents_awake[agent_action.agent_name]:
                     self.agents_awake[agent_action.agent_name] = True
                     args: dict[str, Any] = json.loads(agent_action.argument)
                     self.agents_pk[agent_action.agent_name] = args["pk"]
@@ -177,10 +180,8 @@ class Moderator(Node[AgentAction, Observation]):
             agents=list(self.agents_pk.values()),
             tag=self.tag,
             models=list(self.agent_models.values()),
-            messages=[[
-                ("Environment", "Environment", self.scenario)
-            ]],
-            rewards=[0.0]*len(self.agents),
+            messages=[[("Environment", "Environment", self.scenario)]],
+            rewards=[0.0] * len(self.agents),
             rewards_prompt="",
         )
         if self.action_order == "round-robin":
@@ -205,7 +206,7 @@ class Moderator(Node[AgentAction, Observation]):
         try:
             await asyncio.sleep(0.1)
             print("all agents have left, wrap up and stop")
-            self.shutdown_event.set() # this will disable the task scheduler
+            self.shutdown_event.set()  # this will disable the task scheduler
             if self.evaluate_episode:
                 epilog = await self.aeval(self.epilog)
             if self.push_to_db:
@@ -237,23 +238,28 @@ class Moderator(Node[AgentAction, Observation]):
 
         for evaluator_channel in self.evaluator_channels:
             print(evaluator_channel[1])
-            await self.r.publish(evaluator_channel[1], Message[Observation](data=Observation(
-                    agent_name="moderator",
-                    last_turn=epilog.model_dump_json(),
-                    turn_number=self.turn_number,
-                    available_actions=self.available_actions,
-                )).model_dump_json()
+            await self.r.publish(
+                evaluator_channel[1],
+                Message[Observation](
+                    data=Observation(
+                        agent_name="moderator",
+                        last_turn=epilog.model_dump_json(),
+                        turn_number=self.turn_number,
+                        available_actions=self.available_actions,
+                    )
+                ).model_dump_json(),
             )
-            
 
         print("episode eval started")
 
-        for _ in range(len(self.evaluator_channels)): # the queue will take in input and output from this channel
+        for _ in range(
+            len(self.evaluator_channels)
+        ):  # the queue will take in input and output from this channel
             raw_res = await self.observation_queue.get()
             res = json.loads(raw_res.argument)
             epilog.rewards = res["reward"]
             epilog.rewards_prompt = res["reward_prompt"]
-        
+
         print("episode eval finished")
         return epilog
 
