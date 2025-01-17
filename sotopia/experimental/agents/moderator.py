@@ -89,7 +89,7 @@ class Moderator(Node[AgentAction, Observation]):
             evaluator_channels
         ) > 0, "if evaluate_episode is True, evaluator_channels should not be empty"
 
-        self.epilog: EpisodeLog | None = None  # will be initialized in booting process
+        self.epilog: EpisodeLog  # will be initialized in booting process
 
         if self.action_order == "round-robin":
             pass

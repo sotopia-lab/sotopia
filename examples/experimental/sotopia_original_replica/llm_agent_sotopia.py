@@ -39,7 +39,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         node_name: str,
         model_name: str,
         goal: str,
-        agent_name: str | None = None,
+        agent_name: str = "",
         background: dict[str, Any] | None = None,
         agent_pk: str | None = None,
         redis_url: str = "redis://localhost:6379/0",
@@ -57,7 +57,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.goal: str = goal
         self.model_name: str = model_name
         self.agent_profile_pk: str | None = agent_pk
-        self.name: str | None = agent_name
+        self.name: str = agent_name
         self.background: dict[str, Any] | None = background
         self.awake: bool = False
 

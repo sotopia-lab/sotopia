@@ -82,7 +82,7 @@ class Evaluator(BaseAgent[Observation, AgentAction]):
             ),
         )
 
-    async def aevaluate(self, episode: EpisodeLog) -> dict[str, Any]:
+    async def aevaluate(self, episode: EpisodeLog) -> Any:
         # TODO: below is a temporary implementation, need to replaced by using render_for_humans in EpisodeLog
         history = "\n".join(
             f"{msg[0][0]} said: {msg[0][2]}" for msg in episode.messages
