@@ -257,7 +257,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         return self(turn_number, messages)
 
 
-class ReachGoalLLMEvaluator(Evaluator, Generic[T_eval_dim]):
+class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     @beartype
     def __init__(
         self,

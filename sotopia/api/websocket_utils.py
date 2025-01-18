@@ -1,6 +1,6 @@
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
 from sotopia.agents import Agents, LLMAgent
@@ -98,7 +98,7 @@ def get_env_agents(
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator(
+            EpisodeLLMEvaluator(
                 evaluator_model,
                 EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
             ),

@@ -23,7 +23,7 @@ from sotopia.samplers import (
 )
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
@@ -143,7 +143,7 @@ def compose_env_agent_combo(
         model_name="gpt-4o-mini",
         evaluators=[RuleBasedTerminatedEvaluator(max_turn_number=1, max_stale_turn=2)],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator(
+            EpisodeLLMEvaluator(
                 "gpt-4o-mini",
                 EvaluationForTwoAgents[SotopiaDimensions],
             )

@@ -27,7 +27,7 @@ class BaseEpisodeLog(BaseModel):
     tag: str | None = Field(index=True, default="")
     models: list[str] | None = Field(index=True, default=[])
     messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
-    reasoning: str
+    reasoning: str = Field(default="")
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
     rewards_prompt: str
 
