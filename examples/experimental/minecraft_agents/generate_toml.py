@@ -1,6 +1,6 @@
 import pandas as pd
 
-xlsx_file = 'examples\\experimental\\group_discussion_agents\\toml_generation.xlsx'
+xlsx_file = "examples\\experimental\\group_discussion_agents\\toml_generation.xlsx"
 df = pd.read_excel(xlsx_file)
 
 toml_template = '''redis_url = "redis://localhost:6379/0"
@@ -63,17 +63,15 @@ node_class = "tick"
 '''
 
 for index, row in df.iterrows():
-    goal_jack = row['Jack']
-    goal_jane = row['Jane']
-    goal_john = row['John']
-    filename = row['Filename']
-    
+    goal_jack = row["Jack"]
+    goal_jane = row["Jane"]
+    goal_john = row["John"]
+    filename = row["Filename"]
+
     toml_content = toml_template.format(
-        goal_jack=goal_jack,
-        goal_jane=goal_jane,
-        goal_john=goal_john
+        goal_jack=goal_jack, goal_jane=goal_jane, goal_john=goal_john
     )
-    
+
     output_filename = f"group_discussion_agents_{filename}.toml"
-    with open(output_filename, 'w') as f:
+    with open(output_filename, "w") as f:
         f.write(toml_content)
