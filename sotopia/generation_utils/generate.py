@@ -383,18 +383,11 @@ def obtain_chain(
         chain = chat_prompt_template | chat
         return chain
     else:
-        if model_name.startswith("o1"):
-            # temperature is not supported for o1
-            chat = ChatOpenAI(
-                model=model_name,
-                max_retries=max_retries,
-            )
-        else:
-            chat = ChatOpenAI(
-                model=model_name,
-                temperature=temperature,
-                max_retries=max_retries,
-            )
+        chat = ChatOpenAI(
+            model=model_name,
+            temperature=temperature,
+            max_retries=max_retries,
+        )
         chain = chat_prompt_template | chat
         return chain
 
