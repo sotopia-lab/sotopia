@@ -8,7 +8,7 @@ Here are the datasets we have so far:
 You will have to install the datasets library to use this file.
 """
 
-import names  # type: ignore
+import names
 import numpy as np
 from datasets import DatasetDict, load_dataset
 

@@ -5,7 +5,7 @@ from typing import Any, cast
 
 import pandas as pd
 import typer
-from experiment_eval import _sample_env_agent_combo_and_push_to_db  # type: ignore
+from experiment_eval import _sample_env_agent_combo_and_push_to_db
 from redis_om import Migrator
 
 from sotopia.database import EnvAgentComboStorage, EnvironmentProfile

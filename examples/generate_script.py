@@ -6,7 +6,7 @@ from typing import Any
 
 import gin
 from absl import flags
-from experiment_eval import _iterate_env_agent_combo_not_in_db  # type: ignore
+from experiment_eval import _iterate_env_agent_combo_not_in_db
 from rich import print
 from rich.logging import RichHandler
 from tqdm import tqdm

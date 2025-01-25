@@ -1,6 +1,5 @@
 import logging
 import os
-import litellm
 from litellm import acompletion
 from typing import cast
 
@@ -117,9 +116,7 @@ async def agenerate(
                 model_name.split("@")[1],
                 os.environ.get("CUSTOM_API_KEY", "EMPTY"),
             )
-            model_name = model_name.split("@")[0].split("/")[1]
-            litellm.api_base = base_url
-            litellm.api_key = api_key
+            model_name = model_name.split("@")[0]
 
         messages = [{"role": "user", "content": template}]
 
@@ -132,6 +129,8 @@ async def agenerate(
             response_format=output_parser.pydantic_object,
             drop_params=True,  # drop params to avoid model error if the model does not support it
             temperature=temperature,
+            base_url=base_url,
+            api_key=api_key,
         )
         result = response.choices[0].message.content
         log.info(f"Generated result: {result}")
@@ -144,6 +143,8 @@ async def agenerate(
         messages=messages,
         temperature=temperature,
         drop_params=True,
+        base_url=base_url if model_name.startswith("custom") else None,
+        api_key=api_key if model_name.startswith("custom") else None,
     )
     result = response.choices[0].message.content
 
