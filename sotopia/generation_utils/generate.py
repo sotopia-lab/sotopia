@@ -130,6 +130,7 @@ async def agenerate(
             model=model_name,
             messages=messages,
             response_format=output_parser.pydantic_object,
+            drop_params=True,  # drop params to avoid model error if the model does not support it
             temperature=temperature,
         )
         result = response.choices[0].message.content
@@ -139,9 +140,11 @@ async def agenerate(
 
     messages = [{"role": "user", "content": template}]
     response = await acompletion(
-        model=model_name, messages=messages, temperature=temperature
+        model=model_name,
+        messages=messages,
+        temperature=temperature,
+        drop_params=True,
     )
-
     result = response.choices[0].message.content
 
     try:
