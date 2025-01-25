@@ -17,7 +17,7 @@ from rich.logging import RichHandler
 # 2.1. Configure the logging
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 logging.basicConfig(
-    level=20,
+    level=logging.INFO,
     format=FORMAT,
     datefmt="[%X]",
     handlers=[RichHandler()],

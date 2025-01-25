@@ -1404,6 +1404,15 @@ wheels = [
 ]
 
 [[package]]
+name = "json-repair"
+version = "0.35.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/95/9c/5ef83a13541c3444e0b949e88b3aa0f4e364e37acf4ffa9de476d36a3de0/json_repair-0.35.0.tar.gz", hash = "sha256:e70f834865a4ae5fe64352c23c1c16d3b70c5dd62dc544a169d8b0932bdbdcaa", size = 29053 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/c7/9a63ff79f2f6350c0f5e504bad940386015381b4d171bd73077465a7dbbc/json_repair-0.35.0-py3-none-any.whl", hash = "sha256:1d429407158474d28a996e745b8f8f7dc78957cb2cfbc92120b9f580b5230a9e", size = 19908 },
+]
+
+[[package]]
 name = "jsonschema"
 version = "4.23.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3107,6 +3116,7 @@ dependencies = [
     { name = "beartype" },
     { name = "gin-config" },
     { name = "hiredis" },
+    { name = "json-repair" },
     { name = "litellm" },
     { name = "lxml" },
     { name = "openai" },
@@ -3177,6 +3187,7 @@ requires-dist = [
     { name = "google-generativeai", marker = "extra == 'google-generativeai'" },
     { name = "groq", marker = "extra == 'groq'" },
     { name = "hiredis", specifier = ">=3.0.0" },
+    { name = "json-repair", specifier = ">=0.35.0,<0.36.0" },
     { name = "litellm", specifier = ">=0.1.1" },
     { name = "lxml", specifier = ">=4.9.3,<6.0.0" },
     { name = "modal", marker = "extra == 'api'" },

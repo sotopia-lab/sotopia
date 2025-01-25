@@ -2,6 +2,7 @@ import json
 import re
 from typing import Generic, Type, TypeVar
 from pydantic import BaseModel, Field
+import json_repair
 
 OutputType = TypeVar("OutputType", bound=object)
 T = TypeVar("T", bound=BaseModel)
@@ -27,7 +28,15 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
     pydantic_object: Type[T]
 
     def parse(self, result: str) -> T:
-        return self.pydantic_object.model_validate_json(result)
+        json_result = json_repair.loads(result)
+        assert isinstance(json_result, dict)
+        if "properties" in json_result:
+            return self.pydantic_object.model_validate_json(
+                json.dumps(json_result["properties"])
+            )
+        else:
+            parsed_result = self.pydantic_object.model_validate_json(result)
+            return parsed_result
 
     def get_format_instructions(self) -> str:
         return json.dumps(self.pydantic_object.model_json_schema())

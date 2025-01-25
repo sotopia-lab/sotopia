@@ -1,7 +1,7 @@
 import logging
 import os
 import litellm
-from litellm import completion
+from litellm import acompletion
 from typing import cast
 
 import gin
@@ -18,7 +18,6 @@ from sotopia.messages.message_classes import (
 )
 from sotopia.utils import format_docstring
 
-import json
 
 from sotopia.generation_utils.output_parsers import (
     OutputParser,
@@ -51,7 +50,7 @@ DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 
 @beartype
-def format_bad_output(
+async def format_bad_output(
     ill_formed_output: str,
     format_instructions: str,
     model_name: str,
@@ -71,7 +70,7 @@ def format_bad_output(
         "format_instructions": format_instructions,
     }
     content = template.format(**input_values)
-    response = completion(
+    response = await acompletion(
         model=model_name,
         response_format={"type": "json_object"},
         messages=[{"role": "user", "content": content}],
@@ -108,7 +107,7 @@ async def agenerate(
 
     if structured_output:
         assert (
-            model_name == "gpt-4o-2024-08-06"
+            model_name.startswith("gpt-4o")
             or model_name.startswith("custom")
             or model_name.startswith("o1")
         ), "Structured output is only supported in limited models"
@@ -124,20 +123,22 @@ async def agenerate(
 
         messages = [{"role": "user", "content": template}]
 
-        if isinstance(output_parser, PydanticOutputParser):
-            response = await completion(
-                model=model_name,
-                messages=messages,
-                response_format={"type": "json_object"},
-                temperature=temperature,
-            )
-            result = json.loads(response.choices[0].message.content)
-            assert isinstance(result, str)
-            return cast(OutputType, output_parser.invoke(result))  # type: ignore
-    # For non-structured output
-    messages = [{"role": "user", "content": template}]
+        assert isinstance(
+            output_parser, PydanticOutputParser
+        ), "structured output only supported in PydanticOutputParser"
+        response = await acompletion(
+            model=model_name,
+            messages=messages,
+            response_format=output_parser.pydantic_object,
+            temperature=temperature,
+        )
+        result = response.choices[0].message.content
+        log.info(f"Generated result: {result}")
+        assert isinstance(result, str)
+        return cast(OutputType, output_parser.parse(result))
 
-    response = await completion(
+    messages = [{"role": "user", "content": template}]
+    response = await acompletion(
         model=model_name, messages=messages, temperature=temperature
     )
 
@@ -153,22 +154,12 @@ async def agenerate(
             extra={"markup": True},
         )
         # Handle bad output reformatting
-        reformat_messages = [
-            {
-                "role": "user",
-                "content": f"""Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
-            Original string: {result}
-            Format instructions: {output_parser.get_format_instructions()}
-            Please only generate the JSON:""",
-            }
-        ]
-
-        reformat_response = await completion(
-            model=bad_output_process_model or model_name,
-            messages=reformat_messages,
-            temperature=temperature,
+        reformat_result = await format_bad_output(
+            result,
+            output_parser.get_format_instructions(),
+            bad_output_process_model or model_name,
+            use_fixed_model_version,
         )
-        reformat_result = reformat_response.choices[0].message.content
         parsed_result = output_parser.parse(reformat_result)
 
     log.info(f"Generated result: {parsed_result}")
@@ -300,7 +291,8 @@ async def agenerate_action(
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
         )
-    except Exception:
+    except Exception as e:
+        log.warning(f"Failed to generate action due to {e}")
         return AgentAction(action_type="none", argument="")
 
 
