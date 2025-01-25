@@ -10,7 +10,7 @@
 #        python examples/generation_api/custom_model.py
 # Expected output for 1: a bunch of logs and an output [[14, 7], [14, 7, 3], [14, 7, 3, 9], [14, 7, 3, 9, 6], [14, 7, 3, 9, 6, 8]]
 
-from sotopia.generation_utils.generate import ListOfIntOutputParser, agenerate
+from sotopia.generation_utils import ListOfIntOutputParser, agenerate
 import logging
 
 # Set logging to the lowest level to show all logs

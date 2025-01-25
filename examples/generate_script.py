@@ -6,13 +6,11 @@ from typing import Any
 
 import gin
 from absl import flags
-from experiment_eval import _iterate_env_agent_combo_not_in_db
+from experiment_eval import _iterate_env_agent_combo_not_in_db  # type: ignore
 from rich import print
 from rich.logging import RichHandler
 from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
-
-from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages.message_classes import AgentAction, Observation
 from sotopia.samplers import EnvAgentCombo
 from sotopia.server import arun_one_script, run_async_server
@@ -38,7 +36,7 @@ logging.basicConfig(
 
 @gin.configurable
 def single_step(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     tag: str | None = None,
     batch_size: int = 5,
     push_to_db: bool = True,
@@ -104,7 +102,7 @@ def single_step(
 
 @gin.configurable
 def full_freeform(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     tag: str | None = None,
     batch_size: int = 5,
     push_to_db: bool = True,
@@ -175,14 +173,14 @@ def full_freeform(
 def run_async_server_in_batch_script(
     *,
     batch_size: int = 10,
-    model: LLM_Name = "gpt-4o-mini",
+    model: str = "gpt-4o-mini",
     tag: str | None = None,
     push_to_db: bool = True,
     json_in_script: bool = False,
     generate_in_full: bool = False,
     verbose: bool = False,
 ) -> None:
-    model_names: dict[str, LLM_Name] = {
+    model_names: dict[str, str] = {
         "env": model,
         "agent1": model,
         "agent2": model,

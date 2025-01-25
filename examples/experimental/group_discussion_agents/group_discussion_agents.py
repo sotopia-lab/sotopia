@@ -4,8 +4,7 @@ from aact.messages import Text, Tick, DataModel, DataModelFactory
 from sotopia.agents.llm_agent import ainput
 from sotopia.experimental.agents.base_agent import BaseAgent
 
-from sotopia.generation_utils import agenerate
-from sotopia.generation_utils.generate import StrOutputParser
+from sotopia.generation_utils import agenerate, StrOutputParser
 from sotopia.messages import ActionType
 
 from pydantic import Field

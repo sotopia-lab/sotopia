@@ -8,11 +8,11 @@ Here are the datasets we have so far:
 You will have to install the datasets library to use this file.
 """
 
-import names
+import names  # type: ignore
 import numpy as np
 from datasets import DatasetDict, load_dataset
 
-from sotopia.generation_utils.generate import StrOutputParser, agenerate
+from sotopia.generation_utils import agenerate, StrOutputParser
 
 
 async def generate_mutual_friend_envs() -> tuple[str, list[str]]:

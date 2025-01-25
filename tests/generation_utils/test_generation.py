@@ -2,12 +2,14 @@ import pytest
 from typing import Any
 
 from sotopia.generation_utils.generate import (
-    ListOfIntOutputParser,
     agenerate,
 )
 
 from sotopia.messages import AgentAction
-from langchain.output_parsers import PydanticOutputParser
+from sotopia.generation_utils.output_parsers import (
+    PydanticOutputParser,
+    ListOfIntOutputParser,
+)
 
 
 @pytest.mark.asyncio
@@ -53,7 +55,7 @@ async def test_agenerate_structured_output() -> None:
     """
     async version of test_generate_structured_output
     """
-    output = await agenerate(
+    output: AgentAction = await agenerate(
         "custom/llama3.2:1b@http://localhost:8000/v1",
         "{format_instructions}",
         {},

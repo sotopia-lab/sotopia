@@ -24,7 +24,7 @@ from sotopia.envs.evaluators import (
     SotopiaDimensions,
     unweighted_aggregate_evaluate,
 )
-from sotopia.generation_utils.generate import LLM_Name, agenerate_script
+from sotopia.generation_utils.generate import agenerate_script
 from sotopia.messages import AgentAction, Message, Observation, SimpleMessage
 from sotopia.messages.message_classes import (
     ScriptBackground,
@@ -35,7 +35,7 @@ from sotopia.samplers import BaseSampler, EnvAgentCombo
 
 @beartype
 def run_sync_server(
-    model_name_dict: dict[str, LLM_Name],
+    model_name_dict: dict[str, str],
     action_order: Literal["simultaneous", "round-robin", "random"],
     agents_info: dict[str, dict[str, str]] | None = None,
     partial_background_file: str | None = None,
@@ -255,7 +255,7 @@ async def arun_one_episode(
 async def run_async_server(
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
     action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",
-    model_dict: dict[str, LLM_Name] = {},
+    model_dict: dict[str, str] = {},
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
     omniscient: bool = False,
     script_like: bool = False,
@@ -361,7 +361,7 @@ async def run_async_server(
 async def arun_one_script(
     env: ParallelSotopiaEnv,
     agent_list: Sequence[BaseAgent[Observation, AgentAction]],
-    model_dict: dict[str, LLM_Name],
+    model_dict: dict[str, str],
     omniscient: bool = False,
     tag: str | None = None,
     push_to_db: bool = False,

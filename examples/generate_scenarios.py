@@ -5,14 +5,11 @@ from typing import Any, cast
 
 import pandas as pd
 import typer
-from experiment_eval import _sample_env_agent_combo_and_push_to_db
+from experiment_eval import _sample_env_agent_combo_and_push_to_db  # type: ignore
 from redis_om import Migrator
 
 from sotopia.database import EnvAgentComboStorage, EnvironmentProfile
 from sotopia.database.persistent_profile import RelationshipType
-from sotopia.generation_utils import (
-    LLM_Name,
-)
 from .generate_specific_envs import (  # type:ignore[import-untyped]
     generate_craigslist_bargains_envs,
     generate_mutual_friend_envs,
@@ -53,7 +50,7 @@ def check_existing_envs(
 
 def generate_newenv_profile(
     num: int,
-    gen_model: LLM_Name = "gpt-4-turbo-2024-04-09",
+    gen_model: str = "gpt-4-turbo-2024-04-09",
     temperature: float = 0.5,
     type: str = "craigslist_bargains",
 ) -> pd.DataFrame:
@@ -101,7 +98,6 @@ def auto_generate_scenarios(
     """
     Function to generate new environment scenarios based on target number of generation
     """
-    gen_model = cast(LLM_Name, gen_model)
     all_background_df = generate_newenv_profile(num, gen_model, temperature)
     columns = [
         "codename",
