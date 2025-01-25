@@ -55,6 +55,10 @@ LLM_Name = Literal[
     "human",
     "redis",
     "groq/llama3-70b-8192",
+    "o1",
+    "o1-mini",
+    "o1-2024-12-17",
+    "o1-mini-2024-09-12",
 ]
 # subject to future OpenAI changes
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
@@ -488,9 +492,11 @@ async def agenerate(
         input_values["format_instructions"] = output_parser.get_format_instructions()
 
     if structured_output:
-        assert model_name == "gpt-4o-2024-08-06" or model_name.startswith(
-            "custom"
-        ), "Structured output is only supported in gpt-4o-2024-08-06 or custom models"
+        assert (
+            model_name == "gpt-4o-2024-08-06"
+            or model_name.startswith("custom")
+            or model_name.startswith("o1")
+        ), "Structured output is only supported in limited models"
         human_message_prompt = HumanMessagePromptTemplate(
             prompt=PromptTemplate(
                 template=template,
