@@ -72,9 +72,6 @@ plugins = [
 module = "transformers.*"
 ignore_missing_imports = true
 
-[tool.uv.sources]
-aact = { git = "https://github.com/ProKil/aact" , branch = "feature/node-manager" }
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
