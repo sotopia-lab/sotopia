@@ -22,7 +22,7 @@ async def test_agenerate_list_integer() -> None:
         "custom/llama3.2:1b@http://localhost:8000/v1",
         "{format_instructions}",
         {},
-        ListOfIntOutputParser(length, (lower, upper)),
+        ListOfIntOutputParser(number_of_int=length, range_of_int=(lower, upper)),
         temperature=0.0,
     )
     assert isinstance(list_of_int, list)

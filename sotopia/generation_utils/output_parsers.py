@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Generic, Type, TypeVar
+from typing import Generic, Type, TypeVar, Optional
 from pydantic import BaseModel, Field
 import json_repair
 
@@ -79,13 +79,13 @@ class ScriptOutputParser(OutputParser[str]):
 
 
 class ListOfIntOutputParser(OutputParser[list[int]]):
-    number_of_int: int | None
-    range_of_int: tuple[int, int] | None
+    number_of_int: Optional[int] = None
+    range_of_int: Optional[tuple[int, int]] = None
 
     def __init__(
         self,
-        number_of_int: int | None = None,
-        range_of_int: tuple[int, int] | None = None,
+        number_of_int: Optional[int] = None,
+        range_of_int: Optional[tuple[int, int]] = None,
     ):
         """
         Parse the output to a list of integers

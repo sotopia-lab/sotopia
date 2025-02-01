@@ -104,20 +104,22 @@ async def agenerate(
     for key, value in input_values.items():
         template = template.replace(f"{{{key}}}", str(value))
 
+    if model_name.startswith("custom"):
+        base_url, api_key = (
+            model_name.split("@")[1],
+            os.environ.get("CUSTOM_API_KEY", "EMPTY"),
+        )
+        model_name = model_name.split("@")[0].replace("custom/", "openai/")
+    else:
+        base_url = None
+        api_key = None
+
     if structured_output:
         assert (
             model_name.startswith("gpt-4o")
-            or model_name.startswith("custom")
+            or model_name.startswith("openai/")
             or model_name.startswith("o1")
         ), "Structured output is only supported in limited models"
-
-        if model_name.startswith("custom"):
-            base_url, api_key = (
-                model_name.split("@")[1],
-                os.environ.get("CUSTOM_API_KEY", "EMPTY"),
-            )
-            model_name = model_name.split("@")[0]
-
         messages = [{"role": "user", "content": template}]
 
         assert isinstance(
@@ -138,13 +140,14 @@ async def agenerate(
         return cast(OutputType, output_parser.parse(result))
 
     messages = [{"role": "user", "content": template}]
+
     response = await acompletion(
         model=model_name,
         messages=messages,
         temperature=temperature,
         drop_params=True,
-        base_url=base_url if model_name.startswith("custom") else None,
-        api_key=api_key if model_name.startswith("custom") else None,
+        api_base=base_url,
+        api_key=api_key,
     )
     result = response.choices[0].message.content
 
