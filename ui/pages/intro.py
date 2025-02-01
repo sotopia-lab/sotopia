@@ -25,9 +25,9 @@ st.markdown("### API Documentation")
 st.markdown(
     """
         For larger scale experiments you may need to use the API instead of the Streamlit UI.
-        - The API documentation for current set of Sotopia is [here](https://sotopia-lab--sotopia-fastapi-webapi-serve.modal.run/)
+        - The API documentation for current set of Sotopia is [here](https://sotopia-lab--sotopia-fastapi-webapi-serve.modal.run/docs)
         - When you are hosting your own API, find it in `{YOUR_API_BASE}/docs`.
-        - Also see [Sotopia examples](https://github.com/sotopia-lab/sotopia/example) for more information.
+        - Also see [Sotopia examples](https://github.com/sotopia-lab/sotopia/tree/main/examples) for more information.
     """
 )
 st.markdown("Current API Base: " + st.session_state.API_BASE)

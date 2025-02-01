@@ -13,17 +13,17 @@ readme = "README.md"
 dependencies = [
     "lxml>=4.9.3,<6.0.0",
     "openai>=1.11.0,<2.0.0",
-    "langchain>=0.2.5,<0.4.0",
     "rich>=13.6.0,<14.0.0",
     "PettingZoo==1.24.3",
     "redis-om>=0.3.0,<0.4.0",
     "gin-config>=0.5.0,<0.6.0",
+    "json-repair>=0.35.0,<0.36.0",
     "absl-py>=2.0.0,<3.0.0",
     "together>=0.2.4,<1.4.0",
     "pydantic>=2.5.0,<3.0.0",
     "beartype>=0.14.0,<0.20.0",
-    "langchain-openai>=0.1.8,<0.2",
     "hiredis>=3.0.0",
+    "litellm>=0.1.1",
     "aact"
 ]
 
@@ -73,7 +73,7 @@ module = "transformers.*"
 ignore_missing_imports = true
 
 [tool.uv.sources]
-aact = { git = "https://github.com/ProKil/aact" , branch = "feature/node-manager" }
+aact = { git = "https://github.com/ProKil/aact" , branch = "main" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

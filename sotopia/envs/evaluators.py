@@ -5,10 +5,9 @@ from typing import Generic, TypeVar, Annotated
 
 import gin
 from beartype import beartype
-from langchain.output_parsers import PydanticOutputParser
 from pydantic import AfterValidator, BaseModel, Field
 
-from sotopia.generation_utils.generate import agenerate
+from sotopia.generation_utils import PydanticOutputParser, agenerate
 from sotopia.messages import (
     AgentAction,
     Message,
@@ -257,7 +256,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         return self(turn_number, messages)
 
 
-class ReachGoalLLMEvaluator(Evaluator, Generic[T_eval_dim]):
+class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     @beartype
     def __init__(
         self,

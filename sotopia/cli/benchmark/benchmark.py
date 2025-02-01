@@ -9,7 +9,7 @@ import math
 import numpy as np
 from itertools import chain
 from collections import defaultdict
-from typing import cast, OrderedDict
+from typing import OrderedDict
 
 from logging import FileHandler
 from rich.logging import RichHandler
@@ -26,12 +26,11 @@ from sotopia.database import (
 from sotopia.database.serialization import get_rewards_from_episode
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import (
     BaseSampler,
@@ -224,7 +223,7 @@ def preprocess_episode_data(
 def check_existing_episodes(
     env_id: str,
     agent_ids: list[str],
-    models: dict[str, LLM_Name],
+    models: dict[str, str],
     index: str,
     episode_dict: dict[tuple[str, tuple[str, ...], tuple[str, ...]], bool],
 ) -> bool:
@@ -326,7 +325,7 @@ def benchmark_display(
 
 
 def _list_all_env_agent_combo_not_in_db(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     env_agent_combo_storage_index_list: list[tuple[EnvAgentComboStorage, str]],
     tag: str = "",
     task: str = "",
@@ -363,7 +362,7 @@ def _list_all_env_agent_combo_not_in_db(
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             terminal_evaluators=[
-                ReachGoalLLMEvaluator(
+                EpisodeLLMEvaluator(
                     model_names["env"],
                     EvaluationForTwoAgents[SotopiaDimensions],
                 ),
@@ -486,9 +485,6 @@ def benchmark(
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
         )
-        model = cast(LLM_Name, model)
-        partner_model = cast(LLM_Name, partner_model)
-        evaluator_model = cast(LLM_Name, evaluator_model)
         tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
         typer.echo(typer.style(f"Tag: {tag}", fg=typer.colors.GREEN, bold=True))
         model_names = {

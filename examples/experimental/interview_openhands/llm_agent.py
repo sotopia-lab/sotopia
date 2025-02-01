@@ -12,8 +12,7 @@ from aact.messages.registry import DataModelFactory
 
 from sotopia.experimental.agents.base_agent import BaseAgent
 
-from sotopia.generation_utils import agenerate
-from sotopia.generation_utils.generate import StrOutputParser
+from sotopia.generation_utils import agenerate, StrOutputParser
 
 import json
 

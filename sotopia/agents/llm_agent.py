@@ -5,7 +5,6 @@ from typing import cast
 from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile
 from sotopia.generation_utils.generate import (
-    LLM_Name,
     agenerate_action,
     agenerate_goal,
     agenerate_script,
@@ -147,7 +146,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
             uuid_str=uuid_str,
             agent_profile=agent_profile,
         )
-        self.model_name: LLM_Name = "human"
+        self.model_name = "human"
 
     @property
     def goal(self) -> str:
