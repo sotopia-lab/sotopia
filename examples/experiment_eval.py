@@ -26,7 +26,6 @@ from sotopia.envs.evaluators import (
     SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import (
     BaseSampler,
@@ -73,7 +72,7 @@ assert all(
 def check_existing_episodes(
     env_id: str,
     agent_ids: list[str],
-    models: dict[str, LLM_Name],
+    models: dict[str, str],
     tag: str | None = None,
 ) -> bool:
     if tag:
@@ -106,7 +105,7 @@ def _sample_env_agent_combo_and_push_to_db(env_id: str) -> None:
 
 @gin.configurable
 def _iterate_env_agent_combo_not_in_db(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     env_ids: list[str] = [],
     tag: str | None = None,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
@@ -188,7 +187,7 @@ def _iterate_env_agent_combo_not_in_db(
 def run_async_server_in_batch(
     *,
     batch_size: int = 1,
-    model_names: dict[str, LLM_Name] = {
+    model_names: dict[str, str] = {
         "env": "gpt-4",
         "agent1": "gpt-4o-mini",
         "agent2": "gpt-4o-mini",

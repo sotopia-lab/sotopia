@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from sotopia.envs.evaluators import GoalDimension
 from sotopia.generation_utils.generate import agenerate
-from langchain.output_parsers import PydanticOutputParser
+from sotopia.generation_utils.output_parsers import PydanticOutputParser
 
 
 default_reward_prompt = """

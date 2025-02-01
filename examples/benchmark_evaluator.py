@@ -123,7 +123,7 @@ def evaluate_evaluator(
         )
         run_async_server_in_batch_aevaluate(
             tag=tag,
-            model=model,  # type: ignore
+            model=model,
             batch_size=batch_size,
             push_to_db=push_to_db,
             verbose=verbose,
@@ -142,7 +142,7 @@ def evaluate_evaluator(
         while to_re_evaluate_list:
             run_async_server_in_batch_aevaluate(
                 tag=tag,
-                model=model,  # type: ignore
+                model=model,
                 batch_size=batch_size,
                 push_to_db=push_to_db,
                 verbose=verbose,

@@ -10,8 +10,7 @@ from sotopia.experimental.agents.datamodels import Observation, AgentAction
 from sotopia.database.persistent_profile import AgentProfile
 from typing import Any
 
-from sotopia.generation_utils import agenerate
-from sotopia.generation_utils.generate import StrOutputParser
+from sotopia.generation_utils import agenerate, StrOutputParser
 
 # Check Python version
 if sys.version_info >= (3, 11):
