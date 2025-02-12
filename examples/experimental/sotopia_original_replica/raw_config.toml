@@ -1,0 +1,23 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.sotopia_original_replica.llm_agent_sotopia"]  # modules to import for custom agent nodes
+agent_node = "llm_agent" # should be the same as the custom node name registered in the module
+model_name = "gpt-4o-mini"
+
+use_pk_value = false # if set to true only need to provide agent_pk and goal for each agent below
+push_to_db = false
+evaluate_episode = false
+max_turns = 3
+
+scenario = "Two friends are sitting in a cafe and catching up with each other's lives."
+
+[[agents]]
+name = "Jack"
+goal = "Your goal is to borrow 5000 dollars from Jane."
+[agents.background]
+occupation = "construction worker"
+
+[[agents]]
+name = "Jane"
+goal = "Your goal is to help Jack however, you are in a finicial crisis yourself and can only afford to give him 500 dollars."
+[agents.background]
+occupation = "gardener"
