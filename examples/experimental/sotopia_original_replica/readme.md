@@ -14,7 +14,7 @@ To quickly generate your own simluation config, format your input like in the `r
 to generate an executable file, run:
 ```bash
 cd examples/experimental/sotopia_original_replica
-python generate_executable.py --input=raw_config.toml  # output will be stored in output.toml
+python generate_executable.py --input=raw_config.json  # output will be stored in output.toml
 aact run-dataflow output.toml  # calling aact to run the simulation
 ```
 

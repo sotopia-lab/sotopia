@@ -1,5 +1,5 @@
 from jinja2 import Environment, FileSystemLoader
-import toml
+import json
 from argparse import Namespace
 from argparse import ArgumentParser
 import os
@@ -53,8 +53,10 @@ if __name__ == "__main__":
     )
     env.filters["render_bool"] = render_bool
     template = env.get_template("multiagents.jinja2")
-    input_data = toml.load(args.input)
+
+    # Load JSON instead of TOML
+    with open(args.input, "r") as f:
+        input_data = json.load(f)
+
     with open(args.output, "w") as f:
         f.write(template.render(input_data, render_dict=render_dict))
-    # with open(args.output, 'r') as f:
-    #     print(toml.load(f))

@@ -34,7 +34,7 @@ node_class = "{{agent_node}}"
 input_channels = ["moderator:{{agent.name}}"]
 output_channel = "{{agent.name}}:moderator"
 goal = "{{agent.goal}}"
-model_name = "{{model_name}}"
+model_name = "{{agent.model_name if agent.model_name is defined else default_model}}"
 {% if agent.agent_pk is defined%}
 agent_pk = "{{agent.agent_pk}}"
 {% else %}
@@ -64,4 +64,4 @@ node_class = "evaluator"
 [nodes.node_args]
 input_channels = ["moderator:evaluator"]
 output_channels = ["evaluator:moderator"]
-model_name = "gpt-4o-mini"
+model_name = "{{evaluator_model}}"
