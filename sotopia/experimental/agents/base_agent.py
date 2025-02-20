@@ -68,6 +68,7 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
         while not self.shutdown_event.is_set():
             observation = await self.observation_queue.get()
             action_or_none = await self.aact(observation)
+            print(f"Agent {self.name} sending action {action_or_none}")
             if action_or_none is not None:
                 await self.send(action_or_none)
             self.observation_queue.task_done()

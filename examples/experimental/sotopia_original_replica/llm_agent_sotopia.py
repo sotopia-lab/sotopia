@@ -71,7 +71,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             profile = AgentProfile(
                 first_name=first_name, last_name=last_name, **self.background
             )
-            profile.save()
         else:
             assert not self.agent_profile_pk == "", "Agent profile pk must be provided"
             profile = AgentProfile.get(pk=self.agent_profile_pk)

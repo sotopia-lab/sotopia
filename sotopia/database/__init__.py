@@ -1,4 +1,8 @@
 from typing import TypeVar
+from logging import Logger
+from rich import print as rprint
+import redis
+import os
 from redis_om import JsonModel, Migrator
 from .annotators import Annotator
 from .env_agent_combo_storage import EnvAgentComboStorage
@@ -45,10 +49,6 @@ from .evaluation_dimensions import (
     CustomEvaluationDimensionList,
     BaseCustomEvaluationDimensionList,
 )
-
-from logging import Logger
-
-logger = Logger("sotopia.database")
 
 __all__ = [
     "AgentProfile",
@@ -101,10 +101,31 @@ def _json_model_all(cls: type[InheritedJsonModel]) -> list[InheritedJsonModel]:
 
 
 JsonModel.all = classmethod(_json_model_all)  # type: ignore[assignment,method-assign]
+logger = Logger("sotopia.database")
 
+# Test Redis connection before proceeding with any database operations
+try:
+    redis_url = os.getenv("REDIS_OM_URL", "redis://localhost:6379")
+    redis_client = redis.from_url(redis_url)
+    redis_client.ping()
+    rprint(f"[green]Successfully connected to Redis database {redis_url}[/green]")
+except redis.ConnectionError as e:
+    logger.error(f"Failed to connect to Redis: {e}")
+    rprint(f"[red]Failed to connect to Redis database {redis_url}[/red]")
 try:
     Migrator().run()
 except Exception as e:
     logger.debug(
         f"Error running migrations: {e} This is expected if you have not set up redis yet."
     )
+
+# Try Redis OM connection
+try:
+    # Initialize an empty JsonModel to ensure model is registered
+    JsonModel()
+    rprint("[green]Successfully initialized Redis OM object[/green].")
+except Exception as e:
+    logger.error(
+        f"Failed to initialize Redis OM object: {e}. The connection to your redis database might be problematic."
+    )
+    rprint("[red]Failed to initialize Redis OM object[/red]")
