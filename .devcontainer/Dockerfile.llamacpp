@@ -1,4 +1,4 @@
-FROM ghcr.io/ggerganov/llama.cpp:server
+FROM ghcr.io/ggml-org/llama.cpp:server
 
 # Install curl and other necessary utilities
 RUN apt-get update && \
