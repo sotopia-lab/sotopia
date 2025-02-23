@@ -628,7 +628,7 @@ class SotopiaFastAPI(FastAPI):
                     start_msg = await websocket.receive_json()
                     if start_msg.get("type") != WSMessageType.START_SIM.value:
                         continue
-
+                    mode = start_msg["data"].get("mode", "full")  # Default to full simulation if not provided
                     async with manager.state.start_simulation(token):
                         simulator = await manager.create_simulator(
                             env_id=start_msg["data"]["env_id"],
@@ -643,7 +643,23 @@ class SotopiaFastAPI(FastAPI):
                                 "evaluation_dimension_list_name", "sotopia"
                             ),
                         )
-                        await manager.run_simulation(websocket, simulator)
+                        if mode == "full":
+                            # Run the complete simulation, streaming messages automatically.
+                            await manager.run_simulation(websocket, simulator)
+                        elif mode == "turn":
+                            # Enter a loop for turn-based interaction:
+                            while True:
+                                client_message = await websocket.receive_json()
+                                msg_type = client_message.get("type")
+                                if msg_type == WSMessageType.FINISH_SIM.value:
+                                    break
+                                elif msg_type == WSMessageType.TURN_REQUEST.value:
+                                    turn_response = await simulator.process_turn(client_message.get("data", {}))
+                                    await manager.send_message(websocket, WSMessageType.TURN_RESPONSE, turn_response)
+                                else:
+                                    # Handle or ignore other types of messages as needed.
+                                    pass
+                        await manager.send_message(websocket, WSMessageType.END_SIM, {})
 
             except WebSocketDisconnect:
                 logger.info(f"Client disconnected: {token}")

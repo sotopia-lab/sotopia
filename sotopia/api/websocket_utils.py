@@ -15,8 +15,10 @@ from sotopia.database import (
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator
+from typing import Type, TypedDict, Any, AsyncGenerator, Literal
 from pydantic import BaseModel
+
+ActionType = Literal["none", "speak", "non-verbal communication", "action", "leave"]
 
 
 class WSMessageType(str, Enum):
@@ -24,6 +26,8 @@ class WSMessageType(str, Enum):
     CLIENT_MSG = "CLIENT_MSG"
     ERROR = "ERROR"
     START_SIM = "START_SIM"
+    TURN_REQUEST = "TURN_REQUEST"
+    TURN_RESPONSE = "TURN_RESPONSE"
     END_SIM = "END_SIM"
     FINISH_SIM = "FINISH_SIM"
 
@@ -127,6 +131,37 @@ def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
 
     return comment_chunks, general_comment
 
+def build_observation(turn_number: int, history: list[dict[str, str]]) -> Observation:
+    """
+    Helper function to build an Observation object from the current conversation.
+    Parameters:
+    turn_number: The current turn number.
+    history: A list of dicts, where each dict contains at least the keys:
+            "role" (e.g. "client", "agent", etc.) and "content" (the message text).
+
+    Returns:
+    An Observation instance with:
+        - last_turn set to the most recent message's content (or an empty string if no history)
+        - turn_number set appropriately
+        - available_actions a list of possible actions (e.g. ["speak", "react", "leave"])
+    """
+    # Use the last message's content as the observation's "last_turn"
+    last_turn = history[-1]["content"] if history else ""
+
+    # Define the available actions for the agent; adjust as needed.
+    available_actions: list[ActionType] = [
+        "speak",
+        "non-verbal communication",
+        "action",
+        "leave",
+    ]
+
+    return Observation(
+        last_turn=last_turn,
+        turn_number=turn_number,
+        available_actions=available_actions,
+    )
+
 
 class WebSocketSotopiaSimulator:
     def __init__(
@@ -144,17 +179,16 @@ class WebSocketSotopiaSimulator:
             evaluator_model,
             evaluation_dimension_list_name,
         )
-        self.messages: list[list[tuple[str, str, str]]] = []
-        self.messages.append(
-            [
-                (
-                    "Environment",
-                    agent_name,
-                    self.environment_messages[agent_name].to_natural_language(),
-                )
-                for agent_name in self.env.agents
-            ]
-        )
+        # Initialize a structured conversation history for turn-by-turn exchanges.
+        # Each entry records the role (e.g., "Environment", "Client", or "Agent"),
+        # the agent identifier, and its message content.
+        self.conversation_history: list[dict[str, str]] = []
+        for agent_name, obs in self.environment_messages.items():
+            self.conversation_history.append({
+                "role": "environment",
+                "agent": agent_name,
+                "content": obs.to_natural_language(),
+            })
         for index, agent_name in enumerate(self.env.agents):
             self.agents[agent_name].goal = self.env.profile.agent_goals[index]
 
@@ -195,3 +229,42 @@ class WebSocketSotopiaSimulator:
                 "type": "messages",
                 "messages": epilog.dict(),
             }
+
+    async def process_turn(self, client_data: dict) -> dict:
+        """
+        Process a single turn where client_data contains fields like:
+        - agent_id: which agent should act.
+        - content: the client-provided input that might update the simulation state.
+        """
+        # Append the client's input to a conversation log
+        self.conversation_history.append({
+            "role": "client",
+            "content": client_data.get("content", "")
+        })
+        
+        # Identify the specific agent by its ID provided by the client.
+        agent_id = client_data.get("agent_id")
+        if agent_id not in self.agents:
+            raise ValueError(f"Agent with id {agent_id} not found")
+        
+        # Build an Observation object required by the agent.
+        observation = build_observation(turn_number=len(self.conversation_history),
+                                        history=self.conversation_history)
+        
+        # Call the agent’s asynchronous action function.
+        agent = self.agents[agent_id]
+        agent_action = await agent.aact(observation)
+        
+        # Append the agent’s response to the conversation log.
+        self.conversation_history.append({
+            "role": "agent",
+            "content": agent_action.argument
+        })
+        
+        # Return a dict that will be sent back over the websocket.
+        return {
+            "turn": len(self.conversation_history),
+            "agent_id": agent_id,
+            "agent_response": agent_action.argument,
+            "action_type": agent_action.action_type,
+        }
