@@ -1,3 +1,5 @@
+import os
+import shutil
 import subprocess
 from typing import Literal, Optional
 from pydantic import BaseModel
@@ -313,9 +315,14 @@ def install(
                     )
                     exit(0)
             else:
-                (Path(tmpdir) / "dump.rdb").rename(
-                    Path(directory) / "redis-data/dump.rdb"
+                # Don't use `Path.rename()`, it uses `os.rename` under the hood and throws error
+                # if source and destination are not on the same filesystem.
+                # See https://stackoverflow.com/questions/42392600/oserror-errno-18-invalid-cross-device-link
+                shutil.copy(
+                    str(Path(tmpdir) / "dump.rdb"),
+                    str(Path(directory) / "redis-data/dump.rdb"),
                 )
+                os.remove(str(Path(tmpdir) / "dump.rdb"))
         try:
             subprocess.run(
                 f"docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v {directory}/redis-data:/data/ redis/redis-stack:latest",
