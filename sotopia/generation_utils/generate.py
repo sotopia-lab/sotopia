@@ -107,7 +107,7 @@ async def agenerate(
     if model_name.startswith("custom"):
         base_url, api_key = (
             model_name.split("@")[1],
-            os.environ.get("OPENAI_KEY", "EMPTY"),
+            os.environ.get("CUSTOM_API_KEY", "EMPTY"),
         )
         model_name = model_name.split("@")[0].replace("custom/", "openai/")
     else:
