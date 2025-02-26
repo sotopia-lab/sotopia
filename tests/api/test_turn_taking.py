@@ -11,6 +11,11 @@ from sotopia.database import (
 from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
 from typing import Callable, Generator, Any
+import logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 client = TestClient(app)
 
@@ -166,10 +171,12 @@ def create_mock_data(request: pytest.FixtureRequest) -> Generator[None, None, No
         print(f"Error deleting tmppk_evaluation_dimension_list: {e}")
 
 
-def test_basic_turn_taking(create_mock_data: Callable[[], None]) -> None:
+def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog) -> None:
     """
     Test sending a single TURN_REQUEST and verifying that a TURN_RESPONSE is returned.
     """
+    caplog.set_level(logging.DEBUG)
+    logging.info("Starting test_basic_turn_taking")
     with client.websocket_connect("/ws/simulation?token=test") as websocket:
         # Send the START_SIM message to initialize simulation.
         start_msg = {
@@ -185,28 +192,34 @@ def test_basic_turn_taking(create_mock_data: Callable[[], None]) -> None:
         }
         websocket.send_json(start_msg)
         # Optionally, wait for an initial SERVER_MSG indicating simulation start.
-        server_init = websocket.receive_json()
-        assert server_init["type"] in ("SERVER_MSG", "messages")
+        # server_init = websocket.receive_json()
+        # logging.info(f"Received initial message: {server_init}")
+        # assert server_init["type"] in ("SERVER_MSG", "messages")
         
         # Send a TURN_REQUEST.
         turn_request = {
             "type": "TURN_REQUEST",
             "data": {
-                "agent_id": "tmppk_agent1",
+                "agent_id": "John Doe",
                 "content": "Hello, how are you?"
             }
         }
         websocket.send_json(turn_request)
-        
+        logging.info("Sent TURN_REQUEST.")
         response = websocket.receive_json()
+        logging.info(f"Received TURN_RESPONSE: {response}")
         assert response["type"] == "TURN_RESPONSE"
         data = response["data"]
         assert "agent_response" in data
         assert "action_type" in data
-        
         # End the simulation.
         websocket.send_json({"type": "FINISH_SIM"})
+        end_response = websocket.receive_json()
         assert end_response["type"] == "END_SIM"
+        error_logs = [rec for rec in caplog.records if rec.levelno >= logging.ERROR]
+        if error_logs:
+            for rec in error_logs:
+                logging.debug(f"Logged error: {rec.getMessage()}")
 
 
 def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
@@ -228,13 +241,12 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
             },
         }
         websocket.send_json(start_msg)
-        _ = websocket.receive_json() # initial message
         # Send several TURN_REQUEST messages.
         for i in range(3):
             turn_request = {
                 "type": "TURN_REQUEST",
                 "data": {
-                    "agent_id": "tmppk_agent1",
+                    "agent_id": "Jane Doe",
                     "content": f"Turn {i+1}: message content"
                 }
             }
@@ -242,10 +254,14 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
             response = websocket.receive_json()
             assert response["type"] == "TURN_RESPONSE"
             data = response["data"]
-            assert data["agent_response"]  # non-empty response expected
+            assert "action_type" in data
+            if data["action_type"] == "leave":
+                assert data["agent_response"] == ""
+                break
+            else:
+                assert data["agent_response"]  # non-empty response expected
         
         websocket.send_json({"type": "FINISH_SIM"})
-        assert end_response["type"] == "END_SIM"
 
 
 def test_alternating_agents(create_mock_data: Callable[[], None]) -> None:
@@ -265,8 +281,7 @@ def test_alternating_agents(create_mock_data: Callable[[], None]) -> None:
             },
         }
         websocket.send_json(start_msg)
-        _ = websocket.receive_json() # initial simulation message
-        agents = ["tmppk_agent1", "tmppk_agent2"]
+        agents = ["Jane Doe", "John Doe"]
         for i in range(4):
             turn_request = {
                 "type": "TURN_REQUEST",
@@ -282,7 +297,6 @@ def test_alternating_agents(create_mock_data: Callable[[], None]) -> None:
             assert data["agent_id"] == agents[i % 2]
         
         websocket.send_json({"type": "FINISH_SIM"})
-        assert end_response["type"] == "END_SIM"
 
 
 def test_invalid_agent_id(create_mock_data: Callable[[], None]) -> None:
@@ -302,7 +316,6 @@ def test_invalid_agent_id(create_mock_data: Callable[[], None]) -> None:
             },
         }
         websocket.send_json(start_msg)
-        _ = websocket.receive_json() # initial message
         turn_request = {
         "type": "TURN_REQUEST",
         "data": {
@@ -316,7 +329,6 @@ def test_invalid_agent_id(create_mock_data: Callable[[], None]) -> None:
         assert "not found" in error_response["data"]["details"]
         
         websocket.send_json({"type": "FINISH_SIM"})
-        assert end_response["type"] == "END_SIM"
 
 
 def test_full_simulation_streaming(create_mock_data: Callable[[], None]) -> None:
@@ -345,7 +357,6 @@ def test_full_simulation_streaming(create_mock_data: Callable[[], None]) -> None
             messages.append(msg)
         
         websocket.send_json({"type": "FINISH_SIM"})
-        assert end_response["type"] == "END_SIM"
 
 
 

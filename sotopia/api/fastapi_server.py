@@ -615,7 +615,6 @@ class SotopiaFastAPI(FastAPI):
         @self.websocket("/ws/simulation")
         async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
             manager = SimulationManager()
-
             token_status = await manager.verify_token(token)
             if not token_status["is_valid"]:
                 await websocket.close(code=1008, reason=token_status["msg"])
@@ -623,10 +622,10 @@ class SotopiaFastAPI(FastAPI):
 
             try:
                 await websocket.accept()
-
                 while True:
                     start_msg = await websocket.receive_json()
                     if start_msg.get("type") != WSMessageType.START_SIM.value:
+                        await asyncio.sleep(0)
                         continue
                     mode = start_msg["data"].get("mode", "full")  # Default to full simulation if not provided
                     async with manager.state.start_simulation(token):
@@ -649,17 +648,22 @@ class SotopiaFastAPI(FastAPI):
                         elif mode == "turn":
                             # Enter a loop for turn-based interaction:
                             while True:
+                                await asyncio.sleep(0)  # yield control to prevent deadlock
                                 client_message = await websocket.receive_json()
                                 msg_type = client_message.get("type")
                                 if msg_type == WSMessageType.FINISH_SIM.value:
                                     break
                                 elif msg_type == WSMessageType.TURN_REQUEST.value:
-                                    turn_response = await simulator.process_turn(client_message.get("data", {}))
-                                    await manager.send_message(websocket, WSMessageType.TURN_RESPONSE, turn_response)
+                                    try:
+                                        turn_response = await simulator.process_turn(client_message.get("data", {}))
+                                        await manager.send_message(websocket, WSMessageType.TURN_RESPONSE, turn_response)
+                                    except Exception as e:
+                                        logger.error(f"Error processing turn: {e}")
+                                        await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
                                 else:
-                                    # Handle or ignore other types of messages as needed.
-                                    pass
+                                    await asyncio.sleep(0)
                         await manager.send_message(websocket, WSMessageType.END_SIM, {})
+                        break
 
             except WebSocketDisconnect:
                 logger.info(f"Client disconnected: {token}")

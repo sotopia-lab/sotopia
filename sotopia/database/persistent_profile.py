@@ -89,7 +89,6 @@ class BaseEnvironmentProfile(BaseModel):
         description="The tag of the environment, used for searching, could be convenient to document environment profiles from different works and sources",
     )
 
-
 class EnvironmentProfile(BaseEnvironmentProfile, JsonModel):
     pass
 

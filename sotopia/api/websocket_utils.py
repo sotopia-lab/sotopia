@@ -80,6 +80,7 @@ def get_env_agents(
 
     agent_list = [
         LLMAgent(
+            agent_name=agent_profile.pk,
             agent_profile=agent_profile,
             model_name=agent_models[idx],
         )
