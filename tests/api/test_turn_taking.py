@@ -7,66 +7,68 @@ from sotopia.database import (
     RelationshipProfile,
     CustomEvaluationDimension,
     CustomEvaluationDimensionList,
-    )
+)
 from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
-from typing import Callable, Generator, Any
+from typing import Callable, Generator
 import logging
+
 logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 client = TestClient(app)
 
+
 def create_dummy_episode_log() -> None:
     episode = EpisodeLog(
-    environment="tmppk_env_profile",
-    agents=["tmppk_agent1", "tmppk_agent2"],
-    messages=[
-        [
+        environment="tmppk_env_profile",
+        agents=["tmppk_agent1", "tmppk_agent2"],
+        messages=[
+            [
+                (
+                    "tmppk_agent1",
+                    "tmppk_agent2",
+                    SimpleMessage(message="Hello").to_natural_language(),
+                ),
+                (
+                    "tmppk_agent2",
+                    "tmppk_agent1",
+                    SimpleMessage(message="Hi").to_natural_language(),
+                ),
+            ],
+            [
+                (
+                    "Environment",
+                    "tmppk_agent1",
+                    SimpleMessage(
+                        message="Welcome to the simulation"
+                    ).to_natural_language(),
+                ),
+            ],
+        ],
+        rewards=[
+            (0, {"believability": 9.0}),
             (
-                "tmppk_agent1",
-                "tmppk_agent2",
-                SimpleMessage(message="Hello").to_natural_language(),
-            ),
-            (
-                "tmppk_agent2",
-                "tmppk_agent1",
-                SimpleMessage(message="Hi").to_natural_language(),
+                0,
+                {
+                    "believability": 9.0,
+                    "relationship": 2.0,
+                    "knowledge": 1.0,
+                    "secret": 0.0,
+                    "social_rules": 0.0,
+                    "financial_and_material_benefits": 0.0,
+                    "goal": 10.0,
+                    "overall_score": 0,
+                },
             ),
         ],
-        [
-            (
-                "Environment",
-                "tmppk_agent1",
-                SimpleMessage(message="Welcome to the simulation").to_natural_language(),
-            ),
-        ],
-    ],
-    rewards=[
-        (0, {"believability": 9.0}),
-        (
-            0,
-            {
-                "believability": 9.0,
-                "relationship": 2.0,
-                "knowledge": 1.0,
-                "secret": 0.0,
-                "social_rules": 0.0,
-                "financial_and_material_benefits": 0.0,
-                "goal": 10.0,
-                "overall_score": 0,
-            },
-        ),
-    ],
-    reasoning="",
-    pk="tmppk_episode_log",
-    rewards_prompt="",
-    tag="test_tag",
+        reasoning="",
+        pk="tmppk_episode_log",
+        rewards_prompt="",
+        tag="test_tag",
     )
     episode.save()
-
 
 
 @pytest.fixture
@@ -79,6 +81,7 @@ def create_mock_data(request: pytest.FixtureRequest) -> Generator[None, None, No
     - A custom evaluation dimension and list
     Then yields control to the tests and performs cleanup afterward.
     """
+
     # Create dummy agent profiles
     def _create_mock_agent_profiles() -> None:
         AgentProfile(
@@ -187,7 +190,7 @@ def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog) -> None
                 "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
                 "evaluator_model": "gpt-4o",
                 "evaluation_dimension_list_name": "test_dimension_list",
-                "mode": "turn"
+                "mode": "turn",
             },
         }
         websocket.send_json(start_msg)
@@ -195,14 +198,11 @@ def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog) -> None
         # server_init = websocket.receive_json()
         # logging.info(f"Received initial message: {server_init}")
         # assert server_init["type"] in ("SERVER_MSG", "messages")
-        
+
         # Send a TURN_REQUEST.
         turn_request = {
             "type": "TURN_REQUEST",
-            "data": {
-                "agent_id": "John Doe",
-                "content": "Hello, how are you?"
-            }
+            "data": {"agent_id": "John Doe", "content": "Hello, how are you?"},
         }
         websocket.send_json(turn_request)
         logging.info("Sent TURN_REQUEST.")
@@ -237,7 +237,7 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
                 "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
                 "evaluator_model": "gpt-4o",
                 "evaluation_dimension_list_name": "test_dimension_list",
-                "mode": "turn"
+                "mode": "turn",
             },
         }
         websocket.send_json(start_msg)
@@ -247,8 +247,8 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
                 "type": "TURN_REQUEST",
                 "data": {
                     "agent_id": "Jane Doe",
-                    "content": f"Turn {i+1}: message content"
-                }
+                    "content": f"Turn {i+1}: message content",
+                },
             }
             websocket.send_json(turn_request)
             response = websocket.receive_json()
@@ -260,7 +260,7 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
                 break
             else:
                 assert data["agent_response"]  # non-empty response expected
-        
+
         websocket.send_json({"type": "FINISH_SIM"})
 
 
@@ -277,7 +277,7 @@ def test_alternating_agents(create_mock_data: Callable[[], None]) -> None:
                 "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
                 "evaluator_model": "gpt-4o",
                 "evaluation_dimension_list_name": "test_dimension_list",
-                "mode": "turn"
+                "mode": "turn",
             },
         }
         websocket.send_json(start_msg)
@@ -287,15 +287,15 @@ def test_alternating_agents(create_mock_data: Callable[[], None]) -> None:
                 "type": "TURN_REQUEST",
                 "data": {
                     "agent_id": agents[i % 2],
-                    "content": f"Message from turn {i+1}"
-                }
+                    "content": f"Message from turn {i+1}",
+                },
             }
             websocket.send_json(turn_request)
             response = websocket.receive_json()
             assert response["type"] == "TURN_RESPONSE"
             data = response["data"]
             assert data["agent_id"] == agents[i % 2]
-        
+
         websocket.send_json({"type": "FINISH_SIM"})
 
 
@@ -312,22 +312,22 @@ def test_invalid_agent_id(create_mock_data: Callable[[], None]) -> None:
                 "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
                 "evaluator_model": "gpt-4o",
                 "evaluation_dimension_list_name": "test_dimension_list",
-                "mode": "turn"
+                "mode": "turn",
             },
         }
         websocket.send_json(start_msg)
         turn_request = {
-        "type": "TURN_REQUEST",
-        "data": {
-            "agent_id": "nonexistent_agent",
-            "content": "This should trigger an error"
-        }
+            "type": "TURN_REQUEST",
+            "data": {
+                "agent_id": "nonexistent_agent",
+                "content": "This should trigger an error",
+            },
         }
         websocket.send_json(turn_request)
         error_response = websocket.receive_json()
         assert error_response["type"] == "ERROR"
         assert "not found" in error_response["data"]["details"]
-        
+
         websocket.send_json({"type": "FINISH_SIM"})
 
 
@@ -345,7 +345,7 @@ def test_full_simulation_streaming(create_mock_data: Callable[[], None]) -> None
                 "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
                 "evaluator_model": "gpt-4o",
                 "evaluation_dimension_list_name": "test_dimension_list",
-                "mode": "full"
+                "mode": "full",
             },
         }
         websocket.send_json(start_msg)
@@ -355,8 +355,5 @@ def test_full_simulation_streaming(create_mock_data: Callable[[], None]) -> None
             msg = websocket.receive_json()
             assert msg["type"] in ["SERVER_MSG", "messages"]
             messages.append(msg)
-        
+
         websocket.send_json({"type": "FINISH_SIM"})
-
-
-
