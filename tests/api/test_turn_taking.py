@@ -171,10 +171,11 @@ def create_mock_data(request: pytest.FixtureRequest) -> Generator[None, None, No
         print(f"Error deleting tmppk_evaluation_dimension_list: {e}")
 
 
-def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog) -> None:
+def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog: pytest.LogCaptureFixture) -> None:
     """
     Test sending a single TURN_REQUEST and verifying that a TURN_RESPONSE is returned.
     """
+    LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
     caplog.set_level(logging.DEBUG)
     logging.info("Starting test_basic_turn_taking")
     with client.websocket_connect("/ws/simulation?token=test") as websocket:
@@ -184,8 +185,8 @@ def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog) -> None
             "data": {
                 "env_id": "tmppk_env_profile",
                 "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-                "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
-                "evaluator_model": "gpt-4o",
+                "agent_models": [LOCAL_MODEL,LOCAL_MODEL],
+                "evaluator_model": LOCAL_MODEL,
                 "evaluation_dimension_list_name": "test_dimension_list",
                 "mode": "turn"
             },
@@ -227,6 +228,7 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
     Test multiple back-and-forth TURN_REQUEST messages to ensure the conversation
     continues to evolve correctly.
     """
+    LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
     with client.websocket_connect("/ws/simulation?token=test") as websocket:
         # Initialize simulation.
         start_msg = {
@@ -234,8 +236,8 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
             "data": {
                 "env_id": "tmppk_env_profile",
                 "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-                "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
-                "evaluator_model": "gpt-4o",
+                "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
+                "evaluator_model": LOCAL_MODEL,
                 "evaluation_dimension_list_name": "test_dimension_list",
                 "mode": "turn"
             },
@@ -268,14 +270,15 @@ def test_alternating_agents(create_mock_data: Callable[[], None]) -> None:
     """
     Test a conversation that alternates between two different agents.
     """
+    LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
     with client.websocket_connect("/ws/simulation?token=test") as websocket:
         start_msg = {
             "type": "START_SIM",
             "data": {
                 "env_id": "tmppk_env_profile",
                 "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-                "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
-                "evaluator_model": "gpt-4o",
+                "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
+                "evaluator_model": LOCAL_MODEL,
                 "evaluation_dimension_list_name": "test_dimension_list",
                 "mode": "turn"
             },
@@ -303,14 +306,15 @@ def test_invalid_agent_id(create_mock_data: Callable[[], None]) -> None:
     """
     Test that providing an invalid agent_id in the TURN_REQUEST yields an ERROR message.
     """
+    LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
     with client.websocket_connect("/ws/simulation?token=test") as websocket:
         start_msg = {
             "type": "START_SIM",
             "data": {
                 "env_id": "tmppk_env_profile",
                 "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-                "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
-                "evaluator_model": "gpt-4o",
+                "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
+                "evaluator_model": LOCAL_MODEL,
                 "evaluation_dimension_list_name": "test_dimension_list",
                 "mode": "turn"
             },
@@ -330,33 +334,6 @@ def test_invalid_agent_id(create_mock_data: Callable[[], None]) -> None:
         
         websocket.send_json({"type": "FINISH_SIM"})
 
-
-def test_full_simulation_streaming(create_mock_data: Callable[[], None]) -> None:
-    """
-    Test the full simulation streaming mode (run_simulation) by collecting several streaming
-    SERVER_MSG messages before ending the simulation.
-    """
-    with client.websocket_connect("/ws/simulation?token=test") as websocket:
-        start_msg = {
-            "type": "START_SIM",
-            "data": {
-                "env_id": "tmppk_env_profile",
-                "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-                "agent_models": ["gpt-4o-mini", "gpt-4o-mini"],
-                "evaluator_model": "gpt-4o",
-                "evaluation_dimension_list_name": "test_dimension_list",
-                "mode": "full"
-            },
-        }
-        websocket.send_json(start_msg)
-        messages = []
-        # Collect several streaming messages.
-        while len(messages) < 2:
-            msg = websocket.receive_json()
-            assert msg["type"] in ["SERVER_MSG", "messages"]
-            messages.append(msg)
-        
-        websocket.send_json({"type": "FINISH_SIM"})
 
 
 

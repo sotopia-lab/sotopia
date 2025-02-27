@@ -231,7 +231,7 @@ class WebSocketSotopiaSimulator:
                 "messages": epilog.dict(),
             }
 
-    async def process_turn(self, client_data: dict) -> dict:
+    async def process_turn(self, client_data: dict[str, Any]) -> dict[str, Any]:
         """
         Process a single turn where client_data contains fields like:
         - agent_id: which agent should act.
@@ -245,6 +245,8 @@ class WebSocketSotopiaSimulator:
         
         # Identify the specific agent by its ID provided by the client.
         agent_id = client_data.get("agent_id")
+        if not isinstance(agent_id, str):
+            raise ValueError("agent_id must be provided as a string")
         if agent_id not in self.agents:
             raise ValueError(f"Agent with id {agent_id} not found")
         
