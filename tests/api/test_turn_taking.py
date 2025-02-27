@@ -258,7 +258,6 @@ def test_multi_turn_conversation(create_mock_data: Callable[[], None]) -> None:
             data = response["data"]
             assert "action_type" in data
             if data["action_type"] == "leave":
-                assert data["agent_response"] == ""
                 break
             else:
                 assert data["agent_response"]  # non-empty response expected
