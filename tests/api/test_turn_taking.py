@@ -174,7 +174,9 @@ def create_mock_data(request: pytest.FixtureRequest) -> Generator[None, None, No
         print(f"Error deleting tmppk_evaluation_dimension_list: {e}")
 
 
-def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog: pytest.LogCaptureFixture) -> None:
+def test_basic_turn_taking(
+    create_mock_data: Callable[[], None], caplog: pytest.LogCaptureFixture
+) -> None:
     """
     Test sending a single TURN_REQUEST and verifying that a TURN_RESPONSE is returned.
     """
@@ -188,7 +190,7 @@ def test_basic_turn_taking(create_mock_data: Callable[[], None], caplog: pytest.
             "data": {
                 "env_id": "tmppk_env_profile",
                 "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-                "agent_models": [LOCAL_MODEL,LOCAL_MODEL],
+                "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
                 "evaluator_model": LOCAL_MODEL,
                 "evaluation_dimension_list_name": "test_dimension_list",
                 "mode": "turn",
@@ -332,7 +334,3 @@ def test_invalid_agent_id(create_mock_data: Callable[[], None]) -> None:
         assert "not found" in error_response["data"]["details"]
 
         websocket.send_json({"type": "FINISH_SIM"})
-
-
-
-

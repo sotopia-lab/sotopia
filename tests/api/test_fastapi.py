@@ -352,7 +352,7 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
                 "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
                 "evaluator_model": LOCAL_MODEL,
                 "evaluation_dimension_list_name": "test_dimension_list",
-                "mode": "full"
+                "mode": "full",
             },
         }
         websocket.send_json(start_msg)
