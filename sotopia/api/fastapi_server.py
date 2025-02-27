@@ -627,7 +627,9 @@ class SotopiaFastAPI(FastAPI):
                     if start_msg.get("type") != WSMessageType.START_SIM.value:
                         await asyncio.sleep(0)
                         continue
-                    mode = start_msg["data"].get("mode", "full")  # Default to full simulation if not provided
+                    mode = start_msg["data"].get(
+                        "mode", "full"
+                    )  # Default to full simulation if not provided
                     async with manager.state.start_simulation(token):
                         simulator = await manager.create_simulator(
                             env_id=start_msg["data"]["env_id"],
@@ -648,18 +650,30 @@ class SotopiaFastAPI(FastAPI):
                         elif mode == "turn":
                             # Enter a loop for turn-based interaction:
                             while True:
-                                await asyncio.sleep(0)  # yield control to prevent deadlock
+                                await asyncio.sleep(
+                                    0
+                                )  # yield control to prevent deadlock
                                 client_message = await websocket.receive_json()
                                 msg_type = client_message.get("type")
                                 if msg_type == WSMessageType.FINISH_SIM.value:
                                     break
                                 elif msg_type == WSMessageType.TURN_REQUEST.value:
                                     try:
-                                        turn_response = await simulator.process_turn(client_message.get("data", {}))
-                                        await manager.send_message(websocket, WSMessageType.TURN_RESPONSE, turn_response)
+                                        turn_response = await simulator.process_turn(
+                                            client_message.get("data", {})
+                                        )
+                                        await manager.send_message(
+                                            websocket,
+                                            WSMessageType.TURN_RESPONSE,
+                                            turn_response,
+                                        )
                                     except Exception as e:
                                         logger.error(f"Error processing turn: {e}")
-                                        await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
+                                        await manager.send_error(
+                                            websocket,
+                                            ErrorType.SIMULATION_ISSUE,
+                                            str(e),
+                                        )
                                 else:
                                     await asyncio.sleep(0)
                         await manager.send_message(websocket, WSMessageType.END_SIM, {})
