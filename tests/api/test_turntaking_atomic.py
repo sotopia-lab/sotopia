@@ -3,11 +3,7 @@ from typing import List, Dict, Any
 import logging
 from pydantic import BaseModel
 from sotopia.database.persistent_profile import RelationshipType
-<<<<<<< HEAD:tests/api/test_turntaking_atomic.py
 from sotopia.api.websocket_utils import build_observation
-=======
-
->>>>>>> 96b64ded57b634854ad22b2f5488adfdd66f8634:tests/api/more_tests.py
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -106,14 +102,7 @@ class DummyEnvProfile:
         self.source = ""  
         self.scenario = "A concrete scenario description that meets the guidelines."
         self.agent_goals = ["Goal1", "Goal2"]
-<<<<<<< HEAD:tests/api/test_turntaking_atomic.py
         self.relationship = RelationshipType.stranger  
-=======
-        # Provide a valid RelationshipType value:
-        self.relationship = (
-            RelationshipType.stranger
-        )  # or another valid member of the enum
->>>>>>> 96b64ded57b634854ad22b2f5488adfdd66f8634:tests/api/more_tests.py
         self.age_constraint = None
         self.occupation_constraint = None
         self.agent_constraint = None
@@ -235,28 +224,12 @@ def dummy_simulator(mp) -> Any:
             self.agents = agents
             self.environment_messages = dummy_msgs
             # Initialize conversation history with the initial environment message.
-<<<<<<< HEAD:tests/api/test_turntaking_atomic.py
             self.conversation_history: List[Dict[str, str]] = [{
                 "role": "environment",
                 "agent": "agent1",
                 "content": dummy_msgs["agent1"].to_natural_language()
             }]
         async def process_turn(self, client_data: dict) -> dict:            
-=======
-            self.conversation_history: List[Dict[str, str]] = [
-                {
-                    "role": "environment",
-                    "agent": "agent1",
-                    "content": dummy_msgs["agent1"].to_natural_language(),
-                }
-            ]
-
-        async def process_turn(self, client_data: dict) -> dict:
-            # Reuse the actual process_turn logic from WebSocketSotopiaSimulator.
-            # Import build_observation from the proper module.
-            from sotopia.api.websocket_utils import build_observation
-
->>>>>>> 96b64ded57b634854ad22b2f5488adfdd66f8634:tests/api/more_tests.py
             # Append client's input.
             self.conversation_history.append(
                 {"role": "client", "content": client_data.get("content", "")}
@@ -325,8 +298,3 @@ async def test_multiple_turns_accumulate_history(dummy_simulator):
     # There should be: 1 (env) + 2*2 messages = 5 messages total.
     assert len(simulator.conversation_history) == initial_length + 4
 
-<<<<<<< HEAD:tests/api/test_turntaking_atomic.py
-=======
-
-# You can add additional atomic tests if needed.
->>>>>>> 96b64ded57b634854ad22b2f5488adfdd66f8634:tests/api/more_tests.py
