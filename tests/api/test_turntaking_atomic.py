@@ -99,7 +99,7 @@ class DummyEnvProfile:
     def __init__(self, pk: str):
         self.pk = pk
         self.codename = "test_codename"
-        self.source = ""  
+        self.source = ""
         self.scenario = "A concrete scenario description that meets the guidelines."
         self.agent_goals = ["Goal1", "Goal2"]
         self.relationship = RelationshipType.stranger  
@@ -230,6 +230,19 @@ def dummy_simulator(mp) -> Any:
                 "content": dummy_msgs["agent1"].to_natural_language()
             }]
         async def process_turn(self, client_data: dict) -> dict:            
+            self.conversation_history: List[Dict[str, str]] = [
+                {
+                    "role": "environment",
+                    "agent": "agent1",
+                    "content": dummy_msgs["agent1"].to_natural_language(),
+                }
+            ]
+
+        async def process_turn(self, client_data: dict) -> dict:
+            # Reuse the actual process_turn logic from WebSocketSotopiaSimulator.
+            # Import build_observation from the proper module.
+            from sotopia.api.websocket_utils import build_observation
+
             # Append client's input.
             self.conversation_history.append(
                 {"role": "client", "content": client_data.get("content", "")}
