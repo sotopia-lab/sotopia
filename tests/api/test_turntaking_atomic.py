@@ -103,11 +103,11 @@ class DummyEnvProfile:
     def __init__(self, pk: str):
         self.pk = pk
         self.codename = "test_codename"
-        self.source = ""  
+        self.source = ""
         self.scenario = "A concrete scenario description that meets the guidelines."
         self.agent_goals = ["Goal1", "Goal2"]
 <<<<<<< HEAD:tests/api/test_turntaking_atomic.py
-        self.relationship = RelationshipType.stranger  
+        self.relationship = RelationshipType.stranger
 =======
         # Provide a valid RelationshipType value:
         self.relationship = (
@@ -241,7 +241,7 @@ def dummy_simulator(mp) -> Any:
                 "agent": "agent1",
                 "content": dummy_msgs["agent1"].to_natural_language()
             }]
-        async def process_turn(self, client_data: dict) -> dict:            
+        async def process_turn(self, client_data: dict) -> dict:
 =======
             self.conversation_history: List[Dict[str, str]] = [
                 {
