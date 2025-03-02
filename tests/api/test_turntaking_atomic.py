@@ -1,5 +1,3 @@
-# test_turntaking_atomic.py
-
 import pytest
 import asyncio
 from typing import List, Dict, Any, Optional, Union
@@ -167,15 +165,9 @@ def test_build_observation() -> None:
 
 def test_get_env_agents(mp: pytest.MonkeyPatch) -> None:
     env, agents, env_msgs = get_env_agents("env1", ["agent1", "agent2"], ["model1", "model2"], "eval_model", "dummy_list")
-    # Our patched LLMAgent.__init__ sets agent_name to agent_profile.pk, so keys come from our dummy profiles.
-    # The real production code may use full names (e.g., "John Doe"). If your dummy construction uses
-    # first_name and last_name, adjust expectation here accordingly.
-    # For this example, we assume we expect full names. If you wish for keys "agent1"/"agent2", update dummy accordingly.
     assert set(agents.keys()) == {"John Doe", "Jane Doe"}
     for agent in agents.values():
-        # Check that agent.goal is one of the environment goals.
-        # (Make sure to match the case; our DummyEnvProfile has ["Goal1", "Goal2"] in this version.)
-        assert agent.goal in ["Goal1", "Goal2"]
+        assert agent.goal in ["goal1", "goal2"]
     assert isinstance(env_msgs, dict)
 
 # =============================================================================
@@ -195,7 +187,7 @@ def dummy_simulator(mp: pytest.MonkeyPatch) -> Any:
         def __init__(self, goals: List[str]) -> None:
             self.agents: List[str] = list(agents_instance.keys())
             self.profile = type("DummyProfile", (), {"agent_goals": goals, "pk": "env1"})
-    dummy_env = DummyEnv(["Goal1"])
+    dummy_env = DummyEnv(["goal1"])
     dummy_msgs: Dict[str, Any] = {
         "agent1": DummyObs(),
     }
@@ -211,7 +203,6 @@ def dummy_simulator(mp: pytest.MonkeyPatch) -> Any:
             }]
         async def process_turn(self, client_data: Dict[str, str]) -> Dict[str, Union[int, str]]:
             self.conversation_history.append({"role": "client", "content": client_data.get("content", "")})
-            # Ensure agent_id is not None.
             agent_id_raw: Optional[str] = client_data.get("agent_id")
             if agent_id_raw is None:
                 raise ValueError("No agent_id provided")
