@@ -5,14 +5,6 @@ import asyncio
 from typing import List, Dict, Any, Optional, Union
 import logging
 from pydantic import BaseModel
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    force=True,
-)
-
-# Import required components from the Sotopia codebase.
 from sotopia.api.websocket_utils import (
     build_observation,
     get_env_agents,
@@ -29,6 +21,15 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.database import EnvironmentProfile, AgentProfile, EvaluationDimensionBuilder
 from sotopia.database.persistent_profile import RelationshipType
+
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    force=True,
+)
+
+# Import required components from the Sotopia codebase.
 
 # =============================================================================
 # Dummy classes to simulate database objects
@@ -206,7 +207,6 @@ def dummy_simulator(mp: pytest.MonkeyPatch) -> Any:
                 "content": dummy_msgs["agent1"].to_natural_language()
             }]
         async def process_turn(self, client_data: Dict[str, str]) -> Dict[str, Union[int, str]]:
-            from sotopia.api.websocket_utils import build_observation
             self.conversation_history.append({"role": "client", "content": client_data.get("content", "")})
             agent_id: str = client_data.get("agent_id")
             if agent_id not in self.agents:
