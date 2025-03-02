@@ -3,13 +3,6 @@ from typing import List, Dict, Any
 import logging
 from pydantic import BaseModel
 from sotopia.database.persistent_profile import RelationshipType
-from sotopia.api.websocket_utils import build_observation
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    force=True,
-)
-
 from sotopia.api.websocket_utils import (
     build_observation,
     get_env_agents,
@@ -20,6 +13,11 @@ from sotopia.database import (
     EnvironmentProfile,
     AgentProfile,
     EvaluationDimensionBuilder,
+)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    force=True,
 )
 
 # =============================================================================
@@ -229,20 +227,8 @@ def dummy_simulator(mp) -> Any:
                 "agent": "agent1",
                 "content": dummy_msgs["agent1"].to_natural_language()
             }]
-        async def process_turn(self, client_data: dict) -> dict:            
-            self.conversation_history: List[Dict[str, str]] = [
-                {
-                    "role": "environment",
-                    "agent": "agent1",
-                    "content": dummy_msgs["agent1"].to_natural_language(),
-                }
-            ]
 
         async def process_turn(self, client_data: dict) -> dict:
-            # Reuse the actual process_turn logic from WebSocketSotopiaSimulator.
-            # Import build_observation from the proper module.
-            from sotopia.api.websocket_utils import build_observation
-
             # Append client's input.
             self.conversation_history.append(
                 {"role": "client", "content": client_data.get("content", "")}
