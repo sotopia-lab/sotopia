@@ -4,13 +4,13 @@ from typing import List, Dict, Any
 import logging
 from pydantic import BaseModel
 from sotopia.database.persistent_profile import RelationshipType
+from sotopia.api.websocket_utils import build_observation
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
     force=True,
 )
 
-# Import required components from the Sotopia codebase.
 from sotopia.api.websocket_utils import (
     build_observation,
     get_env_agents,
@@ -92,18 +92,16 @@ class DummyEnvProfile:
     def __init__(self, pk: str):
         self.pk = pk
         self.codename = "test_codename"
-        self.source = ""  # or provide a meaningful default if needed
+        self.source = ""  
         self.scenario = "A concrete scenario description that meets the guidelines."
         self.agent_goals = ["Goal1", "Goal2"]
-        # Provide a valid RelationshipType value:
-        self.relationship = RelationshipType.stranger  # or another valid member of the enum
+        self.relationship = RelationshipType.stranger  
         self.age_constraint = None
         self.occupation_constraint = None
         self.agent_constraint = None
         self.tag = "test_tag"
 
 
-# Monkey-patch AgentProfile.get and EnvironmentProfile.get to return dummy objects.
 def fake_agent_get(agent_id: str) -> DummyAgentProfile:
     dummy = {
         "agent1": DummyAgentProfile("agent1", first_name="John", last_name="Doe", age=30),
@@ -123,7 +121,6 @@ def fake_env_get(env_id: str) -> DummyEnvProfile:
 
 @pytest.fixture
 def mp(monkeypatch):
-    # Use the provided monkeypatch fixture, now available as the parameter "monkeypatch".
     monkeypatch.setattr(EnvironmentProfile, "get", fake_env_get)
     monkeypatch.setattr(AgentProfile, "get", fake_agent_get)
     monkeypatch.setattr(
@@ -145,7 +142,6 @@ def test_get_env_agents(mp):
     agent names (which should be the pks) and non-empty environment messages.
     """
     env, agents, env_msgs = get_env_agents("env1", ["agent1", "agent2"], ["model1", "model2"], "eval_model", "dummy_list")
-    # Expect keys to be the dummy pks.
     assert set(agents.keys()) == {"John Doe", "Jane Doe"}
 
     # Each agent should have been assigned one of the dummy environment goals.
@@ -195,10 +191,7 @@ def dummy_simulator(mp) -> Any:
                 "agent": "agent1",
                 "content": dummy_msgs["agent1"].to_natural_language()
             }]
-        async def process_turn(self, client_data: dict) -> dict:
-            # Reuse the actual process_turn logic from WebSocketSotopiaSimulator.
-            # Import build_observation from the proper module.
-            from sotopia.api.websocket_utils import build_observation
+        async def process_turn(self, client_data: dict) -> dict:            
             # Append client's input.
             self.conversation_history.append({
                 "role": "client",
@@ -263,4 +256,3 @@ async def test_multiple_turns_accumulate_history(dummy_simulator):
     # There should be: 1 (env) + 2*2 messages = 5 messages total.
     assert len(simulator.conversation_history) == initial_length + 4
 
-# You can add additional atomic tests if needed.
