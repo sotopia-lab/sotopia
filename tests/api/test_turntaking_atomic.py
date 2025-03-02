@@ -208,11 +208,11 @@ def dummy_simulator(mp: pytest.MonkeyPatch) -> Any:
             }]
         async def process_turn(self, client_data: Dict[str, str]) -> Dict[str, Union[int, str]]:
             self.conversation_history.append({"role": "client", "content": client_data.get("content", "")})
-            agent_id: str = client_data.get("agent_id")
+            agent_id: str | None = client_data.get("agent_id")
             if agent_id not in self.agents:
                 raise ValueError(f"Agent with id {agent_id} not found")
             obs: Observation = build_observation(len(self.conversation_history), self.conversation_history)
-            agent = self.agents[agent_id]  # type: ignore
+            agent = self.agents[agent_id]
             agent_action: AgentAction = await agent.aact(obs)
             self.conversation_history.append({"role": "agent", "content": agent_action.argument})
             return {
