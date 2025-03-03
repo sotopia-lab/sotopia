@@ -1,2 +1,63 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.app_world_agent.app_world_agent", "examples.experimental.nodes.scene_context_node", "examples.experimental.nodes.chat_print_node", "examples.experimental.nodes.app_world_node"]
+extra_modules = ["examples.experimental.sotopia_original_replica.llm_agent_sotopia", "examples.experimental.nodes.chat_print_node", "examples.experimental.nodes.app_world_node", "sotopia.experimental.agents.moderator"]
+
+[[nodes]]
+node_name = "moderator"
+node_class = "moderator"
+
+[nodes.node_args]
+node_name = "moderator"
+output_channels = ["moderator:Harry", "moderator:Ron", "moderator:AppWorld"]
+input_channels = ["Harry:moderator", "Ron:moderator", "AppWorld:moderator"]
+agent_mapping = {"moderator:Harry" = "Harry", "moderator:Ron" = "Ron"}
+scenario = "Two friends are planning a roadtrip from Seattle to Pittsburgh."
+max_turns = 10
+push_to_db = false
+
+[[nodes]]
+node_name = "Harry"
+node_class = "llm_agent"
+
+[nodes.node_args]
+node_name = "Harry"
+input_channels = ["moderator:Harry"]
+output_channel = "Harry:moderator"
+goal = "Your goal is to minimize distractions during the roadtrip."
+model_name = "gpt-4o-mini" 
+agent_name = "Harry"
+
+[[nodes]]
+node_name = "Ron"
+node_class = "llm_agent"
+
+[nodes.node_args]
+node_name = "Ron"
+input_channels = ["moderator:Ron"]
+output_channel = "Ron:moderator"
+goal = "Your goal is to explore different historical sites as much as possible."
+model_name = "gpt-4o-mini"
+agent_name = "Ron"
+
+[[nodes]]
+node_name = "chat_print"
+node_class = "chat_print"
+
+[nodes.node_args]
+node_name = "chat_print"
+env_agents = ["Harry", "Ron"]
+
+[nodes.node_args.print_channel_types]
+"Harry:moderator" = "agent_action"
+"Ron:moderator" = "agent_action"
+
+
+[[nodes]]
+node_name = "AppWorld"
+node_class = "app_world"
+
+[nodes.node_args]
+node_name = "AppWorld"
+input_channel = "moderator:AppWorld"
+output_channel = "AppWorld:moderator"
+input_type_str = "agent_action"
+output_type_str = "agent_action"

@@ -6,8 +6,8 @@ These agents are designed to interact with mocked APIs provided by AppWorld.
 
 ## Agents Overview
 
-- **Harry**: An LLM agent tasked to plan a roadtrip with Ron. Has extensive driving experience, enjoys country music, and loves food.
-- **Ron**: An LLM agent tasked to plan a roadtrip with Harry. Just started learning how to drive. Likes classical and modern pop. Loves going to historical sites.
+- **Harry**: An LLM agent tasked to plan a roadtrip with Ron. Prefers minimal distractions during the roadtrip and want to get to Pittsburgh as soon as possible.
+- **Ron**: An LLM agent tasked to plan a roadtrip with Harry. Just started learning how to drive. Likes classical and modern pop. Loves going to historical sites and enjoys exploring.
 
 ### Actions Available to LLM Agents
 
