@@ -1,13 +1,5 @@
-import sys
-import json
 import logging
-from typing import Dict, Any, Literal
 
-from rich.console import Console
-from rich.syntax import Syntax
-from rich.panel import Panel
-from rich.text import Text as RichText
-from rich.align import Align
 from rich.logging import RichHandler
 
 from aact import NodeFactory

@@ -23,7 +23,7 @@ node_name = "Harry"
 input_channels = ["moderator:Harry"]
 output_channel = "Harry:moderator"
 goal = "Your goal is to minimize distractions during the roadtrip."
-model_name = "gpt-4o-mini" 
+model_name = "gpt-4o-mini"
 agent_name = "Harry"
 
 [[nodes]]

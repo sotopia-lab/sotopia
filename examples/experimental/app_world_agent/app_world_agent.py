@@ -1,11 +1,9 @@
-from argparse import Action
 import logging
 import sys
 from enum import Enum
 from rich.logging import RichHandler
 from pydantic import Field
 
-from typing import Optional
 
 from aact import Message, NodeFactory
 from aact.messages import Text, Tick, DataModel
