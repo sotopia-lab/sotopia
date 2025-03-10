@@ -82,3 +82,13 @@ node_class = "evaluator"
 input_channels = ["moderator:evaluator"]
 output_channels = ["evaluator:moderator"]
 model_name = "gpt-4"
+
+
+[[nodes]]
+node_name = "redis_agent"
+node_class = "redis_agent"
+
+[nodes.node_args]
+input_channels = ["moderator:redis_agent"]
+output_channels = ["redis_agent:moderator"]
+control_channel = ["redis_agent:websocket_uuid"]

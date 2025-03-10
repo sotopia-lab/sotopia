@@ -157,6 +157,8 @@ class SimulationManager:
         agent_models: list[str],
         evaluator_model: str,
         evaluation_dimension_list_name: str,
+        env_profile_dict: dict[str, Any],
+        agent_profile_dicts: list[dict[str, Any]],
     ) -> WebSocketSotopiaSimulator:
         try:
             return WebSocketSotopiaSimulator(
@@ -165,6 +167,8 @@ class SimulationManager:
                 agent_models=agent_models,
                 evaluator_model=evaluator_model,
                 evaluation_dimension_list_name=evaluation_dimension_list_name,
+                env_profile_dict=env_profile_dict,
+                agent_profile_dicts=agent_profile_dicts,
             )
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
@@ -414,6 +418,35 @@ class SotopiaFastAPI(FastAPI):
         self.setup_routes()
 
     def setup_routes(self) -> None:
+        @self.get("/health", status_code=200)
+        async def health_check() -> dict[str, Any]:
+            """Comprehensive health check endpoint"""
+            health_status = {
+                "status": "ok",
+                "message": "All systems operational",
+                "components": {},
+            }
+
+            # Check Redis connection
+            try:
+                redis_conn = get_redis_connection()
+                redis_conn.ping()
+                health_status["components"]["redis"] = "connected"
+            except Exception as e:
+                health_status["status"] = "degraded"
+                health_status["components"]["redis"] = f"error: {str(e)}"
+
+            # Check database connections by attempting a simple query
+            try:
+                # Simple test query that should be fast
+                _ = EnvironmentProfile.all()
+                health_status["components"]["database"] = "connected"
+            except Exception as e:
+                health_status["status"] = "degraded"
+                health_status["components"]["database"] = f"error: {str(e)}"
+
+            return health_status
+
         self.get("/scenarios", response_model=list[EnvironmentProfile])(
             get_scenarios_all
         )
@@ -628,13 +661,18 @@ class SotopiaFastAPI(FastAPI):
                     start_msg = await websocket.receive_json()
                     if start_msg.get("type") != WSMessageType.START_SIM.value:
                         continue
-
                     async with manager.state.start_simulation(token):
                         simulator = await manager.create_simulator(
                             env_id=start_msg["data"]["env_id"],
                             agent_ids=start_msg["data"]["agent_ids"],
                             agent_models=start_msg["data"].get(
                                 "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
+                            ),
+                            env_profile_dict=start_msg["data"].get(
+                                "env_profile_dict", {}
+                            ),
+                            agent_profile_dicts=start_msg["data"].get(
+                                "agent_profile_dicts", []
                             ),
                             evaluator_model=start_msg["data"].get(
                                 "evaluator_model", "gpt-4o"
@@ -643,6 +681,7 @@ class SotopiaFastAPI(FastAPI):
                                 "evaluation_dimension_list_name", "sotopia"
                             ),
                         )
+                        print(f"Simulator created: {simulator}")
                         await manager.run_simulation(websocket, simulator)
 
             except WebSocketDisconnect:

@@ -31,12 +31,12 @@ class AgentAction(DataModel):
     def to_natural_language(self) -> str:
         match self.action_type:
             case "none":
-                return "did nothing"
+                return f"{self.agent_name} did nothing."
             case "speak":
-                return f'said: "{self.argument}"'
+                return f'{self.agent_name} said: "{self.argument}"'
             case "non-verbal communication":
-                return f"[{self.action_type}] {self.argument}"
+                return f'{self.agent_name} {self.action_type}: "{self.argument}"'
             case "action":
-                return f"[{self.action_type}] {self.argument}"
+                return f'{self.agent_name} {self.action_type}: "{self.argument}"'
             case "leave":
-                return "left the conversation"
+                return f"{self.agent_name} left."

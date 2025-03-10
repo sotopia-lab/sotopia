@@ -140,7 +140,6 @@ def compose_env_agent_combo(
 ) -> EnvAgentCombo[Observation, AgentAction]:
     env = ParallelSotopiaEnv(
         env_profile=env_profile,
-        model_name="gpt-4o-mini",
         evaluators=[RuleBasedTerminatedEvaluator(max_turn_number=1, max_stale_turn=2)],
         terminal_evaluators=[
             EpisodeLLMEvaluator(

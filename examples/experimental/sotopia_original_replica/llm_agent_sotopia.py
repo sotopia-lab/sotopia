@@ -63,20 +63,13 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             assert (
                 self.background is not None and self.name is not None
             ), "Background and name must be provided"
-            if " " in self.name:
-                first_name, last_name = self.name.split(" ", 1)
-            else:
-                first_name = self.name
-                last_name = ""
-            profile = AgentProfile(
-                first_name=first_name, last_name=last_name, **self.background
-            )
+            profile = AgentProfile(**self.background)
         else:
             assert not self.agent_profile_pk == "", "Agent profile pk must be provided"
             profile = AgentProfile.get(pk=self.agent_profile_pk)
 
         self.agent_profile_pk = profile.pk
-        self.name = " ".join([profile.first_name, profile.last_name]).strip()
+        self.name = profile.first_name
         self.background = profile.model_dump()
 
     def _format_message_history(self, message_history: list[Observation]) -> str:

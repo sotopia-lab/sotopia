@@ -211,12 +211,6 @@ async def arun_one_episode(
             rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
             rewards_prompt=info["rewards_prompt"]["overall_prompt"],
         )
-        rich.print(epilog.rewards_prompt)
-        agent_profiles, conversation = epilog.render_for_humans()
-        for agent_profile in agent_profiles:
-            rich.print(agent_profile)
-        for message in conversation:
-            rich.print(message)
 
         if streaming:
             # yield the rewards and reasonings

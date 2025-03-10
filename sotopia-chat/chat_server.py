@@ -58,7 +58,6 @@ async def _start_server_with_two_session_ids_and_agent_env_combo(
     env_agent_combo_storage = EnvAgentComboStorage.get(agent_env_combo_pk)
     env = ParallelSotopiaEnv(
         env_profile=EnvironmentProfile.get(env_agent_combo_storage.env_id),
-        model_name="gpt-4",
         action_order="round-robin",
         evaluators=[
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
@@ -91,7 +90,6 @@ async def _start_server_with_one_session_id_and_agent_env_combo(
     env_agent_combo_storage = EnvAgentComboStorage.get(agent_env_combo_pk)
     env = ParallelSotopiaEnv(
         env_profile=EnvironmentProfile.get(env_agent_combo_storage.env_id),
-        model_name="gpt-4",
         action_order="round-robin",
         evaluators=[
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
