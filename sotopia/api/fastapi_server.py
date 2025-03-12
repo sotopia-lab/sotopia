@@ -159,6 +159,7 @@ class SimulationManager:
         evaluation_dimension_list_name: str,
         env_profile_dict: dict[str, Any],
         agent_profile_dicts: list[dict[str, Any]],
+        max_turns: int = 20,
     ) -> WebSocketSotopiaSimulator:
         try:
             return WebSocketSotopiaSimulator(
@@ -169,6 +170,7 @@ class SimulationManager:
                 evaluation_dimension_list_name=evaluation_dimension_list_name,
                 env_profile_dict=env_profile_dict,
                 agent_profile_dicts=agent_profile_dicts,
+                max_turns=max_turns,
             )
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
@@ -680,6 +682,7 @@ class SotopiaFastAPI(FastAPI):
                             evaluation_dimension_list_name=start_msg["data"].get(
                                 "evaluation_dimension_list_name", "sotopia"
                             ),
+                            max_turns=start_msg["data"].get("max_turns", 20),
                         )
                         print(f"Simulator created: {simulator}")
                         await manager.run_simulation(websocket, simulator)

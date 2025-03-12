@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import List, Optional, Any
+from typing import Dict, Any
 from rich.console import Console
 from rich.logging import RichHandler
 import rich
@@ -60,52 +60,17 @@ async def check_api_connection() -> bool:
         return False
 
 
-async def run_simulation(
-    env_id: str,
-    agent_ids: List[str],
-    agent_models: Optional[List[str]] = None,
-    env_profile_dict: Optional[dict[str, Any]] = None,
-    agent_profile_dicts: Optional[List[dict[str, Any]]] = None,
-    evaluator_model: Optional[str] = None,
-    evaluation_dimension_list_name: Optional[str] = None,
-) -> None:
+async def run_simulation(start_message: Dict[str, Any]) -> None:
     """
     Connect to the WebSocket endpoint and run a simulation.
 
     Args:
-        env_id: ID of the environment to use
-        agent_ids: List of agent IDs to participate in the simulation
-        agent_models: List of models to use for each agent
-        evaluator_model: Model to use for evaluation
-        evaluation_dimension_list_name: Name of evaluation dimension list
+        start_message: Complete message to start the simulation
     """
     # Check API connection
     if not await check_api_connection():
         logger.error("Cannot proceed with simulation: API connection failed")
         return
-
-    # Prepare simulation start message
-    start_message = {
-        "type": WSMessageType.START_SIM,
-        "data": {
-            "env_id": env_id,
-            "agent_ids": agent_ids,
-        },
-    }
-
-    # Add optional parameters if provided
-    if agent_models:
-        start_message["data"]["agent_models"] = agent_models
-    if evaluator_model:
-        start_message["data"]["evaluator_model"] = evaluator_model
-    if evaluation_dimension_list_name:
-        start_message["data"]["evaluation_dimension_list_name"] = (
-            evaluation_dimension_list_name
-        )
-    if env_profile_dict:
-        start_message["data"]["env_profile_dict"] = env_profile_dict
-    if agent_profile_dicts:
-        start_message["data"]["agent_profile_dicts"] = agent_profile_dicts
 
     # Connect to WebSocket
     session = aiohttp.ClientSession()
@@ -184,34 +149,28 @@ async def run_simulation(
         await session.close()
 
 
-async def main():
-    # Example parameters
-    env_id = "env_123"  # Replace with actual environment ID
-    agent_ids = ["agent_1", "agent_2", "agent_3"]  # Replace with actual agent IDs
-    agent_models = ["gpt-4o-mini", "gpt-4o-mini", "gpt-4o-mini"]
-    evaluator_model = "gpt-4o"
-    env_profile_dict = {
-        "codename": "test",
-        "scenario": "Just chat (finish the conversation in 2 turns)",
-        "agent_goals": ["Just chat"] * len(agent_ids),
-    }
-    agent_profile_dicts = [
-        {
-            "first_name": f"agent_{agent_id}",
-            "last_name": f"agent_{agent_id}",
-        }
-        for agent_id in agent_ids
-    ]
-    await run_simulation(
-        env_id=env_id,
-        agent_ids=agent_ids,
-        agent_models=agent_models,
-        env_profile_dict=env_profile_dict,
-        agent_profile_dicts=agent_profile_dicts,
-        evaluator_model=evaluator_model,
-        evaluation_dimension_list_name="sotopia",
-    )
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Example simulation start message
+    start_message = {
+        "type": WSMessageType.START_SIM,
+        "data": {
+            "env_id": "env_123",
+            "agent_ids": ["agent_1", "agent_2", "agent_3"],
+            "agent_models": ["gpt-4o-mini", "gpt-4o-mini", "gpt-4o-mini"],
+            "evaluator_model": "gpt-4o",
+            "evaluation_dimension_list_name": "sotopia",
+            "env_profile_dict": {
+                "codename": "test",
+                "scenario": "Just chat (finish the conversation in 2 turns)",
+                "agent_goals": ["Just chat", "Just chat", "Just chat"],
+            },
+            "agent_profile_dicts": [
+                {"first_name": "agent_1", "last_name": "agent_1"},
+                {"first_name": "agent_2", "last_name": "agent_2"},
+                {"first_name": "agent_3", "last_name": "agent_3"},
+            ],
+            "max_turns": 20,
+        },
+    }
+
+    asyncio.run(run_simulation(start_message))

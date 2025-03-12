@@ -6,8 +6,25 @@ from sotopia.experimental.envs import generate_executable
 import uuid
 import logging
 from rich import print
+import os  # Add import for os module
+from rich.logging import RichHandler
 
-logger = logging.getLogger(__name__)
+# Configure logger
+logger = logging.getLogger("sotopia.experimental.server")
+logger.setLevel(logging.INFO)
+
+# Create console handler with rich formatting
+console_handler = RichHandler(rich_tracebacks=True)
+console_handler.setLevel(logging.INFO)
+
+# Create formatter
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+console_handler.setFormatter(formatter)
+
+# Add handler to logger
+logger.addHandler(console_handler)
 
 
 async def arun_one_episode(
@@ -148,6 +165,14 @@ async def arun_one_episode(
         if proc.returncode is None:
             proc.terminate()
             await proc.wait()
+
+        # Remove the temporary configuration file
+        try:
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
+                logger.info(f"Removed temporary configuration file: {temp_filename}")
+        except Exception as e:
+            logger.error(f"Failed to remove temporary file {temp_filename}: {e}")
 
         # Check for errors
         if proc.returncode and proc.returncode != 0:

@@ -17,11 +17,6 @@ from sotopia.server import arun_one_episode
 from enum import Enum
 from typing import Type, TypedDict, Any, AsyncGenerator, List
 from pydantic import BaseModel
-import asyncio
-import json
-import os
-import redis.asyncio  # Use Redis async client
-from sotopia.experimental import generate_executable
 import uuid
 from sotopia.messages import Message
 
@@ -155,6 +150,7 @@ class WebSocketSotopiaSimulator:
         agent_models: list[str] = ["gpt-4o-mini", "gpt-4o-mini"],
         evaluator_model: str = "gpt-4o",
         evaluation_dimension_list_name: str = "sotopia",
+        max_turns: int = 20,
     ) -> None:
         if len(agent_ids) == 2:
             try:
@@ -185,6 +181,7 @@ class WebSocketSotopiaSimulator:
             self.evaluation_dimension_list_name = evaluation_dimension_list_name
 
         self.connection_id = str(uuid.uuid4())
+        self.max_turns = max_turns
 
     async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
         # Use sotopia to run the simulation
@@ -196,7 +193,7 @@ class WebSocketSotopiaSimulator:
                 streaming=True,
             )
         elif len(self.agents) > 2:
-            generator = arun_sotopia_original_replica(
+            generator = arun_server_adaptor(
                 env=self.env,
                 agent_list=self.agents,
                 agent_models=self.agent_models,
@@ -205,6 +202,7 @@ class WebSocketSotopiaSimulator:
                 push_to_db=False,
                 streaming=True,
                 connection_id=self.connection_id,
+                max_turns=self.max_turns,
             )
         else:
             raise ValueError("Number of agents must be 2 or greater")
@@ -256,7 +254,7 @@ class WebSocketSotopiaSimulator:
             }
 
 
-async def arun_sotopia_original_replica(
+async def arun_server_adaptor(
     env: EnvironmentProfile,
     agent_list: List[AgentProfile],
     agent_models: List[str],
@@ -267,26 +265,10 @@ async def arun_sotopia_original_replica(
     streaming: bool = False,
     connection_id: str = "",
 ) -> AsyncGenerator[List[List[tuple[str, str, Message]]], None]:
-    """
-    Run a Sotopia simulation using the original replica method for more than 2 agents.
+    # Prepare episode configuration
+    from sotopia.experimental.server import arun_one_episode
 
-    Args:
-        env: The Sotopia environment
-        agent_list: List of agents participating in the simulation
-        push_to_db: Whether to push results to database
-        streaming: Whether to stream results
-
-    Returns:
-        AsyncGenerator yielding simulation messages
-    """
-    # Create data folder if it doesn't exist
-    data_folder = os.path.join(os.getcwd(), "data")  # Need to be careful here
-    os.makedirs(data_folder, exist_ok=True)
-
-    # Create raw config file in the data folder
-    output_toml_path = os.path.join(data_folder, f"output_{connection_id}.toml")
-
-    # Prepare raw config data
+    # TODO: Unify the API of the two agents
     config_data = {
         "redis_url": "redis://localhost:6379/0",
         "extra_modules": [
@@ -311,132 +293,24 @@ async def arun_sotopia_original_replica(
                 "background": agent.dict(),
             }
             for i, agent in enumerate(agent_list)
-        ]
-        + [
-            {
-                "name": "redis_agent",
-            }
         ],
-        "connection_id": connection_id,
     }
-    config_data_str = generate_executable(config_data)
-    # save the config_data_str to the output_toml_path
-    with open(output_toml_path, "w") as f:
-        f.write(config_data_str)
-    # Run the dataflow
-    run_cmd = f"aact run-dataflow {output_toml_path}"
-    # Start the process and capture stdout and stderr for debugging
-    proc = await asyncio.create_subprocess_shell(
-        run_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-    )
-
-    # Create tasks to read and log stdout and stderr without blocking
-    async def log_stdout():
-        while True:
-            line = await proc.stdout.readline()
-            if not line:
-                break
-            print(f"Dataflow output: {line.decode().strip()}")
-
-    async def log_stderr():
-        while True:
-            line = await proc.stderr.readline()
-            if not line:
-                break
-            print(f"Dataflow error: {line.decode().strip()}")
-
-    # Start the logging tasks
-    stdout_task = asyncio.create_task(log_stdout())
-    stderr_task = asyncio.create_task(log_stderr())
-
-    # Connect to Redis using the async client
-    redis_client = redis.asyncio.Redis(host="localhost", port=6379, db=0)
-    pubsub = redis_client.pubsub()
-    channel = f"{connection_id}" if connection_id else "sotopia:simulation"
-    print(f"Subscribing to channel: {channel}")
-    await pubsub.subscribe(channel)
-
-    # Create a task to monitor the process completion
-    process_done = asyncio.Event()
-
-    async def monitor_process():
-        await proc.wait()
-        process_done.set()
-
-    monitor_task = asyncio.create_task(monitor_process())
-
-    try:
-        # Process messages from pubsub using async iterator with timeout
-        while not process_done.is_set():
-            # Use wait_for with a timeout to periodically check if process is done
-            try:
-                message = await asyncio.wait_for(
-                    pubsub.get_message(ignore_subscribe_messages=True), timeout=0.1
-                )
-                if message is None:
-                    # No message received within timeout, check if process is done
-                    continue
-                # Process the message data
-                try:
-                    line_str = message["data"].decode()
-                    message_data = json.loads(line_str)
-                    potential_episode_log = json.loads(message_data.get("last_turn"))
-                    if "messages" in potential_episode_log:
-                        messages = potential_episode_log["messages"]
-                        processed_messages = []
-                        for i, message in enumerate(messages):
-                            processed_messages.append(
-                                [
-                                    (
-                                        message[0][0],
-                                        message[0][1],
-                                        SimpleMessage(message=message[0][2]),
-                                    )
-                                ]
-                            )
-                        yield processed_messages
-                    else:
-                        # Handle other message types that don't have the expected format
-                        # Log the message for debugging but don't yield it
-                        print(
-                            f"Received message with unexpected format: {message_data}"
+    # Use the arun_one_episode function from server.py
+    async for episode_data in arun_one_episode(
+        episode_config=config_data,
+        connection_id=connection_id,
+    ):
+        if "messages" in episode_data:
+            messages = episode_data["messages"]
+            processed_messages = []
+            for i, message in enumerate(messages):
+                processed_messages.append(
+                    [
+                        (
+                            message[0][0],
+                            message[0][1],
+                            SimpleMessage(message=message[0][2]),
                         )
-
-                except (json.JSONDecodeError, KeyError, UnicodeDecodeError):
-                    # Skip messages that aren't valid JSON or have unexpected format
-                    continue
-
-            except asyncio.TimeoutError:
-                # Timeout occurred, loop will continue and check if process is done
-                continue
-
-    except asyncio.CancelledError:
-        # Handle cancellation
-        raise
-    finally:
-        # Clean up Redis connection
-        await pubsub.unsubscribe(channel)
-        await pubsub.close()
-        await redis_client.close()
-
-        # Cancel monitoring tasks
-        monitor_task.cancel()
-        stdout_task.cancel()
-        stderr_task.cancel()
-
-        try:
-            await asyncio.gather(
-                monitor_task, stdout_task, stderr_task, return_exceptions=True
-            )
-        except asyncio.CancelledError:
-            pass
-
-        # Terminate the process if it's still running
-        if proc.returncode is None:
-            proc.terminate()
-            await proc.wait()
-
-        # Check for errors
-        if proc.returncode and proc.returncode != 0:
-            stderr_content = await proc.stderr.read()
-            raise RuntimeError(f"Dataflow execution failed: {stderr_content.decode()}")
+                    ]
+                )
+            yield processed_messages
