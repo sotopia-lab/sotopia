@@ -123,7 +123,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         await self.r.publish(self.pubsub_channel, obs_json)
 
     async def aact(self, obs: Observation) -> AgentAction | None:
-        print(f"obs: {obs}")
         # Set up websocket on first call if needed
         if self.websocket_url and not self.websocket_task:
             await self.setup_websocket()

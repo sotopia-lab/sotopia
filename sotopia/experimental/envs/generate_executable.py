@@ -33,7 +33,7 @@ def render_dict(
     return "\n".join(output)
 
 
-def generate_executable(input_params: dict[str, Any], output_file: str):
+def generate_executable(input_params: dict[str, Any]) -> str:
     env = Environment(
         loader=FileSystemLoader(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
@@ -41,5 +41,4 @@ def generate_executable(input_params: dict[str, Any], output_file: str):
     )
     env.filters["render_bool"] = render_bool
     template = env.get_template("multiagents.jinja2")
-    with open(output_file, "w") as f:
-        f.write(template.render(input_params, render_dict=render_dict))
+    return template.render(input_params, render_dict=render_dict)

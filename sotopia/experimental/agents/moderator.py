@@ -208,7 +208,6 @@ class Moderator(Node[AgentAction, Observation]):
                 agent_action = await self.observation_queue.get()
                 if not self.agents_awake[agent_action.agent_name]:
                     self.agents_awake[agent_action.agent_name] = True
-                    print(f"agent_action: {agent_action}")
                     args: dict[str, Any] = json.loads(agent_action.argument)
                     self.agents_pk[agent_action.agent_name] = args["pk"]
                     self.agent_models[agent_action.agent_name] = args["model_name"]
@@ -296,7 +295,6 @@ class Moderator(Node[AgentAction, Observation]):
         return epilog
 
     async def astep(self, agent_action: AgentAction) -> Observations | None:
-        print(f"agent_action: {agent_action}")
         # message (sender, receivers (seperated by comma), message content)
         self.epilog.messages.append(
             [

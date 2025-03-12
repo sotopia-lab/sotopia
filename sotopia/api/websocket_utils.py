@@ -262,6 +262,7 @@ async def arun_sotopia_original_replica(
     agent_models: List[str],
     evaluator_model: str,
     evaluation_dimension_list_name: str,
+    max_turns: int = 20,
     push_to_db: bool = True,
     streaming: bool = False,
     connection_id: str = "",
@@ -298,7 +299,7 @@ async def arun_sotopia_original_replica(
         "use_pk_value": False,
         "push_to_db": push_to_db,
         "evaluate_episode": False,
-        "max_turns": 3,
+        "max_turns": max_turns,
         "scenario": env.scenario,
         "agents": [
             {
@@ -318,7 +319,10 @@ async def arun_sotopia_original_replica(
         ],
         "connection_id": connection_id,
     }
-    generate_executable(config_data, output_toml_path)
+    config_data_str = generate_executable(config_data)
+    # save the config_data_str to the output_toml_path
+    with open(output_toml_path, "w") as f:
+        f.write(config_data_str)
     # Run the dataflow
     run_cmd = f"aact run-dataflow {output_toml_path}"
     # Start the process and capture stdout and stderr for debugging
@@ -342,8 +346,8 @@ async def arun_sotopia_original_replica(
             print(f"Dataflow error: {line.decode().strip()}")
 
     # Start the logging tasks
-    asyncio.create_task(log_stdout())
-    asyncio.create_task(log_stderr())
+    stdout_task = asyncio.create_task(log_stdout())
+    stderr_task = asyncio.create_task(log_stderr())
 
     # Connect to Redis using the async client
     redis_client = redis.asyncio.Redis(host="localhost", port=6379, db=0)
@@ -352,41 +356,58 @@ async def arun_sotopia_original_replica(
     print(f"Subscribing to channel: {channel}")
     await pubsub.subscribe(channel)
 
-    # Parse output and yield messages using Redis pubsub
+    # Create a task to monitor the process completion
+    process_done = asyncio.Event()
+
+    async def monitor_process():
+        await proc.wait()
+        process_done.set()
+
+    monitor_task = asyncio.create_task(monitor_process())
 
     try:
-        # Process messages from pubsub using async iterator
-        async for message in pubsub.listen():
-            print("--------------------------------")
-            print(f"Received message: {message}")
-            # Skip subscription confirmation messages
-            if message["type"] != "message":
-                continue
-
-            # Process the message data
+        # Process messages from pubsub using async iterator with timeout
+        while not process_done.is_set():
+            # Use wait_for with a timeout to periodically check if process is done
             try:
-                line_str = message["data"].decode()
-                message_data = json.loads(line_str)
-                potential_episode_log = json.loads(message_data.get("last_turn"))
-                if "messages" in potential_episode_log:
-                    messages = potential_episode_log["messages"]
-                    processed_messages = []
-                    for i, message in enumerate(messages):
-                        processed_messages.append(
-                            [
-                                (
-                                    message[0][0],
-                                    message[0][1],
-                                    SimpleMessage(message=message[0][2]),
-                                )
-                            ]
+                message = await asyncio.wait_for(
+                    pubsub.get_message(ignore_subscribe_messages=True), timeout=0.1
+                )
+                if message is None:
+                    # No message received within timeout, check if process is done
+                    continue
+                # Process the message data
+                try:
+                    line_str = message["data"].decode()
+                    message_data = json.loads(line_str)
+                    potential_episode_log = json.loads(message_data.get("last_turn"))
+                    if "messages" in potential_episode_log:
+                        messages = potential_episode_log["messages"]
+                        processed_messages = []
+                        for i, message in enumerate(messages):
+                            processed_messages.append(
+                                [
+                                    (
+                                        message[0][0],
+                                        message[0][1],
+                                        SimpleMessage(message=message[0][2]),
+                                    )
+                                ]
+                            )
+                        yield processed_messages
+                    else:
+                        # Handle other message types that don't have the expected format
+                        # Log the message for debugging but don't yield it
+                        print(
+                            f"Received message with unexpected format: {message_data}"
                         )
-                    yield processed_messages
-                else:
-                    print(f"oooooook message: {message_data}")
 
-            except (json.JSONDecodeError, KeyError, UnicodeDecodeError):
-                # Skip messages that aren't valid JSON or have unexpected format
+                except (json.JSONDecodeError, KeyError, UnicodeDecodeError):
+                    # Skip messages that aren't valid JSON or have unexpected format
+                    continue
+
+            except asyncio.TimeoutError:
+                # Timeout occurred, loop will continue and check if process is done
                 continue
 
     except asyncio.CancelledError:
@@ -397,6 +418,18 @@ async def arun_sotopia_original_replica(
         await pubsub.unsubscribe(channel)
         await pubsub.close()
         await redis_client.close()
+
+        # Cancel monitoring tasks
+        monitor_task.cancel()
+        stdout_task.cancel()
+        stderr_task.cancel()
+
+        try:
+            await asyncio.gather(
+                monitor_task, stdout_task, stderr_task, return_exceptions=True
+            )
+        except asyncio.CancelledError:
+            pass
 
         # Terminate the process if it's still running
         if proc.returncode is None:

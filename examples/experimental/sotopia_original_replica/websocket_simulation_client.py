@@ -2,12 +2,17 @@ import asyncio
 import json
 import logging
 from typing import List, Optional, Any
-
+from rich.console import Console
+from rich.logging import RichHandler
+import rich
+from rich import print
 import aiohttp
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[RichHandler(console=Console())],
 )
 logger = logging.getLogger("sotopia-websocket-client")
 
@@ -119,7 +124,38 @@ async def run_simulation(
                     msg_type = data.get("type")
 
                     if msg_type == WSMessageType.SERVER_MSG:
-                        logger.info(f"Server message: {data.get('data', {})}")
+                        server_data = data.get("data", {})
+
+                        # Rich print the last messages if available
+                        if (
+                            server_data.get("type") == "messages"
+                            and "messages" in server_data
+                        ):
+                            messages_data = server_data["messages"]
+                            if (
+                                "messages" in messages_data
+                                and messages_data["messages"]
+                            ):
+                                last_message = messages_data["messages"][
+                                    -1
+                                ]  # Get the last 3 messages
+                                if last_message and len(last_message) > 0:
+                                    sender = last_message[0][0]
+                                    recipient = last_message[0][1]
+                                    content = last_message[0][2]
+                                    # Format the message with rich styling
+                                    message_content = (
+                                        content.get("message", "")
+                                        if isinstance(content, dict)
+                                        else content
+                                    )
+                                    panel = rich.panel.Panel(
+                                        message_content,
+                                        title=f"[bold blue]{sender}[/bold blue] → [bold green]{recipient}[/bold green]",
+                                        border_style="cyan",
+                                        padding=(1, 2),
+                                    )
+                                    print(panel)
                     elif (
                         msg_type == WSMessageType.END_SIM
                         or msg_type == WSMessageType.FINISH_SIM

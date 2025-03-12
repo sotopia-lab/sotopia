@@ -4,6 +4,24 @@ import { Callout } from "nextra/components"
 This part of the documentation is for experimental features. The APIs and functionalities are subject to frequent change.
 </Callout>
 
+<Callout type="info">
+Sotopia is transitioning to the AACT (an actor model library; strong typing with validation) engine for its experimental features. Essentially, for each agent, we have an individual process that is running the agent's logic. Why we are not using asyncio directly?
+
+* asyncio requires non-blocking implementation of the agent's logic. e.g. Imagine two agents are chatting with each other. If we use asyncio directly, we need to wait for the first agent to respond before the second agent can respond. This is not a natural conversation flow.
+
+What if we have 1000 agents?
+
+Imagine another case, in robotics,
+
+Key benefits of AACT include:
+- **Asynchronous communication** between agents, allowing for more natural conversation flows
+- **Flexible node-based architecture** that makes it easy to define custom agent behaviors and communication patterns
+- **Redis-based message passing** for reliable and scalable agent interactions
+- **Dataflow configuration** using simple TOML files to define your agent ecosystem
+
+To try AACT-based features, check out the [Agents](/experimental/agents) documentation.
+</Callout>
+
 The experimental APIs of Sotopia are intended for quickly prototyping and experimenting with new functionalities,
 without breaking the existing stable APIs. But we will still maintain the quality of the code for these features.
 Feel free to raise an issue if you find any bugs or wants more features in the experimental APIs.
