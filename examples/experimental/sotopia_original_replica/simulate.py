@@ -36,7 +36,7 @@ def main() -> None:
             episode_config = json.load(f)
     else:
         # Default configuration if no config file is provided
-        agent_ids = ["jack", "jill", "john"]
+        agent_ids = ["Jack", "Jill", "John"]
         # Create a default scenario
         scenario = "Just chat (finish the conversation in 2 turns)"
         agent_goals = ["Just chat"] * len(agent_ids)
