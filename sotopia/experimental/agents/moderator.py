@@ -340,7 +340,7 @@ class Moderator(Node[AgentAction, Observation]):
             available_actions = ["none"]
             if self.action_order == "round-robin":
                 if agent_name == self.agents[self.current_agent_index]:
-                    available_actions = self.available_actions
+                    available_actions = list(self.available_actions)
                     print(f"available_actions: {available_actions}")
             observation = Observation(
                 agent_name=agent_name,

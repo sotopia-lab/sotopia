@@ -15,7 +15,7 @@ from sotopia.database import (
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List
+from typing import Type, TypedDict, Any, AsyncGenerator, List, cast
 from pydantic import BaseModel
 import uuid
 from sotopia.messages import Message
@@ -171,8 +171,8 @@ class WebSocketSotopiaSimulator:
                 env_profile_dict
             ), "env_profile_dict must be provided if number of agents is greater than 2"
             assert agent_profile_dicts, "agent_profile_dicts must be provided if number of agents is greater than 2"
-            self.env = EnvironmentProfile(**env_profile_dict)
-            self.agents = [
+            self.env_profile = EnvironmentProfile(**env_profile_dict)
+            self.agent_profiles = [
                 AgentProfile(**agent_profile_dict)
                 for agent_profile_dict in agent_profile_dicts
             ]
@@ -194,8 +194,8 @@ class WebSocketSotopiaSimulator:
             )
         elif len(self.agents) > 2:
             generator = arun_server_adaptor(
-                env=self.env,
-                agent_list=self.agents,
+                env=self.env_profile,
+                agent_list=self.agent_profiles,
                 agent_models=self.agent_models,
                 evaluator_model=self.evaluator_model,
                 evaluation_dimension_list_name=self.evaluation_dimension_list_name,
@@ -234,8 +234,12 @@ class WebSocketSotopiaSimulator:
                 ).dict()
             except Exception:
                 epilog = {
-                    "environment": self.env.pk,
-                    "agents": [agent.pk for agent in self.agents],
+                    "environment": getattr(self.env, "profile", {}).get("pk", "")
+                    if hasattr(self, "env")
+                    else getattr(self.env_profile, "pk", ""),
+                    "agents": [agent.profile.pk for agent in self.agents.values()]
+                    if hasattr(self, "agents") and isinstance(self.agents, Agents)
+                    else [agent.pk for agent in self.agent_profiles],
                     "tag": "test",
                     "messages": [
                         [
@@ -309,7 +313,7 @@ async def arun_server_adaptor(
                         (
                             message[0][0],
                             message[0][1],
-                            SimpleMessage(message=message[0][2]),
+                            cast(Message, SimpleMessage(message=message[0][2])),
                         )
                     ]
                 )

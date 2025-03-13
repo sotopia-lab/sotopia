@@ -25,7 +25,7 @@ async def simulate_from_config(
             json.dump(result, f, indent=2)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Run a Sotopia simulation")
     parser.add_argument("--config", type=str, help="Path to config file")
     parser.add_argument("--save_path", type=str, help="Path to save the result")

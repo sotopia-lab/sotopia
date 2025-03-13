@@ -423,12 +423,11 @@ class SotopiaFastAPI(FastAPI):
         @self.get("/health", status_code=200)
         async def health_check() -> dict[str, Any]:
             """Comprehensive health check endpoint"""
-            health_status = {
+            health_status: dict[str, Any] = {
                 "status": "ok",
                 "message": "All systems operational",
                 "components": {},
             }
-
             # Check Redis connection
             try:
                 redis_conn = get_redis_connection()

@@ -4,6 +4,7 @@ import asyncio
 import sys
 from rich.logging import RichHandler
 import aiohttp
+from aiohttp import ClientSession, ClientWebSocketResponse
 
 from aact import NodeFactory
 
@@ -58,10 +59,10 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.background: dict[str, Any] | None = background
         self.awake: bool = False
         self.websocket_url = websocket_url
-        self.websocket_session = None
-        self.websocket = None
+        self.websocket_session: ClientSession | None = None
+        self.websocket: ClientWebSocketResponse | None = None
         self.pubsub_channel = pubsub_channel
-        self.websocket_task = None
+        self.websocket_task: asyncio.Task[None] | None = None
         self.last_websocket_message = None
         self.websocket_wait_time = websocket_wait_time
         self.loop_interval = loop_interval
@@ -70,20 +71,21 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         # We'll set up the websocket connection in setup_websocket
         # which will be called during the first aact call
 
-    async def setup_websocket(self):
+    async def setup_websocket(self) -> None:
         """Set up the websocket connection"""
         if self.websocket_url and not self.websocket:
             try:
                 self.websocket_session = aiohttp.ClientSession()
-                self.websocket = await self.websocket_session.ws_connect(
-                    self.websocket_url
-                )
-                self.websocket_task = asyncio.create_task(self.listen_websocket())
-                logger.info(f"Connected to websocket at {self.websocket_url}")
+                if self.websocket_session is not None:
+                    self.websocket = await self.websocket_session.ws_connect(
+                        self.websocket_url
+                    )
+                    self.websocket_task = asyncio.create_task(self.listen_websocket())
+                    logger.info(f"Connected to websocket at {self.websocket_url}")
             except Exception as e:
                 logger.error(f"Failed to connect to websocket: {e}")
 
-    async def listen_websocket(self):
+    async def listen_websocket(self) -> None:
         """Listen for messages from websocket (NOTE: This is mock implementation, to be further developed)"""
         while not self.shutdown_event.is_set():
             try:
@@ -108,16 +110,17 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 try:
                     if self.websocket_session and self.websocket_session.closed:
                         self.websocket_session = aiohttp.ClientSession()
-                    self.websocket = await self.websocket_session.ws_connect(
-                        self.websocket_url
-                    )
+                    if self.websocket_session is not None:
+                        self.websocket = await self.websocket_session.ws_connect(
+                            self.websocket_url
+                        )
                     logger.info("Reconnected to websocket")
                 except Exception as e:
                     logger.error(f"Failed to reconnect to websocket: {e}")
                     self.websocket = None
                     await asyncio.sleep(1)  # Wait before retrying
 
-    async def publish_observation(self, obs: Observation):
+    async def publish_observation(self, obs: Observation) -> None:
         """Publish observation to Redis"""
         obs_json = json.dumps(obs.model_dump())
         await self.r.publish(self.pubsub_channel, obs_json)

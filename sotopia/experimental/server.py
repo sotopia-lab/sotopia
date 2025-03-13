@@ -71,19 +71,25 @@ async def arun_one_episode(
     )
 
     # Create tasks to read and log stdout and stderr without blocking
-    async def log_stdout():
+    async def log_stdout() -> None:
         while True:
-            line = await proc.stdout.readline()
+            if proc.stdout is not None:
+                line = await proc.stdout.readline()
+            else:
+                line = b""
             if not line:
                 break
             print(f"{line.decode().strip()}")
 
-    async def log_stderr():
+    async def log_stderr() -> None:
         while True:
-            line = await proc.stderr.readline()
-            if not line:
+            if proc.stderr is not None:
+                err = await proc.stderr.readline()
+            else:
+                err = b""
+            if not err:
                 break
-            print(f"{line.decode().strip()}")
+            print(f"{err.decode().strip()}")
 
     # Start the logging tasks
     stdout_task = asyncio.create_task(log_stdout())
@@ -99,7 +105,7 @@ async def arun_one_episode(
     # Create a task to monitor the process completion
     process_done = asyncio.Event()
 
-    async def monitor_process():
+    async def monitor_process() -> None:
         await proc.wait()
         process_done.set()
 

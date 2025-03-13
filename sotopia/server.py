@@ -46,8 +46,8 @@ def run_sync_server(
     # This step will be moved to outside this function
 
     env = ParallelSotopiaEnv(
-        model_name=model_name_dict["env"],
         action_order=action_order,
+        model_name=model_name_dict["env"],
         evaluators=[
             RuleBasedTerminatedEvaluator(),
         ],
@@ -127,7 +127,6 @@ async def arun_one_episode(
     AsyncGenerator[list[list[tuple[str, str, Message]]], None],
 ]:
     agents = Agents({agent.agent_name: agent for agent in agent_list})
-    print(f"Running episode with tag: {tag}------------------")
 
     async def generate_messages() -> (
         AsyncGenerator[list[list[tuple[str, str, Message]]], None]

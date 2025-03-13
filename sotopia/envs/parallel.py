@@ -131,6 +131,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
         evaluators: list[Evaluator] = [],
+        model_name: str = "gpt-4o-mini",
         terminal_evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,
         env_profile: EnvironmentProfile | None = None,
@@ -165,7 +166,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
         self.terminal_evaluators = terminal_evaluators
-
+        self.model_name = model_name
         # if an environment profile is provided, use it
         assert (
             env_profile or uuid_str
