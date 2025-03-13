@@ -4,7 +4,7 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
 )
 from sotopia.agents import Agents, LLMAgent
-from sotopia.messages import Observation, SimpleMessage
+from sotopia.messages import Observation
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.database import (
     EnvironmentProfile,
@@ -15,10 +15,9 @@ from sotopia.database import (
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List, cast
+from typing import Type, TypedDict, Any, AsyncGenerator, List
 from pydantic import BaseModel
 import uuid
-from sotopia.messages import Message
 
 
 class WSMessageType(str, Enum):
@@ -185,38 +184,22 @@ class WebSocketSotopiaSimulator:
 
     async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
         # Use sotopia to run the simulation
-        if len(self.agents) == 2:
+        if len(self.agent_models) == 2:
             generator = await arun_one_episode(
                 env=self.env,
                 agent_list=list(self.agents.values()),
                 push_to_db=False,
                 streaming=True,
             )
-        elif len(self.agents) > 2:
-            generator = arun_server_adaptor(
-                env=self.env_profile,
-                agent_list=self.agent_profiles,
-                agent_models=self.agent_models,
-                evaluator_model=self.evaluator_model,
-                evaluation_dimension_list_name=self.evaluation_dimension_list_name,
-                push_to_db=False,
-                streaming=True,
-                connection_id=self.connection_id,
-                max_turns=self.max_turns,
-            )
-        else:
-            raise ValueError("Number of agents must be 2 or greater")
+            assert isinstance(
+                generator, AsyncGenerator
+            ), "generator should be async generator, but got {}".format(type(generator))
 
-        assert isinstance(
-            generator, AsyncGenerator
-        ), "generator should be async generator, but got {}".format(type(generator))
-
-        async for messages in generator:
-            reasoning, rewards = "", [0.0, 0.0]
-            if messages[-1][0][0] == "Evaluation":
-                reasoning = messages[-1][0][2].to_natural_language()
-                rewards = eval(messages[-2][0][2].to_natural_language())
-            try:
+            async for messages in generator:
+                reasoning, rewards = "", [0.0, 0.0]
+                if messages[-1][0][0] == "Evaluation":
+                    reasoning = messages[-1][0][2].to_natural_language()
+                    rewards = eval(messages[-2][0][2].to_natural_language())
                 epilog = EpisodeLog(
                     environment=self.env.profile.pk,
                     agents=[agent.profile.pk for agent in self.agents.values()],
@@ -232,30 +215,37 @@ class WebSocketSotopiaSimulator:
                     rewards=rewards,
                     rewards_prompt="",
                 ).dict()
-            except Exception:
-                epilog = {
-                    "environment": getattr(self.env, "profile", {}).get("pk", "")
-                    if hasattr(self, "env")
-                    else getattr(self.env_profile, "pk", ""),
-                    "agents": [agent.profile.pk for agent in self.agents.values()]
-                    if hasattr(self, "agents") and isinstance(self.agents, Agents)
-                    else [agent.pk for agent in self.agent_profiles],
-                    "tag": "test",
-                    "messages": [
-                        [
-                            (m[0], m[1], m[2].to_natural_language())
-                            for m in messages_in_turn
-                        ]
-                        for messages_in_turn in messages
-                    ],
-                    "reasoning": reasoning,
-                    "rewards": rewards,
-                    "rewards_prompt": "",
+                yield {
+                    "type": "messages",
+                    "messages": epilog,
                 }
-            yield {
-                "type": "messages",
-                "messages": epilog,
-            }
+        elif len(self.agent_models) > 2:
+            multi_agent_generator: AsyncGenerator[dict[str, Any], None] = (
+                arun_server_adaptor(
+                    env=self.env_profile,
+                    agent_list=self.agent_profiles,
+                    agent_models=self.agent_models,
+                    evaluator_model=self.evaluator_model,
+                    evaluation_dimension_list_name=self.evaluation_dimension_list_name,
+                    push_to_db=False,
+                    streaming=True,
+                    connection_id=self.connection_id,
+                    max_turns=self.max_turns,
+                )
+            )
+            assert isinstance(
+                multi_agent_generator, AsyncGenerator
+            ), "generator should be async generator, but got {}".format(
+                type(multi_agent_generator)
+            )
+
+            async for message_data in multi_agent_generator:
+                yield {
+                    "type": "messages",
+                    "messages": message_data,
+                }
+        else:
+            raise ValueError("Number of agents must be 2 or greater")
 
 
 async def arun_server_adaptor(
@@ -268,7 +258,7 @@ async def arun_server_adaptor(
     push_to_db: bool = True,
     streaming: bool = False,
     connection_id: str = "",
-) -> AsyncGenerator[List[List[tuple[str, str, Message]]], None]:
+) -> AsyncGenerator[dict[str, Any], None]:
     # Prepare episode configuration
     from sotopia.experimental.server import arun_one_episode
 
@@ -304,17 +294,4 @@ async def arun_server_adaptor(
         episode_config=config_data,
         connection_id=connection_id,
     ):
-        if "messages" in episode_data:
-            messages = episode_data["messages"]
-            processed_messages = []
-            for i, message in enumerate(messages):
-                processed_messages.append(
-                    [
-                        (
-                            message[0][0],
-                            message[0][1],
-                            cast(Message, SimpleMessage(message=message[0][2])),
-                        )
-                    ]
-                )
-            yield processed_messages
+        yield episode_data

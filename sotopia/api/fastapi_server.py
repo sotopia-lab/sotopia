@@ -306,7 +306,16 @@ async def nonstreaming_simulation(
 
 
 async def get_scenarios_all() -> list[EnvironmentProfile]:
-    return EnvironmentProfile.all()
+    scenarios = EnvironmentProfile.all()
+    if not scenarios:
+        # Create a pseudo scenario if none exist
+        pseudo_scenario = EnvironmentProfile(
+            codename="Sample Scenario",
+            scenario="Sample scenario description",
+            agent_goals=["Sample agent 1", "Sample agent 2"],
+        )
+        scenarios = [pseudo_scenario]
+    return scenarios
 
 
 async def get_scenarios(
@@ -331,7 +340,15 @@ async def get_scenarios(
 
 
 async def get_agents_all() -> list[AgentProfile]:
-    return AgentProfile.all()
+    agents = AgentProfile.all()
+    if not agents:
+        # Create a pseudo agent if none exist
+        pseudo_agent = AgentProfile(
+            first_name="Sample Agent",
+            last_name="",
+        )
+        agents = [pseudo_agent]
+    return agents
 
 
 async def get_agents(
@@ -369,7 +386,29 @@ async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
 
 
 async def get_episodes_all() -> list[EpisodeLog]:
-    return EpisodeLog.all()
+    episodes = EpisodeLog.all()
+    if not episodes:
+        # Create a pseudo episode if none exist
+        pseudo_episode = EpisodeLog(
+            environment="Sample Environment",
+            agents=["Sample Agent 1", "Sample Agent 2"],
+            models=["gpt-4o", "gpt-4o"],
+            messages=[
+                [
+                    ("Environment", "Agent 1", "Welcome to the sample environment."),
+                    ("Environment", "Agent 2", "This is a sample conversation."),
+                ]
+            ],
+            reasoning="This is a sample reasoning about the interaction between the agents.",
+            rewards=[
+                (0.5, {"cooperation": 0.7, "empathy": 0.3}),
+                (0.6, {"cooperation": 0.5, "empathy": 0.7}),
+            ],
+            rewards_prompt="Evaluate the agents based on cooperation and empathy.",
+            tag="sample",
+        )
+        episodes = [pseudo_episode]
+    return episodes
 
 
 async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[EpisodeLog]:
@@ -390,15 +429,28 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
 async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
     custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
     all_custom_evaluation_dimension_list = CustomEvaluationDimensionList.all()
-    for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
-        assert isinstance(
-            custom_evaluation_dimension_list, CustomEvaluationDimensionList
+
+    if not all_custom_evaluation_dimension_list:
+        # Create a pseudo evaluation dimension if none exist
+        pseudo_dimension = CustomEvaluationDimension(
+            name="Sample Dimension",
+            description="This is a sample evaluation dimension",
+            range_high=5,
+            range_low=1,
         )
-        custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = [
-            CustomEvaluationDimension.get(pk=pk)
-            for pk in custom_evaluation_dimension_list.dimension_pks
-        ]
-    print(custom_evaluation_dimensions)
+        custom_evaluation_dimensions["sample_dimensions"] = [pseudo_dimension]
+    else:
+        for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
+            assert isinstance(
+                custom_evaluation_dimension_list, CustomEvaluationDimensionList
+            )
+            dimensions = [
+                CustomEvaluationDimension.get(pk=pk)
+                for pk in custom_evaluation_dimension_list.dimension_pks
+            ]
+            custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = (
+                dimensions
+            )
     return custom_evaluation_dimensions
 
 
@@ -683,7 +735,6 @@ class SotopiaFastAPI(FastAPI):
                             ),
                             max_turns=start_msg["data"].get("max_turns", 20),
                         )
-                        print(f"Simulator created: {simulator}")
                         await manager.run_simulation(websocket, simulator)
 
             except WebSocketDisconnect:
