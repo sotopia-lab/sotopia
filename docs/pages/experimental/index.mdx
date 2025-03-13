@@ -5,21 +5,18 @@ This part of the documentation is for experimental features. The APIs and functi
 </Callout>
 
 <Callout type="info">
-Sotopia is transitioning to the AACT (an actor model library; strong typing with validation) engine for its experimental features. Essentially, for each agent, we have an individual process that is running the agent's logic. Why we are not using asyncio directly?
+Sotopia is transitioning to the AACT (an actor model library with strong typing and validation) engine for its experimental features. Essentially, for each agent, we have an individual process running the agent's logic. Why are we not using asyncio directly? (Note that's basically what currently popular multi-agent frameworks like Autogen, Swarm, CrewAI etc. are using).
 
-* asyncio requires non-blocking implementation of the agent's logic. e.g. Imagine two agents are chatting with each other. If we use asyncio directly, we need to wait for the first agent to respond before the second agent can respond. This is not a natural conversation flow.
+Asyncio requires non-blocking implementation of the agent's logic. Imagine two agents chatting with each other. If we use asyncio directly, we need to wait for the first agent to finish its turn before the second agent can respond. This is not a natural interaction flow. Like if one agent is taking forever in typing, the other agent will have to wait. That's totally fine for cases where the agents are "cooperative" and the interaction is "turn-based."
 
-What if we have 1000 agents?
+But that's really not the case for social simulations.
 
-Imagine another case, in robotics,
+And what if we have 1000 agents? Things will get even worse as the interactions and dependencies between the agents become more complex.
 
-Key benefits of AACT include:
-- **Asynchronous communication** between agents, allowing for more natural conversation flows
-- **Flexible node-based architecture** that makes it easy to define custom agent behaviors and communication patterns
-- **Redis-based message passing** for reliable and scalable agent interactions
-- **Dataflow configuration** using simple TOML files to define your agent ecosystem
+Instead, we advocate this "real-time" async interaction flow, where each agent is independent and they can do their own thing regardless of the other agents.
 
-To try AACT-based features, check out the [Agents](/experimental/agents) documentation.
+And we believe this new engine will be the future of more realistic social simulations.
+So here we are! In this very exciting experimental phase. And we are looking for your feedback and help!
 </Callout>
 
 The experimental APIs of Sotopia are intended for quickly prototyping and experimenting with new functionalities,
