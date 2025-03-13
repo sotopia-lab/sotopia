@@ -175,9 +175,9 @@ class WebSocketSotopiaSimulator:
                 AgentProfile(**agent_profile_dict)
                 for agent_profile_dict in agent_profile_dicts
             ]
-            self.agent_models = agent_models
-            self.evaluator_model = evaluator_model
-            self.evaluation_dimension_list_name = evaluation_dimension_list_name
+        self.agent_models = agent_models
+        self.evaluator_model = evaluator_model
+        self.evaluation_dimension_list_name = evaluation_dimension_list_name
 
         self.connection_id = str(uuid.uuid4())
         self.max_turns = max_turns
