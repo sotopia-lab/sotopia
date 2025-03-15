@@ -1,18 +1,18 @@
 import pytest
-import asyncio
-import json
 import logging
 from typing import Dict, List, Optional, Any, Tuple, Collection, Set
 from unittest.mock import MagicMock, patch, AsyncMock
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+)
 logger = logging.getLogger("message_pipeline_test")
 
 # --------------------------------
 # Mock Classes
 # --------------------------------
+
 
 class MockWebSocket:
     """Mock WebSocket class for testing"""
@@ -36,16 +36,16 @@ class MockWebSocket:
         # Generate response based on the last sent message
         if not self.sent_messages:
             return {"type": "ERROR", "data": {"message": "No messages sent"}}
-            
+
         last_message = self.sent_messages[-1]
         msg_type = last_message.get("type", "")
-        
+
         if msg_type == "START_SIM":
             # For START_SIM messages
             mode = last_message["data"].get("mode", "full")
             npcs = last_message["data"].get("npcs", [])
             groups = last_message["data"].get("groups", {})
-            
+
             return {
                 "type": "SERVER_MSG",
                 "data": {
@@ -53,16 +53,16 @@ class MockWebSocket:
                     "status": "ready",
                     "npcs": npcs,
                     "groups": groups,
-                    "mode": mode
-                }
+                    "mode": mode,
+                },
             }
-            
+
         elif msg_type == "CLIENT_MSG":
             # For CLIENT_MSG messages
             content = last_message["data"].get("content", "")
             target_npcs = last_message["data"].get("target_npcs", [])
             target_group = last_message["data"].get("target_group", None)
-            
+
             # Determine which NPCs to include in response
             npcs_to_respond: List[str] = []
             
@@ -82,7 +82,7 @@ class MockWebSocket:
             for npc in npcs_to_respond:
                 self.npc_responses[npc] = {
                     "content": f"Mock response from {npc} to: {content}",
-                    "action_type": "speak"
+                    "action_type": "speak",
                 }
             
             # Return the first response immediately
@@ -122,24 +122,21 @@ class MockWebSocket:
             # For TURN_REQUEST messages
             agent_id = last_message["data"].get("agent_id", "")
             content = last_message["data"].get("content", "")
-            
+
             return {
                 "type": "TURN_RESPONSE",
                 "data": {
                     "turn": len(self.sent_messages),
                     "agent_id": agent_id,
                     "agent_response": f"Mock response from {agent_id} to: {content}",
-                    "action_type": "speak"
-                }
+                    "action_type": "speak",
+                },
             }
-            
+
         elif msg_type == "FINISH_SIM":
             # For FINISH_SIM messages
-            return {
-                "type": "END_SIM",
-                "data": {}
-            }
-            
+            return {"type": "END_SIM", "data": {}}
+
         # Default response
         return {
             "type": "SERVER_MSG",
@@ -173,6 +170,7 @@ class MockClientSession:
         """Mock close method"""
         return True
 
+
 # --------------------------------
 # Test utilities
 # --------------------------------
@@ -192,8 +190,8 @@ async def send_start_sim(ws: MockWebSocket, mode: str = "group") -> Dict[str, An
             "evaluator_model": LOCAL_MODEL,
             "mode": mode,
             "npcs": npcs,
-            "groups": groups
-        }
+            "groups": groups,
+        },
     }
     await ws.send_json(start_message)
     return await ws.receive_json(timeout=5.0)
@@ -216,7 +214,7 @@ async def send_client_message(
         message["data"]["target_npcs"] = target_npcs
     if target_group:
         message["data"]["target_group"] = target_group
-        
+
     await ws.send_json(message)
     
     # Get the first response
@@ -231,10 +229,7 @@ async def send_turn_request(ws: MockWebSocket, agent_id: str, content: str) -> D
     """Send a TURN_REQUEST message"""
     message: Dict[str, Any] = {
         "type": "TURN_REQUEST",
-        "data": {
-            "agent_id": agent_id,
-            "content": content
-        }
+        "data": {"agent_id": agent_id, "content": content},
     }
     await ws.send_json(message)
     return await ws.receive_json(timeout=5.0)
@@ -244,14 +239,17 @@ async def end_simulation(ws: MockWebSocket) -> Dict[str, Any]:
     await ws.send_json({"type": "FINISH_SIM", "data": {}})
     return await ws.receive_json(timeout=5.0)
 
+
 # --------------------------------
 # Tests
 # --------------------------------
+
 
 @pytest.fixture
 def mock_websocket() -> MockWebSocket:
     """Fixture for mock websocket"""
     return MockWebSocket()
+
 
 @pytest.mark.asyncio
 async def test_group_messaging(mock_websocket: MockWebSocket) -> None:
@@ -259,13 +257,13 @@ async def test_group_messaging(mock_websocket: MockWebSocket) -> None:
     # Initialize the simulation
     response = await send_start_sim(mock_websocket, mode="group")
     logger.info(f"Start simulation response: {response}")
-    
+
     # Verify the initialization response
     assert response["type"] == "SERVER_MSG", "Wrong response type"
     assert response["data"]["type"] == "initialization", "Not an initialization message"
     assert "npcs" in response["data"], "No NPCs in response"
     assert "groups" in response["data"], "No groups in response"
-    
+
     # Send a message to a group
     message = "Hello to group1"
     first_response, additional_responses = await send_client_message(
@@ -300,12 +298,13 @@ async def test_group_messaging(mock_websocket: MockWebSocket) -> None:
     response = await end_simulation(mock_websocket)
     assert response["type"] == "END_SIM", "Failed to end simulation"
 
+
 @pytest.mark.asyncio
 async def test_targeted_messaging(mock_websocket: MockWebSocket) -> None:
     """Test messaging to specific NPCs"""
     # Initialize the simulation
     await send_start_sim(mock_websocket, mode="group")
-    
+
     # Send a message to specific NPCs
     message = "Hello to specific NPCs"
     first_response, additional_responses = await send_client_message(
@@ -336,36 +335,36 @@ async def test_targeted_messaging(mock_websocket: MockWebSocket) -> None:
     # Clean up
     await end_simulation(mock_websocket)
 
+
 @pytest.mark.asyncio
 async def test_turn_based_messaging(mock_websocket: MockWebSocket) -> None:
     """Test turn-based messaging pipeline"""
     # Initialize the simulation
     await send_start_sim(mock_websocket, mode="turn")
-    
+
     # Send turn requests
     agents: List[str] = ["John Doe", "Jane Doe"]
     for agent in agents:
-        response = await send_turn_request(
-            mock_websocket,
-            agent,
-            f"Hello from {agent}"
-        )
-        
+        response = await send_turn_request(mock_websocket, agent, f"Hello from {agent}")
+
         # Verify the turn response
         assert response["type"] == "TURN_RESPONSE", "Wrong response type"
         assert "agent_id" in response["data"], "No agent_id in response"
         assert "agent_response" in response["data"], "No agent_response in response"
-        assert response["data"]["agent_id"] == agent, f"Wrong agent_id in response, expected {agent}"
-    
+        assert (
+            response["data"]["agent_id"] == agent
+        ), f"Wrong agent_id in response, expected {agent}"
+
     # Clean up
     await end_simulation(mock_websocket)
+
 
 @pytest.mark.asyncio
 async def test_group_membership_overlap(mock_websocket: MockWebSocket) -> None:
     """Test that NPCs can belong to multiple groups"""
     # Initialize the simulation
     await send_start_sim(mock_websocket, mode="group")
-    
+
     # Send messages to different groups with overlapping membership
     groups: Dict[str, List[str]] = {"group1": ["agent1", "agent2"], "group2": ["agent2", "agent3"]}
     
@@ -397,17 +396,18 @@ async def test_group_membership_overlap(mock_websocket: MockWebSocket) -> None:
     # Clean up
     await end_simulation(mock_websocket)
 
+
 @pytest.mark.asyncio
 async def test_multi_turn_conversation(mock_websocket: MockWebSocket) -> None:
     """Test a realistic multi-turn conversation between client and NPCs"""
     # Initialize the simulation
     response = await send_start_sim(mock_websocket, mode="group")
     logger.info(f"Start simulation response: {response}")
-    
+
     # Verify the initialization
     assert response["type"] == "SERVER_MSG", "Wrong response type"
     assert response["data"]["type"] == "initialization", "Not an initialization message"
-    
+
     # --------- TURN 1: Client greets the group ---------
     greeting = "Hello everyone in group1! How are you all doing today?"
     first_response1, additional_responses1 = await send_client_message(

@@ -15,26 +15,26 @@ from sotopia.database import (
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict, Set, Optional
-from pydantic import BaseModel, Field
+from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict, Set
+from pydantic import BaseModel
 import uuid
-import json
 import asyncio
 import logging
 from sotopia.experimental.server import arun_one_episode
 
 logger = logging.getLogger(__name__)
 
+
 class WSMessageType(str, Enum):
-    SERVER_MSG = "SERVER_MSG"           # Server to client message
-    CLIENT_MSG = "CLIENT_MSG"           # Client to server message 
-    ERROR = "ERROR"                     # Error notification
-    START_SIM = "START_SIM"             # Initialize simulation
-    TURN_REQUEST = "TURN_REQUEST"       # Request for next turn
-    TURN_RESPONSE = "TURN_RESPONSE"     # Response with turn results
-    NPC_RESPONSE = "NPC_RESPONSE"       # Response from NPC
-    END_SIM = "END_SIM"                 # End simulation notification
-    FINISH_SIM = "FINISH_SIM"           # Terminate simulation
+    SERVER_MSG = "SERVER_MSG"  # Server to client message
+    CLIENT_MSG = "CLIENT_MSG"  # Client to server message
+    ERROR = "ERROR"  # Error notification
+    START_SIM = "START_SIM"  # Initialize simulation
+    TURN_REQUEST = "TURN_REQUEST"  # Request for next turn
+    TURN_RESPONSE = "TURN_RESPONSE"  # Response with turn results
+    NPC_RESPONSE = "NPC_RESPONSE"  # Response from NPC
+    END_SIM = "END_SIM"  # End simulation notification
+    FINISH_SIM = "FINISH_SIM"  # Terminate simulation
 
 
 class ErrorType(str, Enum):
@@ -218,17 +218,19 @@ class WebSocketSotopiaSimulator:
                 AgentProfile(**agent_profile_dict)
                 for agent_profile_dict in agent_profile_dicts
             ]
-        
+
         self.agent_models = agent_models
         self.evaluator_model = evaluator_model
         self.evaluation_dimension_list_name = evaluation_dimension_list_name
         self.connection_id = str(uuid.uuid4())
         self.max_turns = max_turns
-        
+
         # New fields for NPC and group management
-        self.npc_groups: Dict[str, List[str]] = {}  # Map from group ID to list of NPC IDs
-        self.active_npcs: Set[str] = set()          # Set of active NPC IDs
-        self.turn_number: int = 0                   # Current turn number
+        self.npc_groups: Dict[
+            str, List[str]
+        ] = {}  # Map from group ID to list of NPC IDs
+        self.active_npcs: Set[str] = set()  # Set of active NPC IDs
+        self.turn_number: int = 0  # Current turn number
         self.conversation_history: list[dict[str, str]] = []  # History of messages
         self.pending_responses: Dict[str, Dict[str, Any]] = {}  # Pending NPC responses
         self.response_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()  # Queue for NPC responses
@@ -240,32 +242,38 @@ class WebSocketSotopiaSimulator:
         """Process start message with NPC and group information"""
         npcs = start_data.get("npcs", [])
         groups = start_data.get("groups", {})
-        
+
         self.group_mode = True
         self.active_npcs = set(npcs)
         self.npc_groups = groups
-        
+
         # Add metadata about NPCs to the conversation history
-        self.conversation_history.append({
-            "role": "system",
-            "content": f"Simulation started with NPCs: {', '.join(npcs)}"
-        })
-        
+        self.conversation_history.append(
+            {
+                "role": "system",
+                "content": f"Simulation started with NPCs: {', '.join(npcs)}",
+            }
+        )
+
         # For each group, add metadata
         for group_name, group_members in groups.items():
-            self.conversation_history.append({
-                "role": "system",
-                "content": f"Group '{group_name}' created with members: {', '.join(group_members)}"
-            })
-        
+            self.conversation_history.append(
+                {
+                    "role": "system",
+                    "content": f"Group '{group_name}' created with members: {', '.join(group_members)}",
+                }
+            )
+
         return {
             "status": "initialized",
             "npcs": list(self.active_npcs),
             "groups": {name: members for name, members in self.npc_groups.items()},
-            "conversation_initialized": True
+            "conversation_initialized": True,
         }
 
-    async def process_client_message(self, client_data: dict[str, Any]) -> dict[str, Any]:
+    async def process_client_message(
+        self, client_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Process a message from the client, route it to specific NPCs
 
@@ -277,43 +285,40 @@ class WebSocketSotopiaSimulator:
         content = client_data.get("content", "")
         target_npcs = client_data.get("target_npcs", [])
         target_group = client_data.get("target_group", None)
-        
+
         # Add message to conversation history
-        self.conversation_history.append({
-            "role": "client",
-            "content": content
-        })
-        
+        self.conversation_history.append({"role": "client", "content": content})
+
         # Determine which NPCs to message
         npcs_to_message: Set[str] = set()
-        
+
         # Add specifically targeted NPCs
         if target_npcs:
             npcs_to_message.update(target_npcs)
-        
+
         # Add all NPCs in the target group
         if target_group and target_group in self.npc_groups:
             npcs_to_message.update(self.npc_groups[target_group])
-        
+
         # If no targeting specified, message all active NPCs
         if not target_npcs and not target_group:
             npcs_to_message.update(self.active_npcs)
-        
+
         # Validate that all targeted NPCs exist
         for npc_id in list(npcs_to_message):
             if npc_id not in self.active_npcs:
                 return {
                     "status": "error",
                     "error_type": "NPC_NOT_FOUND",
-                    "message": f"NPC with ID {npc_id} not found"
+                    "message": f"NPC with ID {npc_id} not found",
                 }
-        
+
         # Increment turn number
         self.turn_number += 1
-        
+
         # Create observation for each NPC and collect responses
         npc_responses: Dict[str, Any] = {}
-        
+
         for npc_id in npcs_to_message:
             if npc_id in self.agents:
                 # Build observation for this NPC
@@ -322,32 +327,34 @@ class WebSocketSotopiaSimulator:
                     turn_number=self.turn_number,
                     history=self.conversation_history,
                 )
-                
+
                 # Get response from NPC
                 try:
                     agent_action = await agent.aact(observation)
                     npc_responses[npc_id] = {
                         "content": agent_action.argument,
-                        "action_type": agent_action.action_type
+                        "action_type": agent_action.action_type,
                     }
-                    
+
                     # Add response to conversation history
-                    self.conversation_history.append({
-                        "role": npc_id,
-                        "type": agent_action.action_type,
-                        "content": agent_action.argument
-                    })
+                    self.conversation_history.append(
+                        {
+                            "role": npc_id,
+                            "type": agent_action.action_type,
+                            "content": agent_action.argument,
+                        }
+                    )
                 except Exception as e:
                     logger.error(f"Error getting response from NPC {npc_id}: {e}")
                     npc_responses[npc_id] = {
                         "status": "error",
-                        "message": f"Error getting response: {str(e)}"
+                        "message": f"Error getting response: {str(e)}",
                     }
-        
+
         return {
             "status": "success",
             "turn": self.turn_number,
-            "responses": npc_responses
+            "responses": npc_responses,
         }
 
     async def process_turn(self, client_data: dict[str, Any]) -> dict[str, Any]:
@@ -403,14 +410,14 @@ class WebSocketSotopiaSimulator:
                 "npcs": list(self.active_npcs),
                 "groups": {name: members for name, members in self.npc_groups.items()},
             }
-            
+
             # Keep simulation alive until shutdown
             try:
                 while True:
                     await asyncio.sleep(0.1)
             except asyncio.CancelledError:
                 pass
-            
+
         elif len(self.agent_models) == 2:
             # Standard two-agent simulation
             generator = await arun_one_episode(
@@ -420,33 +427,38 @@ class WebSocketSotopiaSimulator:
                 streaming=True,
             )
 
-            assert isinstance(generator, AsyncGenerator), "generator should be async generator"
+            assert isinstance(
+                generator, AsyncGenerator
+            ), "generator should be async generator"
 
             async for messages in generator:
                 reasoning, rewards = "", [0.0, 0.0]
                 if messages[-1][0][0] == "Evaluation":
                     reasoning = messages[-1][0][2].to_natural_language()
                     rewards = eval(messages[-2][0][2].to_natural_language())
-                
+
                 epilog = EpisodeLog(
                     environment=self.env.profile.pk,
                     agents=[agent.profile.pk for agent in self.agents.values()],
                     tag="test",
                     models=["gpt-4o", "gpt-4o", "gpt-4o-mini"],
                     messages=[
-                        [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
+                        [
+                            (m[0], m[1], m[2].to_natural_language())
+                            for m in messages_in_turn
+                        ]
                         for messages_in_turn in messages
                     ],
                     reasoning=reasoning,
                     rewards=rewards,
                     rewards_prompt="",
                 ).dict()
-                
+
                 yield {
                     "type": "messages",
                     "messages": epilog,
                 }
-                
+
         elif len(self.agent_models) > 2:
             # Multi-agent simulation
             multi_agent_generator: AsyncGenerator[dict[str, Any], None] = (
@@ -463,7 +475,9 @@ class WebSocketSotopiaSimulator:
                 )
             )
 
-            assert isinstance(multi_agent_generator, AsyncGenerator), "generator should be async generator"
+            assert isinstance(
+                multi_agent_generator, AsyncGenerator
+            ), "generator should be async generator"
 
             async for message_data in multi_agent_generator:
                 yield {
@@ -511,12 +525,12 @@ async def arun_server_adaptor(
             }
             for i, agent in enumerate(agent_list)
         ],
-        "connection_id": connection_id
+        "connection_id": connection_id,
     }
-    
+
     # Add redis_agent to handle WebSocket communication
     config_data["agents"].append({"name": "redis_agent"})
-    
+
     # Run the episode
     episode_results = []  # Create a list to collect results if needed
     async for episode_data in arun_one_episode(episode_config=config_data, connection_id=connection_id):

@@ -1,6 +1,5 @@
 from typing import Literal, cast, Dict
 import sys
-import json
 import asyncio
 import logging
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
@@ -8,8 +7,7 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, model_validator, field_validator, Field
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Optional, Any, List, Dict, Set
-import uuid
+from typing import AsyncIterator, Optional, Any
 import uvicorn
 import rq
 
@@ -42,7 +40,6 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
-from sotopia.messages import Observation, AgentAction
 
 # Import the enhanced WebSocket utilities
 from sotopia.api.websocket_utils import (
@@ -111,13 +108,13 @@ class NPCGroupSimulationRequest(BaseModel):
         all_group_npcs = set()
         for group_members in self.groups.values():
             all_group_npcs.update(group_members)
-        
+
         if not all_group_npcs.issubset(set(self.npcs)):
             missing_npcs = all_group_npcs - set(self.npcs)
             raise ValueError(
                 f"These NPCs are in groups but not in the npcs list: {missing_npcs}"
             )
-        
+
         return self
 
 
@@ -187,13 +184,13 @@ class SimulationManager:
                 agent_profile_dicts=agent_profile_dicts,
                 max_turns=max_turns,
             )
-            
+
             # If NPCs and groups are provided, initialize them
             if npcs or groups:
                 simulator.active_npcs = set(npcs)
                 simulator.npc_groups = groups
                 simulator.group_mode = True
-                
+
             return simulator
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
@@ -209,11 +206,11 @@ class SimulationManager:
     ) -> bool:
         try:
             msg_type = message.get("type")
-            
+
             # Finish simulation
             if msg_type == WSMessageType.FINISH_SIM.value:
                 return True
-                
+
             # Process client message for NPC routing
             elif msg_type == WSMessageType.CLIENT_MSG.value:
                 try:
@@ -232,7 +229,7 @@ class SimulationManager:
                         ErrorType.SIMULATION_ISSUE,
                         str(e),
                     )
-                    
+
             # Process turn request
             elif msg_type == WSMessageType.TURN_REQUEST.value:
                 try:
@@ -251,7 +248,7 @@ class SimulationManager:
                         ErrorType.SIMULATION_ISSUE,
                         str(e),
                     )
-            
+
             return False
         except Exception as e:
             msg = f"Error handling client message: {e}"
@@ -274,11 +271,14 @@ class SimulationManager:
                         "data": {
                             "status": "ready",
                             "npcs": list(simulator.active_npcs),
-                            "groups": {name: members for name, members in simulator.npc_groups.items()},
-                        }
-                    }
+                            "groups": {
+                                name: members
+                                for name, members in simulator.npc_groups.items()
+                            },
+                        },
+                    },
                 )
-                
+
                 # Enter message handling loop for group-based mode
                 while True:
                     try:
@@ -294,10 +294,14 @@ class SimulationManager:
             else:
                 # Run the standard simulation and stream messages
                 async for message in simulator.arun():
-                    await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
-                    
+                    await self.send_message(
+                        websocket, WSMessageType.SERVER_MSG, message
+                    )
+
                     try:
-                        data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
+                        data = await asyncio.wait_for(
+                            websocket.receive_json(), timeout=0.1
+                        )
                         if await self.handle_client_message(websocket, simulator, data):
                             break
                     except asyncio.TimeoutError:
@@ -575,7 +579,7 @@ async def get_models() -> list[str]:
 
 class SotopiaFastAPI(FastAPI):
     """FastAPI application for Sotopia with WebSocket support"""
-    
+
     def __init__(self, *args, **kwargs) -> None:  # type: ignore
         super().__init__(*args, **kwargs)
         # Add CORS middleware for cross-origin requests
@@ -591,6 +595,7 @@ class SotopiaFastAPI(FastAPI):
 
     def setup_routes(self) -> None:
         """Set up all API routes"""
+
         @self.get("/health", status_code=200)
         async def health_check() -> dict[str, Any]:
             """Comprehensive health check endpoint"""
@@ -821,12 +826,12 @@ class SotopiaFastAPI(FastAPI):
         async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
             """
             WebSocket endpoint for running simulations
-            
+
             This endpoint supports multiple modes:
             - Standard simulation: Run a standard two-agent conversation
             - Turn-based mode: Process simulation on a turn-by-turn basis
             - Group-based mode: Handle message routing between NPCs and groups
-            
+
             Parameters:
             - websocket: The WebSocket connection
             - token: Authentication token for the session
@@ -839,21 +844,21 @@ class SotopiaFastAPI(FastAPI):
 
             try:
                 await websocket.accept()
-                
+
                 # Wait for the START_SIM message
                 start_msg = await websocket.receive_json()
                 if start_msg.get("type") != WSMessageType.START_SIM.value:
                     await manager.send_error(
-                        websocket, 
-                        ErrorType.INVALID_MESSAGE, 
-                        "First message must be START_SIM"
+                        websocket,
+                        ErrorType.INVALID_MESSAGE,
+                        "First message must be START_SIM",
                     )
                     return
-                
+
                 # Extract mode information and NPC/group data if available
                 npcs = start_msg["data"].get("npcs", [])
                 groups = start_msg["data"].get("groups", {})
-                
+
                 async with manager.state.start_simulation(token):
                     simulator = await manager.create_simulator(
                         env_id=start_msg["data"]["env_id"],
@@ -869,9 +874,9 @@ class SotopiaFastAPI(FastAPI):
                         ),
                         max_turns=start_msg["data"].get("max_turns", 20),
                         npcs=npcs,
-                        groups=groups
+                        groups=groups,
                     )
-                    
+
                     # Run the simulation based on the mode
                     await manager.run_simulation(websocket, simulator)
 
@@ -888,6 +893,7 @@ class SotopiaFastAPI(FastAPI):
                     await websocket.close()
                 except Exception as e:
                     logger.error(f"Error closing websocket: {e}")
+
 
 app = SotopiaFastAPI()
 
