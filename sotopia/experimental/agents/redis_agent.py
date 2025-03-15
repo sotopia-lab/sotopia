@@ -4,13 +4,13 @@ import asyncio
 import sys
 from rich.logging import RichHandler
 import aiohttp
-from aiohttp import ClientSession, ClientWebSocketResponse
+from aiohttp import ClientSession, ClientWebSocketResponse, ClientWSTimeout
+from typing import Any, Dict, List, Optional, Set, Union, TypeVar, cast
 
 from aact import NodeFactory
 
 from sotopia.experimental.agents.base_agent import BaseAgent
 from sotopia.experimental.agents.datamodels import Observation, AgentAction
-from typing import Any, Dict, List, Optional, Set
 
 # Configure logging
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -40,8 +40,8 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         input_channels: list[str],
         output_channel: str,
         node_name: str,
-        other_agent_status: dict[str, bool],
-        background: dict[str, Any] | None = None,
+        other_agent_status: Dict[str, bool],
+        background: Dict[str, Any] | None = None,
         agent_pk: str = "",
         redis_url: str = "redis://localhost:6379/0",
         websocket_url: str = "",
@@ -74,15 +74,15 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.output_channel = output_channel
         self.message_history: list[Observation] = []
         self.agent_profile_pk: str | None = agent_pk
-        self.background: dict[str, Any] | None = background
+        self.background: Dict[str, Any] | None = background
         self.awake: bool = False
         self.websocket_url = websocket_url
         self.websocket_session: ClientSession | None = None
         self.websocket: ClientWebSocketResponse | None = None
         self.pubsub_channel = pubsub_channel
         self.websocket_task: asyncio.Task[None] | None = None
-        self.websocket_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        self.response_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.websocket_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+        self.response_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
         self.websocket_wait_time = websocket_wait_time
         self.loop_interval = loop_interval
         self.shutdown_event = asyncio.Event()
@@ -91,7 +91,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         # Fields for group-based routing
         self.npc_groups: Dict[str, List[str]] = {}  # Map from group ID to list of NPC IDs
         self.active_npcs: Set[str] = set()          # Set of active NPC IDs
-        self.pending_ws_messages: List[dict] = []   # Messages waiting to be processed
+        self.pending_ws_messages: List[Dict[str, Any]] = []   # Messages waiting to be processed
 
     async def setup_websocket(self) -> None:
         """Set up the WebSocket connection with improved error handling"""
@@ -104,9 +104,11 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 try:
                     self.websocket_session = aiohttp.ClientSession()
                     if self.websocket_session is not None:
+                        # Create a ClientWSTimeout object for the timeout
+                        ws_timeout = ClientWSTimeout(timeout=10.0)
                         self.websocket = await self.websocket_session.ws_connect(
                             self.websocket_url,
-                            timeout=10.0,  # Explicit timeout
+                            timeout=ws_timeout,  # Now using proper type
                             heartbeat=30.0  # Keep connection alive
                         )
                         self.websocket_task = asyncio.create_task(self.listen_websocket())
@@ -231,7 +233,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         # Cleanup when exiting the loop
         await self.cleanup_websocket()
 
-    async def process_start_message(self, message: dict) -> None:
+    async def process_start_message(self, message: Dict[str, Any]) -> None:
         """
         Process the start message from the client
         
@@ -260,7 +262,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         await self.send(start_action)
         logger.info(f"Sent start message to moderator with {len(self.active_npcs)} NPCs and {len(self.npc_groups)} groups")
 
-    async def process_client_message(self, message: dict) -> None:
+    async def process_client_message(self, message: Dict[str, Any]) -> None:
         """
         Process a client message and route it to the appropriate NPCs
         
@@ -287,7 +289,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         await self.send(client_action)
         logger.info(f"Routed client message to moderator for distribution")
 
-    async def send_to_websocket(self, message: dict) -> bool:
+    async def send_to_websocket(self, message: Dict[str, Any]) -> bool:
         """Send a message to the client through the WebSocket with error handling"""
         if not self.websocket:
             logger.error("Cannot send message - WebSocket not connected")

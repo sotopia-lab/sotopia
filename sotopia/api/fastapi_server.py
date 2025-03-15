@@ -851,7 +851,6 @@ class SotopiaFastAPI(FastAPI):
                     return
                 
                 # Extract mode information and NPC/group data if available
-                mode = start_msg["data"].get("mode", "full")
                 npcs = start_msg["data"].get("npcs", [])
                 groups = start_msg["data"].get("groups", {})
                 
@@ -882,7 +881,7 @@ class SotopiaFastAPI(FastAPI):
                 logger.error(f"Unexpected error: {e}")
                 try:
                     await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
-                except:
+                except Exception as e:
                     pass
             finally:
                 try:

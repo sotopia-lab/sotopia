@@ -21,6 +21,7 @@ import uuid
 import json
 import asyncio
 import logging
+from sotopia.experimental.server import arun_one_episode
 
 logger = logging.getLogger(__name__)
 
@@ -229,8 +230,8 @@ class WebSocketSotopiaSimulator:
         self.active_npcs: Set[str] = set()          # Set of active NPC IDs
         self.turn_number: int = 0                   # Current turn number
         self.conversation_history: list[dict[str, str]] = []  # History of messages
-        self.pending_responses: Dict[str, dict] = {}  # Pending NPC responses
-        self.response_queue: asyncio.Queue = asyncio.Queue()  # Queue for NPC responses
+        self.pending_responses: Dict[str, Dict[str, Any]] = {}  # Pending NPC responses
+        self.response_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()  # Queue for NPC responses
         
         # Flag for group-based routing
         self.group_mode: bool = False
@@ -484,9 +485,6 @@ async def arun_server_adaptor(
     streaming: bool = False,
     connection_id: str = "",
 ) -> AsyncGenerator[dict[str, Any], None]:
-    # Prepare episode configuration
-    from sotopia.experimental.server import arun_one_episode
-
     # Configure the episode
     config_data = {
         "redis_url": "redis://localhost:6379/0",
@@ -520,5 +518,11 @@ async def arun_server_adaptor(
     config_data["agents"].append({"name": "redis_agent"})
     
     # Run the episode
+    episode_results = []  # Create a list to collect results if needed
     async for episode_data in arun_one_episode(episode_config=config_data, connection_id=connection_id):
+        # If you need to store the data in a collection:
+        if isinstance(episode_results, list):
+            episode_results.append(episode_data)
+            
+        # Either way, yield each piece of data
         yield episode_data

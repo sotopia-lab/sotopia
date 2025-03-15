@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 import logging
-from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional
+from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional, Union
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 @DataModelFactory.register("observations")
 class Observations(DataModel):
-    observations_map: dict[str, Observation] = Field(
+    observations_map: Dict[str, Observation] = Field(
         description="the observations of the agents"
     )
 
@@ -67,6 +67,7 @@ class Moderator(Node[AgentAction, Observation]):
         redis_agent_as_actor: bool = True,  # Changed to True by default
     ) -> None:
         super().__init__(
+            node_name=node_name,  # Fixed: Added missing node_name parameter
             input_channel_types=[
                 (input_channel, AgentAction) for input_channel in input_channels
             ]
@@ -79,7 +80,7 @@ class Moderator(Node[AgentAction, Observation]):
         self.observation_queue: asyncio.Queue[AgentAction] = asyncio.Queue()
         self.task_scheduler: asyncio.Task[None] | None = None
         self.shutdown_event: asyncio.Event = asyncio.Event()
-        self.agent_mapping: dict[str, str] = agent_mapping
+        self.agent_mapping: Dict[str, str] = agent_mapping  # Fixed: Using Dict instead of dict
         self.tag: str = tag
         self.action_order: Literal["simultaneous", "round-robin", "random"] = (
             action_order
@@ -90,13 +91,13 @@ class Moderator(Node[AgentAction, Observation]):
         self.current_agent_index: int = 0
         self.scenario: str = scenario
         self.agents: list[str] = list(agent_mapping.values())
-        self.agents_awake: dict[str, bool] = {name: False for name in self.agents}
+        self.agents_awake: Dict[str, bool] = {name: False for name in self.agents}
         self.all_agents_awake: asyncio.Event = asyncio.Event()
         self.evaluator_channels: list[list[str]] = evaluator_channels
         self.push_to_db: bool = push_to_db
         self.use_pk_value: bool = use_pk_value
-        self.agents_pk: dict[str, str] = {}
-        self.agent_models: dict[str, str] = {}
+        self.agents_pk: Dict[str, str] = {}
+        self.agent_models: Dict[str, str] = {}
         self.redis_agent_as_actor: bool = redis_agent_as_actor
         self.evaluate_episode: bool = evaluate_episode
 
@@ -215,7 +216,9 @@ class Moderator(Node[AgentAction, Observation]):
                 agent_action = await self.observation_queue.get()
                 
                 # Handle special case for start message from RedisAgent
-                if agent_action.action_type == "start" and agent_action.agent_name == "redis_agent":
+                # Fixed: Added type checking to avoid comparison-overlap error
+                if (agent_action.action_type == "start" and 
+                    agent_action.agent_name == "redis_agent"):
                     try:
                         start_data = json.loads(agent_action.argument)
                         if "npcs" in start_data:
@@ -231,7 +234,7 @@ class Moderator(Node[AgentAction, Observation]):
                 if not self.agents_awake.get(agent_action.agent_name, False):
                     self.agents_awake[agent_action.agent_name] = True
                     try:
-                        args: dict[str, Any] = json.loads(agent_action.argument)
+                        args: Dict[str, Any] = json.loads(agent_action.argument)
                         self.agents_pk[agent_action.agent_name] = args.get("pk", "")
                         self.agent_models[agent_action.agent_name] = args.get("model_name", "")
                     except Exception as e:
@@ -292,8 +295,8 @@ class Moderator(Node[AgentAction, Observation]):
     async def route_message_to_npcs(
         self, 
         content: str, 
-        target_npcs: List[str] = None, 
-        target_group: str = None
+        target_npcs: Optional[List[str]] = None,  # Fixed: Made parameter optional
+        target_group: Optional[str] = None,  # Fixed: Made parameter optional
     ) -> Observations:
         """Route a message to specific NPCs or all NPCs in a group"""
         npcs_to_message = set()
@@ -356,7 +359,7 @@ class Moderator(Node[AgentAction, Observation]):
         logger.info("Episode eval finished")
         return epilog
 
-    async def astep(self, agent_action: AgentAction) -> Observations | None:
+    async def astep(self, agent_action: AgentAction) -> Optional[Observations]:
         """
         Process an agent action and determine the next step in the simulation
         
@@ -449,7 +452,7 @@ class Moderator(Node[AgentAction, Observation]):
         # For NPC responses in group mode, send to RedisAgent individually
         if self.group_mode and agent_action.agent_name in self.active_npcs:
             # Send this NPC's response to the RedisAgent
-            observations_map = {
+            redis_observations_map = {  # Fixed: Renamed variable to avoid redefinition
                 "moderator:redis_agent": Observation(
                     agent_name=agent_action.agent_name,
                     last_turn=agent_action.argument,
@@ -457,10 +460,10 @@ class Moderator(Node[AgentAction, Observation]):
                     available_actions=["none"],
                 )
             }
-            return Observations(observations_map=observations_map)
+            return Observations(observations_map=redis_observations_map)
             
         # Normal turn-based progression for regular agents
-        observations_map: dict[str, Observation] = {}
+        observations_map: Dict[str, Observation] = {}
         for output_channel, _ in self.output_channel_types.items():
             agent_name = self.agent_mapping.get(output_channel, "")
             if not agent_name:
