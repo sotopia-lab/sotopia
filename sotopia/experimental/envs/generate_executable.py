@@ -25,9 +25,9 @@ def render_dict(
                     output.append("[[{}]]".format(f"{prefix}.{key}"))
                     output.append(render_dict(v, f"{prefix}.{key}."))
                 else:
-                    output.append(f"{key} = {str(v).lower()}")
+                    output.append(f"{key} = {str(v)}")
         elif isinstance(val, (str, int, float, bool)):
-            output.append(f'{key} = "{str(val).lower()}"')
+            output.append(f'{key} = "{str(val)}"')
         else:
             raise ValueError(f"Unsupported type {type(val)}")
     return "\n".join(output)

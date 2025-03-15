@@ -12,11 +12,11 @@ from sotopia.envs.parallel import render_text_for_environment
 from .render_utils import (
     get_full_name,
     render_messages,
+    render_messages_for_multi_agent,
     local_css,
     avatar_mapping,
 )
 from .get_elements import get_agents
-
 
 role_mapping = {
     "Background Info": "background",
@@ -217,10 +217,24 @@ def render_environment_profile(profile: BaseEnvironmentProfile) -> None:
 
 def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
     local_css("./././css/style.css")
-    agents = [list(get_agents(agent).values())[0] for agent in episode.agents]
-    agent_names = [get_full_name(agent) for agent in agents]
+    try:
+        agents = [list(get_agents(agent).values())[0] for agent in episode.agents]
+        agent_names = [get_full_name(agent) for agent in agents]
+    except Exception as e:
+        print(e)
+        agent_names = episode.agents
 
-    messages = render_messages(episode)
+    try:
+        messages = render_messages(episode)
+    except Exception as e:
+        print(e)
+        sender_names, messages = render_messages_for_multi_agent(episode)
+        # hash avatar mapping for non-existing agents
+        for sender in sender_names:
+            if sender not in avatar_mapping:
+                avatar_mapping[sender] = list(avatar_mapping.values())[
+                    hash(sender) % len(list(avatar_mapping.values()))
+                ]
 
     background_messages = [
         message for message in messages if message["role"] == "Background Info"
@@ -233,10 +247,6 @@ def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
         for message in messages
         if message not in background_messages and message not in evaluation_messages
     ]
-
-    assert (
-        len(background_messages) == 2
-    ), f"Need 2 background messages, but got {len(background_messages)}"
 
     st.markdown("---")
 
@@ -257,7 +267,9 @@ def render_conversation_and_evaluation(episode: EpisodeLog) -> None:
             with st.chat_message(
                 role,
                 avatar=str(
-                    avatar_mapping.get(message["role"], avatar_mapping["default"])
+                    avatar_mapping.get(
+                        message["role"], avatar_mapping["default_avatar"]
+                    )
                 ),
             ):
                 if isinstance(content, dict):
