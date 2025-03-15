@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 import logging
-from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional
+from typing import Literal, Any, AsyncIterator, Dict, List, Set
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -34,7 +34,7 @@ class Observations(DataModel):
 class Moderator(Node[AgentAction, Observation]):
     """
     Moderator for managing communication between agents.
-    
+
     The Moderator:
     1. Receives messages from agents (including RedisAgent)
     2. Routes messages to appropriate agents based on targeting
@@ -42,6 +42,7 @@ class Moderator(Node[AgentAction, Observation]):
     4. Handles episode evaluation
     5. Provides group-based message distribution
     """
+
     def __init__(
         self,
         node_name: str,
@@ -101,8 +102,10 @@ class Moderator(Node[AgentAction, Observation]):
         self.evaluate_episode: bool = evaluate_episode
 
         # New fields for group-based routing
-        self.npc_groups: Dict[str, List[str]] = {}  # Map from group ID to list of NPC IDs
-        self.active_npcs: Set[str] = set()          # Set of active NPC IDs
+        self.npc_groups: Dict[
+            str, List[str]
+        ] = {}  # Map from group ID to list of NPC IDs
+        self.active_npcs: Set[str] = set()  # Set of active NPC IDs
         self.current_npc_responses: Dict[str, str] = {}  # Collect responses from NPCs
         self.pending_client_messages: List[dict] = []  # Queue of messages to process
         self.group_mode: bool = False  # Flag for group-based routing
@@ -213,9 +216,12 @@ class Moderator(Node[AgentAction, Observation]):
             await asyncio.sleep(0.2)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
-                
+
                 # Handle special case for start message from RedisAgent
-                if agent_action.action_type == "start" and agent_action.agent_name == "redis_agent":
+                if (
+                    agent_action.action_type == "start"
+                    and agent_action.agent_name == "redis_agent"
+                ):
                     try:
                         start_data = json.loads(agent_action.argument)
                         if "npcs" in start_data:
@@ -223,23 +229,27 @@ class Moderator(Node[AgentAction, Observation]):
                         if "groups" in start_data:
                             self.npc_groups = start_data["groups"]
                         self.group_mode = True
-                        logger.info(f"Received start message with {len(self.active_npcs)} NPCs and {len(self.npc_groups)} groups")
+                        logger.info(
+                            f"Received start message with {len(self.active_npcs)} NPCs and {len(self.npc_groups)} groups"
+                        )
                     except Exception as e:
                         logger.error(f"Error parsing start message: {e}")
-                
+
                 # Handle normal agent initialization
                 if not self.agents_awake.get(agent_action.agent_name, False):
                     self.agents_awake[agent_action.agent_name] = True
                     try:
                         args: dict[str, Any] = json.loads(agent_action.argument)
                         self.agents_pk[agent_action.agent_name] = args.get("pk", "")
-                        self.agent_models[agent_action.agent_name] = args.get("model_name", "")
+                        self.agent_models[agent_action.agent_name] = args.get(
+                            "model_name", ""
+                        )
                     except Exception as e:
                         # Handle case where argument isn't JSON
                         logger.warning(f"Failed to parse agent arguments: {e}")
                         self.agents_pk[agent_action.agent_name] = ""
                         self.agent_models[agent_action.agent_name] = ""
-            
+
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
                 logger.info("All agents are now awake and ready")
@@ -253,7 +263,7 @@ class Moderator(Node[AgentAction, Observation]):
             rewards=[0.0] * len(self.agents),
             rewards_prompt="",
         )
-        
+
         # Initialize with initial observations to all agents
         await self.send_observations(
             Observations(
@@ -290,26 +300,23 @@ class Moderator(Node[AgentAction, Observation]):
         )
 
     async def route_message_to_npcs(
-        self, 
-        content: str, 
-        target_npcs: List[str] = None, 
-        target_group: str = None
+        self, content: str, target_npcs: List[str] = None, target_group: str = None
     ) -> Observations:
         """Route a message to specific NPCs or all NPCs in a group"""
         npcs_to_message = set()
-        
+
         # Add specifically targeted NPCs
         if target_npcs:
             npcs_to_message.update(target_npcs)
-        
+
         # Add all NPCs in the target group
         if target_group and target_group in self.npc_groups:
             npcs_to_message.update(self.npc_groups[target_group])
-        
+
         # If no targeting specified and we're in group mode, message all active NPCs
         if not target_npcs and not target_group and self.group_mode:
             npcs_to_message.update(self.active_npcs)
-        
+
         # Only message NPCs that exist in our mapping
         valid_npcs = set()
         for npc_id in npcs_to_message:
@@ -318,7 +325,7 @@ class Moderator(Node[AgentAction, Observation]):
                 valid_npcs.add(npc_id)
             else:
                 logger.warning(f"NPC {npc_id} not found in output channels")
-        
+
         # Create observations for each target NPC
         observations_map = {}
         for npc_id in valid_npcs:
@@ -329,7 +336,7 @@ class Moderator(Node[AgentAction, Observation]):
                 turn_number=self.turn_number,
                 available_actions=self.available_actions,
             )
-        
+
         # Return observations to be sent
         return Observations(observations_map=observations_map)
 
@@ -359,7 +366,7 @@ class Moderator(Node[AgentAction, Observation]):
     async def astep(self, agent_action: AgentAction) -> Observations | None:
         """
         Process an agent action and determine the next step in the simulation
-        
+
         This method handles:
         - Regular agent messages
         - Client messages from RedisAgent
@@ -367,14 +374,17 @@ class Moderator(Node[AgentAction, Observation]):
         - Evaluation
         """
         # Special handling for client messages from RedisAgent
-        if agent_action.agent_name == "redis_agent" and agent_action.action_type == "speak":
+        if (
+            agent_action.agent_name == "redis_agent"
+            and agent_action.action_type == "speak"
+        ):
             try:
                 # Parse the message data
                 message_data = json.loads(agent_action.argument)
                 content = message_data.get("content", "")
                 target_npcs = message_data.get("target_npcs", [])
                 target_group = message_data.get("target_group", None)
-                
+
                 # Add to the episode log
                 self.epilog.messages.append(
                     [
@@ -385,20 +395,18 @@ class Moderator(Node[AgentAction, Observation]):
                         )
                     ]
                 )
-                
+
                 # Increment turn number for client messages
                 self.turn_number += 1
-                
+
                 # Route the message to appropriate NPCs
                 return await self.route_message_to_npcs(
-                    content=content,
-                    target_npcs=target_npcs,
-                    target_group=target_group
+                    content=content, target_npcs=target_npcs, target_group=target_group
                 )
             except Exception as e:
                 logger.error(f"Error routing client message: {e}")
                 return None
-        
+
         # Regular message handling for agent actions
         self.epilog.messages.append(
             [
@@ -409,26 +417,28 @@ class Moderator(Node[AgentAction, Observation]):
                 )
             ]
         )
-        
+
         # Handle agent leaving
         if agent_action.action_type == "leave":
             self.agents_awake[agent_action.agent_name] = False
             # Skip redis_agent when checking if all agents have left
-            remaining_agents = {k: v for k, v in self.agents_awake.items() if k != "redis_agent"}
+            remaining_agents = {
+                k: v for k, v in self.agents_awake.items() if k != "redis_agent"
+            }
             if True not in remaining_agents.values():
                 if self.evaluate_episode:
                     self.epilog = await self.aeval(self.epilog)
                 await self.send_epilog(self.epilog, "moderator:redis_agent")
                 await self.wrap_up_and_stop()
                 return None
-        
+
         # Skip empty actions
         if agent_action.action_type == "none":
             return None
 
         # Always send the current state to RedisAgent
         await self.send_epilog(self.epilog, "moderator:redis_agent")
-        
+
         # Check if we've reached max turns
         if self.turn_number < self.max_turns:
             if not self.group_mode:  # Only increment for regular turn-based mode
@@ -458,19 +468,19 @@ class Moderator(Node[AgentAction, Observation]):
                 )
             }
             return Observations(observations_map=observations_map)
-            
+
         # Normal turn-based progression for regular agents
         observations_map: dict[str, Observation] = {}
         for output_channel, _ in self.output_channel_types.items():
             agent_name = self.agent_mapping.get(output_channel, "")
             if not agent_name:
                 continue
-                
+
             available_actions = ["none"]
             if self.action_order == "round-robin" and not self.group_mode:
                 if agent_name == self.agents[self.current_agent_index]:
                     available_actions = list(self.available_actions)
-                    
+
             observation = Observation(
                 agent_name=agent_name,
                 last_turn=agent_action.to_natural_language(),
@@ -481,5 +491,5 @@ class Moderator(Node[AgentAction, Observation]):
 
         if not self.group_mode:
             self.current_agent_index = (self.current_agent_index + 1) % len(self.agents)
-        
+
         return Observations(observations_map=observations_map)
