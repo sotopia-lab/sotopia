@@ -420,68 +420,51 @@ class WebSocketSotopiaSimulator:
 
         elif len(self.agent_models) == 2:
             # Standard two-agent simulation
-            # Fix: Use the correct parameter structure for arun_one_episode
-            episode_config = {
-                "env_profile": self.env.profile,
-                "agents": [
-                    {
-                        "agent_profile": agent.profile,
-                        "model_name": agent.model_name
-                    } for agent in self.agents.values()
-                ],
-                "evaluator_model": self.evaluator_model,
-                "evaluation_dimension_list_name": self.evaluation_dimension_list_name,
-                "push_to_db": False,
-                "streaming": True
-            }
-            
-            # Call arun_one_episode with the episode_config parameter
-            generator = await arun_one_episode(episode_config=episode_config)
+            generator = await arun_one_episode(
+                episode_config={
+                    "env_profile": self.env.profile,
+                    "agents": [
+                        {
+                            "agent_profile": agent.profile,
+                            "model_name": agent.model_name
+                        } for agent in self.agents.values()
+                    ],
+                    "evaluator_model": self.evaluator_model,
+                    "evaluation_dimension_list_name": self.evaluation_dimension_list_name,
+                    "push_to_db": False,
+                    "streaming": True
+                }
+            )
 
-            # Process the results
-            async for message_data in generator:
-                # Convert the data to the expected format
-                if isinstance(message_data, dict) and "messages" in message_data:
-                    messages = message_data["messages"]
-                    reasoning, rewards = "", [0.0, 0.0]
-                    
-                    # Extract reasoning and rewards if available
-                    if len(messages) > 1 and isinstance(messages[-1], list) and messages[-1] and messages[-1][0][0] == "Evaluation":
-                        reasoning = messages[-1][0][2].to_natural_language()
-                        rewards = eval(messages[-2][0][2].to_natural_language())
+            async for messages in generator:
+                reasoning, rewards = "", [0.0, 0.0]
+                if isinstance(messages, list) and len(messages) > 0 and messages[-1][0][0] == "Evaluation":
+                    reasoning = messages[-1][0][2].to_natural_language()
+                    rewards = eval(messages[-2][0][2].to_natural_language())
 
-                    epilog = EpisodeLog(
-                        environment=self.env.profile.pk,
-                        agents=[agent.profile.pk for agent in self.agents.values()],
-                        tag="test",
-                        models=["gpt-4o", "gpt-4o", "gpt-4o-mini"],
-                        messages=[
-                            [
-                                (m[0], m[1], m[2].to_natural_language())
-                                for m in messages_in_turn
-                            ]
-                            for messages_in_turn in messages
-                        ] if isinstance(messages, list) else [],
-                        reasoning=reasoning,
-                        rewards=rewards,
-                        rewards_prompt="",
-                    ).dict()
+                epilog = EpisodeLog(
+                    environment=self.env.profile.pk,
+                    agents=[agent.profile.pk for agent in self.agents.values()],
+                    tag="test",
+                    models=["gpt-4o", "gpt-4o", "gpt-4o-mini"],
+                    messages=[
+                        [
+                            (m[0], m[1], m[2].to_natural_language())
+                            for m in messages_in_turn
+                        ]
+                        for messages_in_turn in messages
+                    ] if isinstance(messages, list) else [],
+                    reasoning=reasoning,
+                    rewards=rewards,
+                    rewards_prompt="",
+                ).dict()
 
-                    yield {
-                        "type": "messages",
-                        "messages": epilog,
-                    }
-                else:
-                    # Pass through the message data as is
-                    yield {
-                        "type": "messages",
-                        "messages": message_data,
-                    }
-
+                yield {
+                    "type": "messages",
+                    "messages": epilog,
+                }
         elif len(self.agent_models) > 2:
             # Multi-agent simulation
-            # Fix: Use the function correctly avoiding the AsyncGenerator problem
-            # Create the configuration for the multi-agent simulation
             config_data = {
                 "redis_url": "redis://localhost:6379/0",
                 "extra_modules": [
@@ -513,15 +496,66 @@ class WebSocketSotopiaSimulator:
             # Add redis_agent to handle WebSocket communication
             config_data["agents"].append({"name": "redis_agent"})
 
-            # Call arun_one_episode with the episode_config parameter
-            generator = await arun_one_episode(episode_config=config_data)
+            # Run the multi-agent simulation
+            generator = await arun_one_episode(
+                episode_config=config_data,
+                connection_id=self.connection_id,
+            )
             
-            # Process the results
             async for episode_data in generator:
-                # Yield each piece of data without trying to append to a collection
                 yield {
                     "type": "messages",
                     "messages": episode_data,
                 }
         else:
             raise ValueError("Number of agents must be 2 or greater")
+
+
+async def arun_server_adaptor(
+    env: EnvironmentProfile,
+    agent_list: List[AgentProfile],
+    agent_models: List[str],
+    evaluator_model: str,
+    evaluation_dimension_list_name: str,
+    max_turns: int = 20,
+    push_to_db: bool = True,
+    streaming: bool = False,
+    connection_id: str = "",
+) -> AsyncGenerator[dict[str, Any], None]:
+    # Configure the episode
+    config_data = {
+        "redis_url": "redis://localhost:6379/0",
+        "extra_modules": [
+            "examples.experimental.sotopia_original_replica.llm_agent_sotopia",
+            "sotopia.experimental.agents.redis_agent",
+        ],
+        "agent_node": "llm_agent",
+        "default_model": "gpt-4o-mini",
+        "evaluator_model": evaluator_model,
+        "use_pk_value": False,
+        "push_to_db": push_to_db,
+        "evaluate_episode": False,
+        "max_turns": max_turns,
+        "scenario": env.scenario,
+        "agents": [
+            {
+                "name": agent.first_name,
+                "goal": env.agent_goals[i] if i < len(env.agent_goals) else "",
+                "model_name": agent_models[i]
+                if i < len(agent_models)
+                else "gpt-4o-mini",
+                "background": agent.dict(),
+            }
+            for i, agent in enumerate(agent_list)
+        ],
+        "connection_id": connection_id,
+    }
+
+    # Add redis_agent to handle WebSocket communication
+    config_data["agents"].append({"name": "redis_agent"})
+
+    # Run the episode
+    async for episode_data in arun_one_episode(
+        episode_config=config_data, connection_id=connection_id
+    ):
+        yield episode_data

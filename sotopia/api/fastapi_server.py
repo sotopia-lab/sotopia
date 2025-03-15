@@ -845,40 +845,49 @@ class SotopiaFastAPI(FastAPI):
             try:
                 await websocket.accept()
 
-                # Wait for the START_SIM message
-                start_msg = await websocket.receive_json()
-                if start_msg.get("type") != WSMessageType.START_SIM.value:
-                    await manager.send_error(
-                        websocket,
-                        ErrorType.INVALID_MESSAGE,
-                        "First message must be START_SIM",
-                    )
-                    return
+                # Continuous loop to handle multiple simulation requests over the same connection
+                while True:
+                    start_msg = await websocket.receive_json()
+                    if start_msg.get("type") != WSMessageType.START_SIM.value:
+                        await manager.send_error(
+                            websocket,
+                            ErrorType.INVALID_MESSAGE,
+                            "Expected START_SIM message",
+                        )
+                        continue
 
-                # Extract mode information and NPC/group data if available
-                npcs = start_msg["data"].get("npcs", [])
-                groups = start_msg["data"].get("groups", {})
+                    # Extract mode information and NPC/group data if available
+                    npcs = start_msg["data"].get("npcs", [])
+                    groups = start_msg["data"].get("groups", {})
 
-                async with manager.state.start_simulation(token):
-                    simulator = await manager.create_simulator(
-                        env_id=start_msg["data"]["env_id"],
-                        agent_ids=start_msg["data"]["agent_ids"],
-                        agent_models=start_msg["data"].get(
-                            "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
-                        ),
-                        evaluator_model=start_msg["data"].get(
-                            "evaluator_model", "gpt-4o"
-                        ),
-                        evaluation_dimension_list_name=start_msg["data"].get(
-                            "evaluation_dimension_list_name", "sotopia"
-                        ),
-                        max_turns=start_msg["data"].get("max_turns", 20),
-                        npcs=npcs,
-                        groups=groups,
-                    )
+                    async with manager.state.start_simulation(token):
+                        simulator = await manager.create_simulator(
+                            env_id=start_msg["data"]["env_id"],
+                            agent_ids=start_msg["data"]["agent_ids"],
+                            agent_models=start_msg["data"].get(
+                                "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
+                            ),
+                            env_profile_dict=start_msg["data"].get(
+                                "env_profile_dict", {}
+                            ),
+                            agent_profile_dicts=start_msg["data"].get(
+                                "agent_profile_dicts", []
+                            ),
+                            evaluator_model=start_msg["data"].get(
+                                "evaluator_model", "gpt-4o"
+                            ),
+                            evaluation_dimension_list_name=start_msg["data"].get(
+                                "evaluation_dimension_list_name", "sotopia"
+                            ),
+                            max_turns=start_msg["data"].get("max_turns", 20),
+                            npcs=npcs,
+                            groups=groups,
+                        )
 
-                    # Run the simulation based on the mode
-                    await manager.run_simulation(websocket, simulator)
+                        # Run the simulation based on the mode
+                        await manager.run_simulation(websocket, simulator)
+                        
+                        # After a simulation completes, we continue the loop to accept another START_SIM
 
             except WebSocketDisconnect:
                 logger.info("Client disconnected during simulation")
@@ -888,7 +897,7 @@ class SotopiaFastAPI(FastAPI):
                     await manager.send_error(
                         websocket, ErrorType.SIMULATION_ISSUE, str(e)
                     )
-                except Exception as e:
+                except Exception:
                     pass
             finally:
                 try:
