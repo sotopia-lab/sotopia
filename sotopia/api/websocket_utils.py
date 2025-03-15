@@ -13,7 +13,7 @@ from sotopia.database import (
     EvaluationDimensionBuilder,
 )
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict, Set, Optional, cast
+from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict, Set
 from pydantic import BaseModel
 import uuid
 import asyncio
@@ -424,21 +424,23 @@ class WebSocketSotopiaSimulator:
                 episode_config={
                     "env_profile": self.env.profile,
                     "agents": [
-                        {
-                            "agent_profile": agent.profile,
-                            "model_name": agent.model_name
-                        } for agent in self.agents.values()
+                        {"agent_profile": agent.profile, "model_name": agent.model_name}
+                        for agent in self.agents.values()
                     ],
                     "evaluator_model": self.evaluator_model,
                     "evaluation_dimension_list_name": self.evaluation_dimension_list_name,
                     "push_to_db": False,
-                    "streaming": True
+                    "streaming": True,
                 }
             )
 
             async for messages in generator:
                 reasoning, rewards = "", [0.0, 0.0]
-                if isinstance(messages, list) and len(messages) > 0 and messages[-1][0][0] == "Evaluation":
+                if (
+                    isinstance(messages, list)
+                    and len(messages) > 0
+                    and messages[-1][0][0] == "Evaluation"
+                ):
                     reasoning = messages[-1][0][2].to_natural_language()
                     rewards = eval(messages[-2][0][2].to_natural_language())
 
@@ -453,7 +455,9 @@ class WebSocketSotopiaSimulator:
                             for m in messages_in_turn
                         ]
                         for messages_in_turn in messages
-                    ] if isinstance(messages, list) else [],
+                    ]
+                    if isinstance(messages, list)
+                    else [],
                     reasoning=reasoning,
                     rewards=rewards,
                     rewards_prompt="",
@@ -482,7 +486,9 @@ class WebSocketSotopiaSimulator:
                 "agents": [
                     {
                         "name": agent.first_name,
-                        "goal": self.env_profile.agent_goals[i] if i < len(self.env_profile.agent_goals) else "",
+                        "goal": self.env_profile.agent_goals[i]
+                        if i < len(self.env_profile.agent_goals)
+                        else "",
                         "model_name": self.agent_models[i]
                         if i < len(self.agent_models)
                         else "gpt-4o-mini",
@@ -501,7 +507,7 @@ class WebSocketSotopiaSimulator:
                 episode_config=config_data,
                 connection_id=self.connection_id,
             )
-            
+
             async for episode_data in generator:
                 yield {
                     "type": "messages",

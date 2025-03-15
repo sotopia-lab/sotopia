@@ -108,7 +108,9 @@ class Moderator(Node[AgentAction, Observation]):
         ] = {}  # Map from group ID to list of NPC IDs
         self.active_npcs: Set[str] = set()  # Set of active NPC IDs
         self.current_npc_responses: Dict[str, str] = {}  # Collect responses from NPCs
-        self.pending_client_messages: List[Dict[str, Any]] = []  # Queue of messages to process
+        self.pending_client_messages: List[
+            Dict[str, Any]
+        ] = []  # Queue of messages to process
         self.group_mode: bool = False  # Flag for group-based routing
 
         assert (not self.evaluate_episode) or len(

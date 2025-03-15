@@ -886,7 +886,7 @@ class SotopiaFastAPI(FastAPI):
 
                         # Run the simulation based on the mode
                         await manager.run_simulation(websocket, simulator)
-                        
+
                         # After a simulation completes, we continue the loop to accept another START_SIM
 
             except WebSocketDisconnect:
