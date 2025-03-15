@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 import logging
-from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional
+from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional, Union
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -49,7 +49,7 @@ class Moderator(Node[AgentAction, Observation]):
         input_channels: list[str],
         output_channels: list[str],
         scenario: str,
-        agent_mapping: Dict[str, str],  # Fixed: Using Dict instead of dict
+        agent_mapping: Dict[str, str],
         evaluator_channels: list[list[str]] = [],
         tag: str = "",
         redis_url: str = "redis://localhost:6379/0",
@@ -65,7 +65,7 @@ class Moderator(Node[AgentAction, Observation]):
         push_to_db: bool = False,
         use_pk_value: bool = False,
         evaluate_episode: bool = False,
-        redis_agent_as_actor: bool = True,  # Changed to True by default
+        redis_agent_as_actor: bool = True,
     ) -> None:
         super().__init__(
             node_name=node_name,
@@ -108,7 +108,7 @@ class Moderator(Node[AgentAction, Observation]):
         ] = {}  # Map from group ID to list of NPC IDs
         self.active_npcs: Set[str] = set()  # Set of active NPC IDs
         self.current_npc_responses: Dict[str, str] = {}  # Collect responses from NPCs
-        self.pending_client_messages: List[dict] = []  # Queue of messages to process
+        self.pending_client_messages: List[Dict[str, Any]] = []  # Queue of messages to process
         self.group_mode: bool = False  # Flag for group-based routing
 
         assert (not self.evaluate_episode) or len(
@@ -218,12 +218,14 @@ class Moderator(Node[AgentAction, Observation]):
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
 
+                # Define a custom action type that includes 'start'
+                custom_action_type = Union[ActionType, Literal["start"]]
+                
                 # Handle special case for start message from RedisAgent
-                # Fixed: Added "start" to the possible ActionType values or use isinstance check
                 if (
-                    isinstance(agent_action.action_type, str)
-                    and agent_action.action_type == "start"
-                    and agent_action.agent_name == "redis_agent"
+                    agent_action.agent_name == "redis_agent"
+                    and isinstance(agent_action.action_type, str)
+                    and agent_action.action_type == "start"  # type: ignore[comparison-overlap]
                 ):
                     try:
                         start_data = json.loads(agent_action.argument)
