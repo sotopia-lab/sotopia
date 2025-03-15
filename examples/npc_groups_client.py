@@ -34,7 +34,7 @@ async def send_message_to_npcs(
             "content": content
         }
     }
-    
+
     # Add targeting information if provided
     if target_npcs:
         message["data"]["target_npcs"] = target_npcs
@@ -93,14 +93,14 @@ async def handle_server_messages(websocket: aiohttp.ClientWebSocketResponse) -> 
                     if content_type == "initialization":
                         init_data = data.get("data", {})
                         logger.info(f"Simulation initialized with {len(init_data.get('npcs', []))} NPCs")
-                        
+
                     # Handle individual NPC response
                     elif content_type == "npc_response":
                         npc_id = data.get("data", {}).get("npc_id")
                         content = data.get("data", {}).get("content")
                         logger.info(f"Received response from {npc_id}: {content}")
-                    
-                    # Handle grouped NPC responses (future compatibility)    
+
+                    # Handle grouped NPC responses (future compatibility)
                     elif content_type == "npc_responses":
                         responses = data.get("data", {}).get("responses", {})
                         logger.info(f"Received responses from {len(responses)} NPCs:")

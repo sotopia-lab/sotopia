@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 import logging
-from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional, Union
+from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -81,7 +81,9 @@ class Moderator(Node[AgentAction, Observation]):
         self.observation_queue: asyncio.Queue[AgentAction] = asyncio.Queue()
         self.task_scheduler: asyncio.Task[None] | None = None
         self.shutdown_event: asyncio.Event = asyncio.Event()
-        self.agent_mapping: Dict[str, str] = agent_mapping  # Fixed: Using Dict instead of dict
+        self.agent_mapping: Dict[str, str] = (
+            agent_mapping  # Fixed: Using Dict instead of dict
+        )
         self.tag: str = tag
         self.action_order: Literal["simultaneous", "round-robin", "random"] = (
             action_order
@@ -220,8 +222,10 @@ class Moderator(Node[AgentAction, Observation]):
 
                 # Handle special case for start message from RedisAgent
                 # Fixed: Added type checking to avoid comparison-overlap error
-                if (agent_action.action_type == "start" and 
-                    agent_action.agent_name == "redis_agent"):
+                if (
+                    agent_action.action_type == "start"
+                    and agent_action.agent_name == "redis_agent"
+                ):
                     try:
                         start_data = json.loads(agent_action.argument)
                         if "npcs" in start_data:
@@ -300,8 +304,8 @@ class Moderator(Node[AgentAction, Observation]):
         )
 
     async def route_message_to_npcs(
-        self, 
-        content: str, 
+        self,
+        content: str,
         target_npcs: Optional[List[str]] = None,  # Fixed: Made parameter optional
         target_group: Optional[str] = None,  # Fixed: Made parameter optional
     ) -> Observations:
@@ -471,7 +475,7 @@ class Moderator(Node[AgentAction, Observation]):
                 )
             }
             return Observations(observations_map=redis_observations_map)
-            
+
         # Normal turn-based progression for regular agents
         observations_map: Dict[str, Observation] = {}
         for output_channel, _ in self.output_channel_types.items():
