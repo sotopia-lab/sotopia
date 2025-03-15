@@ -3,7 +3,7 @@ import aiohttp
 import json
 import logging
 import argparse
-from typing import Dict, List, Any, Optional, Union, AsyncGenerator
+from typing import Dict, List, Any, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -21,18 +21,17 @@ class WSMessageType:
     END_SIM = "END_SIM"
     FINISH_SIM = "FINISH_SIM"
 
+
 async def send_message_to_npcs(
     websocket: aiohttp.ClientWebSocketResponse,
     content: str,
     target_npcs: Optional[List[str]] = None,
-    target_group: Optional[str] = None
+    target_group: Optional[str] = None,
 ) -> None:
     """Send a message to specific NPCs or a group"""
     message: Dict[str, Any] = {
         "type": WSMessageType.CLIENT_MSG,
-        "data": {
-            "content": content
-        }
+        "data": {"content": content},
     }
 
     # Add targeting information if provided
@@ -53,10 +52,11 @@ async def finish_simulation(websocket: aiohttp.ClientWebSocketResponse) -> None:
     await websocket.send_json({"type": WSMessageType.FINISH_SIM, "data": {}})
     logger.info("Sent finish simulation message")
 
+
 async def start_npc_group_simulation(
     websocket: aiohttp.ClientWebSocketResponse,
     npcs: List[str],
-    groups: Dict[str, List[str]]
+    groups: Dict[str, List[str]],
 ) -> None:
     """Start a simulation with defined NPCs and groups"""
     start_message: Dict[str, Any] = {
@@ -70,6 +70,7 @@ async def start_npc_group_simulation(
     }
     await websocket.send_json(start_message)
     logger.info(f"Started simulation with {len(npcs)} NPCs and {len(groups)} groups")
+
 
 async def handle_server_messages(websocket: aiohttp.ClientWebSocketResponse) -> None:
     """Handle messages from the server"""
@@ -85,7 +86,9 @@ async def handle_server_messages(websocket: aiohttp.ClientWebSocketResponse) -> 
                     # Handle initialization
                     if content_type == "initialization":
                         init_data = data.get("data", {})
-                        logger.info(f"Simulation initialized with {len(init_data.get('npcs', []))} NPCs")
+                        logger.info(
+                            f"Simulation initialized with {len(init_data.get('npcs', []))} NPCs"
+                        )
 
                     # Handle individual NPC response
                     elif content_type == "npc_response":
@@ -125,6 +128,7 @@ async def handle_server_messages(websocket: aiohttp.ClientWebSocketResponse) -> 
         elif msg.type == aiohttp.WSMsgType.ERROR:
             logger.error(f"WebSocket error: {msg.data}")
             break
+
 
 async def interactive_mode(websocket: aiohttp.ClientWebSocketResponse) -> None:
     """Run an interactive session with the NPCs"""
@@ -196,6 +200,7 @@ async def interactive_mode(websocket: aiohttp.ClientWebSocketResponse) -> None:
         except asyncio.CancelledError:
             pass
 
+
 async def automated_demo(websocket: aiohttp.ClientWebSocketResponse) -> None:
     """Run an automated demonstration of the NPC group messaging"""
     # Sample NPCs and groups
@@ -260,6 +265,7 @@ async def automated_demo(websocket: aiohttp.ClientWebSocketResponse) -> None:
             await server_task
         except asyncio.CancelledError:
             pass
+
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description="NPC Groups Client Example")
