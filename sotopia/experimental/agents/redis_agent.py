@@ -4,7 +4,7 @@ import asyncio
 from rich.logging import RichHandler
 import aiohttp
 from aiohttp import ClientSession, ClientWebSocketResponse, ClientWSTimeout
-from typing import Any, Dict, List, Optional, Set, Union, TypeVar, cast
+from typing import Any, Dict, List, Set
 
 from aact import NodeFactory
 
@@ -88,9 +88,13 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.other_agent_status = other_agent_status
 
         # Fields for group-based routing
-        self.npc_groups: Dict[str, List[str]] = {}  # Map from group ID to list of NPC IDs
-        self.active_npcs: Set[str] = set()          # Set of active NPC IDs
-        self.pending_ws_messages: List[Dict[str, Any]] = []   # Messages waiting to be processed
+        self.npc_groups: Dict[
+            str, List[str]
+        ] = {}  # Map from group ID to list of NPC IDs
+        self.active_npcs: Set[str] = set()  # Set of active NPC IDs
+        self.pending_ws_messages: List[
+            Dict[str, Any]
+        ] = []  # Messages waiting to be processed
 
     async def setup_websocket(self) -> None:
         """Set up the WebSocket connection with improved error handling"""
@@ -108,7 +112,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         self.websocket = await self.websocket_session.ws_connect(
                             self.websocket_url,
                             timeout=ws_timeout,  # Now using proper type
-                            heartbeat=30.0  # Keep connection alive
+                            heartbeat=30.0,  # Keep connection alive
                         )
                         logger.info(f"Connected to WebSocket at {self.websocket_url}")
                         return  # Success, exit the function

@@ -885,7 +885,9 @@ class SotopiaFastAPI(FastAPI):
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
                 try:
-                    await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
+                    await manager.send_error(
+                        websocket, ErrorType.SIMULATION_ISSUE, str(e)
+                    )
                 except Exception as e:
                     pass
             finally:

@@ -231,8 +231,10 @@ class WebSocketSotopiaSimulator:
         self.turn_number: int = 0  # Current turn number
         self.conversation_history: list[dict[str, str]] = []  # History of messages
         self.pending_responses: Dict[str, Dict[str, Any]] = {}  # Pending NPC responses
-        self.response_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()  # Queue for NPC responses
-        
+        self.response_queue: asyncio.Queue[Dict[str, Any]] = (
+            asyncio.Queue()
+        )  # Queue for NPC responses
+
         # Flag for group-based routing
         self.group_mode: bool = False
 
@@ -531,10 +533,12 @@ async def arun_server_adaptor(
 
     # Run the episode
     episode_results = []  # Create a list to collect results if needed
-    async for episode_data in arun_one_episode(episode_config=config_data, connection_id=connection_id):
+    async for episode_data in arun_one_episode(
+        episode_config=config_data, connection_id=connection_id
+    ):
         # If you need to store the data in a collection:
         if isinstance(episode_results, list):
             episode_results.append(episode_data)
-            
+
         # Either way, yield each piece of data
         yield episode_data
