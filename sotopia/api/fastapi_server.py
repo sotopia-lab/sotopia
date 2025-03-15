@@ -1,13 +1,25 @@
 from typing import Literal, cast, Dict
 import sys
+import json
+import asyncio
+import logging
+from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
+from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, model_validator, field_validator, Field
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, Optional, Any, List, Dict, Set
+import uuid
+import uvicorn
+import rq
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
+# Import Sotopia components
 from redis_om import get_redis_connection
-import rq
 from sotopia.database import (
     EnvironmentProfile,
     AgentProfile,
@@ -30,45 +42,21 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
-from fastapi import (
-    FastAPI,
-    WebSocket,
-    HTTPException,
-    WebSocketDisconnect,
-)
-from typing import Optional, Any
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, model_validator, field_validator, Field
+from sotopia.messages import Observation, AgentAction
 
+# Import the enhanced WebSocket utilities
 from sotopia.api.websocket_utils import (
     WebSocketSotopiaSimulator,
     WSMessageType,
     ErrorType,
 )
-import uvicorn
-import asyncio
 
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
-import logging
-from fastapi.responses import Response
-
+# Configure logging
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-
-# app = FastAPI()
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )  # TODO: Whether allowing CORS for all origins
-
-active_simulations: Dict[
-    str, bool
-] = {}  # TODO check whether this is the correct way to store the active simulations
+# Active simulations tracking
+active_simulations: Dict[str, bool] = {}
 
 
 class CustomEvaluationDimensionsWrapper(BaseModel):
@@ -105,6 +93,31 @@ class SimulationRequest(BaseModel):
             raise ValueError(
                 f"models must have exactly {len(agent_ids) + 1} elements, if there are {len(agent_ids)} agents, the first model is the evaluator model"
             )
+        return self
+
+
+class NPCGroupSimulationRequest(BaseModel):
+    env_id: str
+    npcs: list[str]
+    groups: dict[str, list[str]]
+    models: list[str] = Field(default=["gpt-4o-mini", "gpt-4o-mini"])
+    evaluator_model: str = Field(default="gpt-4o")
+    max_turns: int = Field(default=20)
+    tag: str = Field(default="npc_group_simulation")
+
+    @model_validator(mode="after")
+    def validate_groups(self) -> Self:
+        # Check that all NPCs in groups are in the npcs list
+        all_group_npcs = set()
+        for group_members in self.groups.values():
+            all_group_npcs.update(group_members)
+        
+        if not all_group_npcs.issubset(set(self.npcs)):
+            missing_npcs = all_group_npcs - set(self.npcs)
+            raise ValueError(
+                f"These NPCs are in groups but not in the npcs list: {missing_npcs}"
+            )
+        
         return self
 
 
@@ -157,12 +170,14 @@ class SimulationManager:
         agent_models: list[str],
         evaluator_model: str,
         evaluation_dimension_list_name: str,
-        env_profile_dict: dict[str, Any],
-        agent_profile_dicts: list[dict[str, Any]],
+        env_profile_dict: dict[str, Any] = {},
+        agent_profile_dicts: list[dict[str, Any]] = [],
         max_turns: int = 20,
+        npcs: list[str] = [],
+        groups: dict[str, list[str]] = {},
     ) -> WebSocketSotopiaSimulator:
         try:
-            return WebSocketSotopiaSimulator(
+            simulator = WebSocketSotopiaSimulator(
                 env_id=env_id,
                 agent_ids=agent_ids,
                 agent_models=agent_models,
@@ -172,6 +187,14 @@ class SimulationManager:
                 agent_profile_dicts=agent_profile_dicts,
                 max_turns=max_turns,
             )
+            
+            # If NPCs and groups are provided, initialize them
+            if npcs or groups:
+                simulator.active_npcs = set(npcs)
+                simulator.npc_groups = groups
+                simulator.group_mode = True
+                
+            return simulator
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
             logger.error(error_msg)
@@ -186,9 +209,49 @@ class SimulationManager:
     ) -> bool:
         try:
             msg_type = message.get("type")
+            
+            # Finish simulation
             if msg_type == WSMessageType.FINISH_SIM.value:
                 return True
-            # TODO handle other message types
+                
+            # Process client message for NPC routing
+            elif msg_type == WSMessageType.CLIENT_MSG.value:
+                try:
+                    client_response = await simulator.process_client_message(
+                        message.get("data", {})
+                    )
+                    await self.send_message(
+                        websocket,
+                        WSMessageType.SERVER_MSG,
+                        {"type": "npc_responses", "data": client_response},
+                    )
+                except Exception as e:
+                    logger.error(f"Error processing client message: {e}")
+                    await self.send_error(
+                        websocket,
+                        ErrorType.SIMULATION_ISSUE,
+                        str(e),
+                    )
+                    
+            # Process turn request
+            elif msg_type == WSMessageType.TURN_REQUEST.value:
+                try:
+                    turn_response = await simulator.process_turn(
+                        message.get("data", {})
+                    )
+                    await self.send_message(
+                        websocket,
+                        WSMessageType.TURN_RESPONSE,
+                        turn_response,
+                    )
+                except Exception as e:
+                    logger.error(f"Error processing turn: {e}")
+                    await self.send_error(
+                        websocket,
+                        ErrorType.SIMULATION_ISSUE,
+                        str(e),
+                    )
+            
             return False
         except Exception as e:
             msg = f"Error handling client message: {e}"
@@ -200,39 +263,89 @@ class SimulationManager:
         self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
     ) -> None:
         try:
-            async for message in simulator.arun():
-                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
-
-                try:
-                    data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
-                    if await self.handle_client_message(websocket, simulator, data):
+            # Check if this is a group-based simulation
+            if simulator.group_mode:
+                # Send initialization with NPCs and groups
+                await self.send_message(
+                    websocket,
+                    WSMessageType.SERVER_MSG,
+                    {
+                        "type": "initialization",
+                        "data": {
+                            "status": "ready",
+                            "npcs": list(simulator.active_npcs),
+                            "groups": {name: members for name, members in simulator.npc_groups.items()},
+                        }
+                    }
+                )
+                
+                # Enter message handling loop for group-based mode
+                while True:
+                    try:
+                        data = await websocket.receive_json()
+                        if await self.handle_client_message(websocket, simulator, data):
+                            break
+                    except asyncio.TimeoutError:
+                        pass
+                    except WebSocketDisconnect:
+                        logger.info("Client disconnected during group-based simulation")
                         break
-                except asyncio.TimeoutError:
-                    continue
+            # Regular simulation mode
+            else:
+                # Run the standard simulation and stream messages
+                async for message in simulator.arun():
+                    await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
+                    
+                    try:
+                        data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
+                        if await self.handle_client_message(websocket, simulator, data):
+                            break
+                    except asyncio.TimeoutError:
+                        pass
+                    except WebSocketDisconnect:
+                        logger.info("Client disconnected")
+                        break
 
+        except WebSocketDisconnect:
+            logger.info("Client disconnected during simulation")
         except Exception as e:
             msg = f"Error running simulation: {e}"
             logger.error(msg)
             await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
         finally:
-            await self.send_message(websocket, WSMessageType.END_SIM, {})
+            # Send end simulation message
+            try:
+                await self.send_message(websocket, WSMessageType.END_SIM, {})
+                logger.info("Simulation ended")
+            except Exception as e:
+                logger.error(f"Error sending end simulation message: {e}")
 
     @staticmethod
     async def send_message(
         websocket: WebSocket, msg_type: WSMessageType, data: dict[str, Any]
     ) -> None:
-        await websocket.send_json({"type": msg_type.value, "data": data})
+        """Send a message to the WebSocket client"""
+        try:
+            await websocket.send_json({"type": msg_type.value, "data": data})
+        except Exception as e:
+            logger.error(f"Error sending message to WebSocket: {e}")
+            raise
 
     @staticmethod
     async def send_error(
         websocket: WebSocket, error_type: ErrorType, details: str = ""
     ) -> None:
-        await websocket.send_json(
-            {
-                "type": WSMessageType.ERROR.value,
-                "data": {"type": error_type.value, "details": details},
-            }
-        )
+        """Send an error message to the WebSocket client"""
+        try:
+            await websocket.send_json(
+                {
+                    "type": WSMessageType.ERROR.value,
+                    "data": {"type": error_type.value, "details": details},
+                }
+            )
+            logger.error(f"Sent error to client: {error_type.value} - {details}")
+        except Exception as e:
+            logger.error(f"Error sending error message to WebSocket: {e}")
 
 
 async def nonstreaming_simulation(
@@ -240,6 +353,7 @@ async def nonstreaming_simulation(
     simulation_request: SimulationRequest,
     simulation_status: NonStreamingSimulationStatus,
 ) -> None:
+    """Run a non-streaming simulation and update its status"""
     try:
         env_profile: EnvironmentProfile = EnvironmentProfile.get(
             pk=simulation_request.env_id
@@ -306,7 +420,16 @@ async def nonstreaming_simulation(
 
 
 async def get_scenarios_all() -> list[EnvironmentProfile]:
-    return EnvironmentProfile.all()
+    scenarios = EnvironmentProfile.all()
+    if not scenarios:
+        # Create a pseudo scenario if none exist
+        pseudo_scenario = EnvironmentProfile(
+            codename="Sample Scenario",
+            scenario="Sample scenario description",
+            agent_goals=["Sample agent 1", "Sample agent 2"],
+        )
+        scenarios = [pseudo_scenario]
+    return scenarios
 
 
 async def get_scenarios(
@@ -331,7 +454,15 @@ async def get_scenarios(
 
 
 async def get_agents_all() -> list[AgentProfile]:
-    return AgentProfile.all()
+    agents = AgentProfile.all()
+    if not agents:
+        # Create a pseudo agent if none exist
+        pseudo_agent = AgentProfile(
+            first_name="Sample Agent",
+            last_name="",
+        )
+        agents = [pseudo_agent]
+    return agents
 
 
 async def get_agents(
@@ -369,7 +500,29 @@ async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
 
 
 async def get_episodes_all() -> list[EpisodeLog]:
-    return EpisodeLog.all()
+    episodes = EpisodeLog.all()
+    if not episodes:
+        # Create a pseudo episode if none exist
+        pseudo_episode = EpisodeLog(
+            environment="Sample Environment",
+            agents=["Sample Agent 1", "Sample Agent 2"],
+            models=["gpt-4o", "gpt-4o"],
+            messages=[
+                [
+                    ("Environment", "Agent 1", "Welcome to the sample environment."),
+                    ("Environment", "Agent 2", "This is a sample conversation."),
+                ]
+            ],
+            reasoning="This is a sample reasoning about the interaction between the agents.",
+            rewards=[
+                (0.5, {"cooperation": 0.7, "empathy": 0.3}),
+                (0.6, {"cooperation": 0.5, "empathy": 0.7}),
+            ],
+            rewards_prompt="Evaluate the agents based on cooperation and empathy.",
+            tag="sample",
+        )
+        episodes = [pseudo_episode]
+    return episodes
 
 
 async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[EpisodeLog]:
@@ -390,15 +543,28 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
 async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
     custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
     all_custom_evaluation_dimension_list = CustomEvaluationDimensionList.all()
-    for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
-        assert isinstance(
-            custom_evaluation_dimension_list, CustomEvaluationDimensionList
+
+    if not all_custom_evaluation_dimension_list:
+        # Create a pseudo evaluation dimension if none exist
+        pseudo_dimension = CustomEvaluationDimension(
+            name="Sample Dimension",
+            description="This is a sample evaluation dimension",
+            range_high=5,
+            range_low=1,
         )
-        custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = [
-            CustomEvaluationDimension.get(pk=pk)
-            for pk in custom_evaluation_dimension_list.dimension_pks
-        ]
-    print(custom_evaluation_dimensions)
+        custom_evaluation_dimensions["sample_dimensions"] = [pseudo_dimension]
+    else:
+        for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
+            assert isinstance(
+                custom_evaluation_dimension_list, CustomEvaluationDimensionList
+            )
+            dimensions = [
+                CustomEvaluationDimension.get(pk=pk)
+                for pk in custom_evaluation_dimension_list.dimension_pks
+            ]
+            custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = (
+                dimensions
+            )
     return custom_evaluation_dimensions
 
 
@@ -408,8 +574,11 @@ async def get_models() -> list[str]:
 
 
 class SotopiaFastAPI(FastAPI):
+    """FastAPI application for Sotopia with WebSocket support"""
+    
     def __init__(self, *args, **kwargs) -> None:  # type: ignore
         super().__init__(*args, **kwargs)
+        # Add CORS middleware for cross-origin requests
         self.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
@@ -417,9 +586,11 @@ class SotopiaFastAPI(FastAPI):
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        # Set up API routes
         self.setup_routes()
 
     def setup_routes(self) -> None:
+        """Set up all API routes"""
         @self.get("/health", status_code=200)
         async def health_check() -> dict[str, Any]:
             """Comprehensive health check endpoint"""
@@ -648,8 +819,19 @@ class SotopiaFastAPI(FastAPI):
 
         @self.websocket("/ws/simulation")
         async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
+            """
+            WebSocket endpoint for running simulations
+            
+            This endpoint supports multiple modes:
+            - Standard simulation: Run a standard two-agent conversation
+            - Turn-based mode: Process simulation on a turn-by-turn basis
+            - Group-based mode: Handle message routing between NPCs and groups
+            
+            Parameters:
+            - websocket: The WebSocket connection
+            - token: Authentication token for the session
+            """
             manager = SimulationManager()
-
             token_status = await manager.verify_token(token)
             if not token_status["is_valid"]:
                 await websocket.close(code=1008, reason=token_status["msg"])
@@ -657,46 +839,56 @@ class SotopiaFastAPI(FastAPI):
 
             try:
                 await websocket.accept()
-
-                while True:
-                    start_msg = await websocket.receive_json()
-                    if start_msg.get("type") != WSMessageType.START_SIM.value:
-                        continue
-                    async with manager.state.start_simulation(token):
-                        simulator = await manager.create_simulator(
-                            env_id=start_msg["data"]["env_id"],
-                            agent_ids=start_msg["data"]["agent_ids"],
-                            agent_models=start_msg["data"].get(
-                                "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
-                            ),
-                            env_profile_dict=start_msg["data"].get(
-                                "env_profile_dict", {}
-                            ),
-                            agent_profile_dicts=start_msg["data"].get(
-                                "agent_profile_dicts", []
-                            ),
-                            evaluator_model=start_msg["data"].get(
-                                "evaluator_model", "gpt-4o"
-                            ),
-                            evaluation_dimension_list_name=start_msg["data"].get(
-                                "evaluation_dimension_list_name", "sotopia"
-                            ),
-                            max_turns=start_msg["data"].get("max_turns", 20),
-                        )
-                        print(f"Simulator created: {simulator}")
-                        await manager.run_simulation(websocket, simulator)
+                
+                # Wait for the START_SIM message
+                start_msg = await websocket.receive_json()
+                if start_msg.get("type") != WSMessageType.START_SIM.value:
+                    await manager.send_error(
+                        websocket, 
+                        ErrorType.INVALID_MESSAGE, 
+                        "First message must be START_SIM"
+                    )
+                    return
+                
+                # Extract mode information and NPC/group data if available
+                mode = start_msg["data"].get("mode", "full")
+                npcs = start_msg["data"].get("npcs", [])
+                groups = start_msg["data"].get("groups", {})
+                
+                async with manager.state.start_simulation(token):
+                    simulator = await manager.create_simulator(
+                        env_id=start_msg["data"]["env_id"],
+                        agent_ids=start_msg["data"]["agent_ids"],
+                        agent_models=start_msg["data"].get(
+                            "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
+                        ),
+                        evaluator_model=start_msg["data"].get(
+                            "evaluator_model", "gpt-4o"
+                        ),
+                        evaluation_dimension_list_name=start_msg["data"].get(
+                            "evaluation_dimension_list_name", "sotopia"
+                        ),
+                        max_turns=start_msg["data"].get("max_turns", 20),
+                        npcs=npcs,
+                        groups=groups
+                    )
+                    
+                    # Run the simulation based on the mode
+                    await manager.run_simulation(websocket, simulator)
 
             except WebSocketDisconnect:
-                logger.info(f"Client disconnected: {token}")
+                logger.info("Client disconnected during simulation")
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
-                await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
+                try:
+                    await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
+                except:
+                    pass
             finally:
                 try:
                     await websocket.close()
                 except Exception as e:
                     logger.error(f"Error closing websocket: {e}")
-
 
 app = SotopiaFastAPI()
 

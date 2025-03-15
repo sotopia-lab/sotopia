@@ -241,3 +241,61 @@ async def main():
 ```
 
 Please check out an detailed example in `examples/experimental/websocket/websocket_test_client.py`
+
+Example message formats:
+
+# 1. START_SIM Message (initial setup with NPCs and groups)
+start_sim_message = {
+    "type": "START_SIM",
+    "data": {
+        "env_id": "environment_12345",
+        "agent_ids": ["agent1", "agent2", "agent3"],
+        "agent_models": ["gpt-4o-mini", "gpt-4o-mini", "gpt-4o-mini"],
+        "evaluator_model": "gpt-4o",
+        "npcs": ["npc1", "npc2", "npc3"],
+        "groups": {
+            "group1": ["npc1", "npc2"],
+            "group2": ["npc2", "npc3"]
+        },
+        "mode": "group"  # Can be "full", "turn", or "group"
+    }
+}
+
+# 2. CLIENT_MSG Message (message to NPCs)
+client_message = {
+    "type": "CLIENT_MSG",
+    "data": {
+        "content": "Hello, is anyone there?",
+        "target_npcs": ["npc1"],  # Optional, specific NPCs to message
+        "target_group": "group1"   # Optional, all NPCs in this group
+    }
+}
+
+# 3. SERVER_MSG Message (NPC responses)
+server_message = {
+    "type": "SERVER_MSG",
+    "data": {
+        "type": "npc_responses",
+        "status": "success",
+        "turn": 1,
+        "responses": {
+            "npc1": {
+                "content": "Yes, I'm here! How can I help?",
+                "action_type": "speak"
+            },
+            "npc2": {
+                "content": "Hello there!",
+                "action_type": "speak"
+            }
+        }
+    }
+}
+
+# 4. ERROR Message
+error_message = {
+    "type": "ERROR",
+    "data": {
+        "type": "SIMULATION_ISSUE",
+        "details": "Error processing message"
+    }
+}

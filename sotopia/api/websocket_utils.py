@@ -4,7 +4,7 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
 )
 from sotopia.agents import Agents, LLMAgent
-from sotopia.messages import Observation, SimpleMessage
+from sotopia.messages import Observation
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.database import (
     EnvironmentProfile,
@@ -15,19 +15,25 @@ from sotopia.database import (
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List, cast
-from pydantic import BaseModel
+from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict, Set, Optional
+from pydantic import BaseModel, Field
 import uuid
-from sotopia.messages import Message
+import json
+import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
 
 class WSMessageType(str, Enum):
-    SERVER_MSG = "SERVER_MSG"
-    CLIENT_MSG = "CLIENT_MSG"
-    ERROR = "ERROR"
-    START_SIM = "START_SIM"
-    END_SIM = "END_SIM"
-    FINISH_SIM = "FINISH_SIM"
+    SERVER_MSG = "SERVER_MSG"           # Server to client message
+    CLIENT_MSG = "CLIENT_MSG"           # Client to server message 
+    ERROR = "ERROR"                     # Error notification
+    START_SIM = "START_SIM"             # Initialize simulation
+    TURN_REQUEST = "TURN_REQUEST"       # Request for next turn
+    TURN_RESPONSE = "TURN_RESPONSE"     # Response with turn results
+    NPC_RESPONSE = "NPC_RESPONSE"       # Response from NPC
+    END_SIM = "END_SIM"                 # End simulation notification
+    FINISH_SIM = "FINISH_SIM"           # Terminate simulation
 
 
 class ErrorType(str, Enum):
@@ -36,6 +42,8 @@ class ErrorType(str, Enum):
     SIMULATION_NOT_STARTED = "SIMULATION_NOT_STARTED"
     SIMULATION_ISSUE = "SIMULATION_ISSUE"
     INVALID_MESSAGE = "INVALID_MESSAGE"
+    GROUP_NOT_FOUND = "GROUP_NOT_FOUND"
+    NPC_NOT_FOUND = "NPC_NOT_FOUND"
     OTHER = "OTHER"
 
 
@@ -53,7 +61,7 @@ class WSMessage(BaseModel):
 
     def to_json(self) -> dict[str, Any]:
         return {
-            "type": self.type.value,  # TODO check whether we want to use the enum value or the enum itself
+            "type": self.type.value,
             "data": self.data,
         }
 
@@ -140,6 +148,38 @@ def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
     return comment_chunks, general_comment
 
 
+def build_observation(turn_number: int, history: list[dict[str, str]]) -> Observation:
+    """
+    Helper function to build an Observation object from the current conversation.
+    Parameters:
+    turn_number: The current turn number.
+    history: A list of dicts, where each dict contains at least the keys:
+            "role" (e.g. "client", "agent", etc.) and "content" (the message text).
+
+    Returns:
+    An Observation instance with:
+        - last_turn set to the most recent message's content (or an empty string if no history)
+        - turn_number set appropriately
+        - available_actions a list of possible actions (e.g. ["speak", "react", "leave"])
+    """
+    # Use the last message's content as the observation's "last_turn"
+    last_turn = history[-1]["content"] if history else ""
+
+    # Define the available actions for the agent; adjust as needed.
+    available_actions = [
+        "speak",
+        "non-verbal communication",
+        "action",
+        "leave",
+    ]
+
+    return Observation(
+        last_turn=last_turn,
+        turn_number=turn_number,
+        available_actions=available_actions,
+    )
+
+
 class WebSocketSotopiaSimulator:
     def __init__(
         self,
@@ -152,6 +192,7 @@ class WebSocketSotopiaSimulator:
         evaluation_dimension_list_name: str = "sotopia",
         max_turns: int = 20,
     ) -> None:
+        # Initialize the simulation environment
         if len(agent_ids) == 2:
             try:
                 self.env, self.agents, self.environment_messages = get_env_agents(
@@ -176,86 +217,260 @@ class WebSocketSotopiaSimulator:
                 AgentProfile(**agent_profile_dict)
                 for agent_profile_dict in agent_profile_dicts
             ]
-            self.agent_models = agent_models
-            self.evaluator_model = evaluator_model
-            self.evaluation_dimension_list_name = evaluation_dimension_list_name
-
+        
+        self.agent_models = agent_models
+        self.evaluator_model = evaluator_model
+        self.evaluation_dimension_list_name = evaluation_dimension_list_name
         self.connection_id = str(uuid.uuid4())
         self.max_turns = max_turns
+        
+        # New fields for NPC and group management
+        self.npc_groups: Dict[str, List[str]] = {}  # Map from group ID to list of NPC IDs
+        self.active_npcs: Set[str] = set()          # Set of active NPC IDs
+        self.turn_number: int = 0                   # Current turn number
+        self.conversation_history: list[dict[str, str]] = []  # History of messages
+        self.pending_responses: Dict[str, dict] = {}  # Pending NPC responses
+        self.response_queue: asyncio.Queue = asyncio.Queue()  # Queue for NPC responses
+        
+        # Flag for group-based routing
+        self.group_mode: bool = False
+
+    async def process_start_msg(self, start_data: dict[str, Any]) -> dict[str, Any]:
+        """Process start message with NPC and group information"""
+        npcs = start_data.get("npcs", [])
+        groups = start_data.get("groups", {})
+        
+        self.group_mode = True
+        self.active_npcs = set(npcs)
+        self.npc_groups = groups
+        
+        # Add metadata about NPCs to the conversation history
+        self.conversation_history.append({
+            "role": "system",
+            "content": f"Simulation started with NPCs: {', '.join(npcs)}"
+        })
+        
+        # For each group, add metadata
+        for group_name, group_members in groups.items():
+            self.conversation_history.append({
+                "role": "system",
+                "content": f"Group '{group_name}' created with members: {', '.join(group_members)}"
+            })
+        
+        return {
+            "status": "initialized",
+            "npcs": list(self.active_npcs),
+            "groups": {name: members for name, members in self.npc_groups.items()},
+            "conversation_initialized": True
+        }
+
+    async def process_client_message(self, client_data: dict[str, Any]) -> dict[str, Any]:
+        """
+        Process a message from the client, route it to specific NPCs
+
+        client_data should contain:
+        - content: message content
+        - target_npcs: optional list of specific NPC IDs to message
+        - target_group: optional group ID to message all NPCs in that group
+        """
+        content = client_data.get("content", "")
+        target_npcs = client_data.get("target_npcs", [])
+        target_group = client_data.get("target_group", None)
+        
+        # Add message to conversation history
+        self.conversation_history.append({
+            "role": "client",
+            "content": content
+        })
+        
+        # Determine which NPCs to message
+        npcs_to_message: Set[str] = set()
+        
+        # Add specifically targeted NPCs
+        if target_npcs:
+            npcs_to_message.update(target_npcs)
+        
+        # Add all NPCs in the target group
+        if target_group and target_group in self.npc_groups:
+            npcs_to_message.update(self.npc_groups[target_group])
+        
+        # If no targeting specified, message all active NPCs
+        if not target_npcs and not target_group:
+            npcs_to_message.update(self.active_npcs)
+        
+        # Validate that all targeted NPCs exist
+        for npc_id in list(npcs_to_message):
+            if npc_id not in self.active_npcs:
+                return {
+                    "status": "error",
+                    "error_type": "NPC_NOT_FOUND",
+                    "message": f"NPC with ID {npc_id} not found"
+                }
+        
+        # Increment turn number
+        self.turn_number += 1
+        
+        # Create observation for each NPC and collect responses
+        npc_responses: Dict[str, Any] = {}
+        
+        for npc_id in npcs_to_message:
+            if npc_id in self.agents:
+                # Build observation for this NPC
+                agent = self.agents[npc_id]
+                observation = build_observation(
+                    turn_number=self.turn_number,
+                    history=self.conversation_history,
+                )
+                
+                # Get response from NPC
+                try:
+                    agent_action = await agent.aact(observation)
+                    npc_responses[npc_id] = {
+                        "content": agent_action.argument,
+                        "action_type": agent_action.action_type
+                    }
+                    
+                    # Add response to conversation history
+                    self.conversation_history.append({
+                        "role": npc_id,
+                        "type": agent_action.action_type,
+                        "content": agent_action.argument
+                    })
+                except Exception as e:
+                    logger.error(f"Error getting response from NPC {npc_id}: {e}")
+                    npc_responses[npc_id] = {
+                        "status": "error",
+                        "message": f"Error getting response: {str(e)}"
+                    }
+        
+        return {
+            "status": "success",
+            "turn": self.turn_number,
+            "responses": npc_responses
+        }
+
+    async def process_turn(self, client_data: dict[str, Any]) -> dict[str, Any]:
+        """
+        Process a single turn where client_data contains fields like:
+        - agent_id: which agent should act.
+        - content: the client-provided input that might update the simulation state.
+        """
+        # Append the client's input to a conversation log
+        self.conversation_history.append(
+            {"role": "client", "content": client_data.get("content", "")}
+        )
+
+        # Identify the specific agent by its ID provided by the client.
+        agent_id = client_data.get("agent_id")
+        if not isinstance(agent_id, str):
+            raise ValueError("agent_id must be provided as a string")
+        if agent_id not in self.agents:
+            raise ValueError(f"Agent with id {agent_id} not found")
+
+        # Build an Observation object required by the agent.
+        observation = build_observation(
+            turn_number=len(self.conversation_history),
+            history=self.conversation_history,
+        )
+
+        # Call the agent's asynchronous action function.
+        agent = self.agents[agent_id]
+        agent_action = await agent.aact(observation)
+
+        # Append the agent's response to the conversation log.
+        self.conversation_history.append(
+            {"role": "agent", "content": agent_action.argument}
+        )
+
+        # Return a dict that will be sent back over the websocket.
+        return {
+            "turn": len(self.conversation_history),
+            "agent_id": agent_id,
+            "agent_response": agent_action.argument,
+            "action_type": agent_action.action_type,
+        }
 
     async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
-        # Use sotopia to run the simulation
-        if len(self.agents) == 2:
+        """Run the simulation and yield messages"""
+        # Handle different simulation modes
+        if self.group_mode:
+            # Group-based routing mode
+            # Just return initial state and let process_client_message handle the rest
+            yield {
+                "type": "initialization",
+                "status": "ready",
+                "npcs": list(self.active_npcs),
+                "groups": {name: members for name, members in self.npc_groups.items()},
+            }
+            
+            # Keep simulation alive until shutdown
+            try:
+                while True:
+                    await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                pass
+            
+        elif len(self.agent_models) == 2:
+            # Standard two-agent simulation
             generator = await arun_one_episode(
                 env=self.env,
                 agent_list=list(self.agents.values()),
                 push_to_db=False,
                 streaming=True,
             )
-        elif len(self.agents) > 2:
-            generator = arun_server_adaptor(
-                env=self.env_profile,
-                agent_list=self.agent_profiles,
-                agent_models=self.agent_models,
-                evaluator_model=self.evaluator_model,
-                evaluation_dimension_list_name=self.evaluation_dimension_list_name,
-                push_to_db=False,
-                streaming=True,
-                connection_id=self.connection_id,
-                max_turns=self.max_turns,
-            )
-        else:
-            raise ValueError("Number of agents must be 2 or greater")
 
-        assert isinstance(
-            generator, AsyncGenerator
-        ), "generator should be async generator, but got {}".format(type(generator))
+            assert isinstance(generator, AsyncGenerator), "generator should be async generator"
 
-        async for messages in generator:
-            reasoning, rewards = "", [0.0, 0.0]
-            if messages[-1][0][0] == "Evaluation":
-                reasoning = messages[-1][0][2].to_natural_language()
-                rewards = eval(messages[-2][0][2].to_natural_language())
-            try:
+            async for messages in generator:
+                reasoning, rewards = "", [0.0, 0.0]
+                if messages[-1][0][0] == "Evaluation":
+                    reasoning = messages[-1][0][2].to_natural_language()
+                    rewards = eval(messages[-2][0][2].to_natural_language())
+                
                 epilog = EpisodeLog(
                     environment=self.env.profile.pk,
                     agents=[agent.profile.pk for agent in self.agents.values()],
                     tag="test",
+                    models=["gpt-4o", "gpt-4o", "gpt-4o-mini"],
                     messages=[
-                        [
-                            (m[0], m[1], m[2].to_natural_language())
-                            for m in messages_in_turn
-                        ]
+                        [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
                         for messages_in_turn in messages
                     ],
                     reasoning=reasoning,
                     rewards=rewards,
                     rewards_prompt="",
                 ).dict()
-            except Exception:
-                epilog = {
-                    "environment": getattr(self.env, "profile", {}).get("pk", "")
-                    if hasattr(self, "env")
-                    else getattr(self.env_profile, "pk", ""),
-                    "agents": [agent.profile.pk for agent in self.agents.values()]
-                    if hasattr(self, "agents") and isinstance(self.agents, Agents)
-                    else [agent.pk for agent in self.agent_profiles],
-                    "tag": "test",
-                    "messages": [
-                        [
-                            (m[0], m[1], m[2].to_natural_language())
-                            for m in messages_in_turn
-                        ]
-                        for messages_in_turn in messages
-                    ],
-                    "reasoning": reasoning,
-                    "rewards": rewards,
-                    "rewards_prompt": "",
+                
+                yield {
+                    "type": "messages",
+                    "messages": epilog,
                 }
-            yield {
-                "type": "messages",
-                "messages": epilog,
-            }
+                
+        elif len(self.agent_models) > 2:
+            # Multi-agent simulation
+            multi_agent_generator: AsyncGenerator[dict[str, Any], None] = (
+                arun_server_adaptor(
+                    env=self.env_profile,
+                    agent_list=self.agent_profiles,
+                    agent_models=self.agent_models,
+                    evaluator_model=self.evaluator_model,
+                    evaluation_dimension_list_name=self.evaluation_dimension_list_name,
+                    push_to_db=False,
+                    streaming=True,
+                    connection_id=self.connection_id,
+                    max_turns=self.max_turns,
+                )
+            )
+
+            assert isinstance(multi_agent_generator, AsyncGenerator), "generator should be async generator"
+
+            async for message_data in multi_agent_generator:
+                yield {
+                    "type": "messages",
+                    "messages": message_data,
+                }
+        else:
+            raise ValueError("Number of agents must be 2 or greater")
 
 
 async def arun_server_adaptor(
@@ -268,11 +483,11 @@ async def arun_server_adaptor(
     push_to_db: bool = True,
     streaming: bool = False,
     connection_id: str = "",
-) -> AsyncGenerator[List[List[tuple[str, str, Message]]], None]:
+) -> AsyncGenerator[dict[str, Any], None]:
     # Prepare episode configuration
     from sotopia.experimental.server import arun_one_episode
 
-    # TODO: Unify the API of the two agents
+    # Configure the episode
     config_data = {
         "redis_url": "redis://localhost:6379/0",
         "extra_modules": [
@@ -298,23 +513,12 @@ async def arun_server_adaptor(
             }
             for i, agent in enumerate(agent_list)
         ],
+        "connection_id": connection_id
     }
-    # Use the arun_one_episode function from server.py
-    async for episode_data in arun_one_episode(
-        episode_config=config_data,
-        connection_id=connection_id,
-    ):
-        if "messages" in episode_data:
-            messages = episode_data["messages"]
-            processed_messages = []
-            for i, message in enumerate(messages):
-                processed_messages.append(
-                    [
-                        (
-                            message[0][0],
-                            message[0][1],
-                            cast(Message, SimpleMessage(message=message[0][2])),
-                        )
-                    ]
-                )
-            yield processed_messages
+    
+    # Add redis_agent to handle WebSocket communication
+    config_data["agents"].append({"name": "redis_agent"})
+    
+    # Run the episode
+    async for episode_data in arun_one_episode(episode_config=config_data, connection_id=connection_id):
+        yield episode_data
