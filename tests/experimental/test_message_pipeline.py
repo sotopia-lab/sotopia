@@ -69,7 +69,7 @@ class MockWebSocket:
             npcs_to_respond: List[str] = []
 
             # Handle targeting
-            groups: Dict[str, List[str]] = {
+            default_groups: Dict[str, List[str]] = {
                 "group1": ["agent1", "agent2"],
                 "group2": ["agent2", "agent3"],
             }
@@ -77,8 +77,8 @@ class MockWebSocket:
 
             if target_npcs:
                 npcs_to_respond = target_npcs
-            elif target_group and target_group in groups:
-                npcs_to_respond = groups[target_group]
+            elif target_group and target_group in default_groups:
+                npcs_to_respond = default_groups[target_group]
             else:
                 npcs_to_respond = all_npcs
 

@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 import logging
-from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional
+from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional, Union
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -49,7 +49,7 @@ class Moderator(Node[AgentAction, Observation]):
         input_channels: list[str],
         output_channels: list[str],
         scenario: str,
-        agent_mapping: dict[str, str],
+        agent_mapping: Dict[str, str],  # Fixed: Using Dict instead of dict
         evaluator_channels: list[list[str]] = [],
         tag: str = "",
         redis_url: str = "redis://localhost:6379/0",
@@ -68,7 +68,7 @@ class Moderator(Node[AgentAction, Observation]):
         redis_agent_as_actor: bool = True,  # Changed to True by default
     ) -> None:
         super().__init__(
-            node_name=node_name,  # Fixed: Added missing node_name parameter
+            node_name=node_name,
             input_channel_types=[
                 (input_channel, AgentAction) for input_channel in input_channels
             ]
@@ -81,9 +81,7 @@ class Moderator(Node[AgentAction, Observation]):
         self.observation_queue: asyncio.Queue[AgentAction] = asyncio.Queue()
         self.task_scheduler: asyncio.Task[None] | None = None
         self.shutdown_event: asyncio.Event = asyncio.Event()
-        self.agent_mapping: Dict[str, str] = (
-            agent_mapping  # Fixed: Using Dict instead of dict
-        )
+        self.agent_mapping: Dict[str, str] = agent_mapping
         self.tag: str = tag
         self.action_order: Literal["simultaneous", "round-robin", "random"] = (
             action_order
@@ -221,9 +219,10 @@ class Moderator(Node[AgentAction, Observation]):
                 agent_action = await self.observation_queue.get()
 
                 # Handle special case for start message from RedisAgent
-                # Fixed: Added type checking to avoid comparison-overlap error
+                # Fixed: Added "start" to the possible ActionType values or use isinstance check
                 if (
-                    agent_action.action_type == "start"
+                    isinstance(agent_action.action_type, str) 
+                    and agent_action.action_type == "start"
                     and agent_action.agent_name == "redis_agent"
                 ):
                     try:
@@ -306,8 +305,8 @@ class Moderator(Node[AgentAction, Observation]):
     async def route_message_to_npcs(
         self,
         content: str,
-        target_npcs: Optional[List[str]] = None,  # Fixed: Made parameter optional
-        target_group: Optional[str] = None,  # Fixed: Made parameter optional
+        target_npcs: Optional[List[str]] = None,
+        target_group: Optional[str] = None,
     ) -> Observations:
         """Route a message to specific NPCs or all NPCs in a group"""
         npcs_to_message = set()
@@ -466,7 +465,7 @@ class Moderator(Node[AgentAction, Observation]):
         # For NPC responses in group mode, send to RedisAgent individually
         if self.group_mode and agent_action.agent_name in self.active_npcs:
             # Send this NPC's response to the RedisAgent
-            redis_observations_map = {  # Fixed: Renamed variable to avoid redefinition
+            redis_channel_observations = {
                 "moderator:redis_agent": Observation(
                     agent_name=agent_action.agent_name,
                     last_turn=agent_action.argument,
@@ -474,7 +473,7 @@ class Moderator(Node[AgentAction, Observation]):
                     available_actions=["none"],
                 )
             }
-            return Observations(observations_map=redis_observations_map)
+            return Observations(observations_map=redis_channel_observations)
 
         # Normal turn-based progression for regular agents
         observations_map: Dict[str, Observation] = {}

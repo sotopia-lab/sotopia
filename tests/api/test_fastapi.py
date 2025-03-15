@@ -10,7 +10,7 @@ from sotopia.database import (
 from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
 import pytest
-from typing import Generator, Callable, Any
+from typing import AsyncGenerator, Dict, Any
 from unittest.mock import patch
 
 
@@ -349,10 +349,11 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
     # Let's patch the arun_one_episode function to avoid the parameter error
     with patch("sotopia.server.arun_one_episode") as mock_arun:
         # Configure the mock to return an empty async generator
-        async def mock_generator():
+        async def mock_generator() -> AsyncGenerator[Dict[str, Any], None]:
             yield {"type": "SERVER_MSG", "data": {"message": "Mock response"}}
             yield {"type": "SERVER_MSG", "data": {"message": "Another mock response"}}
 
+mock_arun.return_value = mock_generator()
         mock_arun.return_value = mock_generator()
 
         with client.websocket_connect("/ws/simulation?token=test") as websocket:

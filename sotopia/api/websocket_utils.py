@@ -531,14 +531,15 @@ async def arun_server_adaptor(
     # Add redis_agent to handle WebSocket communication
     config_data["agents"].append({"name": "redis_agent"})
 
-    # Run the episode
-    episode_results = []  # Create a list to collect results if needed
+    # Run the episode - Fixed to use episode_config and properly await
+    episode_results: List[dict[str, Any]] = []  # Added type annotation
+    
+    # Pass episode_config instead of separate parameters
     async for episode_data in arun_one_episode(
         episode_config=config_data, connection_id=connection_id
     ):
-        # If you need to store the data in a collection:
-        if isinstance(episode_results, list):
-            episode_results.append(episode_data)
+        # Store the data in the collection
+        episode_results.append(episode_data)
 
-        # Either way, yield each piece of data
+        # Yield each piece of data
         yield episode_data
