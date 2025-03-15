@@ -11,6 +11,8 @@ from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
 import pytest
 from typing import Generator, Callable, Any
+from unittest.mock import patch
+
 
 client = TestClient(app)
 
