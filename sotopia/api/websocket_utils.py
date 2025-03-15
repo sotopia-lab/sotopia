@@ -12,8 +12,6 @@ from sotopia.database import (
     EpisodeLog,
     EvaluationDimensionBuilder,
 )
-from sotopia.server import arun_one_episode
-
 from enum import Enum
 from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict, Set
 from pydantic import BaseModel

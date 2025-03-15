@@ -53,18 +53,11 @@ async def finish_simulation(websocket: aiohttp.ClientWebSocketResponse) -> None:
     await websocket.send_json({"type": WSMessageType.FINISH_SIM, "data": {}})
     logger.info("Sent finish simulation message")
 
-<<<<<<< HEAD
 async def start_npc_group_simulation(
     websocket: aiohttp.ClientWebSocketResponse,
     npcs: List[str],
     groups: Dict[str, List[str]]
 ) -> None:
-=======
-
-async def start_npc_group_simulation(
-    websocket, npcs: List[str], groups: Dict[str, List[str]]
-):
->>>>>>> 255826fa38d0f8be69403ca12500804ecf918737
     """Start a simulation with defined NPCs and groups"""
     start_message: Dict[str, Any] = {
         "type": WSMessageType.START_SIM,
