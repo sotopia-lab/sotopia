@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 import logging
-from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional, Union
+from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -219,7 +219,7 @@ class Moderator(Node[AgentAction, Observation]):
             await asyncio.sleep(0.2)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
-                
+
                 # Handle special case for start message from RedisAgent
                 if (
                     agent_action.agent_name == "redis_agent"
