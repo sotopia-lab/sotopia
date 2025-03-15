@@ -217,9 +217,6 @@ class Moderator(Node[AgentAction, Observation]):
             await asyncio.sleep(0.2)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
-
-                # Define a custom action type that includes 'start'
-                custom_action_type = Union[ActionType, Literal["start"]]
                 
                 # Handle special case for start message from RedisAgent
                 if (
