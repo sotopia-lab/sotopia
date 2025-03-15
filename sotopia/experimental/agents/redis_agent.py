@@ -108,7 +108,9 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     self.websocket_session = aiohttp.ClientSession()
                     if self.websocket_session is not None:
                         # Create a ClientWSTimeout object for the timeout
-                        ws_timeout = ClientWSTimeout(10.0)  # Or use named args for specific timeouts
+                        ws_timeout = ClientWSTimeout(
+                            10.0
+                        )  # Or use named args for specific timeouts
                         self.websocket = await self.websocket_session.ws_connect(
                             self.websocket_url,
                             timeout=ws_timeout,

@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 import logging
-from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional, Union
+from typing import Literal, Any, AsyncIterator, Dict, List, Set, Optional
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -221,7 +221,7 @@ class Moderator(Node[AgentAction, Observation]):
                 # Handle special case for start message from RedisAgent
                 # Fixed: Added "start" to the possible ActionType values or use isinstance check
                 if (
-                    isinstance(agent_action.action_type, str) 
+                    isinstance(agent_action.action_type, str)
                     and agent_action.action_type == "start"
                     and agent_action.agent_name == "redis_agent"
                 ):

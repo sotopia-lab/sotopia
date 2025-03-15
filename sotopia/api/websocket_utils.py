@@ -533,7 +533,7 @@ async def arun_server_adaptor(
 
     # Run the episode - Fixed to use episode_config and properly await
     episode_results: List[dict[str, Any]] = []  # Added type annotation
-    
+
     # Pass episode_config instead of separate parameters
     async for episode_data in arun_one_episode(
         episode_config=config_data, connection_id=connection_id
