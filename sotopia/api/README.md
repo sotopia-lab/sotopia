@@ -275,19 +275,9 @@ client_message = {
 server_message = {
     "type": "SERVER_MSG",
     "data": {
-        "type": "npc_responses",
-        "status": "success",
-        "turn": 1,
-        "responses": {
-            "npc1": {
-                "content": "Yes, I'm here! How can I help?",
-                "action_type": "speak"
-            },
-            "npc2": {
-                "content": "Hello there!",
-                "action_type": "speak"
-            }
-        }
+        "type": "npc_response",  // Note: singular
+        "npc_id": "agent1",
+        "content": "Hello there!"
     }
 }
 
