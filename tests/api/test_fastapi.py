@@ -353,7 +353,6 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
             yield {"type": "SERVER_MSG", "data": {"message": "Mock response"}}
             yield {"type": "SERVER_MSG", "data": {"message": "Another mock response"}}
 
-mock_arun.return_value = mock_generator()
         mock_arun.return_value = mock_generator()
 
         with client.websocket_connect("/ws/simulation?token=test") as websocket:
