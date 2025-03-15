@@ -10,7 +10,7 @@ from sotopia.database import (
 from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
 import pytest
-from typing import AsyncGenerator, Dict, Any
+from typing import AsyncGenerator, Dict, Any, Callable, Generator
 from unittest.mock import patch
 
 
