@@ -245,6 +245,7 @@ Please check out an detailed example in `examples/experimental/websocket/websock
 Example message formats:
 
 # 1. START_SIM Message (initial setup with NPCs and groups)
+```
 start_sim_message = {
     "type": "START_SIM",
     "data": {
@@ -260,8 +261,10 @@ start_sim_message = {
         "mode": "group"  # Can be "full", "turn", or "group"
     }
 }
+```
 
 # 2. CLIENT_MSG Message (message to NPCs)
+```
 client_message = {
     "type": "CLIENT_MSG",
     "data": {
@@ -270,8 +273,9 @@ client_message = {
         "target_group": "group1"   # Optional, all NPCs in this group
     }
 }
-
+```
 # 3. SERVER_MSG Message (NPC responses)
+```
 server_message = {
     "type": "SERVER_MSG",
     "data": {
@@ -280,8 +284,10 @@ server_message = {
         "content": "Hello there!"
     }
 }
+```
 
 # 4. ERROR Message
+```
 error_message = {
     "type": "ERROR",
     "data": {
@@ -289,3 +295,4 @@ error_message = {
         "details": "Error processing message"
     }
 }
+```
