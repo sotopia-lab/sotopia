@@ -195,7 +195,7 @@ class SimulationManager:
             if npcs or groups:
                 simulator.active_npcs = set(npcs)
                 simulator.npc_groups = groups
-                simulator.group_mode = (mode == "group")
+                simulator.group_mode = mode == "group"
 
             return simulator
         except Exception as e:
@@ -224,15 +224,19 @@ class SimulationManager:
                     npc_responses = await simulator.process_client_message(
                         message.get("data", {})
                     )
-                    
+
                     # Send each NPC response individually in the expected format
                     for response in npc_responses:
                         if response.get("type") == "error":
                             # Handle error response
                             await self.send_error(
                                 websocket,
-                                ErrorType(response.get("error_type", "SIMULATION_ISSUE")),
-                                response.get("details", "Error processing NPC response"),
+                                ErrorType(
+                                    response.get("error_type", "SIMULATION_ISSUE")
+                                ),
+                                response.get(
+                                    "details", "Error processing NPC response"
+                                ),
                             )
                         else:
                             # Send normal NPC response
@@ -288,10 +292,9 @@ class SimulationManager:
                     "type": "initialization",
                     "npcs": list(simulator.active_npcs),
                     "groups": {
-                        name: members
-                        for name, members in simulator.npc_groups.items()
+                        name: members for name, members in simulator.npc_groups.items()
                     },
-                    "status": "ready"
+                    "status": "ready",
                 },
             )
 
