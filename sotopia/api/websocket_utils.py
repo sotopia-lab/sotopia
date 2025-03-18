@@ -248,7 +248,7 @@ class WebSocketSotopiaSimulator:
         - content: message content
         - target_npcs: optional list of specific NPC IDs to message
         - target_group: optional group ID to message all NPCs in that group
-        
+
         Returns a list of individual NPC responses formatted according to the expected format
         """
         content = client_data.get("content", "")
@@ -276,11 +276,13 @@ class WebSocketSotopiaSimulator:
         # Validate that all targeted NPCs exist
         for npc_id in list(npcs_to_message):
             if npc_id not in self.active_npcs:
-                return [{
-                    "type": "error",
-                    "error_type": "NPC_NOT_FOUND",
-                    "details": f"NPC with ID {npc_id} not found",
-                }]
+                return [
+                    {
+                        "type": "error",
+                        "error_type": "NPC_NOT_FOUND",
+                        "details": f"NPC with ID {npc_id} not found",
+                    }
+                ]
 
         # Increment turn number
         self.turn_number += 1
@@ -300,13 +302,15 @@ class WebSocketSotopiaSimulator:
                 # Get response from NPC
                 try:
                     agent_action = await agent.aact(observation)
-                    
+
                     # Format each response as an individual npc_response
-                    npc_responses.append({
-                        "type": "npc_response",
-                        "npc_id": npc_id,
-                        "content": agent_action.argument
-                    })
+                    npc_responses.append(
+                        {
+                            "type": "npc_response",
+                            "npc_id": npc_id,
+                            "content": agent_action.argument,
+                        }
+                    )
 
                     # Add response to conversation history
                     self.conversation_history.append(
@@ -318,11 +322,13 @@ class WebSocketSotopiaSimulator:
                     )
                 except Exception as e:
                     logger.error(f"Error getting response from NPC {npc_id}: {e}")
-                    npc_responses.append({
-                        "type": "error",
-                        "npc_id": npc_id,
-                        "details": f"Error getting response: {str(e)}",
-                    })
+                    npc_responses.append(
+                        {
+                            "type": "error",
+                            "npc_id": npc_id,
+                            "details": f"Error getting response: {str(e)}",
+                        }
+                    )
 
         return npc_responses
 
@@ -379,7 +385,7 @@ class WebSocketSotopiaSimulator:
                 "npcs": list(self.active_npcs),
                 "groups": {name: members for name, members in self.npc_groups.items()},
             }
-            
+
             # We don't do more here - the server will handle interaction through process_client_message
             # This just initializes the simulation for group mode
 
@@ -487,7 +493,7 @@ class WebSocketSotopiaSimulator:
         """
         Get a response from a specific NPC to a client message
         Used for independent NPC responses in group mode
-        
+
         Returns response in the format:
         {
             "type": "npc_response",
@@ -498,32 +504,32 @@ class WebSocketSotopiaSimulator:
         # Check if NPC exists
         if npc_id not in self.active_npcs:
             return {
-                "type": "error", 
+                "type": "error",
                 "error_type": "NPC_NOT_FOUND",
-                "details": f"NPC with ID {npc_id} not found"
+                "details": f"NPC with ID {npc_id} not found",
             }
-            
+
         if npc_id not in self.agents:
             return {
                 "type": "error",
                 "error_type": "NPC_NOT_INITIALIZED",
-                "details": f"NPC with ID {npc_id} not initialized properly"
+                "details": f"NPC with ID {npc_id} not initialized properly",
             }
-            
+
         # Build observation for this NPC
         history = list(self.conversation_history)  # Copy current history
         history.append({"role": "client", "content": client_message})
-        
+
         observation = build_observation(
             turn_number=self.turn_number + 1,
             history=history,
         )
-        
+
         # Get response from NPC
         try:
             agent = self.agents[npc_id]
             agent_action = await agent.aact(observation)
-            
+
             # Return the response in the expected format
             return {
                 "type": "npc_response",
