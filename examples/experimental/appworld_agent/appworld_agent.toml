@@ -1,5 +1,5 @@
 redis_url = "redis://localhost:6379/0"
-extra_modules = ["examples.experimental.sotopia_original_replica.llm_agent_sotopia", "examples.experimental.nodes.chat_print_node", "examples.experimental.nodes.app_world_node", "sotopia.experimental.agents.moderator"]
+extra_modules = ["examples.experimental.appworld_agent.llm_agent_appworld", "examples.experimental.nodes.chat_print_node", "examples.experimental.nodes.app_world_node", "sotopia.experimental.agents.moderator"]
 
 [[nodes]]
 node_name = "moderator"
