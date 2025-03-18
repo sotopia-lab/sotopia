@@ -15,9 +15,6 @@ logging.basicConfig(
 )
 
 
-# Maybe you need to make an AppWorldAction that inherits from a DataModelFactory
-
-
 @NodeFactory.register(name="app_world")
 class AppWorldController(RestAPINode):
     def __init___(
