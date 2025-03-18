@@ -1,6 +1,4 @@
-from argparse import Action
 import logging
-import sys
 import json
 from rich.logging import RichHandler
 from enum import Enum
