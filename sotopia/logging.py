@@ -1,5 +1,6 @@
 from logging import FileHandler as loggingFileHandler
 from pathlib import Path
+from typing import Any
 
 
 class FileHandler(loggingFileHandler):
@@ -10,7 +11,7 @@ class FileHandler(loggingFileHandler):
     file automatically.
     """
 
-    def __init__(self, filename: str | Path, *args, **kwargs):
+    def __init__(self, filename: str | Path, *args: Any, **kwargs: Any):
         # ensure existence of parent directory
         filename = Path(filename)
         filename.parent.mkdir(parents=True, exist_ok=True)
