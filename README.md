@@ -15,7 +15,7 @@
 [![Project Page](https://img.shields.io/badge/Project-Page-green.svg)](https://www.sotopia.world/projects/sotopia)
 [![Paper PDF](https://img.shields.io/badge/Paper-PDF-red.svg)](https://arxiv.org/abs/2310.11667)
 [![Dataset](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Dataset-yellow)](https://huggingface.co/datasets/cmu-lti/sotopia)
-[![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://huggingface.co/spaces/cmu-lti/sotopia-space/)
+[![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://sotopia-lab--example-modal-streamlit-dev-run.modal.run/)
 
 
 
@@ -48,10 +48,13 @@ See [documentation](https://docs.sotopia.world) for more details.
 ## Get started
 
 ### Install locally
-We recommend using a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia;`.
+We recommend using a virtual environment, e.g. with uv: `pip install uv; uv sync --all-extras`.
 
 Then:
-`python -m pip install sotopia; sotopia install`
+`uv run sotopia install`
+
+> [!WARNING]
+> We recommend you using docker for setting up the redis server. Other installation methods have been shown to be error-prone.
 
 This will setup the necessary environment variables and download the necessary data.
 
