@@ -214,3 +214,121 @@ def render_messages(episode: EpisodeLog) -> list[messageForRendering]:
         item["content"] = item["content"].replace("$", "\\$")
 
     return messages_for_rendering
+
+
+def render_messages_for_multi_agent(
+    episode: EpisodeLog,
+) -> tuple[set[str], list[messageForRendering]]:
+    """Generate a list of messages for human-readable version of the multi-agent episode log."""
+
+    messages_for_rendering: list[messageForRendering] = []
+    sender_names: set[str] = set()
+    # Add background info from the first turn if available
+    if episode.messages and len(episode.messages[0]) > 0:
+        first_message = episode.messages[0][0][2]
+        messages_for_rendering.append(
+            {"role": "Background Info", "type": "info", "content": first_message}
+        )
+        messages_for_rendering.append(
+            {"role": "System", "type": "divider", "content": "Start Simulation"}
+        )
+
+    # Process each turn in the conversation
+    for turn in episode.messages[1:]:  # Skip the first turn with background info
+        for sender, receiver, message in turn:
+            sender_names.add(sender)
+            # Skip "did nothing" messages
+            if "did nothing" in message:
+                continue
+
+            # Handle messages where an agent says something
+            if "said:" in message:
+                # Extract the actual message content after "said:"
+                content = message.split("said:")[1].strip().strip('"')
+                messages_for_rendering.append(
+                    {"role": sender, "type": "said", "content": content}
+                )
+            # Handle action messages
+            elif sender != "Environment" and receiver == "Environment":
+                if "left." in message:
+                    messages_for_rendering.append(
+                        {
+                            "role": "Environment",
+                            "type": "leave",
+                            "content": f"{sender} left the conversation",
+                        }
+                    )
+                else:
+                    # Handle other action messages
+                    action_message = message.replace("[action]", "").strip()
+                    if action_message and "did nothing" not in action_message:
+                        messages_for_rendering.append(
+                            {
+                                "role": sender,
+                                "type": "action",
+                                "content": action_message,
+                            }
+                        )
+            # Handle environment messages
+            elif sender == "Environment":
+                messages_for_rendering.append(
+                    {
+                        "role": "Environment",
+                        "type": "environment",
+                        "content": message,
+                    }
+                )
+
+    messages_for_rendering.append(
+        {"role": "System", "type": "divider", "content": "End Simulation"}
+    )
+
+    # Add reasoning and rewards if available
+    if hasattr(episode, "reasoning") and episode.reasoning:
+        # Get unique agent names from the conversation
+        agent_names = set(
+            msg["role"]
+            for msg in messages_for_rendering
+            if msg["type"] in {"said", "action"} and msg["role"] != "Environment"
+        )
+        num_agents = len(agent_names)
+
+        if num_agents > 0:
+            reasoning_per_agent, general_comment = parse_reasoning(
+                episode.reasoning, num_agents
+            )
+
+            if general_comment:
+                messages_for_rendering.append(
+                    {"role": "General", "type": "comment", "content": general_comment}
+                )
+
+            for idx, reasoning in enumerate(reasoning_per_agent):
+                reasoning_lines = reasoning.split("\n")
+                new_reasoning = ""
+                for reasoning_line in reasoning_lines:
+                    parts = reasoning_line.split(":", 1)
+                    if len(parts) > 1:
+                        dimension = parts[0]
+                        new_reasoning += f"**{dimension}**: {parts[1]}\n"
+                    else:
+                        new_reasoning += reasoning_line + "\n"
+
+                reward = (
+                    episode.rewards[idx]
+                    if hasattr(episode, "rewards") and idx < len(episode.rewards)
+                    else "N/A"
+                )
+                messages_for_rendering.append(
+                    {
+                        "role": f"Agent {idx + 1}",
+                        "type": "comment",
+                        "content": f"**Agent {idx + 1} reasoning**:\n{new_reasoning}\n\n**Rewards**: {str(reward)}",
+                    }
+                )
+
+    # Escape dollar signs to prevent markdown interpretation issues
+    for item in messages_for_rendering:
+        item["content"] = item["content"].replace("$", "\\$")
+
+    return sender_names, messages_for_rendering

@@ -7,7 +7,7 @@ First you need to have a Modal account and logged in with `modal setup`
 
 To deploy the FastAPI server to Modal, run the following command:
 ```bash
-cd sotopia/ui/fastapi_server
+cd sotopia/api
 modal deploy modal_api_server.py
 ```
 ## FastAPI Server
@@ -15,7 +15,7 @@ modal deploy modal_api_server.py
 To run the FastAPI server, you can use the following command:
 ```bash
 uv run rq worker
-uv run fastapi run sotopia/ui/fastapi_server.py --workers 4 --port 8080
+uv run fastapi run sotopia/api/fastapi_server.py --workers 4 --port 8080
 ```
 
 Here is also an example of using the FastAPI server:

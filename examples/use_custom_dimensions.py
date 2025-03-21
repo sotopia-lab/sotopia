@@ -167,7 +167,6 @@ def run_simple_sample_with_custom_samples(
     )
     environment: ParallelSotopiaEnv = ParallelSotopiaEnv(
         env_profile=all_envs[0],
-        model_name="gpt-4o-mini",
         action_order="round-robin",
         evaluators=[evaluator],
         terminal_evaluators=[terminal_evaluator],

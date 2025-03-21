@@ -15,8 +15,9 @@ from sotopia.database import (
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator
+from typing import Type, TypedDict, Any, AsyncGenerator, List
 from pydantic import BaseModel
+import uuid
 
 
 class WSMessageType(str, Enum):
@@ -63,16 +64,27 @@ def get_env_agents(
     evaluator_model: str,
     evaluation_dimension_list_name: str,
 ) -> tuple[ParallelSotopiaEnv, Agents, dict[str, Observation]]:
-    # environment_profile = EnvironmentProfile.find().all()[0]
-    # agent_profiles = AgentProfile.find().all()[:2]
     assert len(agent_ids) == len(
         agent_models
     ), f"Provided {len(agent_ids)} agent_ids but {len(agent_models)} agent_models"
-
-    environment_profile: EnvironmentProfile = EnvironmentProfile.get(env_id)
-    agent_profiles: list[AgentProfile] = [
-        AgentProfile.get(agent_id) for agent_id in agent_ids
-    ]
+    try:
+        environment_profile: EnvironmentProfile = EnvironmentProfile.get(env_id)
+        agent_profiles: list[AgentProfile] = [
+            AgentProfile.get(agent_id) for agent_id in agent_ids
+        ]
+    except Exception:
+        environment_profile = EnvironmentProfile(
+            codename=f"env_{env_id}",
+            scenario="Just chat (finish the conversation in 2 turns)",
+            agent_goals=["Just chat"] * len(agent_ids),
+        )
+        agent_profiles = [
+            AgentProfile(
+                first_name=f"agent_{agent_id}",
+                last_name=f"agent_{agent_id}",
+            )
+            for agent_id in agent_ids
+        ]
 
     agent_list = [
         LLMAgent(
@@ -93,7 +105,6 @@ def get_env_agents(
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     env = ParallelSotopiaEnv(
         action_order="round-robin",
-        model_name="gpt-4o-mini",
         evaluators=[
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
@@ -105,8 +116,8 @@ def get_env_agents(
         ],
         env_profile=environment_profile,
     )
-
-    environment_messages = env.reset(agents=agents, omniscient=False)
+    if len(agent_ids) == 2:
+        environment_messages = env.reset(agents=agents, omniscient=False)
     agents.reset()
 
     return env, agents, environment_messages
@@ -133,65 +144,154 @@ class WebSocketSotopiaSimulator:
         self,
         env_id: str,
         agent_ids: list[str],
+        env_profile_dict: dict[str, Any] = {},
+        agent_profile_dicts: list[dict[str, Any]] = [],
         agent_models: list[str] = ["gpt-4o-mini", "gpt-4o-mini"],
         evaluator_model: str = "gpt-4o",
         evaluation_dimension_list_name: str = "sotopia",
+        max_turns: int = 20,
     ) -> None:
-        self.env, self.agents, self.environment_messages = get_env_agents(
-            env_id,
-            agent_ids,
-            agent_models,
-            evaluator_model,
-            evaluation_dimension_list_name,
-        )
-        self.messages: list[list[tuple[str, str, str]]] = []
-        self.messages.append(
-            [
-                (
-                    "Environment",
-                    agent_name,
-                    self.environment_messages[agent_name].to_natural_language(),
+        if len(agent_ids) == 2:
+            try:
+                self.env, self.agents, self.environment_messages = get_env_agents(
+                    env_id,
+                    agent_ids,
+                    agent_models,
+                    evaluator_model,
+                    evaluation_dimension_list_name,
                 )
-                for agent_name in self.env.agents
+            except Exception as e:
+                raise Exception(f"Error in loading environment or agents profiles: {e}")
+
+            for index, agent_name in enumerate(self.env.agents):
+                self.agents[agent_name].goal = self.env.profile.agent_goals[index]
+        else:
+            assert (
+                env_profile_dict
+            ), "env_profile_dict must be provided if number of agents is greater than 2"
+            assert agent_profile_dicts, "agent_profile_dicts must be provided if number of agents is greater than 2"
+            self.env_profile = EnvironmentProfile(**env_profile_dict)
+            self.agent_profiles = [
+                AgentProfile(**agent_profile_dict)
+                for agent_profile_dict in agent_profile_dicts
             ]
-        )
-        for index, agent_name in enumerate(self.env.agents):
-            self.agents[agent_name].goal = self.env.profile.agent_goals[index]
+        self.agent_models = agent_models
+        self.evaluator_model = evaluator_model
+        self.evaluation_dimension_list_name = evaluation_dimension_list_name
+
+        self.connection_id = str(uuid.uuid4())
+        self.max_turns = max_turns
 
     async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
         # Use sotopia to run the simulation
-        generator = await arun_one_episode(
-            env=self.env,
-            agent_list=list(self.agents.values()),
-            push_to_db=False,
-            streaming=True,
-        )
+        if len(self.agent_models) == 2:
+            generator = await arun_one_episode(
+                env=self.env,
+                agent_list=list(self.agents.values()),
+                push_to_db=False,
+                streaming=True,
+            )
+            assert isinstance(
+                generator, AsyncGenerator
+            ), "generator should be async generator, but got {}".format(type(generator))
 
-        assert isinstance(
-            generator, AsyncGenerator
-        ), "generator should be async generator, but got {}".format(type(generator))
-
-        async for messages in generator:
-            reasoning, rewards = "", [0.0, 0.0]
-            if messages[-1][0][0] == "Evaluation":
-                reasoning = messages[-1][0][2].to_natural_language()
-                rewards = eval(messages[-2][0][2].to_natural_language())
-
-            epilog = EpisodeLog(
-                environment=self.env.profile.pk,
-                agents=[agent.profile.pk for agent in self.agents.values()],
-                tag="test",
-                models=["gpt-4o", "gpt-4o", "gpt-4o-mini"],
-                messages=[
-                    [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
-                    for messages_in_turn in messages
-                ],
-                reasoning=reasoning,
-                rewards=rewards,
-                rewards_prompt="",
+            async for messages in generator:
+                reasoning, rewards = "", [0.0, 0.0]
+                if messages[-1][0][0] == "Evaluation":
+                    reasoning = messages[-1][0][2].to_natural_language()
+                    rewards = eval(messages[-2][0][2].to_natural_language())
+                epilog = EpisodeLog(
+                    environment=self.env.profile.pk,
+                    agents=[agent.profile.pk for agent in self.agents.values()],
+                    tag="test",
+                    messages=[
+                        [
+                            (m[0], m[1], m[2].to_natural_language())
+                            for m in messages_in_turn
+                        ]
+                        for messages_in_turn in messages
+                    ],
+                    reasoning=reasoning,
+                    rewards=rewards,
+                    rewards_prompt="",
+                ).dict()
+                yield {
+                    "type": "messages",
+                    "messages": epilog,
+                }
+        elif len(self.agent_models) > 2:
+            multi_agent_generator: AsyncGenerator[dict[str, Any], None] = (
+                arun_server_adaptor(
+                    env=self.env_profile,
+                    agent_list=self.agent_profiles,
+                    agent_models=self.agent_models,
+                    evaluator_model=self.evaluator_model,
+                    evaluation_dimension_list_name=self.evaluation_dimension_list_name,
+                    push_to_db=False,
+                    streaming=True,
+                    connection_id=self.connection_id,
+                    max_turns=self.max_turns,
+                )
+            )
+            assert isinstance(
+                multi_agent_generator, AsyncGenerator
+            ), "generator should be async generator, but got {}".format(
+                type(multi_agent_generator)
             )
 
-            yield {
-                "type": "messages",
-                "messages": epilog.dict(),
+            async for message_data in multi_agent_generator:
+                yield {
+                    "type": "messages",
+                    "messages": message_data,
+                }
+        else:
+            raise ValueError("Number of agents must be 2 or greater")
+
+
+async def arun_server_adaptor(
+    env: EnvironmentProfile,
+    agent_list: List[AgentProfile],
+    agent_models: List[str],
+    evaluator_model: str,
+    evaluation_dimension_list_name: str,
+    max_turns: int = 20,
+    push_to_db: bool = True,
+    streaming: bool = False,
+    connection_id: str = "",
+) -> AsyncGenerator[dict[str, Any], None]:
+    # Prepare episode configuration
+    from sotopia.experimental.server import arun_one_episode
+
+    # TODO: Unify the API of the two agents
+    config_data = {
+        "redis_url": "redis://localhost:6379/0",
+        "extra_modules": [
+            "examples.experimental.sotopia_original_replica.llm_agent_sotopia",
+            "sotopia.experimental.agents.redis_agent",
+        ],
+        "agent_node": "llm_agent",
+        "default_model": "gpt-4o-mini",
+        "evaluator_model": evaluator_model,
+        "use_pk_value": False,
+        "push_to_db": push_to_db,
+        "evaluate_episode": False,
+        "max_turns": max_turns,
+        "scenario": env.scenario,
+        "agents": [
+            {
+                "name": agent.first_name,
+                "goal": env.agent_goals[i] if i < len(env.agent_goals) else "",
+                "model_name": agent_models[i]
+                if i < len(agent_models)
+                else "gpt-4o-mini",
+                "background": agent.dict(),
             }
+            for i, agent in enumerate(agent_list)
+        ],
+    }
+    # Use the arun_one_episode function from server.py
+    async for episode_data in arun_one_episode(
+        episode_config=config_data,
+        connection_id=connection_id,
+    ):
+        yield episode_data

@@ -2,6 +2,7 @@ from redis_om import JsonModel
 from redis_om.model.model import Field
 from pydantic import create_model, BaseModel, AfterValidator
 from typing import Type, Callable, Tuple, Annotated, Union, cast, Any
+from sotopia.envs import SotopiaDimensions
 
 
 class BaseCustomEvaluationDimension(BaseModel):
@@ -143,8 +144,8 @@ class EvaluationDimensionBuilder:
         Build an evaluation dimension from existing `CustomEvaluationDimensionList` list names. For example, directly use `sotopia`
         The returned model is a pydantic model that can be used to evaluate the conversation.
         """
-        # if list_name == "sotopia":
-        #     return SotopiaDimensions # TODO see if we could make this work in `experiment_eval.py`. Right now there is a circular import
+        if list_name == "sotopia":
+            return SotopiaDimensions
 
         dimensions = CustomEvaluationDimensionList.find(
             CustomEvaluationDimensionList.name == list_name

@@ -43,7 +43,7 @@ def initialize_session_state() -> None:
         )
 
         # Use first items as default choices
-        st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[1]
+        st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
         st.session_state.agent_choice_1 = list(st.session_state.agent_dict.keys())[0]
         st.session_state.agent_choice_2 = list(st.session_state.agent_dict.keys())[0]
         st.session_state.agent1_model_choice = list(
@@ -191,6 +191,134 @@ def handle_message(message: dict[str, Any]) -> None:
             st.error(f"Unknown message type: {message['data']['type']}")
 
 
+def copy_current_json_config() -> None:
+    """Copy the current JSON configuration to the text area."""
+    config = generate_current_json_config()
+    st.session_state.json_config = config
+    st.session_state.sidebar_json_config = config
+
+
+def start_from_json_config() -> None:
+    """Start a simulation using a JSON configuration."""
+    try:
+        # Determine which JSON config to use (main or sidebar)
+        if st.session_state.get("_is_sidebar", False):
+            json_config = st.session_state.sidebar_json_config
+        else:
+            json_config = st.session_state.json_config
+
+        # Parse the JSON configuration
+        config = json.loads(json_config)
+
+        # Validate the configuration
+        if "type" not in config or "data" not in config:
+            st.error("Invalid configuration: missing 'type' or 'data' field")
+            return
+
+        # Start the simulation
+        st.session_state.active = True
+        st.session_state.messages = []
+        chat_history_container.empty()
+        st.session_state.websocket_manager.start()
+        st.session_state.websocket_manager.send_message(config)
+
+    except json.JSONDecodeError:
+        st.error("Invalid JSON configuration. Please check your syntax.")
+    except Exception as e:
+        st.error(f"Error starting simulation: {str(e)}")
+
+
+def start_from_sidebar_json() -> None:
+    """This function is no longer used."""
+    pass
+
+
+def start_from_main_json() -> None:
+    """Start a simulation using the main JSON configuration."""
+    st.session_state._is_sidebar = False
+    start_from_json_config()
+
+
+def generate_default_json_config() -> str:
+    """Generate a default JSON configuration."""
+    # Get the first scenario and agent
+    scenario_key = list(st.session_state.scenarios.keys())[0]
+    agent_key = list(st.session_state.agent_dict.keys())[0]
+    model_key = list(st.session_state.agent_model_dict.keys())[0]
+    eval_key = list(st.session_state.evaluation_dimension_dict.keys())[0]
+
+    # Create a default configuration
+    config = {
+        "type": "START_SIM",
+        "data": {
+            "env_id": st.session_state.scenarios[scenario_key]["pk"],
+            "agent_ids": [
+                st.session_state.agent_dict[agent_key]["pk"],
+                st.session_state.agent_dict[agent_key]["pk"],
+            ],
+            "agent_models": [
+                st.session_state.agent_model_dict[model_key],
+                st.session_state.agent_model_dict[model_key],
+            ],
+            "evaluator_model": "gpt-4o",
+            "evaluation_dimension_list_name": eval_key,
+            "max_turns": 20,
+        },
+    }
+
+    config = {
+        "type": "START_SIM",
+        "data": {
+            "env_id": "env_123",
+            "agent_ids": ["agent_1", "agent_2", "agent_3"],
+            "agent_models": ["gpt-4o-mini", "gpt-4o-mini", "gpt-4o-mini"],
+            "evaluator_model": "gpt-4o",
+            "evaluation_dimension_list_name": "sotopia",
+            "env_profile_dict": {
+                "codename": "test",
+                "scenario": "Just chat (finish the conversation in 2 turns)",
+                "agent_goals": ["Just chat", "Just chat", "Just chat"],
+            },
+            "agent_profile_dicts": [
+                {"first_name": "agent_1", "last_name": "agent_1"},
+                {"first_name": "agent_2", "last_name": "agent_2"},
+                {"first_name": "agent_3", "last_name": "agent_3"},
+            ],
+            "max_turns": 20,
+        },
+    }
+    return json.dumps(config, indent=2)
+
+
+def generate_current_json_config() -> str:
+    """Generate a JSON configuration based on the current settings."""
+    config = {
+        "type": "START_SIM",
+        "data": {
+            "env_id": st.session_state.scenarios[st.session_state.scenario_choice][
+                "pk"
+            ],
+            "agent_ids": [
+                st.session_state.agent_dict[st.session_state.agent_choice_1]["pk"],
+                st.session_state.agent_dict[st.session_state.agent_choice_2]["pk"],
+            ],
+            "agent_models": [
+                st.session_state.agent_model_dict[
+                    st.session_state.agent_model_choice_1
+                ],
+                st.session_state.agent_model_dict[
+                    st.session_state.agent_model_choice_2
+                ],
+            ],
+            "evaluator_model": "gpt-4o",
+            "evaluation_dimension_list_name": st.session_state.evaluation_dimension_choice,
+            "max_turns": int(st.session_state.max_turns),
+        },
+    }
+
+    return json.dumps(config, indent=2)
+
+
 def start_callback() -> None:
     if st.session_state.agent_choice_1 == st.session_state.agent_choice_2:
         st.error("Please select different agents")
@@ -199,33 +327,33 @@ def start_callback() -> None:
         st.session_state.messages = []
         chat_history_container.empty()
         st.session_state.websocket_manager.start()
-        st.session_state.websocket_manager.send_message(
-            {
-                "type": "START_SIM",
-                "data": {
-                    "env_id": st.session_state.scenarios[
-                        st.session_state.scenario_choice
-                    ]["pk"],
-                    "agent_ids": [
-                        st.session_state.agent_dict[st.session_state.agent_choice_1][
-                            "pk"
-                        ],
-                        st.session_state.agent_dict[st.session_state.agent_choice_2][
-                            "pk"
-                        ],
+
+        # Create the configuration in the same format as the JSON config
+        config = {
+            "type": "START_SIM",
+            "data": {
+                "env_id": st.session_state.scenarios[st.session_state.scenario_choice][
+                    "pk"
+                ],
+                "agent_ids": [
+                    st.session_state.agent_dict[st.session_state.agent_choice_1]["pk"],
+                    st.session_state.agent_dict[st.session_state.agent_choice_2]["pk"],
+                ],
+                "agent_models": [
+                    st.session_state.agent_model_dict[
+                        st.session_state.agent_model_choice_1
                     ],
-                    "agent_models": [
-                        st.session_state.agent_model_dict[
-                            st.session_state.agent_model_choice_1
-                        ],
-                        st.session_state.agent_model_dict[
-                            st.session_state.agent_model_choice_2
-                        ],
+                    st.session_state.agent_model_dict[
+                        st.session_state.agent_model_choice_2
                     ],
-                    "evaluation_dimension_list_name": st.session_state.evaluation_dimension_choice,
-                },
-            }
-        )
+                ],
+                "evaluator_model": "gpt-4o",
+                "evaluation_dimension_list_name": st.session_state.evaluation_dimension_choice,
+                "max_turns": int(st.session_state.max_turns),
+            },
+        }
+
+        st.session_state.websocket_manager.send_message(config)
 
 
 def stop_callback() -> None:
@@ -252,10 +380,76 @@ def is_active() -> bool:
 
 def chat_demo() -> None:
     initialize_session_state()
-    update_scenario_description()
+
+    # Add a checkbox to toggle between JSON configuration and standard UI
+    use_json_config = st.checkbox("Use JSON Configuration", value=False)
+
+    if use_json_config:
+        # Only show JSON configuration when checkbox is selected
+        st.markdown("""
+        ### Configure and start a simulation with JSON
+
+        Enter your JSON configuration below and click "Start Simulation" to begin.
+        """)
+
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            st.button("Use Current Settings", on_click=copy_current_json_config)
+
+        # Initialize the JSON config if it doesn't exist
+        if "json_config" not in st.session_state:
+            st.session_state.json_config = generate_default_json_config()
+
+        st.text_area(
+            "JSON Configuration:",
+            st.session_state.json_config,
+            height=300,
+            key="json_config",
+        )
+
+        if st.button(
+            "Start Simulation from JSON",
+            key="json_start_button",
+            on_click=start_from_main_json,
+        ):
+            pass
+
+        st.markdown("""
+        **Example Configuration:**
+        ```json
+        {
+          "type": "START_SIM",
+          "data": {
+            "env_id": "env_123",
+            "agent_ids": ["agent_1", "agent_2", "agent_3"],
+            "agent_models": ["gpt-4o-mini", "gpt-4o-mini", "gpt-4o-mini"],
+            "evaluator_model": "gpt-4o",
+            "evaluation_dimension_list_name": "sotopia",
+            "env_profile_dict": {
+              "codename": "test",
+              "scenario": "Just chat (finish the conversation in 2 turns)",
+              "agent_goals": ["Just chat", "Just chat", "Just chat"]
+            },
+            "agent_profile_dicts": [
+              {"first_name": "agent_1", "last_name": "agent_1"},
+              {"first_name": "agent_2", "last_name": "agent_2"},
+              {"first_name": "agent_3", "last_name": "agent_3"}
+            ],
+            "max_turns": 20
+          }
+        }
+        ```
+        """)
+    else:
+        # Show standard UI with scenario description when JSON config is not selected
+        update_scenario_description()
+
+        # Remove the JSON expander from standard UI view
 
     with st.sidebar:
         with st.container():
+            # Remove JSON Configuration from sidebar
+
             # Scenario and Agent Selection
             with st.expander("Simulation Setup", expanded=True):
                 scenario_col, scenario_desc_col = st.columns(2)
@@ -264,7 +458,7 @@ def chat_demo() -> None:
                         "Choose a scenario:",
                         st.session_state.scenarios.keys(),
                         key="scenario_choice",
-                        disabled=is_active(),
+                        disabled=is_active() or use_json_config,
                     )
 
                 with scenario_desc_col:
@@ -279,7 +473,7 @@ def chat_demo() -> None:
                         "Choose Agent 1:",
                         list(st.session_state.agent_dict.keys()),
                         key="agent_choice_1",
-                        disabled=is_active(),
+                        disabled=is_active() or use_json_config,
                     )
 
                 with agent2_col:
@@ -287,7 +481,7 @@ def chat_demo() -> None:
                         "Choose Agent 2:",
                         list(st.session_state.agent_dict.keys()),
                         key="agent_choice_2",
-                        disabled=is_active(),
+                        disabled=is_active() or use_json_config,
                     )
 
                 model1_col, model2_col = st.columns(2)
@@ -296,7 +490,7 @@ def chat_demo() -> None:
                         "Choose Agent 1 Model:",
                         list(st.session_state.agent_model_dict.keys()),
                         key="agent_model_choice_1",
-                        disabled=is_active(),
+                        disabled=is_active() or use_json_config,
                     )
 
                 with model2_col:
@@ -304,14 +498,14 @@ def chat_demo() -> None:
                         "Choose Agent 2 Model:",
                         list(st.session_state.agent_model_dict.keys()),
                         key="agent_model_choice_2",
-                        disabled=is_active(),
+                        disabled=is_active() or use_json_config,
                     )
 
                 st.selectbox(
                     "Choose evaluation dimensions:",
                     list(st.session_state.evaluation_dimension_dict.keys()),
                     key="evaluation_dimension_choice",
-                    disabled=is_active(),
+                    disabled=is_active() or use_json_config,
                 )
 
                 evaluation_dimension_str = f"**Evaluation Dimensions:** {st.session_state.evaluation_dimension_choice}. <br>**Metric includes:** "
@@ -326,8 +520,15 @@ def chat_demo() -> None:
                 )
 
         with st.expander("Other Options", expanded=False):
-            st.text_input("Max Turns", key="max_turns", value="20")
-            st.text_input("Max Stale Turns", key="max_stale_turns", value="3")
+            st.text_input(
+                "Max Turns", key="max_turns", value="20", disabled=use_json_config
+            )
+            st.text_input(
+                "Max Stale Turns",
+                key="max_stale_turns",
+                value="3",
+                disabled=use_json_config,
+            )
 
         # Control Buttons
         col1, col2, col3 = st.columns([2, 2, 2])
@@ -335,7 +536,7 @@ def chat_demo() -> None:
         with col1:
             st.button(
                 "Start Simulation",
-                disabled=is_active(),
+                disabled=is_active() or use_json_config,
                 on_click=start_callback,
             )
 

@@ -157,6 +157,9 @@ class SimulationManager:
         agent_models: list[str],
         evaluator_model: str,
         evaluation_dimension_list_name: str,
+        env_profile_dict: dict[str, Any],
+        agent_profile_dicts: list[dict[str, Any]],
+        max_turns: int = 20,
     ) -> WebSocketSotopiaSimulator:
         try:
             return WebSocketSotopiaSimulator(
@@ -165,6 +168,9 @@ class SimulationManager:
                 agent_models=agent_models,
                 evaluator_model=evaluator_model,
                 evaluation_dimension_list_name=evaluation_dimension_list_name,
+                env_profile_dict=env_profile_dict,
+                agent_profile_dicts=agent_profile_dicts,
+                max_turns=max_turns,
             )
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
@@ -300,7 +306,16 @@ async def nonstreaming_simulation(
 
 
 async def get_scenarios_all() -> list[EnvironmentProfile]:
-    return EnvironmentProfile.all()
+    scenarios = EnvironmentProfile.all()
+    if not scenarios:
+        # Create a pseudo scenario if none exist
+        pseudo_scenario = EnvironmentProfile(
+            codename="Sample Scenario",
+            scenario="Sample scenario description",
+            agent_goals=["Sample agent 1", "Sample agent 2"],
+        )
+        scenarios = [pseudo_scenario]
+    return scenarios
 
 
 async def get_scenarios(
@@ -325,7 +340,15 @@ async def get_scenarios(
 
 
 async def get_agents_all() -> list[AgentProfile]:
-    return AgentProfile.all()
+    agents = AgentProfile.all()
+    if not agents:
+        # Create a pseudo agent if none exist
+        pseudo_agent = AgentProfile(
+            first_name="Sample Agent",
+            last_name="",
+        )
+        agents = [pseudo_agent]
+    return agents
 
 
 async def get_agents(
@@ -363,7 +386,29 @@ async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
 
 
 async def get_episodes_all() -> list[EpisodeLog]:
-    return EpisodeLog.all()
+    episodes = EpisodeLog.all()
+    if not episodes:
+        # Create a pseudo episode if none exist
+        pseudo_episode = EpisodeLog(
+            environment="Sample Environment",
+            agents=["Sample Agent 1", "Sample Agent 2"],
+            models=["gpt-4o", "gpt-4o"],
+            messages=[
+                [
+                    ("Environment", "Agent 1", "Welcome to the sample environment."),
+                    ("Environment", "Agent 2", "This is a sample conversation."),
+                ]
+            ],
+            reasoning="This is a sample reasoning about the interaction between the agents.",
+            rewards=[
+                (0.5, {"cooperation": 0.7, "empathy": 0.3}),
+                (0.6, {"cooperation": 0.5, "empathy": 0.7}),
+            ],
+            rewards_prompt="Evaluate the agents based on cooperation and empathy.",
+            tag="sample",
+        )
+        episodes = [pseudo_episode]
+    return episodes
 
 
 async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[EpisodeLog]:
@@ -384,15 +429,28 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
 async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
     custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
     all_custom_evaluation_dimension_list = CustomEvaluationDimensionList.all()
-    for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
-        assert isinstance(
-            custom_evaluation_dimension_list, CustomEvaluationDimensionList
+
+    if not all_custom_evaluation_dimension_list:
+        # Create a pseudo evaluation dimension if none exist
+        pseudo_dimension = CustomEvaluationDimension(
+            name="Sample Dimension",
+            description="This is a sample evaluation dimension",
+            range_high=5,
+            range_low=1,
         )
-        custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = [
-            CustomEvaluationDimension.get(pk=pk)
-            for pk in custom_evaluation_dimension_list.dimension_pks
-        ]
-    print(custom_evaluation_dimensions)
+        custom_evaluation_dimensions["sample_dimensions"] = [pseudo_dimension]
+    else:
+        for custom_evaluation_dimension_list in all_custom_evaluation_dimension_list:
+            assert isinstance(
+                custom_evaluation_dimension_list, CustomEvaluationDimensionList
+            )
+            dimensions = [
+                CustomEvaluationDimension.get(pk=pk)
+                for pk in custom_evaluation_dimension_list.dimension_pks
+            ]
+            custom_evaluation_dimensions[custom_evaluation_dimension_list.name] = (
+                dimensions
+            )
     return custom_evaluation_dimensions
 
 
@@ -414,6 +472,34 @@ class SotopiaFastAPI(FastAPI):
         self.setup_routes()
 
     def setup_routes(self) -> None:
+        @self.get("/health", status_code=200)
+        async def health_check() -> dict[str, Any]:
+            """Comprehensive health check endpoint"""
+            health_status: dict[str, Any] = {
+                "status": "ok",
+                "message": "All systems operational",
+                "components": {},
+            }
+            # Check Redis connection
+            try:
+                redis_conn = get_redis_connection()
+                redis_conn.ping()
+                health_status["components"]["redis"] = "connected"
+            except Exception as e:
+                health_status["status"] = "degraded"
+                health_status["components"]["redis"] = f"error: {str(e)}"
+
+            # Check database connections by attempting a simple query
+            try:
+                # Simple test query that should be fast
+                _ = EnvironmentProfile.all()
+                health_status["components"]["database"] = "connected"
+            except Exception as e:
+                health_status["status"] = "degraded"
+                health_status["components"]["database"] = f"error: {str(e)}"
+
+            return health_status
+
         self.get("/scenarios", response_model=list[EnvironmentProfile])(
             get_scenarios_all
         )
@@ -628,7 +714,6 @@ class SotopiaFastAPI(FastAPI):
                     start_msg = await websocket.receive_json()
                     if start_msg.get("type") != WSMessageType.START_SIM.value:
                         continue
-
                     async with manager.state.start_simulation(token):
                         simulator = await manager.create_simulator(
                             env_id=start_msg["data"]["env_id"],
@@ -636,12 +721,19 @@ class SotopiaFastAPI(FastAPI):
                             agent_models=start_msg["data"].get(
                                 "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
                             ),
+                            env_profile_dict=start_msg["data"].get(
+                                "env_profile_dict", {}
+                            ),
+                            agent_profile_dicts=start_msg["data"].get(
+                                "agent_profile_dicts", []
+                            ),
                             evaluator_model=start_msg["data"].get(
                                 "evaluator_model", "gpt-4o"
                             ),
                             evaluation_dimension_list_name=start_msg["data"].get(
                                 "evaluation_dimension_list_name", "sotopia"
                             ),
+                            max_turns=start_msg["data"].get("max_turns", 20),
                         )
                         await manager.run_simulation(websocket, simulator)
 

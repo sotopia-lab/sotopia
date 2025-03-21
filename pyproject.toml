@@ -41,7 +41,6 @@ api = [
     "fastapi[standard]",
     "uvicorn",
     "streamlit",
-    "websockets",
     "modal"
 ]
 test = ["pytest", "pytest-cov", "pytest-asyncio"]
