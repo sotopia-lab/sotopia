@@ -11,6 +11,7 @@ from sotopia.envs import ParallelSotopiaEnv
 @pytest.mark.asyncio
 async def test_parallel_sotopia_env() -> None:
     env_profile = EnvironmentProfile(
+        pk="test_pk",
         code_name="test",
         scenario="test",
         agent_goals=["test 1", "test 2"],
@@ -23,14 +24,22 @@ async def test_parallel_sotopia_env() -> None:
                 "agent1",
                 model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
-                    **{"first_name": "John", "last_name": "Doe"}
+                    **{
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "pk": "test_pk_agent_1",
+                    },
                 ),
             ),
             "agent2": LLMAgent(
                 "agent2",
                 model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
-                    **{"first_name": "Jane", "last_name": "Doe"}
+                    **{
+                        "first_name": "Jane",
+                        "last_name": "Doe",
+                        "pk": "test_pk_agent_2",
+                    }
                 ),
             ),
         }
@@ -56,6 +65,7 @@ async def test_parallel_sotopia_env() -> None:
 @pytest.mark.asyncio
 async def test_parallel_sotopia_env_script_writing_single_step() -> None:
     env_profile = EnvironmentProfile(
+        pk="test_pk",
         code_name="test",
         scenario="test",
         agent_goals=["test 1", "test 2"],
@@ -68,7 +78,11 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
                 "agent1",
                 model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
-                    **{"first_name": "John", "last_name": "Doe"}
+                    **{
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "pk": "test_pk_agent_1",
+                    }
                 ),
                 script_like=True,
             ),
@@ -76,7 +90,11 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
                 "agent2",
                 model_name="gpt-4o-mini",
                 agent_profile=AgentProfile(
-                    **{"first_name": "Jane", "last_name": "Doe"}
+                    **{
+                        "first_name": "Jane",
+                        "last_name": "Doe",
+                        "pk": "test_pk_agent_2",
+                    }
                 ),
                 script_like=True,
             ),
