@@ -21,6 +21,7 @@ class RelationshipType(IntEnum):
 
 
 class BaseAgentProfile(BaseModel):
+    pk: str = Field(default_factory=lambda: "")
     first_name: str = Field(index=True)
     last_name: str = Field(index=True)
     age: int = Field(index=True, default_factory=lambda: 0)
@@ -48,6 +49,7 @@ class AgentProfile(BaseAgentProfile, JsonModel):
 
 
 class BaseEnvironmentProfile(BaseModel):
+    pk: str = Field(default_factory=lambda: "")
     codename: str = Field(
         index=True,
         default_factory=lambda: "",
@@ -95,6 +97,7 @@ class EnvironmentProfile(BaseEnvironmentProfile, JsonModel):
 
 
 class BaseRelationshipProfile(BaseModel):
+    pk: str = Field(default_factory=lambda: "")
     agent_1_id: str = Field(index=True)
     agent_2_id: str = Field(index=True)
     relationship: RelationshipType = Field(
@@ -114,6 +117,7 @@ class RelationshipProfile(BaseRelationshipProfile, JsonModel):
 
 
 class EnvironmentList(JsonModel):
+    pk: str = Field(default_factory=lambda: "")
     name: str = Field(index=True)
     environments: list[str] = Field(default_factory=lambda: [])
     agent_index: list[str] | None = Field(default_factory=lambda: None)
