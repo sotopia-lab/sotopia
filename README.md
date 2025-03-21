@@ -50,6 +50,10 @@ See [documentation](https://docs.sotopia.world) for more details.
 ### Install locally
 We recommend using a virtual environment, e.g. with uv: `pip install uv; uv sync --all-extras`.
 
+> [!NOTE]
+> You can of course use any other package manager to install the dependencies (e.g. pip, conda, etc.). But we strongly recommend using uv, especially for the development of Sotopia.
+
+
 Then:
 `uv run sotopia install`
 
@@ -57,9 +61,6 @@ Then:
 > We recommend you using docker for setting up the redis server. Other installation methods have been shown to be error-prone.
 
 This will setup the necessary environment variables and download the necessary data.
-
-> [!TIP]
-> Having trouble installing? Or don't want to install redis for now? We are working on a public redis server for you to use. Stay tuned!
 
 OpenAI key is required to run the code. Please set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:
 ```bash
@@ -84,6 +85,9 @@ asyncio.run(
     )
 )
 ```
+> [!WARNING]
+> You won't be able to run the server locally if you don't have any datasets installed.
+
 or run
 ```bash
 python examples/minimalist_demo.py

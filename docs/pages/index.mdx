@@ -89,6 +89,15 @@ export REDIS_OM_URL="redis://localhost:6379"
 
 <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="item-1">
+        <AccordionTrigger>Using uv? (recommended)</AccordionTrigger>
+        <AccordionContent>
+        We recommend using uv to install the package. You can install the package with the following command:
+        ```bash
+        uv pip install sotopia
+        ```
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
         <AccordionTrigger>Using Conda?</AccordionTrigger>
         <AccordionContent>
         Create a new environment with conda and install the package with pip:
@@ -102,7 +111,9 @@ export REDIS_OM_URL="redis://localhost:6379"
         <AccordionTrigger>Where to put my OpenAI/TogetherAI/Groq/Replicate API keys?</AccordionTrigger>
         <AccordionContent>
           <p>Although API keys are not required for all the experiments, you need to use these keys when you use LLMs from these providers.
-          For example, set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:</p>
+          For example, set the environment variable `OPENAI_API_KEY` to your key.
+          E.g., setting env variable in the `.env` file and use `uv run --env-file .env` to run the command.
+          Or you could add the key to a conda environment:</p>
           ```bash
           conda env config vars set OPENAI_API_KEY=your_key
           ```
@@ -128,7 +139,8 @@ export REDIS_OM_URL="redis://localhost:6379"
 #### Clone the repo and install the package
 ```bash
 git clone git@github.com:sotopia-lab/sotopia.git;
-pip install -e .
+cd sotopia;
+uv sync --all-extras
 ```
 
 #### Set up Redis stack
@@ -152,13 +164,15 @@ or manual setup:
         ```
 
         The `REDIS_OM_URL` need to be set before loading and saving agents:
+        either set the env variable in the `.env` file and use `uv run --env-file .env` to run the command.
+        or set the env variable in the conda environment:
         ```bash
         conda env config vars set REDIS_OM_URL="redis://user:password@host:port"
         ```
       </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-2">
-        <AccordionTrigger>No, I don't want to use Docker.</AccordionTrigger>
+        <AccordionTrigger>No, I don't want to use Docker. (Okay, we don't recommend this)</AccordionTrigger>
         <AccordionContent>
         <Tabs defaultValue="linux" className="w-full">
         <TabsList>
