@@ -62,7 +62,6 @@ class BaseEnvironmentProfile(BaseModel):
     )
     scenario: str = Field(
         index=True,
-        default_factory=lambda: "",
         description="A concrete scenario of where the social interaction takes place, the scenario should have two agents (agent1 and agent2), and you should illustrate the relationship between the two agents, and for what purpose agent1 is interacting with agent2. Please avoid mentioning specific names and occupations in the scenario and keep all the mentions gender-neutral. Also avoid generating scenarios that requires childrend (below 18) or elderly (above 70) to be involved.",
     )
     agent_goals: list[str] = Field(
