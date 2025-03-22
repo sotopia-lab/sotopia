@@ -3,7 +3,6 @@
 from io import StringIO
 from typing import cast
 
-from beartype.door import is_bearable
 from lxml import etree
 
 from .base import BaseRenderer, RenderContext
@@ -19,9 +18,15 @@ def _render_xml(xml_node: etree._Element | str, context: RenderContext) -> str:
                 all_visible_children = xml_node.xpath(
                     f"./node()[@viewer='{context.viewer}'] | ./node()[not(@viewer)]"
                 )
-                assert is_bearable(all_visible_children, list[etree._Element | str])
+                assert isinstance(
+                    all_visible_children, list
+                ), "XPath query should return a list of elements"
+                assert all(
+                    isinstance(child, etree._Element) for child in all_visible_children
+                )
                 return "".join(
-                    _render_xml(child, context) for child in all_visible_children
+                    _render_xml(child, context)
+                    for child in all_visible_children  # type: ignore[arg-type]
                 )
             elif context.viewer == "human":
                 # For human, we render the raw xml
