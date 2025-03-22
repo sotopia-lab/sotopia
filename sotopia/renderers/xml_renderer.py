@@ -25,8 +25,8 @@ def _render_xml(xml_node: etree._Element | str, context: RenderContext) -> str:
                     isinstance(child, etree._Element) for child in all_visible_children
                 )
                 return "".join(
-                    _render_xml(child, context)
-                    for child in all_visible_children  # type: ignore[arg-type]
+                    _render_xml(child, context)  # type: ignore[arg-type]
+                    for child in all_visible_children
                 )
             elif context.viewer == "human":
                 # For human, we render the raw xml
