@@ -7,8 +7,7 @@ First you need to have a Modal account and logged in with `modal setup`
 
 To deploy the FastAPI server to Modal, run the following command:
 ```bash
-cd sotopia/ui/fastapi_server
-modal deploy modal_api_server.py
+modal deploy scripts/modal/modal_api_server.py
 ```
 ## FastAPI Server
 

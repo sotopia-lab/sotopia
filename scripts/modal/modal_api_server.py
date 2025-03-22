@@ -47,7 +47,7 @@ image = (
         "apt-get install -y redis-stack-server",
     )
     .pip_install(
-        "sotopia>=0.1.2",
+        "sotopia>=0.1.4",
         "fastapi>0.100",  # TODO: remove this dependency after pypi release
         "uvicorn",  # TODO: remove this dependency after pypi release
     )
