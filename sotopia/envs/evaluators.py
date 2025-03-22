@@ -4,8 +4,7 @@ from collections import defaultdict
 from typing import Generic, TypeVar, Annotated
 
 import gin
-from beartype import beartype
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, validate_call
 
 from sotopia.generation_utils import PydanticOutputParser, agenerate
 from sotopia.messages import (
@@ -201,12 +200,12 @@ class Evaluator(abc.ABC):
         raise NotImplementedError
 
 
-@beartype
 class RuleBasedTerminatedEvaluator(Evaluator):
     def __init__(self, max_turn_number: int = 20, max_stale_turn: int = 2) -> None:
         self.max_turn_number = max_turn_number
         self.max_stale_turn = max_stale_turn
 
+    @validate_call
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
@@ -257,7 +256,6 @@ class RuleBasedTerminatedEvaluator(Evaluator):
 
 
 class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
-    @beartype
     def __init__(
         self,
         model_name: str,
@@ -275,7 +273,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         )
 
     @gin.configurable
-    @beartype
+    @validate_call
     async def __acall__(
         self,
         turn_number: int,
@@ -350,7 +348,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             return []
 
 
-@beartype
+@validate_call
 def _reduce(
     responses_per_reducer: list[tuple[tuple[str, float | int | bool], str]],
 ) -> tuple[dict[str, float | int | bool], str]:
@@ -376,7 +374,7 @@ def _reduce(
     return reduced_dict, comments
 
 
-@beartype
+@validate_call
 def unweighted_aggregate_evaluate(
     responses: list[tuple[str, tuple[tuple[str, int | float | bool], str]]],
 ) -> ScriptEnvironmentResponse:

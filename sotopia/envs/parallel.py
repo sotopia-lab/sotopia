@@ -4,12 +4,12 @@ import itertools
 import random
 from typing import Any, Literal, Optional, Type, TypeVar
 
-from beartype import beartype
 from gin import configurable
 from gymnasium.spaces.dict import Dict
 from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
 from pettingzoo.utils.env import ParallelEnv
+from pydantic import validate_call
 from redis_om.model.model import NotFoundError
 
 from sotopia.agents.llm_agent import Agents
@@ -314,7 +314,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             ),
         }
 
-    @beartype
+    @validate_call
     def step(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> tuple[
