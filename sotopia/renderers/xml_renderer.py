@@ -22,7 +22,8 @@ def _render_xml(xml_node: etree._Element | str, context: RenderContext) -> str:
                     all_visible_children, list
                 ), "XPath query should return a list of elements"
                 assert all(
-                    isinstance(child, etree._Element) for child in all_visible_children
+                    isinstance(child, etree._Element | str)
+                    for child in all_visible_children
                 )
                 return "".join(
                     _render_xml(child, context)  # type: ignore[arg-type]
