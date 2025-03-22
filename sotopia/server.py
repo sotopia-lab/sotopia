@@ -250,7 +250,6 @@ async def arun_one_episode(
 
 
 @gin.configurable
-@validate_call
 async def run_async_server(
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
     action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",
