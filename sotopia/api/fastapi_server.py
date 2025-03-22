@@ -1,20 +1,33 @@
-from typing import Literal, cast, Dict
+import asyncio
+import json
+import logging
+import uuid
 import sys
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+from enum import Enum
+from typing import Any, Dict, List, Optional, Set, TypedDict, Literal, cast
+from contextlib import asynccontextmanager
 
 from redis_om import get_redis_connection
 import rq
+import redis.asyncio
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Query, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from pydantic import BaseModel, model_validator, field_validator, Field
+
+from sotopia.api.websocket_utils import (
+    WebSocketSotopiaSimulator,
+    WSMessageType,
+    WSMessage,
+    ErrorType
+)
 from sotopia.database import (
     EnvironmentProfile,
     AgentProfile,
     EpisodeLog,
+    NonStreamingSimulationStatus,
     RelationshipProfile,
     RelationshipType,
-    NonStreamingSimulationStatus,
     CustomEvaluationDimensionList,
     CustomEvaluationDimension,
     BaseEnvironmentProfile,
@@ -30,47 +43,54 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
-from fastapi import (
-    FastAPI,
-    WebSocket,
-    HTTPException,
-    WebSocketDisconnect,
-)
-from typing import Optional, Any
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, model_validator, field_validator, Field
 
-from sotopia.api.websocket_utils import (
-    WebSocketSotopiaSimulator,
-    WSMessageType,
-    ErrorType,
-)
-import uvicorn
-import asyncio
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
-import logging
-from fastapi.responses import Response
-
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Token state manager for simulation sessions
+class SimulationState:
+    _instance = None
+    _lock = asyncio.Lock()
+    _active_simulations = {}
 
-# app = FastAPI()
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._active_simulations = {}
+        return cls._instance
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )  # TODO: Whether allowing CORS for all origins
+    async def try_acquire_token(self, token: str) -> tuple[bool, str]:
+        """Try to acquire a token for simulation"""
+        async with self._lock:
+            if not token:
+                return False, "Invalid token"
 
-active_simulations: Dict[
-    str, bool
-] = {}  # TODO check whether this is the correct way to store the active simulations
+            if self._active_simulations.get(token):
+                return False, "Token is already active"
 
+            self._active_simulations[token] = True
+            return True, "Token is valid"
 
+    async def release_token(self, token: str) -> None:
+        """Release a token after simulation ends"""
+        async with self._lock:
+            self._active_simulations.pop(token, None)
+
+    @asynccontextmanager
+    async def start_simulation(self, token: str):
+        """Context manager for simulation session"""
+        try:
+            yield True
+        finally:
+            await self.release_token(token)
+
+# Data models for API endpoints
 class CustomEvaluationDimensionsWrapper(BaseModel):
     pk: str = ""
     name: str = Field(
@@ -79,7 +99,6 @@ class CustomEvaluationDimensionsWrapper(BaseModel):
     dimensions: list[CustomEvaluationDimension] = Field(
         default=[], description="The dimensions of the custom evaluation dimension list"
     )
-
 
 class SimulationRequest(BaseModel):
     env_id: str
@@ -107,62 +126,332 @@ class SimulationRequest(BaseModel):
             )
         return self
 
-
-class SimulationState:
-    _instance: Optional["SimulationState"] = None
-    _lock = asyncio.Lock()
-    _active_simulations: dict[str, bool] = {}
-
-    def __new__(cls) -> "SimulationState":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._active_simulations = {}
-        return cls._instance
-
-    async def try_acquire_token(self, token: str) -> tuple[bool, str]:
-        async with self._lock:
-            if not token:
-                return False, "Invalid token"
-
-            if self._active_simulations.get(token):
-                return False, "Token is active already"
-
-            self._active_simulations[token] = True
-            return True, "Token is valid"
-
-    async def release_token(self, token: str) -> None:
-        async with self._lock:
-            self._active_simulations.pop(token, None)
-
-    @asynccontextmanager
-    async def start_simulation(self, token: str) -> AsyncIterator[bool]:
-        try:
-            yield True
-        finally:
-            await self.release_token(token)
-
-
+# Simulation manager to handle WebSocket connections
 class SimulationManager:
-    def __init__(self) -> None:
+    def __init__(self, redis_host="localhost", redis_port=6379, redis_db=0):
         self.state = SimulationState()
-
-    async def verify_token(self, token: str) -> dict[str, Any]:
+        self.redis_host = redis_host
+        self.redis_port = redis_port
+        self.redis_db = redis_db
+        self.redis_url = f"redis://{redis_host}:{redis_port}/{redis_db}"
+        
+    async def verify_token(self, token: str) -> Dict[str, Any]:
+        """
+        Verify if the token is valid for simulation
+        
+        Args:
+            token: Authentication token
+            
+        Returns:
+            dict: Status of token verification
+        """
         is_valid, msg = await self.state.try_acquire_token(token)
         return {"is_valid": is_valid, "msg": msg}
 
+    async def handle_client_message(
+        self,
+        websocket: WebSocket,
+        simulator: WebSocketSotopiaSimulator,
+        message: Dict[str, Any]
+    ) -> bool:
+        """
+        Process a message from a WebSocket client
+        
+        Args:
+            websocket: The WebSocket connection
+            simulator: The simulation manager
+            message: The message from the client
+            
+        Returns:
+            bool: True if the simulation should end, False otherwise
+        """
+        try:
+            msg_type = message.get("type")
+            data = message.get("data", {})
+            
+            # Handle simulation finish request
+            if msg_type == WSMessageType.FINISH_SIM.value:
+                logger.info("Client requested to finish simulation")
+                return True
+            
+            # Handle mode switching
+            if "mode" in data:
+                mode = data["mode"]
+                if mode not in ["full", "group"]:
+                    await self.send_error(
+                        websocket, 
+                        ErrorType.INVALID_MESSAGE, 
+                        f"Invalid mode: {mode}. Must be 'full' or 'group'"
+                    )
+                    return False
+                    
+                logger.info(f"Setting communication mode to: {mode}")
+                await simulator.set_mode(mode)
+                
+                # Acknowledge the mode change
+                await self.send_message(
+                    websocket,
+                    WSMessageType.SERVER_MSG,
+                    {"status": "mode_updated", "mode": mode}
+                )
+            
+            # Handle group configuration
+            if "groups" in data:
+                logger.info(f"Setting up groups: {data['groups']}")
+                await simulator.set_groups(data["groups"])
+                
+                # Acknowledge the groups configuration
+                await self.send_message(
+                    websocket,
+                    WSMessageType.SERVER_MSG,
+                    {"status": "groups_updated", "groups": data["groups"]}
+                )
+                
+            # Handle messages
+            if msg_type == WSMessageType.CLIENT_MSG.value:
+                # Check if this is a message with content
+                if "message" in data or "content" in data:
+                    # Get the mode (either from the message or use the current mode)
+                    mode = data.get("mode", simulator.mode)
+                    
+                    if mode == "full":
+                        # In full mode, just forward the message
+                        message_content = data.get("content", "")
+                        if "message" in data:
+                            message_content = data["message"].get("content", message_content)
+                        
+                        if not message_content:
+                            await self.send_error(
+                                websocket,
+                                ErrorType.INVALID_MESSAGE,
+                                "Message must include content"
+                            )
+                            return False
+                        
+                        # Forward to simulator
+                        await simulator.send_message({
+                            "content": message_content,
+                            "sender": data.get("sender", "websocket_user")
+                        })
+                        
+                    else:  # group mode
+                        # In group mode, we need target information
+                        message_content = data.get("content", "")
+                        if "message" in data:
+                            message_content = data["message"].get("content", message_content)
+                        
+                        if not message_content:
+                            await self.send_error(
+                                websocket,
+                                ErrorType.INVALID_MESSAGE,
+                                "Message must include content"
+                            )
+                            return False
+                        
+                        # Check for target agents or groups
+                        target_agents = data.get("target_agents", [])
+                        if "message" in data:
+                            target_agents = data["message"].get("target_agents", target_agents)
+                            
+                        target_groups = data.get("target_groups", [])
+                        if "message" in data:
+                            target_groups = data["message"].get("target_groups", target_groups)
+                        
+                        if not target_agents and not target_groups:
+                            await self.send_error(
+                                websocket,
+                                ErrorType.INVALID_MESSAGE,
+                                "Group mode message must specify either target_agents or target_groups"
+                            )
+                            return False
+                        
+                        # Forward to simulator
+                        await simulator.process_group_message({
+                            "content": message_content,
+                            "sender": data.get("sender", "websocket_user"),
+                            "target_agents": target_agents,
+                            "target_groups": target_groups
+                        })
+                    
+                    logger.info(f"Processed {mode} mode message: {message_content[:30]}...")
+            
+            return False
+        except Exception as e:
+            error_msg = f"Error handling client message: {e}"
+            logger.error(error_msg)
+            await self.send_error(websocket, ErrorType.INVALID_MESSAGE, error_msg)
+            return False
+
+    async def run_simulation(
+        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
+    ) -> None:
+        """Run the simulation and process client messages"""
+        pubsub = None
+        redis_client = None
+        
+        try:
+            # Setup Redis connection for epilog monitoring
+            redis_client = redis.asyncio.Redis(
+                host=self.redis_host, 
+                port=self.redis_port, 
+                db=self.redis_db
+            )
+            
+            # Subscribe to epilog channel for this connection
+            pubsub = redis_client.pubsub()
+            epilog_channel = f"epilog:{simulator.connection_id}"
+            
+            try:
+                await pubsub.subscribe(epilog_channel)
+                logger.info(f"Subscribed to Redis channel for epilog updates: {epilog_channel}")
+            except Exception as e:
+                logger.error(f"Error subscribing to channel {epilog_channel}: {e}")
+                # Continue execution even if subscribe fails
+            
+            # Start the simulation
+            sim_task = asyncio.create_task(self._process_simulation(websocket, simulator, pubsub))
+            client_task = asyncio.create_task(self._process_client_messages(websocket, simulator))
+            
+            # Wait for either task to complete
+            done, pending = await asyncio.wait(
+                [sim_task, client_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # Cancel the remaining task
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                
+        except Exception as e:
+            msg = f"Error running simulation: {e}"
+            logger.error(msg)
+            await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
+        finally:
+            # Clean up Redis resources safely
+            if pubsub is not None:
+                try:
+                    await pubsub.unsubscribe(epilog_channel)
+                except Exception as e:
+                    logger.error(f"Error unsubscribing from channel {epilog_channel}: {e}")
+            
+            if redis_client is not None:
+                try:
+                    await redis_client.close()
+                except Exception as e:
+                    logger.error(f"Error closing Redis client: {e}")
+            
+            # Always send END_SIM message
+            await self.send_message(websocket, WSMessageType.END_SIM, {})
+    
+    async def _process_simulation(
+        self, 
+        websocket: WebSocket, 
+        simulator: WebSocketSotopiaSimulator,
+        pubsub: redis.asyncio.client.PubSub
+    ) -> None:
+        """Process simulation messages from both simulator and Redis"""
+        try:
+            # Start a task for simulator-generated epilog updates
+            sim_epilog_task = asyncio.create_task(self._process_simulator_epilogs(websocket, simulator))
+            
+            # Start a task for Redis epilog updates (directly from RedisAgent)
+            redis_epilog_task = asyncio.create_task(self._process_redis_epilogs(websocket, pubsub))
+            
+            # Wait for either task to complete
+            done, pending = await asyncio.wait(
+                [sim_epilog_task, redis_epilog_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # Cancel the remaining task
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                
+        except Exception as e:
+            logger.error(f"Error in simulation processing: {e}")
+            raise
+    
+    async def _process_simulator_epilogs(self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator) -> None:
+        """Process epilog updates from the simulator"""
+        try:
+            async for message in simulator.arun():
+                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
+        except Exception as e:
+            logger.error(f"Error processing simulator epilogs: {e}")
+            raise
+    
+    async def _process_redis_epilogs(self, websocket: WebSocket, pubsub: redis.asyncio.client.PubSub) -> None:
+        """Process epilog updates directly from Redis"""
+        try:
+            while True:
+                # Get the next message from Redis
+                message = await pubsub.get_message(ignore_subscribe_messages=True)
+                
+                if message and message["type"] == "message":
+                    try:
+                        # Parse the message
+                        data = json.loads(message["data"].decode())
+                        
+                        # Forward SERVER_MSG epilog updates to the client
+                        if data.get("type") == "SERVER_MSG" and data.get("data", {}).get("type") == "episode_log":
+                            await websocket.send_json(data)
+                    except json.JSONDecodeError:
+                        logger.error(f"Failed to parse Redis message: {message['data'][:100]}...")
+                    except Exception as e:
+                        logger.error(f"Error processing Redis message: {e}")
+                
+                # Short delay to avoid CPU spinning
+                await asyncio.sleep(0.01)
+                
+        except Exception as e:
+            logger.error(f"Error in Redis epilog processor: {e}")
+            raise
+
+    async def _process_client_messages(self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator) -> None:
+        """Process messages from the client"""
+        try:
+            while True:
+                data = await websocket.receive_json()
+                should_end = await self.handle_client_message(websocket, simulator, data)
+                if should_end:
+                    break
+        except Exception as e:
+            logger.error(f"Error processing client messages: {e}")
+            raise
+            
     async def create_simulator(
         self,
         env_id: str,
-        agent_ids: list[str],
-        agent_models: list[str],
-        evaluator_model: str,
-        evaluation_dimension_list_name: str,
-        env_profile_dict: dict[str, Any],
-        agent_profile_dicts: list[dict[str, Any]],
+        agent_ids: List[str],
+        agent_models: Optional[List[str]] = None,
+        evaluator_model: str = "gpt-4o",
+        evaluation_dimension_list_name: str = "sotopia",
+        env_profile_dict: Optional[Dict[str, Any]] = None,
+        agent_profile_dicts: Optional[List[Dict[str, Any]]] = None,
         max_turns: int = 20,
     ) -> WebSocketSotopiaSimulator:
+        """Create and initialize a WebSocketSotopiaSimulator"""
         try:
-            return WebSocketSotopiaSimulator(
+            # Set defaults for optional parameters
+            if agent_models is None:
+                agent_models = ["gpt-4o-mini"] * len(agent_ids)
+                
+            if env_profile_dict is None:
+                env_profile_dict = {}
+                
+            if agent_profile_dicts is None:
+                agent_profile_dicts = []
+                
+            # Create simulator with Redis configuration
+            simulator = WebSocketSotopiaSimulator(
                 env_id=env_id,
                 agent_ids=agent_ids,
                 agent_models=agent_models,
@@ -171,62 +460,28 @@ class SimulationManager:
                 env_profile_dict=env_profile_dict,
                 agent_profile_dicts=agent_profile_dicts,
                 max_turns=max_turns,
+                redis_host=self.redis_host,
+                redis_port=self.redis_port,
+                redis_db=self.redis_db
             )
+            return simulator
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
             logger.error(error_msg)
             raise Exception(error_msg)
-
-    async def handle_client_message(
-        self,
-        websocket: WebSocket,
-        simulator: WebSocketSotopiaSimulator,
-        message: dict[str, Any],
-        timeout: float = 0.1,
-    ) -> bool:
-        try:
-            msg_type = message.get("type")
-            if msg_type == WSMessageType.FINISH_SIM.value:
-                return True
-            # TODO handle other message types
-            return False
-        except Exception as e:
-            msg = f"Error handling client message: {e}"
-            logger.error(msg)
-            await self.send_error(websocket, ErrorType.INVALID_MESSAGE, msg)
-            return False
-
-    async def run_simulation(
-        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
-    ) -> None:
-        try:
-            async for message in simulator.arun():
-                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
-
-                try:
-                    data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
-                    if await self.handle_client_message(websocket, simulator, data):
-                        break
-                except asyncio.TimeoutError:
-                    continue
-
-        except Exception as e:
-            msg = f"Error running simulation: {e}"
-            logger.error(msg)
-            await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
-        finally:
-            await self.send_message(websocket, WSMessageType.END_SIM, {})
-
+            
     @staticmethod
     async def send_message(
-        websocket: WebSocket, msg_type: WSMessageType, data: dict[str, Any]
+        websocket: WebSocket, msg_type: WSMessageType, data: Dict[str, Any]
     ) -> None:
+        """Send a message to the WebSocket client"""
         await websocket.send_json({"type": msg_type.value, "data": data})
 
     @staticmethod
     async def send_error(
         websocket: WebSocket, error_type: ErrorType, details: str = ""
     ) -> None:
+        """Send an error message to the WebSocket client"""
         await websocket.send_json(
             {
                 "type": WSMessageType.ERROR.value,
@@ -234,7 +489,7 @@ class SimulationManager:
             }
         )
 
-
+# Non-streaming simulation functions and helper functions
 async def nonstreaming_simulation(
     episode_pk: str,
     simulation_request: SimulationRequest,
@@ -304,7 +559,7 @@ async def nonstreaming_simulation(
         simulation_status=simulation_status,
     )
 
-
+# API helper functions
 async def get_scenarios_all() -> list[EnvironmentProfile]:
     scenarios = EnvironmentProfile.all()
     if not scenarios:
@@ -316,7 +571,6 @@ async def get_scenarios_all() -> list[EnvironmentProfile]:
         )
         scenarios = [pseudo_scenario]
     return scenarios
-
 
 async def get_scenarios(
     get_by: Literal["id", "codename"], value: str
@@ -338,7 +592,6 @@ async def get_scenarios(
 
     return scenarios
 
-
 async def get_agents_all() -> list[AgentProfile]:
     agents = AgentProfile.all()
     if not agents:
@@ -349,7 +602,6 @@ async def get_agents_all() -> list[AgentProfile]:
         )
         agents = [pseudo_agent]
     return agents
-
 
 async def get_agents(
     get_by: Literal["id", "gender", "occupation"], value: str
@@ -371,7 +623,6 @@ async def get_agents(
 
     return agents_profiles
 
-
 async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
     relationship_profiles = RelationshipProfile.find(
         (RelationshipProfile.agent_1_id == agent_1_id)
@@ -383,7 +634,6 @@ async def get_relationship(agent_1_id: str, agent_2_id: str) -> str:
     relationship_profile = relationship_profiles[0]
     assert isinstance(relationship_profile, RelationshipProfile)
     return f"{str(relationship_profile.relationship)}: {RelationshipType(relationship_profile.relationship).name}"
-
 
 async def get_episodes_all() -> list[EpisodeLog]:
     episodes = EpisodeLog.all()
@@ -410,7 +660,6 @@ async def get_episodes_all() -> list[EpisodeLog]:
         episodes = [pseudo_episode]
     return episodes
 
-
 async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[EpisodeLog]:
     episodes: list[EpisodeLog] = []
     if get_by == "id":
@@ -424,7 +673,6 @@ async def get_episodes(get_by: Literal["id", "tag"], value: str) -> list[Episode
             status_code=404, detail=f"No episodes found with {get_by}={value}"
         )
     return episodes
-
 
 async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimension]]:
     custom_evaluation_dimensions: dict[str, list[CustomEvaluationDimension]] = {}
@@ -453,303 +701,375 @@ async def get_evaluation_dimensions() -> dict[str, list[CustomEvaluationDimensio
             )
     return custom_evaluation_dimensions
 
-
 async def get_models() -> list[str]:
     # TODO figure out how to get the available models
     return ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
 
+# Create FastAPI app with routes
+app = FastAPI(title="Sotopia Group Chat API", version="1.0.0")
 
-class SotopiaFastAPI(FastAPI):
-    def __init__(self, *args, **kwargs) -> None:  # type: ignore
-        super().__init__(*args, **kwargs)
-        self.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Health check endpoint
+@app.get("/health")
+async def health_check() -> dict[str, Any]:
+    """Comprehensive health check endpoint"""
+    health_status: dict[str, Any] = {
+        "status": "ok",
+        "message": "All systems operational",
+        "components": {},
+    }
+    # Check Redis connection
+    try:
+        redis_conn = get_redis_connection()
+        redis_conn.ping()
+        health_status["components"]["redis"] = "connected"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["components"]["redis"] = f"error: {str(e)}"
+
+    # Check database connections by attempting a simple query
+    try:
+        # Simple test query that should be fast
+        _ = EnvironmentProfile.all()
+        health_status["components"]["database"] = "connected"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["components"]["database"] = f"error: {str(e)}"
+
+    return health_status
+
+# Scenario endpoints
+@app.get("/scenarios", response_model=list[EnvironmentProfile])
+async def scenarios_all():
+    return await get_scenarios_all()
+
+@app.get("/scenarios/{get_by}/{value}", response_model=list[EnvironmentProfile])
+async def scenarios_filtered(get_by: Literal["id", "codename"], value: str):
+    return await get_scenarios(get_by, value)
+
+@app.post("/scenarios", response_model=str)
+async def create_scenario(scenario: BaseEnvironmentProfile) -> str:
+    scenario_profile = EnvironmentProfile(**scenario.model_dump())
+    scenario_profile.save()
+    pk = scenario_profile.pk
+    assert pk is not None
+    return pk
+
+@app.delete("/scenarios/{scenario_id}", response_model=str)
+async def delete_scenario(scenario_id: str) -> str:
+    try:
+        scenario = EnvironmentProfile.get(pk=scenario_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Scenario with id={scenario_id} not found"
         )
-        self.setup_routes()
+    EnvironmentProfile.delete(scenario.pk)
+    assert scenario.pk is not None
+    return scenario.pk
 
-    def setup_routes(self) -> None:
-        @self.get("/health", status_code=200)
-        async def health_check() -> dict[str, Any]:
-            """Comprehensive health check endpoint"""
-            health_status: dict[str, Any] = {
-                "status": "ok",
-                "message": "All systems operational",
-                "components": {},
-            }
-            # Check Redis connection
-            try:
-                redis_conn = get_redis_connection()
-                redis_conn.ping()
-                health_status["components"]["redis"] = "connected"
-            except Exception as e:
-                health_status["status"] = "degraded"
-                health_status["components"]["redis"] = f"error: {str(e)}"
+# Agent endpoints
+@app.get("/agents", response_model=list[AgentProfile])
+async def agents_all():
+    return await get_agents_all()
 
-            # Check database connections by attempting a simple query
-            try:
-                # Simple test query that should be fast
-                _ = EnvironmentProfile.all()
-                health_status["components"]["database"] = "connected"
-            except Exception as e:
-                health_status["status"] = "degraded"
-                health_status["components"]["database"] = f"error: {str(e)}"
+@app.get("/agents/{get_by}/{value}", response_model=list[AgentProfile])
+async def agents_filtered(get_by: Literal["id", "gender", "occupation"], value: str):
+    return await get_agents(get_by, value)
 
-            return health_status
+@app.post("/agents", response_model=str)
+async def create_agent(agent: BaseAgentProfile) -> str:
+    agent_profile = AgentProfile(**agent.model_dump())
+    agent_profile.save()
+    pk = agent_profile.pk
+    assert pk is not None
+    return pk
 
-        self.get("/scenarios", response_model=list[EnvironmentProfile])(
-            get_scenarios_all
+@app.delete("/agents/{agent_id}", response_model=str)
+async def delete_agent(agent_id: str) -> str:
+    try:
+        agent = AgentProfile.get(pk=agent_id)
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404, detail=f"Agent with id={agent_id} not found"
         )
-        self.get(
-            "/scenarios/{get_by}/{value}", response_model=list[EnvironmentProfile]
-        )(get_scenarios)
-        self.get("/agents", response_model=list[AgentProfile])(get_agents_all)
-        self.get("/agents/{get_by}/{value}", response_model=list[AgentProfile])(
-            get_agents
-        )
-        self.get("/relationship/{agent_1_id}/{agent_2_id}", response_model=str)(
-            get_relationship
-        )
-        self.get("/episodes", response_model=list[EpisodeLog])(get_episodes_all)
-        self.get("/episodes/{get_by}/{value}", response_model=list[EpisodeLog])(
-            get_episodes
-        )
-        self.get("/models", response_model=list[str])(get_models)
-        self.get(
-            "/evaluation_dimensions",
-            response_model=dict[str, list[CustomEvaluationDimension]],
-        )(get_evaluation_dimensions)
+    AgentProfile.delete(agent.pk)
+    assert agent.pk is not None
+    return agent.pk
 
-        @self.post("/scenarios", response_model=str)
-        async def create_scenario(scenario: BaseEnvironmentProfile) -> str:
-            scenario_profile = EnvironmentProfile(**scenario.model_dump())
-            scenario_profile.save()
-            pk = scenario_profile.pk
-            assert pk is not None
-            return pk
+# Relationship endpoints
+@app.get("/relationship/{agent_1_id}/{agent_2_id}", response_model=str)
+async def relationship_get(agent_1_id: str, agent_2_id: str):
+    return await get_relationship(agent_1_id, agent_2_id)
 
-        @self.post("/agents", response_model=str)
-        async def create_agent(agent: BaseAgentProfile) -> str:
-            agent_profile = AgentProfile(**agent.model_dump())
-            agent_profile.save()
-            pk = agent_profile.pk
-            assert pk is not None
-            return pk
+@app.post("/relationship", response_model=str)
+async def create_relationship(relationship: BaseRelationshipProfile) -> str:
+    relationship_profile = RelationshipProfile(**relationship.model_dump())
+    relationship_profile.save()
+    pk = relationship_profile.pk
+    assert pk is not None
+    return pk
 
-        @self.post("/relationship", response_model=str)
-        async def create_relationship(relationship: BaseRelationshipProfile) -> str:
-            relationship_profile = RelationshipProfile(**relationship.model_dump())
-            relationship_profile.save()
-            pk = relationship_profile.pk
-            assert pk is not None
-            return pk
+@app.delete("/relationship/{relationship_id}", response_model=str)
+async def delete_relationship(relationship_id: str) -> str:
+    RelationshipProfile.delete(relationship_id)
+    return relationship_id
 
-        @self.post("/evaluation_dimensions", response_model=str)
-        async def create_evaluation_dimensions(
-            evaluation_dimensions: CustomEvaluationDimensionsWrapper,
-        ) -> str:
-            dimension_list = CustomEvaluationDimensionList.find(
-                CustomEvaluationDimensionList.name == evaluation_dimensions.name
+# Episode endpoints
+@app.get("/episodes", response_model=list[EpisodeLog])
+async def episodes_all():
+    return await get_episodes_all()
+
+@app.get("/episodes/{get_by}/{value}", response_model=list[EpisodeLog])
+async def episodes_filtered(get_by: Literal["id", "tag"], value: str):
+    return await get_episodes(get_by, value)
+
+@app.delete("/episodes/{episode_id}", response_model=str)
+async def delete_episode(episode_id: str) -> str:
+    EpisodeLog.delete(episode_id)
+    return episode_id
+
+# Evaluation dimension endpoints
+@app.get("/evaluation_dimensions", response_model=dict[str, list[CustomEvaluationDimension]])
+async def evaluation_dimensions_all():
+    return await get_evaluation_dimensions()
+
+@app.post("/evaluation_dimensions", response_model=str)
+async def create_evaluation_dimensions(
+    evaluation_dimensions: CustomEvaluationDimensionsWrapper,
+) -> str:
+    dimension_list = CustomEvaluationDimensionList.find(
+        CustomEvaluationDimensionList.name == evaluation_dimensions.name
+    ).all()
+
+    if len(dimension_list) == 0:
+        all_dimensions_pks = []
+        for dimension in evaluation_dimensions.dimensions:
+            find_dimension = CustomEvaluationDimension.find(
+                CustomEvaluationDimension.name == dimension.name
             ).all()
-
-            if len(dimension_list) == 0:
-                all_dimensions_pks = []
-                for dimension in evaluation_dimensions.dimensions:
-                    find_dimension = CustomEvaluationDimension.find(
-                        CustomEvaluationDimension.name == dimension.name
-                    ).all()
-                    if len(find_dimension) == 0:
-                        dimension.save()
-                        all_dimensions_pks.append(dimension.pk)
-                    elif len(find_dimension) == 1:
-                        all_dimensions_pks.append(find_dimension[0].pk)
-                    else:
-                        raise HTTPException(
-                            status_code=409,
-                            detail=f"Evaluation dimension with name={dimension.name} already exists",
-                        )
-
-                custom_evaluation_dimension_list = CustomEvaluationDimensionList(
-                    pk=evaluation_dimensions.pk,
-                    name=evaluation_dimensions.name,
-                    dimension_pks=all_dimensions_pks,
-                )
-                custom_evaluation_dimension_list.save()
-                logger.info(
-                    f"Created evaluation dimension list {evaluation_dimensions.name}"
-                )
+            if len(find_dimension) == 0:
+                dimension.save()
+                all_dimensions_pks.append(dimension.pk)
+            elif len(find_dimension) == 1:
+                all_dimensions_pks.append(find_dimension[0].pk)
             else:
                 raise HTTPException(
                     status_code=409,
-                    detail=f"Evaluation dimension list with name={evaluation_dimensions.name} already exists",
+                    detail=f"Evaluation dimension with name={dimension.name} already exists",
                 )
 
-            pk = custom_evaluation_dimension_list.pk
-            assert pk is not None
-            return pk
-
-        @self.post("/simulate", response_model=str)
-        def simulate(simulation_request: SimulationRequest) -> Response:
-            try:
-                _: EnvironmentProfile = EnvironmentProfile.get(
-                    pk=simulation_request.env_id
-                )
-            except Exception:  # TODO Check the exception type
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Environment with id={simulation_request.env_id} not found",
-                )
-            try:
-                __ = AgentProfile.get(pk=simulation_request.agent_ids[0])
-            except Exception:  # TODO Check the exception type
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Agent with id={simulation_request.agent_ids[0]} not found",
-                )
-            try:
-                ___ = AgentProfile.get(pk=simulation_request.agent_ids[1])
-            except Exception:  # TODO Check the exception type
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Agent with id={simulation_request.agent_ids[1]} not found",
-                )
-
-            episode_pk = EpisodeLog(
-                environment="",
-                agents=[],
-                models=[],
-                messages=[],
-                reasoning="",
-                rewards=[],  # Pseudorewards
-                rewards_prompt="",
-            ).pk
-            try:
-                simulation_status = NonStreamingSimulationStatus(
-                    episode_pk=episode_pk,
-                    status="Started",
-                )
-                simulation_status.save()
-                queue = rq.Queue("default", connection=get_redis_connection())
-                queue.enqueue(
-                    nonstreaming_simulation,
-                    episode_pk=episode_pk,
-                    simulation_request=simulation_request,
-                    simulation_status=simulation_status,
-                )
-
-            except Exception as e:
-                logger.error(f"Error starting simulation: {e}")
-                simulation_status.status = "Error"
-                simulation_status.save()
-            return Response(content=episode_pk, status_code=202)
-
-        @self.get("/simulation_status/{episode_pk}", response_model=str)
-        async def get_simulation_status(episode_pk: str) -> str:
-            status = NonStreamingSimulationStatus.find(
-                NonStreamingSimulationStatus.episode_pk == episode_pk
-            ).all()[0]
-            assert isinstance(status, NonStreamingSimulationStatus)
-            return status.status
-
-        @self.delete("/agents/{agent_id}", response_model=str)
-        async def delete_agent(agent_id: str) -> str:
-            try:
-                agent = AgentProfile.get(pk=agent_id)
-            except Exception:  # TODO Check the exception type
-                raise HTTPException(
-                    status_code=404, detail=f"Agent with id={agent_id} not found"
-                )
-            AgentProfile.delete(agent.pk)
-            assert agent.pk is not None
-            return agent.pk
-
-        @self.delete("/scenarios/{scenario_id}", response_model=str)
-        async def delete_scenario(scenario_id: str) -> str:
-            try:
-                scenario = EnvironmentProfile.get(pk=scenario_id)
-            except Exception:  # TODO Check the exception type
-                raise HTTPException(
-                    status_code=404, detail=f"Scenario with id={scenario_id} not found"
-                )
-            EnvironmentProfile.delete(scenario.pk)
-            assert scenario.pk is not None
-            return scenario.pk
-
-        @self.delete("/relationship/{relationship_id}", response_model=str)
-        async def delete_relationship(relationship_id: str) -> str:
-            RelationshipProfile.delete(relationship_id)
-            return relationship_id
-
-        @self.delete("/episodes/{episode_id}", response_model=str)
-        async def delete_episode(episode_id: str) -> str:
-            EpisodeLog.delete(episode_id)
-            return episode_id
-
-        @self.delete(
-            "/evaluation_dimensions/{evaluation_dimension_list_name}",
-            response_model=str,
+        custom_evaluation_dimension_list = CustomEvaluationDimensionList(
+            pk=evaluation_dimensions.pk,
+            name=evaluation_dimensions.name,
+            dimension_pks=all_dimensions_pks,
         )
-        async def delete_evaluation_dimension_list(
-            evaluation_dimension_list_name: str,
-        ) -> str:
-            CustomEvaluationDimensionList.delete(evaluation_dimension_list_name)
-            return evaluation_dimension_list_name
+        custom_evaluation_dimension_list.save()
+        logger.info(
+            f"Created evaluation dimension list {evaluation_dimensions.name}"
+        )
+    else:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Evaluation dimension list with name={evaluation_dimensions.name} already exists",
+        )
 
-        @self.websocket("/ws/simulation")
-        async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
-            manager = SimulationManager()
+    pk = custom_evaluation_dimension_list.pk
+    assert pk is not None
+    return pk
 
-            token_status = await manager.verify_token(token)
-            if not token_status["is_valid"]:
-                await websocket.close(code=1008, reason=token_status["msg"])
-                return
+@app.delete(
+    "/evaluation_dimensions/{evaluation_dimension_list_name}",
+    response_model=str,
+)
+async def delete_evaluation_dimension_list(
+    evaluation_dimension_list_name: str,
+) -> str:
+    CustomEvaluationDimensionList.delete(evaluation_dimension_list_name)
+    return evaluation_dimension_list_name
 
+# Model endpoints
+@app.get("/models", response_model=list[str])
+async def models_all():
+    return await get_models()
+
+# Simulation endpoints
+@app.post("/simulate", response_model=str)
+def simulate(simulation_request: SimulationRequest) -> Response:
+    try:
+        _: EnvironmentProfile = EnvironmentProfile.get(
+            pk=simulation_request.env_id
+        )
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Environment with id={simulation_request.env_id} not found",
+        )
+    try:
+        __ = AgentProfile.get(pk=simulation_request.agent_ids[0])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulation_request.agent_ids[0]} not found",
+        )
+    try:
+        ___ = AgentProfile.get(pk=simulation_request.agent_ids[1])
+    except Exception:  # TODO Check the exception type
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent with id={simulation_request.agent_ids[1]} not found",
+        )
+
+    episode_pk = EpisodeLog(
+        environment="",
+        agents=[],
+        models=[],
+        messages=[],
+        reasoning="",
+        rewards=[],  # Pseudorewards
+        rewards_prompt="",
+    ).pk
+    try:
+        simulation_status = NonStreamingSimulationStatus(
+            episode_pk=episode_pk,
+            status="Started",
+        )
+        simulation_status.save()
+        queue = rq.Queue("default", connection=get_redis_connection())
+        queue.enqueue(
+            nonstreaming_simulation,
+            episode_pk=episode_pk,
+            simulation_request=simulation_request,
+            simulation_status=simulation_status,
+        )
+
+    except Exception as e:
+        logger.error(f"Error starting simulation: {e}")
+        simulation_status.status = "Error"
+        simulation_status.save()
+    return Response(content=episode_pk, status_code=202)
+
+@app.get("/simulation_status/{episode_pk}", response_model=str)
+async def get_simulation_status(episode_pk: str) -> str:
+    status = NonStreamingSimulationStatus.find(
+        NonStreamingSimulationStatus.episode_pk == episode_pk
+    ).all()[0]
+    assert isinstance(status, NonStreamingSimulationStatus)
+    return status.status
+
+# WebSocket endpoint for group chat simulation
+@app.websocket("/ws/simulation")
+async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
+    """
+    WebSocket endpoint for Sotopia simulations with group chat support
+    
+    Args:
+        websocket: The WebSocket connection
+        token: Authentication token
+    """
+    manager = SimulationManager()
+
+    # Verify token
+    token_status = await manager.verify_token(token)
+    if not token_status["is_valid"]:
+        await websocket.close(code=1008, reason=token_status["msg"])
+        return
+
+    try:
+        await websocket.accept()
+        logger.info(f"WebSocket connection accepted for token: {token}")
+
+        # Wait for the first message (should be START_SIM)
+        start_msg = await websocket.receive_json()
+        if start_msg.get("type") != WSMessageType.START_SIM.value:
+            await manager.send_error(
+                websocket,
+                ErrorType.INVALID_MESSAGE,
+                "First message must be of type START_SIM"
+            )
+            await websocket.close(code=1008)
+            return
+
+        # Extract simulation parameters
+        sim_data = start_msg.get("data", {})
+        env_id = sim_data.get("env_id")
+        agent_ids = sim_data.get("agent_ids", [])
+        
+        if not env_id or not agent_ids:
+            await manager.send_error(
+                websocket,
+                ErrorType.INVALID_MESSAGE,
+                "START_SIM message must include env_id and agent_ids"
+            )
+            await websocket.close(code=1008)
+            return
+
+        # Create and run the simulation
+        async with manager.state.start_simulation(token):
             try:
-                await websocket.accept()
-
-                while True:
-                    start_msg = await websocket.receive_json()
-                    if start_msg.get("type") != WSMessageType.START_SIM.value:
-                        continue
-                    async with manager.state.start_simulation(token):
-                        simulator = await manager.create_simulator(
-                            env_id=start_msg["data"]["env_id"],
-                            agent_ids=start_msg["data"]["agent_ids"],
-                            agent_models=start_msg["data"].get(
-                                "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
-                            ),
-                            env_profile_dict=start_msg["data"].get(
-                                "env_profile_dict", {}
-                            ),
-                            agent_profile_dicts=start_msg["data"].get(
-                                "agent_profile_dicts", []
-                            ),
-                            evaluator_model=start_msg["data"].get(
-                                "evaluator_model", "gpt-4o"
-                            ),
-                            evaluation_dimension_list_name=start_msg["data"].get(
-                                "evaluation_dimension_list_name", "sotopia"
-                            ),
-                            max_turns=start_msg["data"].get("max_turns", 20),
-                        )
-                        await manager.run_simulation(websocket, simulator)
-
-            except WebSocketDisconnect:
-                logger.info(f"Client disconnected: {token}")
+                # Create the simulator
+                simulator = await manager.create_simulator(
+                    env_id=env_id,
+                    agent_ids=agent_ids,
+                    agent_models=sim_data.get("agent_models", ["gpt-4o-mini"] * len(agent_ids)),
+                    evaluator_model=sim_data.get("evaluator_model", "gpt-4o"),
+                    evaluation_dimension_list_name=sim_data.get("evaluation_dimension_list_name", "sotopia"),
+                    env_profile_dict=sim_data.get("env_profile_dict", {}),
+                    agent_profile_dicts=sim_data.get("agent_profile_dicts", []),
+                    max_turns=sim_data.get("max_turns", 20),
+                )
+                
+                # Ensure simulator connects to Redis
+                await simulator.connect_to_redis()
+                
+                # Configure groups and mode if provided in START_SIM
+                initial_mode = sim_data.get("mode", "full")
+                await simulator.set_mode(initial_mode)
+                
+                if "groups" in sim_data:
+                    await simulator.set_groups(sim_data["groups"])
+                
+                # Initial message to client
+                await manager.send_message(
+                    websocket,
+                    WSMessageType.SERVER_MSG,
+                    {
+                        "status": "simulation_started",
+                        "env_id": env_id,
+                        "agent_ids": agent_ids,
+                        "mode": initial_mode,
+                        "groups": sim_data.get("groups", {}),
+                        "connection_id": simulator.connection_id
+                    }
+                )
+                
+                # Run the simulation
+                await manager.run_simulation(websocket, simulator)
+                
             except Exception as e:
-                logger.error(f"Unexpected error: {e}")
-                await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
-            finally:
-                try:
-                    await websocket.close()
-                except Exception as e:
-                    logger.error(f"Error closing websocket: {e}")
+                logger.error(f"Error creating or running simulator: {e}")
+                await manager.send_error(
+                    websocket,
+                    ErrorType.SIMULATION_ISSUE,
+                    f"Error in simulation: {str(e)}"
+                )
 
-
-app = SotopiaFastAPI()
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket client disconnected: {token}")
+    except Exception as e:
+        logger.error(f"Unexpected error in WebSocket connection: {e}")
+    finally:
+        try:
+            await websocket.close()
+        except Exception as e:
+            logger.error(f"Error closing WebSocket: {e}")
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8800)

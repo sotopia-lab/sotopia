@@ -2,7 +2,7 @@ from redis_om import JsonModel
 from redis_om.model.model import Field
 from pydantic import create_model, BaseModel, AfterValidator
 from typing import Type, Callable, Tuple, Annotated, Union, cast, Any
-from sotopia.envs import SotopiaDimensions
+from sotopia.envs.evaluators import SotopiaDimensions
 
 
 class BaseCustomEvaluationDimension(BaseModel):
