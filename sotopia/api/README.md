@@ -155,7 +155,9 @@ returns:
     "type": "WSMessageType",
     "data": {
         // Message-specific payload
-    }
+    },
+    "mode":"turn",
+    // "mode":"full"
 }
 ```
 
