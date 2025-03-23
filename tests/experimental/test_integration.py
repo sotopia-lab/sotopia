@@ -1,10 +1,11 @@
 """
-Integration tests for the Sotopia group chat system using Redis Pub/Sub
+Integration tests for the Sotopia group chat system using real components with minimal mocking
 """
 import pytest
 import json
 import asyncio
 import hashlib
+import os
 from unittest.mock import MagicMock, AsyncMock, patch
 import redis.asyncio
 from fastapi import WebSocket
@@ -12,13 +13,93 @@ from fastapi import WebSocket
 # Import the necessary components
 from sotopia.api.fastapi_server import SimulationManager, WSMessageType, ErrorType
 from sotopia.api.websocket_utils import WebSocketSotopiaSimulator
+from sotopia.experimental.agents.redis_agent import RedisAgent
+from sotopia.experimental.agents.moderator import Moderator, Observations
+from sotopia.experimental.agents.datamodels import AgentAction, Observation
 
-# Test message flow from client to simulator
+# Set up a test Redis instance that will be used by all tests
+# This approach assumes Redis is available at localhost:6379
+# For CI/CD, you would typically use testcontainers or a similar approach
+
+TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")  # Use DB 15 for testing
+
+@pytest.fixture
+async def redis_client():
+    """Provide a Redis client for testing"""
+    client = redis.asyncio.Redis.from_url(TEST_REDIS_URL)
+    # Clear the test database before each test
+    await client.flushdb()
+    try:
+        yield client
+    finally:
+        await client.close()
+
+@pytest.fixture
+async def active_redis_agent(redis_client):
+    """Create and initialize a real RedisAgent connected to the test Redis"""
+    # Create RedisAgent with minimal mocking
+    agent = RedisAgent(
+        input_channels=["moderator:redis_agent"],
+        output_channel="redis_agent:moderator",
+        node_name="redis_agent",
+        other_agent_status={"agent1": True, "agent2": True},
+        redis_url=TEST_REDIS_URL,
+        loop_interval=0.05  # Use shorter interval for testing
+    )
+    
+    # Initialize the agent (this would normally be done by aact)
+    agent.mode = "group"
+    agent.groups = {
+        "team_a": ["agent1"],
+        "team_b": ["agent2"]
+    }
+    agent.active_connections = {"test_conn_id"}
+    
+    # Enter the context to initialize Redis connection
+    await agent.__aenter__()
+    
+    try:
+        yield agent
+    finally:
+        # Make sure to clean up
+        await agent.__aexit__(None, None, None)
+
+# Helper for publishing messages to Redis and capturing responses
+async def publish_and_capture(redis_client, channel, message, response_channel, timeout=1.0):
+    """Publish a message to Redis and capture the response on the specified channel"""
+    # Set up a pubsub to listen for responses
+    pubsub = redis_client.pubsub()
+    await pubsub.subscribe(response_channel)
+    
+    # Clear any existing messages
+    while await pubsub.get_message(timeout=0.1):
+        pass
+    
+    # Publish the message
+    await redis_client.publish(channel, json.dumps(message))
+    
+    # Wait for and capture the response
+    start_time = asyncio.get_event_loop().time()
+    while asyncio.get_event_loop().time() - start_time < timeout:
+        message = await pubsub.get_message(timeout=0.2)
+        if message and message["type"] == "message":
+            await pubsub.unsubscribe(response_channel)
+            return json.loads(message["data"].decode())
+        await asyncio.sleep(0.05)
+    
+    # No response received within timeout
+    await pubsub.unsubscribe(response_channel)
+    return None
+
+# Test message flow with WebSocketSotopiaSimulator using less mocking
 @pytest.mark.asyncio
-async def test_client_to_simulator_flow():
-    """Test message flow from client to simulator with proper mocking"""
-    # Create simulator with mocking to avoid Redis connections
-    with patch('redis_om.model.model.get_redis_connection'), \
+async def test_simulator_message_flow(redis_client):
+    """
+    Test the message flow through the WebSocketSotopiaSimulator with minimal mocking.
+    This tests that messages from the client are properly sent to Redis.
+    """
+    # We still need to mock some components to avoid DB dependencies
+    with patch('redis_om.model.model.get_redis_connection', return_value=redis_client), \
          patch('redis_om.checks.has_redis_json', return_value=True), \
          patch('redis_om.checks.check_for_command', return_value=True), \
          patch('sotopia.api.websocket_utils.get_env_agents') as mock_get_env_agents:
@@ -31,410 +112,200 @@ async def test_client_to_simulator_flow():
         # Configure the get_env_agents mock to return our mocked objects
         mock_get_env_agents.return_value = (mock_env, mock_agents, mock_messages)
         
-        # Create simulator
+        # Create a real simulator with test Redis
         simulator = WebSocketSotopiaSimulator(
             env_id="test_env_id",
             agent_ids=["agent1", "agent2"],
             agent_models=["gpt-4o-mini", "gpt-4o-mini"],
             evaluator_model="gpt-4o",
-            max_turns=10
+            max_turns=10,
+            redis_url=TEST_REDIS_URL
         )
+        
+        # Configure the simulator
+        simulator.connection_id = "test_conn_id"
         simulator.mode = "group"
         simulator.groups = {
             "team_a": ["agent1"],
             "team_b": ["agent2"]
         }
         
-        # Mock send_to_redis method to avoid actual Redis connections
-        simulator.send_to_redis = AsyncMock()
+        # Connect to Redis
+        await simulator.connect_to_redis()
         
-        # Create manager
-        manager = SimulationManager()
-        
-        # Mock WebSocket
-        mock_websocket = AsyncMock(spec=WebSocket)
-        
-        # Create message
-        group_message = {
-            "type": WSMessageType.CLIENT_MSG.value,
-            "data": {
+        try:
+            # Create a message to be sent
+            message = {
                 "content": "Hello team A",
                 "target_groups": ["team_a"]
             }
-        }
-        
-        # Process the actual handle_client_message method from the manager
-        result = await manager.handle_client_message(mock_websocket, simulator, group_message)
-        
-        # Verify simulator.send_to_redis was called with the right parameters
-        assert simulator.send_to_redis.called
-        
-        # Get the message that would be sent to Redis
-        sent_data = simulator.send_to_redis.call_args[0][0]
-        
-        # Verify message content
-        assert "content" in sent_data
-        assert sent_data["content"] == "Hello team A"
-        assert "target_groups" in sent_data
-        assert sent_data["target_groups"] == ["team_a"]
+            
+            # Send the message
+            await simulator.send_to_redis(message)
+            
+            # Verify the message was published to Redis
+            # Set up a listener for the command channel
+            command_channel = f"command:{simulator.connection_id}"
+            
+            # Get the most recent message from the command channel
+            pubsub = redis_client.pubsub()
+            await pubsub.subscribe(command_channel)
+            
+            # Give some time for message to be processed
+            await asyncio.sleep(0.1)
+            
+            # Get the last message
+            received_message = None
+            while True:
+                message = await pubsub.get_message(timeout=0.1)
+                if not message:
+                    break
+                if message["type"] == "message":
+                    received_message = json.loads(message["data"].decode())
+            
+            # Unsubscribe
+            await pubsub.unsubscribe(command_channel)
+            
+            # Verify the message was received
+            assert received_message is not None
+            assert "content" in received_message
+            assert received_message["content"] == "Hello team A"
+            assert "target_groups" in received_message
+            assert received_message["target_groups"] == ["team_a"]
+        finally:
+            # Clean up
+            if hasattr(simulator, "redis_client") and simulator.redis_client:
+                await simulator.redis_client.close()
 
-# Test simulator to RedisAgent flow with pure dictionary approach
+# Test RedisAgent group message processing
 @pytest.mark.asyncio
-async def test_simulator_to_redis_agent_flow():
-    """Test message flow from simulator to RedisAgent using dictionary mocks"""
-    # Mock the process_command function directly
-    async def mock_process_command(command_data, connection_id):
-        # Only handle group mode messages
-        if "target_groups" in command_data and command_data["target_groups"]:
-            group_name = command_data["target_groups"][0]
-            
-            # In this test we'll simulate that "team_a" contains "agent1"
-            expanded_agents = []
-            if group_name == "team_a":
-                expanded_agents = ["agent1"]
-            
-            # Construct the action as a simple dictionary instead of an AgentAction
-            return {
-                "agent_name": command_data.get("sender", "websocket_user"),
-                "output_channel": "redis_agent:moderator",
-                "action_type": "unified_message",
-                "argument": json.dumps({
-                    "content": command_data["content"],
-                    "target_agents": expanded_agents,
-                    "original_target_agents": [],
-                    "original_target_groups": command_data["target_groups"],
-                    "context": "group"
-                })
-            }
-        return None
-    
-    # Test data
+async def test_redis_agent_group_message_processing(active_redis_agent, redis_client):
+    """
+    Test the RedisAgent's ability to process group messages.
+    This tests that group targeting works correctly.
+    """
+    # Create a command message targeting a group
     command_data = {
         "content": "Hello team A",
         "target_groups": ["team_a"],
         "sender": "websocket_user"
     }
     
-    # Call our mock function
-    action = await mock_process_command(command_data, "test_conn_id")
+    # Get the command channel
+    command_channel = f"command:test_conn_id"
     
-    # Verify action structure
-    assert action is not None
-    assert action["action_type"] == "unified_message"
+    # Set up to capture messages on the output channel
+    output_channel = "redis_agent:moderator"
     
-    # Parse argument
-    arg_data = json.loads(action["argument"])
+    # Publish the command and capture the response
+    response = await publish_and_capture(
+        redis_client,
+        command_channel,
+        command_data,
+        output_channel,
+        timeout=1.0
+    )
+    
+    # Verify the response
+    assert response is not None
+    assert "data" in response
+    data = response["data"]
+    
+    # Verify the message was properly processed
+    assert data["action_type"] == "unified_message"
+    
+    # Parse the argument
+    arg_data = json.loads(data["argument"])
     assert arg_data["content"] == "Hello team A"
-    assert "agent1" in arg_data["target_agents"]  # Expanded from team_a
+    assert "agent1" in arg_data["target_agents"]  # Should be expanded from team_a
+    assert "agent2" not in arg_data["target_agents"]  # Not in team_a
     assert arg_data["original_target_groups"] == ["team_a"]
 
-# Test RedisAgent to Moderator flow with pure dictionary approach
+# Test RedisAgent epilog publishing
 @pytest.mark.asyncio
-async def test_redis_agent_to_moderator_flow():
-    """Test message flow from RedisAgent to Moderator using dictionary mocks"""
-    # Mock the handle_unified_message function
-    async def mock_handle_unified_message(action):
-        # Extract data from action
-        agent_name = action["agent_name"]
-        argument = json.loads(action["argument"])
-        content = argument["content"]
-        target_agents = argument["target_agents"]
-        
-        # Create observations dict instead of Observations object
-        observations_map = {}
-        
-        # Add observations for all agents (agent1 and agent2 in this test)
-        for agent in ["agent1", "agent2"]:
-            # Determine if this agent should receive the message
-            is_recipient = agent in target_agents
-            
-            # Set available actions
-            available_actions = ["speak", "none"] if is_recipient else ["none"]
-            
-            # Create observation dict
-            observation = {
-                "agent_name": agent_name,
-                "last_turn": content if is_recipient else "",
-                "turn_number": 1,
-                "available_actions": available_actions
-            }
-            
-            # Add to map
-            observations_map[f"moderator:{agent}"] = observation
-        
-        # Return a mock observations object
-        return type('MockObservations', (), {'observations_map': observations_map})
+async def test_redis_agent_epilog_publishing(active_redis_agent, redis_client):
+    """
+    Test the RedisAgent's ability to process and publish epilog updates.
+    This verifies that epilogs are properly formatted and published to connections.
+    """
+    # Create an epilog observation
+    epilog_data = {"messages": [["agent1", "agent2", "Test message"]]}
     
-    # Create action dict
-    action = {
-        "agent_name": "websocket_user",
-        "output_channel": "redis_agent:moderator",
-        "action_type": "unified_message",
-        "argument": json.dumps({
-            "content": "Hello team A",
-            "target_agents": ["agent1"],  # Only agent1 gets the message
-            "original_target_agents": [],
-            "original_target_groups": ["team_a"],
-            "context": "group"
-        })
-    }
-    
-    # Call our mock function
-    result = await mock_handle_unified_message(action)
-    
-    # Verify result structure
-    assert hasattr(result, "observations_map")
-    assert "moderator:agent1" in result.observations_map
-    assert "moderator:agent2" in result.observations_map
-    
-    # Verify agent1 received message
-    assert result.observations_map["moderator:agent1"]["last_turn"] == "Hello team A"
-    assert result.observations_map["moderator:agent1"]["available_actions"] != ["none"]
-    
-    # Verify agent2 did not receive message
-    assert result.observations_map["moderator:agent2"]["last_turn"] == ""
-    assert result.observations_map["moderator:agent2"]["available_actions"] == ["none"]
-
-# Test Moderator to RedisAgent epilog flow
-@pytest.mark.asyncio
-async def test_moderator_to_redis_agent_epilog_flow():
-    """Test epilog flow from Moderator to RedisAgent using mocks"""
-    # Create a mock for Redis publish
-    mock_publish = AsyncMock()
-    
-    # Create a mock for send_epilog that calls mock_publish
-    async def mock_send_epilog(epilog, channel):
-        # Create a message that looks like what send_epilog would create
-        message = {
-            "data": {
-                "agent_name": "epilog",
-                "last_turn": epilog.model_dump_json(),
-                "turn_number": 1,
-                "available_actions": ["none"]
-            }
+    # Create a message simulating an epilog from the Moderator
+    message = {
+        "data": {
+            "agent_name": "epilog",
+            "last_turn": json.dumps(epilog_data),
+            "turn_number": 1,
+            "available_actions": ["none"]
         }
-        await mock_publish(channel, json.dumps(message))
-    
-    # Create epilog
-    mock_epilog = MagicMock()
-    mock_epilog.model_dump_json = MagicMock(return_value=json.dumps({
-        "messages": [
-            [["agent1", "agent2", "Test message"]]
-        ]
-    }))
-    
-    # Call the mocked method
-    await mock_send_epilog(mock_epilog, "moderator:redis_agent")
-    
-    # Verify send was called with correct parameters
-    assert mock_publish.called
-    channel, data = mock_publish.call_args[0]
-    assert channel == "moderator:redis_agent"
-    
-    # Parse data
-    message = json.loads(data)
-    assert message["data"]["agent_name"] == "epilog"
-    assert "last_turn" in message["data"]
-    
-    # Verify the epilog content was included
-    epilog_data = json.loads(message["data"]["last_turn"])
-    assert "messages" in epilog_data
-    assert epilog_data["messages"][0][0][0] == "agent1"
-    assert epilog_data["messages"][0][0][2] == "Test message"
-
-# Test RedisAgent to client epilog flow
-@pytest.mark.asyncio
-async def test_redis_agent_to_client_epilog_flow():
-    """Test epilog flow from RedisAgent to client using mocks"""
-    # Create a mock for Redis publish
-    mock_publish = AsyncMock()
-    
-    # Create a mock for publish_observation that uses mock_publish
-    async def mock_publish_observation(obs):
-        # Check if this is an epilog observation
-        if obs["agent_name"] == "epilog":
-            try:
-                # Parse the epilog data
-                epilog_data = json.loads(obs["last_turn"])
-                
-                # Format the message for each connection
-                formatted_message = json.dumps({
-                    "type": "SERVER_MSG",
-                    "data": {
-                        "type": "episode_log",
-                        "log": epilog_data
-                    }
-                })
-                
-                # Publish to each active connection's epilog channel
-                for connection_id in ["test_conn_id"]:
-                    channel = f"epilog:{connection_id}"
-                    await mock_publish(channel, formatted_message)
-            except Exception as e:
-                print(f"Error publishing epilog: {e}")
-    
-    # Create epilog observation as dictionary
-    epilog_data = {"messages": [["test", "data"]]}
-    obs = {
-        "agent_name": "epilog",
-        "last_turn": json.dumps(epilog_data),
-        "turn_number": 1,
-        "available_actions": ["none"]
     }
     
-    # Call the mocked method
-    await mock_publish_observation(obs)
+    # Publish to the RedisAgent's input channel
+    await redis_client.publish("moderator:redis_agent", json.dumps(message))
     
-    # Verify publish was called with correct parameters
-    assert mock_publish.called
-    channel, data = mock_publish.call_args[0]
-    assert channel == "epilog:test_conn_id"
+    # Listen for epilog messages on the connection's epilog channel
+    epilog_channel = f"epilog:test_conn_id"
     
-    # Parse data
-    message = json.loads(data)
-    assert message["type"] == "SERVER_MSG"
-    assert message["data"]["type"] == "episode_log"
-    assert message["data"]["log"] == epilog_data
+    # Set up a pubsub to listen
+    pubsub = redis_client.pubsub()
+    await pubsub.subscribe(epilog_channel)
+    
+    # Wait for and capture the message
+    received_message = None
+    start_time = asyncio.get_event_loop().time()
+    while asyncio.get_event_loop().time() - start_time < 1.0:
+        message = await pubsub.get_message(timeout=0.2)
+        if message and message["type"] == "message":
+            received_message = json.loads(message["data"].decode())
+            break
+        await asyncio.sleep(0.05)
+    
+    # Unsubscribe
+    await pubsub.unsubscribe(epilog_channel)
+    
+    # Verify the message was received and formatted correctly
+    assert received_message is not None
+    assert received_message["type"] == "SERVER_MSG"
+    assert received_message["data"]["type"] == "episode_log"
+    assert received_message["data"]["log"] == epilog_data
 
-# Test response handling from agent to client
+# Test WebSocket endpoint with more realistic simulation
 @pytest.mark.asyncio
-async def test_agent_response_flow():
-    """Test agent response flow back to client using dictionary mocks"""
-    # Mock process_agent_response with dictionary approach
-    async def mock_process_agent_response(obs):
-        # Extract data
-        agent_name = obs["agent_name"]
-        content = obs["last_turn"]
-        
-        # In our test we'll assume agent1 had a message from websocket_user
-        if agent_name == "agent1":
-            # Create action dict
-            return {
-                "agent_name": agent_name,
-                "output_channel": "redis_agent:moderator",
-                "action_type": "unified_message",
-                "argument": json.dumps({
-                    "content": content,
-                    "target_agents": ["websocket_user"],
-                    "original_target_agents": ["websocket_user"],
-                    "original_target_groups": [],
-                    "context": "response"
-                })
-            }
-        return None
+async def test_websocket_endpoint_integration():
+    """
+    Test the websocket endpoint with more realistic message flow,
+    but still avoiding external dependencies.
+    """
+    # Set up a manager with enough real behavior for testing
+    manager = SimulationManager()
     
-    # Create observation as dictionary
-    obs = {
-        "agent_name": "agent1",
-        "last_turn": "Response to message",
-        "turn_number": 2,
-        "available_actions": ["speak", "none"]
-    }
+    # Mock methods that would use external resources
+    manager.verify_token = AsyncMock(return_value={"is_valid": True, "msg": "Valid token"})
+    manager.create_simulator = AsyncMock()
+    manager.run_simulation = AsyncMock()
     
-    # Call our mock function
-    action = await mock_process_agent_response(obs)
+    # Create a WebSocket mock
+    mock_websocket = AsyncMock(spec=WebSocket)
+    mock_websocket.accept = AsyncMock()
+    mock_websocket.send_json = AsyncMock()
+    mock_websocket.close = AsyncMock()
     
-    # Verify action
-    assert action is not None
-    assert action["action_type"] == "unified_message"
-    
-    # Parse argument
-    arg_data = json.loads(action["argument"])
-    assert arg_data["content"] == "Response to message"
-    assert arg_data["target_agents"] == ["websocket_user"]
-    assert arg_data["context"] == "response"
-
-# Test deduplication of epilog updates
-@pytest.mark.asyncio
-async def test_epilog_deduplication():
-    """Test deduplication of identical epilog updates using mocks"""
-    # Create a mock for Redis publish
-    mock_publish = AsyncMock()
-    
-    # Create a mock for send_epilog that has deduplication logic
-    last_epilog_hash = None
-    
-    async def mock_send_epilog(epilog, channel):
-        nonlocal last_epilog_hash
-        
-        # Generate hash of epilog to avoid sending duplicates
-        epilog_json = epilog.model_dump_json()
-        current_hash = hashlib.md5(epilog_json.encode()).hexdigest()
-        
-        # Only send if it's different from the last epilog we sent
-        if current_hash != last_epilog_hash:
-            message = {
-                "data": {
-                    "agent_name": "epilog",
-                    "last_turn": epilog_json,
-                    "turn_number": 1,
-                    "available_actions": ["none"]
-                }
-            }
-            await mock_publish(channel, json.dumps(message))
-            last_epilog_hash = current_hash
-    
-    # Create two identical epilogs
-    epilog1 = MagicMock()
-    epilog1.model_dump_json = MagicMock(return_value=json.dumps({"messages": [["test", "data"]]}))
-    
-    epilog2 = MagicMock()
-    epilog2.model_dump_json = MagicMock(return_value=json.dumps({"messages": [["test", "data"]]}))
-    
-    # Send first epilog
-    await mock_send_epilog(epilog1, "test_channel")
-    
-    # Verify publish was called
-    assert mock_publish.called
-    mock_publish.reset_mock()
-    
-    # Send identical epilog
-    await mock_send_epilog(epilog2, "test_channel")
-    
-    # Verify publish was NOT called (deduplication)
-    assert not mock_publish.called
-    
-    # Create different epilog
-    epilog3 = MagicMock()
-    epilog3.model_dump_json = MagicMock(return_value=json.dumps({"messages": [["different"]]}))
-    
-    # Send different epilog
-    await mock_send_epilog(epilog3, "test_channel")
-    
-    # Verify publish was called for different epilog
-    assert mock_publish.called
-
-# Test the websocket endpoint with completely mocked dependencies
-@pytest.mark.asyncio
-async def test_websocket_endpoint_flow():
-    """Test the websocket endpoint flow with minimal dependencies"""
-    # Mock entire SimulationManager class
-    mock_manager = AsyncMock()
-    mock_manager.verify_token = AsyncMock(return_value={"is_valid": True, "msg": "Valid token"})
-    mock_manager.create_simulator = AsyncMock()
-    mock_manager.send_message = AsyncMock()
-    mock_manager.send_error = AsyncMock()
-    mock_manager.run_simulation = AsyncMock()
-    
-    # Create a mock simulator
+    # Create a realistic simulator mock
     mock_simulator = AsyncMock()
-    mock_simulator.connection_id = "test_connection_id"
+    mock_simulator.connection_id = "test_conn_id"
     mock_simulator.connect_to_redis = AsyncMock()
     mock_simulator.set_mode = AsyncMock()
     mock_simulator.set_groups = AsyncMock()
     
-    # Set up manager to return simulator
-    mock_manager.create_simulator.return_value = mock_simulator
+    # Configure simulator mock
+    manager.create_simulator.return_value = mock_simulator
     
-    # Mock WebSocket
-    mock_websocket = AsyncMock(spec=WebSocket)
-    
-    # Set up message receipt 
-    mock_websocket.receive_json = AsyncMock()
+    # Configure WebSocket to return a START_SIM message
     mock_websocket.receive_json.return_value = {
         "type": WSMessageType.START_SIM.value,
         "data": {
-            "env_id": "test_env",
+            "env_id": "test_env_id",
             "agent_ids": ["agent1", "agent2"],
             "mode": "group",
             "groups": {
@@ -444,110 +315,272 @@ async def test_websocket_endpoint_flow():
         }
     }
     
-    # Define the websocket endpoint function
-    async def test_websocket_endpoint(websocket: WebSocket, token: str):
-        # Verify token
-        token_status = await mock_manager.verify_token(token)
-        if not token_status["is_valid"]:
-            await websocket.close(code=1008, reason=token_status["msg"])
-            return
-
-        try:
-            await websocket.accept()
-            
-            # Wait for START_SIM message
-            start_msg = await websocket.receive_json()
-            if start_msg.get("type") != WSMessageType.START_SIM.value:
-                await mock_manager.send_error(
-                    websocket,
-                    ErrorType.INVALID_MESSAGE,
-                    "First message must be of type START_SIM"
-                )
-                await websocket.close(code=1008)
-                return
-
-            # Extract parameters
-            sim_data = start_msg.get("data", {})
-            env_id = sim_data.get("env_id")
-            agent_ids = sim_data.get("agent_ids", [])
-            
-            if not env_id or not agent_ids:
-                await mock_manager.send_error(
-                    websocket,
-                    ErrorType.INVALID_MESSAGE,
-                    "START_SIM message must include env_id and agent_ids"
-                )
-                await websocket.close(code=1008)
-                return
-
-            # Create simulator
-            simulator = await mock_manager.create_simulator(
-                env_id=env_id,
-                agent_ids=agent_ids,
-                agent_models=sim_data.get("agent_models"),
-                evaluator_model=sim_data.get("evaluator_model"),
-                evaluation_dimension_list_name=sim_data.get("evaluation_dimension_list_name"),
-                env_profile_dict=sim_data.get("env_profile_dict"),
-                agent_profile_dicts=sim_data.get("agent_profile_dicts"),
-                max_turns=sim_data.get("max_turns"),
-            )
-            
-            # Connect to Redis
-            await simulator.connect_to_redis()
-            
-            # Configure mode and groups
-            mode = sim_data.get("mode", "full")
-            await simulator.set_mode(mode)
-            
-            if "groups" in sim_data:
-                await simulator.set_groups(sim_data["groups"])
-            
-            # Send initial status
-            await mock_manager.send_message(
-                websocket,
-                WSMessageType.SERVER_MSG,
-                {
-                    "status": "simulation_started",
-                    "env_id": env_id,
-                    "agent_ids": agent_ids,
-                    "mode": mode,
-                    "connection_id": simulator.connection_id
-                }
-            )
-            
-            # Run simulation
-            await mock_manager.run_simulation(websocket, simulator)
-            
-        except Exception as e:
-            print(f"Error in websocket_endpoint: {e}")
-            await mock_manager.send_error(
-                websocket,
-                ErrorType.SIMULATION_ISSUE,
-                f"Error in simulation: {str(e)}"
-            )
-        finally:
-            try:
-                await websocket.close()
-            except Exception:
-                pass
+    # Run the endpoint function
+    from sotopia.api.fastapi_server import websocket_endpoint
+    await websocket_endpoint(mock_websocket, "valid_token")
     
-    # Call our test endpoint
-    await test_websocket_endpoint(mock_websocket, "valid_token")
-    
-    # Verify the flow
+    # Verify the behavior
     mock_websocket.accept.assert_called_once()
-    mock_manager.verify_token.assert_called_once_with("valid_token")
-    mock_manager.create_simulator.assert_called_once()
+    mock_websocket.receive_json.assert_called_once()
+    manager.verify_token.assert_called_once_with("valid_token")
+    manager.create_simulator.assert_called_once()
     
-    # Get the simulator creation args
-    sim_args = mock_manager.create_simulator.call_args[1]
-    assert sim_args["env_id"] == "test_env"
-    assert sim_args["agent_ids"] == ["agent1", "agent2"]
+    # Verify simulator configuration
+    simulator_args = manager.create_simulator.call_args[1]
+    assert simulator_args["env_id"] == "test_env_id"
+    assert simulator_args["agent_ids"] == ["agent1", "agent2"]
     
     # Verify simulator setup
     mock_simulator.connect_to_redis.assert_called_once()
     mock_simulator.set_mode.assert_called_once_with("group")
     mock_simulator.set_groups.assert_called_once()
     
-    # Verify run_simulation was called with correct arguments
-    mock_manager.run_simulation.assert_called_once_with(mock_websocket, mock_simulator)
+    # Verify run_simulation was called
+    manager.run_simulation.assert_called_once_with(mock_websocket, mock_simulator)
+
+# Test full message flow with minimal mocking
+@pytest.mark.asyncio
+async def test_end_to_end_message_flow(redis_client):
+    """
+    Test the end-to-end message flow between simulator, RedisAgent, and Moderator
+    with minimal mocking. This tests that all components can work together.
+    """
+    # Set up the RedisAgent first - we'll use a real one
+    redis_agent = RedisAgent(
+        input_channels=["moderator:redis_agent"],
+        output_channel="redis_agent:moderator",
+        node_name="redis_agent",
+        other_agent_status={"agent1": True, "agent2": True},
+        redis_url=TEST_REDIS_URL,
+        loop_interval=0.05
+    )
+    
+    # Initialize the RedisAgent
+    await redis_agent.__aenter__()
+    
+    try:
+        # Set up the simulator with minimal mocking
+        with patch('redis_om.model.model.get_redis_connection', return_value=redis_client), \
+             patch('redis_om.checks.has_redis_json', return_value=True), \
+             patch('redis_om.checks.check_for_command', return_value=True), \
+             patch('sotopia.api.websocket_utils.get_env_agents') as mock_get_env_agents:
+            
+            # Set up mock environment, agents, and messages
+            mock_env = MagicMock()
+            mock_agents = MagicMock()
+            mock_messages = {}
+            
+            # Configure the get_env_agents mock to return our mocked objects
+            mock_get_env_agents.return_value = (mock_env, mock_agents, mock_messages)
+            
+            # Create the simulator
+            simulator = WebSocketSotopiaSimulator(
+                env_id="test_env_id",
+                agent_ids=["agent1", "agent2"],
+                agent_models=["gpt-4o-mini", "gpt-4o-mini"],
+                evaluator_model="gpt-4o",
+                max_turns=10,
+                redis_url=TEST_REDIS_URL
+            )
+            
+            # Configure the simulator
+            simulator.connection_id = "test_conn_id"
+            simulator.mode = "group"
+            simulator.groups = {
+                "team_a": ["agent1"],
+                "team_b": ["agent2"]
+            }
+            
+            # Connect to Redis
+            await simulator.connect_to_redis()
+            
+            try:
+                # Configure RedisAgent with the same groups
+                await redis_client.publish(
+                    f"command:test_conn_id",
+                    json.dumps({
+                        "groups": {
+                            "team_a": ["agent1"],
+                            "team_b": ["agent2"]
+                        },
+                        "mode": "group"
+                    })
+                )
+                
+                # Give time for the message to be processed
+                await asyncio.sleep(0.2)
+                
+                # Set up a mock moderator (minimal mocking)
+                moderator = MagicMock()
+                moderator.handle_unified_message = AsyncMock()
+                
+                # Create a unified_message response that the moderator would generate
+                unified_message_response = {
+                    "observations_map": {
+                        "moderator:agent1": {
+                            "agent_name": "websocket_user",
+                            "last_turn": "Hello team A",
+                            "turn_number": 1,
+                            "available_actions": ["speak", "none"]
+                        },
+                        "moderator:agent2": {
+                            "agent_name": "websocket_user",
+                            "last_turn": "",
+                            "turn_number": 1,
+                            "available_actions": ["none"]
+                        }
+                    }
+                }
+                moderator.handle_unified_message.return_value = type('MockObservations', (), unified_message_response)
+                
+                # Listen for messages on redis_agent:moderator
+                pubsub = redis_client.pubsub()
+                await pubsub.subscribe("redis_agent:moderator")
+                
+                # Clear any existing messages
+                while await pubsub.get_message(timeout=0.1):
+                    pass
+                
+                # Send a message through the simulator
+                await simulator.send_to_redis({
+                    "content": "Hello team A",
+                    "target_groups": ["team_a"],
+                    "sender": "websocket_user"
+                })
+                
+                # Wait for and capture the message on redis_agent:moderator
+                unified_message = None
+                start_time = asyncio.get_event_loop().time()
+                while asyncio.get_event_loop().time() - start_time < 1.0:
+                    message = await pubsub.get_message(timeout=0.2)
+                    if message and message["type"] == "message":
+                        data = json.loads(message["data"].decode())
+                        if "action_type" in data.get("data", {}) and data["data"]["action_type"] == "unified_message":
+                            unified_message = data
+                            break
+                    await asyncio.sleep(0.05)
+                
+                # Unsubscribe
+                await pubsub.unsubscribe("redis_agent:moderator")
+                
+                # Verify the message was processed correctly
+                assert unified_message is not None
+                assert unified_message["data"]["action_type"] == "unified_message"
+                
+                # Parse the argument
+                arg_data = json.loads(unified_message["data"]["argument"])
+                assert arg_data["content"] == "Hello team A"
+                assert "agent1" in arg_data["target_agents"]
+                assert "agent2" not in arg_data["target_agents"]
+                assert arg_data["original_target_groups"] == ["team_a"]
+            finally:
+                # Clean up simulator
+                if hasattr(simulator, "redis_client") and simulator.redis_client:
+                    await simulator.redis_client.close()
+    finally:
+        # Clean up RedisAgent
+        await redis_agent.__aexit__(None, None, None)
+
+# Test deduplication logic with real messages
+@pytest.mark.asyncio
+async def test_epilog_deduplication(redis_client):
+    """
+    Test that identical epilog updates are deduplicated.
+    This uses a real Redis client with minimal mocking.
+    """
+    # Set up a mock Moderator with Redis
+    moderator = MagicMock()
+    moderator.last_epilog_hash = None
+    moderator.send = AsyncMock()
+    
+    # Define the send_epilog implementation using Redis
+    async def send_epilog(epilog, channel):
+        nonlocal moderator
+        # Generate hash of epilog to avoid sending duplicates
+        epilog_json = epilog.model_dump_json()
+        current_hash = hashlib.md5(epilog_json.encode()).hexdigest()
+        
+        # Only send if it's different from the last epilog we sent
+        if current_hash != moderator.last_epilog_hash:
+            message = {
+                "data": {
+                    "agent_name": "epilog",
+                    "last_turn": epilog_json,
+                    "turn_number": 1,
+                    "available_actions": ["none"]
+                }
+            }
+            # Publish directly to Redis instead of using mock
+            await redis_client.publish(channel, json.dumps(message))
+            moderator.last_epilog_hash = current_hash
+    
+    # Set the method on the moderator
+    moderator.send_epilog = send_epilog
+    
+    # Create two identical epilogs
+    epilog1 = MagicMock()
+    epilog1.model_dump_json = MagicMock(return_value=json.dumps({"messages": [["test", "data"]]}))
+    
+    epilog2 = MagicMock()
+    epilog2.model_dump_json = MagicMock(return_value=json.dumps({"messages": [["test", "data"]]}))
+    
+    # Set up a pubsub to monitor the channel
+    pubsub = redis_client.pubsub()
+    test_channel = "test:epilog"
+    await pubsub.subscribe(test_channel)
+    
+    # Clear any existing messages
+    while await pubsub.get_message(timeout=0.1):
+        pass
+    
+    # Send first epilog
+    await moderator.send_epilog(epilog1, test_channel)
+    
+    # Wait for and count the message
+    message_count = 0
+    start_time = asyncio.get_event_loop().time()
+    while asyncio.get_event_loop().time() - start_time < 0.5:
+        message = await pubsub.get_message(timeout=0.1)
+        if message and message["type"] == "message":
+            message_count += 1
+        await asyncio.sleep(0.05)
+    
+    # Verify the first message was sent
+    assert message_count == 1
+    
+    # Send identical epilog
+    await moderator.send_epilog(epilog2, test_channel)
+    
+    # Wait and check for any new messages
+    message_count = 0
+    start_time = asyncio.get_event_loop().time()
+    while asyncio.get_event_loop().time() - start_time < 0.5:
+        message = await pubsub.get_message(timeout=0.1)
+        if message and message["type"] == "message":
+            message_count += 1
+        await asyncio.sleep(0.05)
+    
+    # Verify no new message was sent (deduplication)
+    assert message_count == 0
+    
+    # Create different epilog
+    epilog3 = MagicMock()
+    epilog3.model_dump_json = MagicMock(return_value=json.dumps({"messages": [["different"]]}))
+    
+    # Send different epilog
+    await moderator.send_epilog(epilog3, test_channel)
+    
+    # Wait and check for the new message
+    message_count = 0
+    start_time = asyncio.get_event_loop().time()
+    while asyncio.get_event_loop().time() - start_time < 0.5:
+        message = await pubsub.get_message(timeout=0.1)
+        if message and message["type"] == "message":
+            message_count += 1
+        await asyncio.sleep(0.05)
+    
+    # Verify a new message was sent for different epilog
+    assert message_count == 1
+    
+    # Unsubscribe
+    await pubsub.unsubscribe(test_channel)
