@@ -11,7 +11,7 @@ else:
 from aact import Message, NodeFactory, Node
 from aact.messages import DataModel, DataModelFactory
 
-from typing import Literal, Any, AsyncIterator, Dict, List, Optional
+from typing import Literal, Any, AsyncIterator, Dict, List
 from pydantic import Field
 
 from .datamodels import AgentAction, Observation
@@ -89,15 +89,19 @@ class Moderator(Node[AgentAction, Observation]):
         self.evaluate_episode: bool = evaluate_episode
 
         # Attributes for group messaging support
-        self.groups: Dict[str, List[str]] = {}  # Dictionary mapping group names to lists of agent names
+        self.groups: Dict[
+            str, List[str]
+        ] = {}  # Dictionary mapping group names to lists of agent names
         self.mode: str = "full"  # Communication mode: "full" or "group"
-        self.external_users: set[str] = set()  # Set of external users connected via WebSocket
-        
+        self.external_users: set[str] = (
+            set()
+        )  # Set of external users connected via WebSocket
+
         # Message context tracking - simplified approach matching RedisAgent
         self.message_senders: Dict[str, str] = {}  # agent -> original sender
         self.message_receivers: Dict[str, List[str]] = {}  # agent -> list of recipients
         self.message_id_counter: int = 0  # Counter for generating unique message IDs
-        
+
         # Track the last epilog hash to avoid duplicates
         self.last_epilog_hash: str | None = None
 
@@ -172,7 +176,7 @@ class Moderator(Node[AgentAction, Observation]):
         # Generate hash of epilog to avoid sending duplicates
         epilog_json = epilog.model_dump_json()
         current_hash = hashlib.md5(epilog_json.encode()).hexdigest()
-        
+
         # Only send if it's different from the last epilog we sent
         if current_hash != self.last_epilog_hash:
             message_json = Message[Observation](
@@ -252,14 +256,14 @@ class Moderator(Node[AgentAction, Observation]):
             rewards=[0.0] * len(self.agents),
             rewards_prompt="",
         )
-        
+
         # Add groups to epilog if it supports them
         try:
             self.epilog.groups = self.groups  # Add group configuration if supported
         except (AttributeError, TypeError):
             # EpisodeLog doesn't support groups attribute
             pass
-        
+
         # Send initial scenario to agents
         if self.action_order == "round-robin":
             await self.send_observations(
@@ -278,7 +282,7 @@ class Moderator(Node[AgentAction, Observation]):
                 )
             )
             self.current_agent_index += 1
-            
+
         # Send initial epilog to RedisAgent
         await self.send_epilog(self.epilog, "moderator:redis_agent")
 
@@ -288,19 +292,19 @@ class Moderator(Node[AgentAction, Observation]):
         try:
             await asyncio.sleep(0.1)
             print("all agents have left, wrap up and stop")
-            
+
             # Make sure the final epilog has been sent to RedisAgent
             await self.send_epilog(self.epilog, "moderator:redis_agent")
-            
+
             # Save to database if requested
             if self.push_to_db:
                 self.epilog.save()
         except Exception as e:
             print(f"error in wrap_up_and_stop: {e}")
-        
+
         await asyncio.sleep(0.5)
         print("result of this episode:\n", self.epilog.model_dump_json())
-        
+
         # Publish shutdown signal
         await self.r.publish(
             "shutdown:moderator",
@@ -320,10 +324,10 @@ class Moderator(Node[AgentAction, Observation]):
     async def aeval(self, epilog: EpisodeLog) -> EpisodeLog:
         """
         Evaluate the episode by sending to evaluators and processing results
-        
+
         Args:
             epilog: The episode log to evaluate
-            
+
         Returns:
             EpisodeLog: The evaluated episode log with rewards
         """
@@ -344,48 +348,48 @@ class Moderator(Node[AgentAction, Observation]):
 
         print("episode eval finished")
         return epilog
-        
+
     async def setup_groups(self, groups_data: dict) -> None:
         """
         Configure agent groups
-        
+
         Args:
             groups_data: Dictionary mapping group names to lists of agent names
         """
         self.groups = groups_data
-        
+
         # Update epilog with groups configuration if supported
         try:
-            if hasattr(self, 'epilog'):
+            if hasattr(self, "epilog"):
                 self.epilog.groups = groups_data
         except (AttributeError, TypeError):
             # EpisodeLog doesn't support groups attribute
             pass
-            
+
         print(f"Updated groups configuration: {self.groups}")
 
     async def set_mode(self, mode: str) -> None:
         """
         Set the communication mode
-        
+
         Args:
             mode: Either "full" for normal operation or "group" for group messaging
         """
         self.mode = mode
         print(f"Communication mode set to: {self.mode}")
-        
+
     def generate_message_id(self) -> str:
         """Generate a unique message ID"""
         self.message_id_counter += 1
         return f"msg_{self.message_id_counter}"
-        
+
     async def handle_unified_message(self, agent_action: AgentAction) -> Observations:
         """
         Process a unified message and route to appropriate agents
-        
+
         Args:
             agent_action: The action containing the message
-            
+
         Returns:
             Observations: Observations to send to agents
         """
@@ -399,11 +403,11 @@ class Moderator(Node[AgentAction, Observation]):
             original_target_groups = message_data.get("original_target_groups", [])
             context = message_data.get("context", "individual")
             is_response = context == "response"
-            
+
             # Track external users
             if sender not in self.agents and sender != "Environment":
                 self.external_users.add(sender)
-                
+
             # Record message relationship for response tracking
             for agent in target_agents:
                 if agent in self.agents:
@@ -413,7 +417,7 @@ class Moderator(Node[AgentAction, Observation]):
                             self.message_receivers[agent].append(sender)
                     else:
                         self.message_receivers[agent] = [sender]
-            
+
             # Add message to epilog with appropriate format
             if original_target_groups:
                 # Group message
@@ -425,15 +429,15 @@ class Moderator(Node[AgentAction, Observation]):
                             "context": context,
                             "target_agents": original_target_agents,
                             "target_groups": original_target_groups,
-                            "is_response": is_response
+                            "is_response": is_response,
                         }
-                        
+
                         # Add to epilog
                         receiver = f"Group:{group_name}"
-                        self.epilog.messages.append([
-                            (sender, receiver, json.dumps(message_data))
-                        ])
-            
+                        self.epilog.messages.append(
+                            [(sender, receiver, json.dumps(message_data))]
+                        )
+
             elif original_target_agents:
                 # Individual message
                 for target_agent in original_target_agents:
@@ -443,15 +447,15 @@ class Moderator(Node[AgentAction, Observation]):
                         "context": "individual",
                         "target_agents": [target_agent],
                         "target_groups": [],
-                        "is_response": is_response
+                        "is_response": is_response,
                     }
-                    
+
                     # Add to epilog
                     receiver = f"Agent:{target_agent}"
-                    self.epilog.messages.append([
-                        (sender, receiver, json.dumps(message_data))
-                    ])
-            
+                    self.epilog.messages.append(
+                        [(sender, receiver, json.dumps(message_data))]
+                    )
+
             elif context == "broadcast":
                 # Broadcast message
                 message_data = {
@@ -459,19 +463,19 @@ class Moderator(Node[AgentAction, Observation]):
                     "context": "broadcast",
                     "target_agents": self.agents,
                     "target_groups": [],
-                    "is_response": is_response
+                    "is_response": is_response,
                 }
-                
+
                 # Add to epilog
-                self.epilog.messages.append([
-                    (sender, "Broadcast", json.dumps(message_data))
-                ])
-            
+                self.epilog.messages.append(
+                    [(sender, "Broadcast", json.dumps(message_data))]
+                )
+
             elif context == "response":
                 # Response message - handle specially
                 responding_to = message_data.get("responding_to", {})
                 original_sender = responding_to.get("sender", "unknown")
-                
+
                 # Create complete message data with all metadata
                 message_data = {
                     "content": content,
@@ -479,45 +483,49 @@ class Moderator(Node[AgentAction, Observation]):
                     "target_agents": [original_sender],
                     "target_groups": [],
                     "responding_to": responding_to,
-                    "is_response": True
+                    "is_response": True,
                 }
-                
+
                 # Add to epilog
                 receiver = f"Response:{original_sender}"
-                self.epilog.messages.append([
-                    (sender, receiver, json.dumps(message_data))
-                ])
-            
+                self.epilog.messages.append(
+                    [(sender, receiver, json.dumps(message_data))]
+                )
+
             # Increment turn counter for new messages
             if not is_response:
                 self.turn_number += 1
-            
+
             # Create observations for all agents
             observations_map = {}
             for output_channel, agent_name in self.agent_mapping.items():
                 # Determine if this agent should receive the message
                 is_recipient = agent_name in target_agents
-                
+
                 # Set available actions based on whether this agent should respond
                 available_actions = self.available_actions if is_recipient else ["none"]
-                
+
                 # Create the observation with basic info
                 observation = Observation(
                     agent_name=sender,  # Set sender as the agent_name in observation
-                    last_turn=content if is_recipient else "",  # Only include content for recipients
+                    last_turn=content
+                    if is_recipient
+                    else "",  # Only include content for recipients
                     turn_number=self.turn_number,
                     available_actions=available_actions,
                 )
-                
+
                 observations_map[output_channel] = observation
-            
+
             # Send updated epilog to Redis agent
             await self.send_epilog(self.epilog, "moderator:redis_agent")
-            
+
             return Observations(observations_map=observations_map)
-            
+
         except json.JSONDecodeError:
-            print(f"Error: Failed to parse unified message data: {agent_action.argument}")
+            print(
+                f"Error: Failed to parse unified message data: {agent_action.argument}"
+            )
             return Observations(observations_map={})
         except Exception as e:
             print(f"Error handling unified message: {e}")
@@ -534,7 +542,7 @@ class Moderator(Node[AgentAction, Observation]):
             except Exception as e:
                 print(f"Error setting up groups: {e}")
                 return None
-        
+
         # Handle set_mode action
         if agent_action.action_type == "set_mode":
             try:
@@ -544,72 +552,82 @@ class Moderator(Node[AgentAction, Observation]):
             except Exception as e:
                 print(f"Error setting mode: {e}")
                 return None
-                
+
         # Handle unified_message action
         if agent_action.action_type == "unified_message":
             return await self.handle_unified_message(agent_action)
-        
+
         # Handle responses based on message sender info in group mode
         if self.mode == "group" and agent_action.action_type == "speak":
             agent_name = agent_action.agent_name
             content = agent_action.argument
-            
+
             # Check if this agent has a known sender (it's responding to a message)
             original_sender = self.message_senders.get(agent_name)
             if original_sender:
                 # Create a unified message targeting the original sender
                 try:
-                    return await self.handle_unified_message(AgentAction(
-                        agent_name=agent_name,
-                        output_channel=agent_action.output_channel,
-                        action_type="unified_message",
-                        argument=json.dumps({
-                            "content": content,
-                            "target_agents": [original_sender],  # Response goes to original sender
-                            "original_target_agents": [original_sender],
-                            "original_target_groups": [],
-                            "context": "response",
-                            "responding_to": {
-                                "sender": original_sender
-                            }
-                        })
-                    ))
+                    return await self.handle_unified_message(
+                        AgentAction(
+                            agent_name=agent_name,
+                            output_channel=agent_action.output_channel,
+                            action_type="unified_message",
+                            argument=json.dumps(
+                                {
+                                    "content": content,
+                                    "target_agents": [
+                                        original_sender
+                                    ],  # Response goes to original sender
+                                    "original_target_agents": [original_sender],
+                                    "original_target_groups": [],
+                                    "context": "response",
+                                    "responding_to": {"sender": original_sender},
+                                }
+                            ),
+                        )
+                    )
                 except Exception as e:
                     print(f"Error converting speak to response message: {e}")
-            
+
             # Special handling for regular "speak" actions in group mode when no known sender
             # In group mode, regular speak actions are converted to unified messages
             # targeting all agents if no target is specified
             try:
                 # Create a unified message targeting all agents
-                return await self.handle_unified_message(AgentAction(
-                    agent_name=agent_action.agent_name,
-                    output_channel=agent_action.output_channel,
-                    action_type="unified_message",
-                    argument=json.dumps({
-                        "content": agent_action.argument,
-                        "target_agents": self.agents,  # Target all agents
-                        "original_target_agents": [],
-                        "original_target_groups": [],
-                        "context": "broadcast"  # Indicate this is a broadcast
-                    })
-                ))
+                return await self.handle_unified_message(
+                    AgentAction(
+                        agent_name=agent_action.agent_name,
+                        output_channel=agent_action.output_channel,
+                        action_type="unified_message",
+                        argument=json.dumps(
+                            {
+                                "content": agent_action.argument,
+                                "target_agents": self.agents,  # Target all agents
+                                "original_target_agents": [],
+                                "original_target_groups": [],
+                                "context": "broadcast",  # Indicate this is a broadcast
+                            }
+                        ),
+                    )
+                )
             except Exception as e:
                 print(f"Error converting speak to unified message: {e}")
                 # Fall through to normal processing if conversion fails
-        
+
         # Original astep functionality for standard messages
         # Add message to epilog with proper format depending on mode
         if self.mode == "full" or agent_action.action_type != "speak":
             # Standard message handling for non-speak actions or full mode
-            self.epilog.messages.append([
-                (
-                    agent_action.agent_name,
-                    "Environment",
-                    agent_action.to_natural_language(),
-                )
-            ])
-        
+            self.epilog.messages.append(
+                [
+                    (
+                        agent_action.agent_name,
+                        "Environment",
+                        agent_action.to_natural_language(),
+                    )
+                ]
+            )
+
         # Handle leave actions
         if agent_action.action_type == "leave":
             self.agents_awake[agent_action.agent_name] = False
@@ -620,7 +638,7 @@ class Moderator(Node[AgentAction, Observation]):
                 await self.send_epilog(self.epilog, "moderator:redis_agent")
                 await self.wrap_up_and_stop()
                 return None
-                
+
         # Handle none actions
         if agent_action.action_type == "none":
             return None
