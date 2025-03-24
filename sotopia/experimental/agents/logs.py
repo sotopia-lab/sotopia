@@ -202,6 +202,7 @@ class BaseEpisodeLog(BaseModel):
             "groups": self.groups,
         }
 
+
 class EpisodeLog(BaseEpisodeLog, JsonModel):
     """Redis-compatible episode log with enhanced message context support"""
 

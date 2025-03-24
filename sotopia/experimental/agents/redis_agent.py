@@ -404,14 +404,16 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         agent_name=sender,
                         output_channel=self.output_channel,
                         action_type="speak",  # Using a valid action type
-                        argument=json.dumps({
-                            "action_metadata": "unified_message",  # Add a flag inside the argument instead
-                            "content": content,
-                            "target_agents": list(expanded_agents),
-                            "original_target_agents": target_agents,
-                            "original_target_groups": target_groups,
-                            "context": context
-                        }),
+                        argument=json.dumps(
+                            {
+                                "action_metadata": "unified_message",  # Add a flag inside the argument instead
+                                "content": content,
+                                "target_agents": list(expanded_agents),
+                                "original_target_agents": target_agents,
+                                "original_target_groups": target_groups,
+                                "context": context,
+                            }
+                        ),
                     )
 
         except KeyError as e:
@@ -441,14 +443,18 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     agent_name=obs.agent_name,
                     output_channel=self.output_channel,
                     action_type="speak",  # Valid action type
-                    argument=json.dumps({
-                        "action_metadata": "unified_message",  # Flag for special handling
-                        "content": obs.last_turn,
-                        "target_agents": [original_sender],  # Send back to original sender
-                        "original_target_agents": [original_sender],
-                        "original_target_groups": [],
-                        "context": "response"
-                    }),
+                    argument=json.dumps(
+                        {
+                            "action_metadata": "unified_message",  # Flag for special handling
+                            "content": obs.last_turn,
+                            "target_agents": [
+                                original_sender
+                            ],  # Send back to original sender
+                            "original_target_agents": [original_sender],
+                            "original_target_groups": [],
+                            "context": "response",
+                        }
+                    ),
                 )
 
         return None
@@ -468,10 +474,12 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 epilog_hash = hashlib.md5(obs.last_turn.encode()).hexdigest()
 
                 # Send the complete epilog to external connections - no filtering
-                formatted_message = json.dumps({
-                    "type": "SERVER_MSG",
-                    "data": {"type": "episode_log", "log": epilog_data},
-                })
+                formatted_message = json.dumps(
+                    {
+                        "type": "SERVER_MSG",
+                        "data": {"type": "episode_log", "log": epilog_data},
+                    }
+                )
 
                 # Publish to each active connection's epilog channel
                 for connection_id in self.active_connections:
