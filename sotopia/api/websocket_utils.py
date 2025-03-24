@@ -211,10 +211,57 @@ class WebSocketSotopiaSimulator:
             else:
                 # Use provided profile dictionaries
                 self.env_profile = EnvironmentProfile(**env_profile_dict)
+                self.env_profile.save()
+                assert self.env_profile.pk is not None
+                self.env_id = self.env_profile.pk
                 self.agent_profiles = [
                     AgentProfile(**agent_profile_dict)
                     for agent_profile_dict in agent_profile_dicts
                 ]
+                self.agent_ids = []
+                for agent_profile in self.agent_profiles:
+                    agent_profile.save()
+                    assert agent_profile.pk is not None
+                    self.agent_ids.append(agent_profile.pk)
+                agent_list = [
+                    LLMAgent(
+                        agent_profile=agent_profile,
+                        model_name=agent_models[idx],
+                    )
+                    for idx, agent_profile in enumerate(self.agent_profiles)
+                ]
+                for idx, goal in enumerate(self.env_profile.agent_goals):
+                    if idx < len(agent_list):
+                        agent_list[idx].goal = goal
+
+                evaluation_dimensions: Type[BaseModel] = (
+                    EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
+                        list_name=evaluation_dimension_list_name
+                    )
+                )
+
+                self.agents = Agents({agent.agent_name: agent for agent in agent_list})
+                self.env = ParallelSotopiaEnv(
+                    action_order="round-robin",
+                    evaluators=[
+                        RuleBasedTerminatedEvaluator(max_turn_number=max_turns, max_stale_turn=2), 
+                        #TODO: what should be max_stale_turn here
+                    ],
+                    terminal_evaluators=[
+                        EpisodeLLMEvaluator(
+                            evaluator_model,
+                            # TODO: what should the the below field be?
+                            EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
+                        ),
+                    ],
+                    env_profile=self.env_profile,
+                )
+                # Initialize environment with agents
+                self.environment_messages = {}
+                if agent_list:  # Handle case with at least one agent
+                    self.environment_messages = self.env.reset(agents=self.agents, omniscient=False)
+                self.agents.reset()
+
         except Exception as e:
             logger.error(f"Error initializing environment or agents: {e}")
             raise

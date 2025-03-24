@@ -359,11 +359,11 @@ class SimulationManager:
             sim_epilog_task = asyncio.create_task(self._process_simulator_epilogs(websocket, simulator))
             
             # Start a task for Redis epilog updates (directly from RedisAgent)
-            redis_epilog_task = asyncio.create_task(self._process_redis_epilogs(websocket, pubsub))
+            # redis_epilog_task = asyncio.create_task(self._process_redis_epilogs(websocket, pubsub))
             
             # Wait for either task to complete
             done, pending = await asyncio.wait(
-                [sim_epilog_task, redis_epilog_task],
+                [sim_epilog_task],
                 return_when=asyncio.FIRST_COMPLETED
             )
             
@@ -998,17 +998,17 @@ async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
 
         # Extract simulation parameters
         sim_data = start_msg.get("data", {})
-        env_id = sim_data.get("env_id")
+        env_id = sim_data.get("env_id", "")
         agent_ids = sim_data.get("agent_ids", [])
         
-        if not env_id or not agent_ids:
-            await manager.send_error(
-                websocket,
-                ErrorType.INVALID_MESSAGE,
-                "START_SIM message must include env_id and agent_ids"
-            )
-            await websocket.close(code=1008)
-            return
+        # if not env_id or not agent_ids:
+        #     await manager.send_error(
+        #         websocket,
+        #         ErrorType.INVALID_MESSAGE,
+        #         "START_SIM message must include env_id and agent_ids"
+        #     )
+        #     await websocket.close(code=1008)
+        #     return
 
         # Create and run the simulation
         async with manager.state.start_simulation(token):
@@ -1030,6 +1030,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
                 
                 # Configure groups and mode if provided in START_SIM
                 initial_mode = sim_data.get("mode", "full")
+                logger.info(f"Initial mode: {initial_mode}")
                 await simulator.set_mode(initial_mode)
                 
                 if "groups" in sim_data:
@@ -1041,14 +1042,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
                     WSMessageType.SERVER_MSG,
                     {
                         "status": "simulation_started",
-                        "env_id": env_id,
-                        "agent_ids": agent_ids,
+                        "env_id": simulator.env_id,
+                        "agent_ids": simulator.agent_ids,
                         "mode": initial_mode,
                         "groups": sim_data.get("groups", {}),
                         "connection_id": simulator.connection_id
                     }
                 )
-                
+                logger.info("WebSocket start sim message confirmation sent.")
                 # Run the simulation
                 await manager.run_simulation(websocket, simulator)
                 
