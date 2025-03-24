@@ -189,10 +189,12 @@ class WebSocketSotopiaSimulator:
         self.epilog_channel = f"epilog:{self.connection_id}"
         self.command_channel = f"command:{self.connection_id}"
         
-        # Async tasks
+        # Message queue and control flags
+        self.message_queue = asyncio.Queue()
+        self.stop_simulation = False
         self.redis_subscriber_task = None
         
-        # Track the latest epilog to pass to clients
+        # Track the latest epilog for deduplication
         self.latest_epilog = None
         self.last_epilog_hash = None
         
@@ -245,12 +247,10 @@ class WebSocketSotopiaSimulator:
                     action_order="round-robin",
                     evaluators=[
                         RuleBasedTerminatedEvaluator(max_turn_number=max_turns, max_stale_turn=2), 
-                        #TODO: what should be max_stale_turn here
                     ],
                     terminal_evaluators=[
                         EpisodeLLMEvaluator(
                             evaluator_model,
-                            # TODO: what should the the below field be?
                             EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
                         ),
                     ],
@@ -287,13 +287,16 @@ class WebSocketSotopiaSimulator:
                 # Start subscriber task
                 if self.redis_subscriber_task is None or self.redis_subscriber_task.done():
                     self.redis_subscriber_task = asyncio.create_task(self._redis_subscriber())
-                    logger.info("Started Redis subscriber task")
+                    logger.info(f"Started Redis subscriber task for {self.connection_id}")
                 
-                # Register with RedisAgent
-                await self.send_to_redis({
+                # Register with RedisAgent, including the agent_ids for connection mapping
+                register_message = {
                     "type": "register",
-                    "connection_id": self.connection_id
-                })
+                    "connection_id": self.connection_id,
+                    "agent_ids": self.agent_ids  # Pass existing agent_ids for connection mapping
+                }
+                
+                await self.send_to_redis(register_message)
                 
                 logger.info(f"Connected to Redis server at {self.redis_url}")
             except Exception as e:
@@ -301,9 +304,12 @@ class WebSocketSotopiaSimulator:
                 raise
 
     async def _redis_subscriber(self) -> None:
-        """Listen for messages from Redis channels"""
+        """
+        Listen for messages from Redis channels and add them to the message queue
+        for processing by the arun() generator.
+        """
         try:
-            while True:
+            while not self.stop_simulation:
                 try:
                     # Wait for a message from Redis
                     message = await self.redis_pubsub.get_message(ignore_subscribe_messages=True)
@@ -315,14 +321,28 @@ class WebSocketSotopiaSimulator:
                             
                             # Handle epilog updates
                             if data.get("type") == "SERVER_MSG" and data.get("data", {}).get("type") == "episode_log":
-                                logger.info("Received epilog update from Redis")
+                                logger.info(f"[{self.connection_id}] Received epilog update from Redis")
                                 
-                                # Store the latest epilog
-                                self.latest_epilog = data["data"]["log"]
+                                # Get the epilog data
+                                epilog_data = data["data"]["log"]
                                 
                                 # Calculate hash for deduplication
-                                epilog_str = json.dumps(self.latest_epilog)
-                                self.last_epilog_hash = hashlib.md5(epilog_str.encode()).hexdigest()
+                                epilog_str = json.dumps(epilog_data)
+                                current_hash = hashlib.md5(epilog_str.encode()).hexdigest()
+                                
+                                # Only update if this is a new epilog (different hash)
+                                if current_hash != self.last_epilog_hash:
+                                    self.latest_epilog = epilog_data
+                                    self.last_epilog_hash = current_hash
+                                    
+                                    # Add to the message queue for arun to yield
+                                    await self.message_queue.put({
+                                        "type": "episode_log",
+                                        "messages": epilog_data
+                                    })
+                                    logger.debug(f"[{self.connection_id}] Added new epilog to message queue")
+                                else:
+                                    logger.debug(f"[{self.connection_id}] Skipped duplicate epilog")
                                 
                         except json.JSONDecodeError:
                             logger.error(f"Failed to parse Redis message: {message['data'][:100]}...")
@@ -337,7 +357,7 @@ class WebSocketSotopiaSimulator:
                 await asyncio.sleep(0.01)
                 
         except asyncio.CancelledError:
-            logger.info("Redis subscriber task cancelled")
+            logger.info(f"[{self.connection_id}] Redis subscriber task cancelled")
         except Exception as e:
             logger.error(f"Fatal error in Redis subscriber: {e}")
 
@@ -357,7 +377,13 @@ class WebSocketSotopiaSimulator:
                 self.command_channel,
                 json.dumps(message)
             )
-            logger.info(f"Sent message type: {message.get('type', 'command')} to Redis")
+            msg_type = message.get("type", "command")
+            content_preview = ""
+            if "content" in message:
+                content_preview = f": {message['content'][:30]}..."
+            elif "message" in message and "content" in message["message"]:
+                content_preview = f": {message['message']['content'][:30]}..."
+            logger.info(f"[{self.connection_id}] Sent message type: {msg_type}{content_preview}")
         except Exception as e:
             logger.error(f"Error sending message to Redis: {e}")
 
@@ -369,7 +395,7 @@ class WebSocketSotopiaSimulator:
             mode: Either "full" for normal operation or "group" for group messaging
         """
         self.mode = mode
-        logger.info(f"Set communication mode to: {mode}")
+        logger.info(f"[{self.connection_id}] Set communication mode to: {mode}")
         
         # Notify RedisAgent of mode change
         await self.send_to_redis({"mode": mode})
@@ -382,7 +408,7 @@ class WebSocketSotopiaSimulator:
             groups: Dictionary mapping group names to lists of agent names
         """
         self.groups = groups
-        logger.info(f"Set groups: {groups}")
+        logger.info(f"[{self.connection_id}] Set groups: {groups}")
         
         # Notify RedisAgent of group configuration
         await self.send_to_redis({"groups": groups})
@@ -414,7 +440,7 @@ class WebSocketSotopiaSimulator:
         
         # Send to RedisAgent via Redis
         await self.send_to_redis(payload)
-        logger.info(f"Sent regular message: {message['content'][:30]}...")
+        logger.info(f"[{self.connection_id}] Sent full mode message: {message['content'][:30]}...")
 
     async def process_group_message(self, message: Dict) -> None:
         """
@@ -461,7 +487,7 @@ class WebSocketSotopiaSimulator:
         if target_groups:
             target_description += f"groups: {target_groups}"
             
-        logger.info(f"Sent group message to {target_description}: {message['content'][:30]}...")
+        logger.info(f"[{self.connection_id}] Sent group message to {target_description}: {message['content'][:30]}...")
 
     async def handle_client_message(self, message: Dict) -> None:
         """
@@ -490,9 +516,36 @@ class WebSocketSotopiaSimulator:
         if "groups" in command:
             await self.set_groups(command["groups"])
     
+    async def _run_standard_simulation(self) -> None:
+        """
+        Run a standard simulation using arun_one_episode.
+        This doesn't yield messages directly - it sends them through Redis.
+        """
+        logger.info(f"[{self.connection_id}] Starting standard simulation")
+        try:
+            # Start the simulation
+            generator = await arun_one_episode(
+                env=self.env,
+                agent_list=list(self.agents.values()),
+                push_to_db=False,
+                streaming=True,
+            )
+            
+            # Process each simulation step
+            async for _ in generator:
+                # The Redis subscriber will handle epilog updates
+                # Just continue with the simulation
+                if self.stop_simulation:
+                    logger.info(f"[{self.connection_id}] Simulation stopped during processing")
+                    break
+            
+            logger.info(f"[{self.connection_id}] Standard simulation completed successfully")
+        except Exception as e:
+            logger.error(f"[{self.connection_id}] Error in standard simulation: {e}")
+
     async def arun(self) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Run the simulation and yield messages
+        Run the simulation and yield message updates from the queue.
         
         Yields:
             dict: Message data for the WebSocket client
@@ -500,112 +553,82 @@ class WebSocketSotopiaSimulator:
         # Connect to Redis
         await self.connect_to_redis()
         
+        # Reset control flags
+        self.stop_simulation = False
+        
         try:
-            # Set up variables to track epilog updates
-            epilog_check_interval = 0.2  # Check for new epilog every 200ms
-            last_epilog_hash = None
+            # Start the actual simulation in the background if required
+            simulation_task = None
             
-            # Handle different initialization scenarios in a unified way
+            # Only start a simulation if we have env and agents
             if hasattr(self, 'env') and hasattr(self, 'agents'):
-                # Standard simulation with agents from database
-                generator = await arun_one_episode(
-                    env=self.env,
-                    agent_list=list(self.agents.values()),
-                    push_to_db=False,
-                    streaming=True,
-                )
-                
-                # Instead of yielding every individual message,
-                # just check for epilog updates periodically
-                async for _ in generator:
-                    # We don't use the individual messages from the generator,
-                    # instead we rely on epilog updates from the RedisAgent
-                    
-                    # Check if we have a new epilog
-                    if self.latest_epilog:
-                        # Get current hash
-                        current_hash = self.last_epilog_hash
-                        
-                        if current_hash != last_epilog_hash:
-                            # Only yield if it's a new epilog
-                            yield {
-                                "type": "episode_log",
-                                "messages": self.latest_epilog,
-                            }
-                            last_epilog_hash = current_hash
-                    
-                    # Allow other tasks to run
-                    await asyncio.sleep(epilog_check_interval)
-                    
-            elif hasattr(self, 'env_profile') and hasattr(self, 'agent_profiles'):
-                # Use the multi-agent generator with profile dictionaries
-                from sotopia.api.websocket_utils import arun_server_adaptor
-                
-                multi_agent_generator = arun_server_adaptor(
-                    env=self.env_profile,
-                    agent_list=self.agent_profiles,
-                    agent_models=self.agent_models,
-                    evaluator_model=self.evaluator_model,
-                    evaluation_dimension_list_name=self.evaluation_dimension_list_name,
-                    push_to_db=False,
-                    streaming=True,
-                    connection_id=self.connection_id,
-                    max_turns=self.max_turns,
-                )
-                
-                # Again, don't yield every message, just check for epilog updates
-                try:
-                    async for _ in multi_agent_generator:
-                        # Check if we have a new epilog
-                        if self.latest_epilog:
-                            # Get current hash
-                            current_hash = self.last_epilog_hash
-                            
-                            if current_hash != last_epilog_hash:
-                                # Only yield if it's a new epilog
-                                yield {
-                                    "type": "episode_log",
-                                    "messages": self.latest_epilog,
-                                }
-                                last_epilog_hash = current_hash
-                        
-                        # Allow other tasks to run
-                        await asyncio.sleep(epilog_check_interval)
-                        
-                except StopAsyncIteration:
-                    # End of regular messaging
-                    logger.info("Multi-agent generator completed")
+                simulation_task = asyncio.create_task(self._run_standard_simulation())
+                logger.info(f"[{self.connection_id}] Started simulation task")
+            else:
+                logger.info(f"[{self.connection_id}] No simulation to run - relying on Redis messages only")
             
-            # Continue checking for epilog updates from Redis even after agent generation is done
-            while True:
-                try:
-                    # Check if we have a new epilog from Redis subscriber
-                    if self.latest_epilog:
-                        # Get current hash
-                        current_hash = self.last_epilog_hash
+            # Process messages from the queue until stopped
+            try:
+                while not self.stop_simulation:
+                    try:
+                        # Get the next message with a timeout to allow checking stop flag
+                        message = await asyncio.wait_for(
+                            self.message_queue.get(), 
+                            timeout=0.5
+                        )
                         
-                        if current_hash != last_epilog_hash:
-                            # Only yield if it's a new epilog
-                            yield {
-                                "type": "episode_log",
-                                "messages": self.latest_epilog
-                            }
-                            last_epilog_hash = current_hash
+                        # Yield the message
+                        yield message
+                        self.message_queue.task_done()
+                        logger.debug(f"[{self.connection_id}] Yielded message: {message.get('type')}")
+                        
+                    except asyncio.TimeoutError:
+                        # No message available, check if simulation task is done
+                        if simulation_task and simulation_task.done():
+                            # Check if the task raised an exception
+                            exception = simulation_task.exception()
+                            if exception:
+                                logger.error(f"[{self.connection_id}] Simulation task failed: {exception}")
+                                
+                            # Don't stop yet - there might still be messages in Redis
+                            logger.info(f"[{self.connection_id}] Simulation task completed, waiting for final messages")
                             
-                    # Short delay between checks
-                    await asyncio.sleep(epilog_check_interval)
-                        
-                except asyncio.CancelledError:
-                    # Simulation was cancelled
-                    logger.info("Simulation cancelled")
-                    break
+                            # Check if the message queue is empty and remain for a few more cycles
+                            if self.message_queue.empty():
+                                # After 5 more attempts with empty queue, exit
+                                await asyncio.sleep(1)
+                                if self.message_queue.empty():
+                                    logger.info(f"[{self.connection_id}] No more messages, stopping arun generator")
+                                    break
+                    
+            except asyncio.CancelledError:
+                logger.info(f"[{self.connection_id}] Arun generator cancelled")
+                self.stop_simulation = True
                 
         except Exception as e:
-            logger.error(f"Error in simulation: {e}")
+            logger.error(f"[{self.connection_id}] Error in arun generator: {e}")
+            
         finally:
             # Clean up resources
+            logger.info(f"[{self.connection_id}] Cleaning up resources")
+            self.stop_simulation = True
+            
+            # Cancel simulation task if running
+            if simulation_task and not simulation_task.done():
+                simulation_task.cancel()
+                try:
+                    await simulation_task
+                except asyncio.CancelledError:
+                    pass
+                logger.info(f"[{self.connection_id}] Cancelled simulation task")
+            
+            # Clean up Redis resources
             if self.redis_pubsub:
-                await self.redis_pubsub.unsubscribe(self.epilog_channel)
+                try:
+                    await self.redis_pubsub.unsubscribe(self.epilog_channel)
+                    logger.info(f"[{self.connection_id}] Unsubscribed from Redis channel")
+                except Exception as e:
+                    logger.error(f"[{self.connection_id}] Error unsubscribing from Redis channel: {e}")
             
             # Unregister from RedisAgent
             if self.redis_client:
@@ -614,10 +637,15 @@ class WebSocketSotopiaSimulator:
                         "type": "unregister",
                         "connection_id": self.connection_id
                     })
-                except Exception:
-                    pass
-                    
-                await self.redis_client.close()
+                    logger.info(f"[{self.connection_id}] Unregistered from RedisAgent")
+                except Exception as e:
+                    logger.error(f"[{self.connection_id}] Error unregistering from RedisAgent: {e}")
+                
+                try:
+                    await self.redis_client.close()
+                    logger.info(f"[{self.connection_id}] Closed Redis connection")
+                except Exception as e:
+                    logger.error(f"[{self.connection_id}] Error closing Redis connection: {e}")
             
             # Cancel subscriber task
             if self.redis_subscriber_task and not self.redis_subscriber_task.done():
@@ -626,3 +654,4 @@ class WebSocketSotopiaSimulator:
                     await self.redis_subscriber_task
                 except asyncio.CancelledError:
                     pass
+                logger.info(f"[{self.connection_id}] Cancelled Redis subscriber task")

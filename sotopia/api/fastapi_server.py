@@ -286,30 +286,9 @@ class SimulationManager:
         self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
     ) -> None:
         """Run the simulation and process client messages"""
-        pubsub = None
-        redis_client = None
-        
         try:
-            # Setup Redis connection for epilog monitoring
-            redis_client = redis.asyncio.Redis(
-                host=self.redis_host, 
-                port=self.redis_port, 
-                db=self.redis_db
-            )
-            
-            # Subscribe to epilog channel for this connection
-            pubsub = redis_client.pubsub()
-            epilog_channel = f"epilog:{simulator.connection_id}"
-            
-            try:
-                await pubsub.subscribe(epilog_channel)
-                logger.info(f"Subscribed to Redis channel for epilog updates: {epilog_channel}")
-            except Exception as e:
-                logger.error(f"Error subscribing to channel {epilog_channel}: {e}")
-                # Continue execution even if subscribe fails
-            
-            # Start the simulation
-            sim_task = asyncio.create_task(self._process_simulation(websocket, simulator, pubsub))
+            # Start the simulation tasks
+            sim_task = asyncio.create_task(self._process_simulation(websocket, simulator, None))
             client_task = asyncio.create_task(self._process_client_messages(websocket, simulator))
             
             # Wait for either task to complete
@@ -331,39 +310,21 @@ class SimulationManager:
             logger.error(msg)
             await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
         finally:
-            # Clean up Redis resources safely
-            if pubsub is not None:
-                try:
-                    await pubsub.unsubscribe(epilog_channel)
-                except Exception as e:
-                    logger.error(f"Error unsubscribing from channel {epilog_channel}: {e}")
-            
-            if redis_client is not None:
-                try:
-                    await redis_client.close()
-                except Exception as e:
-                    logger.error(f"Error closing Redis client: {e}")
-            
             # Always send END_SIM message
             await self.send_message(websocket, WSMessageType.END_SIM, {})
     
-    async def _process_simulation(
-        self, 
-        websocket: WebSocket, 
-        simulator: WebSocketSotopiaSimulator,
-        pubsub: redis.asyncio.client.PubSub
+    async def run_simulation(
+        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
     ) -> None:
-        """Process simulation messages from both simulator and Redis"""
+        """Run the simulation and process client messages"""
         try:
-            # Start a task for simulator-generated epilog updates
-            sim_epilog_task = asyncio.create_task(self._process_simulator_epilogs(websocket, simulator))
-            
-            # Start a task for Redis epilog updates (directly from RedisAgent)
-            # redis_epilog_task = asyncio.create_task(self._process_redis_epilogs(websocket, pubsub))
+            # Start the simulation tasks
+            sim_task = asyncio.create_task(self._process_simulation(websocket, simulator, None))
+            client_task = asyncio.create_task(self._process_client_messages(websocket, simulator))
             
             # Wait for either task to complete
             done, pending = await asyncio.wait(
-                [sim_epilog_task],
+                [sim_task, client_task],
                 return_when=asyncio.FIRST_COMPLETED
             )
             
@@ -376,8 +337,12 @@ class SimulationManager:
                     pass
                 
         except Exception as e:
-            logger.error(f"Error in simulation processing: {e}")
-            raise
+            msg = f"Error running simulation: {e}"
+            logger.error(msg)
+            await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
+        finally:
+            # Always send END_SIM message
+            await self.send_message(websocket, WSMessageType.END_SIM, {})
     
     async def _process_simulator_epilogs(self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator) -> None:
         """Process epilog updates from the simulator"""
@@ -1000,15 +965,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
         sim_data = start_msg.get("data", {})
         env_id = sim_data.get("env_id", "")
         agent_ids = sim_data.get("agent_ids", [])
-        
-        # if not env_id or not agent_ids:
-        #     await manager.send_error(
-        #         websocket,
-        #         ErrorType.INVALID_MESSAGE,
-        #         "START_SIM message must include env_id and agent_ids"
-        #     )
-        #     await websocket.close(code=1008)
-        #     return
 
         # Create and run the simulation
         async with manager.state.start_simulation(token):

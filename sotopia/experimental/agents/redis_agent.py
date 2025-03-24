@@ -3,6 +3,7 @@ import json
 import asyncio
 import sys
 import hashlib
+import copy
 from rich.logging import RichHandler
 
 import aiohttp
@@ -67,6 +68,8 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         
         # Track active connections by their IDs
         self.active_connections: Set[str] = set()
+        # Maps connection IDs to agent names - populated from simulation parameters
+        self.connection_to_agent: Dict[str, str] = {}
         
         # Attributes for group and mode support
         self.groups: Dict[str, List[str]] = {}  # Dictionary mapping group names to lists of agent names
@@ -113,15 +116,23 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         channel = message["channel"].decode()
                         connection_id = channel.replace(self.command_channel_prefix, "")
                         
-                        # Add to active connections if not already there
-                        if connection_id not in self.active_connections:
-                            self.active_connections.add(connection_id)
-                            logger.info(f"New connection tracked: {connection_id}")
-                        
                         # Process the command
                         try:
                             command_data = json.loads(message["data"].decode())
                             logger.info(f"Received command from {connection_id}: {command_data.get('type', 'unknown')}")
+                            
+                            # Process simulation parameters for agent mapping
+                            if command_data.get("type") == "register":
+                                # Register the connection
+                                await self.register_connection(connection_id)
+                                
+                                # Map connection to agent if agent_ids are provided
+                                if "agent_ids" in command_data:
+                                    agent_ids = command_data["agent_ids"]
+                                    if agent_ids and len(agent_ids) > 0:
+                                        # Assume the first agent ID is the one this connection represents
+                                        self.connection_to_agent[connection_id] = agent_ids[0]
+                                        logger.info(f"Mapped connection {connection_id} to agent {agent_ids[0]}")
                             
                             # Process the command
                             action = await self.process_command(command_data, connection_id)
@@ -150,17 +161,108 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
 
     async def register_connection(self, connection_id: str) -> None:
         """Register a new connection"""
-        if connection_id not in self.active_connections:
-            self.active_connections.add(connection_id)
-            logger.info(f"Registered new connection: {connection_id}")
+        self.active_connections.add(connection_id)
+        logger.info(f"Registered new connection: {connection_id}")
 
     async def unregister_connection(self, connection_id: str) -> None:
         """Unregister a connection"""
         if connection_id in self.active_connections:
             self.active_connections.remove(connection_id)
+            if connection_id in self.connection_to_agent:
+                del self.connection_to_agent[connection_id]
             if connection_id in self.last_epilog_hash:
                 del self.last_epilog_hash[connection_id]
             logger.info(f"Unregistered connection: {connection_id}")
+
+    def filter_epilog_for_recipient(self, epilog_data: Dict, recipient: str) -> Dict:
+        """
+        Filter epilog data to only include messages relevant to a specific recipient.
+        
+        Args:
+            epilog_data: The complete epilog data
+            recipient: The name of the recipient agent or user
+            
+        Returns:
+            Dict: Filtered epilog data
+        """
+        # Create a deep copy of the epilog to avoid modifying the original
+        filtered_epilog = copy.deepcopy(epilog_data)
+        
+        if "messages" in filtered_epilog:
+            # New list to hold filtered messages
+            filtered_messages = []
+            
+            # Process each turn's messages
+            for turn in filtered_epilog["messages"]:
+                filtered_turn = []
+                
+                for message in turn:
+                    # Extract message components based on the message format
+                    # Message format can be either a tuple (sender, receiver, content) or a dict
+                    try:
+                        if isinstance(message, list):
+                            sender = message[0]
+                            receiver = message[1]
+                            content = message[2]
+                        else:
+                            sender = message.get("sender", "")
+                            receiver = message.get("receiver", "")
+                            content = message.get("content", "")
+                        
+                        # Parse the content as JSON if it's a string and might be JSON format
+                        message_data = {}
+                        try:
+                            if isinstance(content, str):
+                                message_data = json.loads(content)
+                        except (json.JSONDecodeError, TypeError):
+                            # Not JSON or invalid, use empty dict
+                            message_data = {}
+                        
+                        # Get targeting information
+                        context = message_data.get("context", "regular")
+                        target_agents = message_data.get("target_agents", [])
+                        target_groups = message_data.get("target_groups", [])
+                        
+                        # Logic to determine if this message should be visible to this recipient
+                        should_include = False
+                        
+                        # Messages from the recipient are always visible to them
+                        if sender == recipient:
+                            should_include = True
+                        # Messages targeting the recipient directly
+                        elif recipient in target_agents:
+                            should_include = True
+                        # Messages mentioning the recipient in the receiver field
+                        elif receiver.endswith(recipient) or receiver == recipient:
+                            should_include = True
+                        # Messages to groups the recipient is in
+                        elif any(recipient in self.groups.get(group, []) for group in target_groups):
+                            should_include = True
+                        # Broadcast messages are visible to everyone
+                        elif context == "broadcast" or receiver == "Broadcast":
+                            should_include = True
+                        # Environment messages are visible to everyone
+                        elif sender == "Environment" or receiver == "Environment":
+                            should_include = True
+                        # System messages are visible to everyone
+                        elif context == "system":
+                            should_include = True
+                        
+                        if should_include:
+                            filtered_turn.append(message)
+                    except Exception as e:
+                        logger.error(f"Error filtering message: {e}")
+                        # Include the message if we can't properly filter it
+                        filtered_turn.append(message)
+                
+                # Only add the turn if it has messages
+                if filtered_turn:
+                    filtered_messages.append(filtered_turn)
+            
+            # Replace the original messages with filtered ones
+            filtered_epilog["messages"] = filtered_messages
+        
+        return filtered_epilog
 
     async def process_command(self, command_data: dict, connection_id: str) -> AgentAction | None:
         """
@@ -176,7 +278,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         try:
             # Handle registration/unregistration
             if command_data.get("type") == "register":
-                await self.register_connection(connection_id)
+                # Registration is now handled in the command listener
                 return None
                 
             if command_data.get("type") == "unregister":
@@ -224,8 +326,14 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     # Extract content from either direct or nested message
                     content = command_data.get("content", "") or command_data.get("message", {}).get("content", "")
                     
+                    # Get sender - use the agent associated with this connection if available
+                    sender = self.connection_to_agent.get(connection_id, self.external_user_id)
+                    if "sender" in command_data:
+                        sender = command_data["sender"]
+                    elif "message" in command_data and "sender" in command_data["message"]:
+                        sender = command_data["message"]["sender"]
+                    
                     # Get target information
-                    sender = command_data.get("sender", self.external_user_id)
                     target_agents = command_data.get("target_agents", []) or command_data.get("message", {}).get("target_agents", [])
                     target_groups = command_data.get("target_groups", []) or command_data.get("message", {}).get("target_groups", [])
                     
@@ -312,7 +420,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
     async def publish_observation(self, obs: Observation) -> None:
         """
         Publish observation to Redis channels.
-        Only publishes epilog updates to avoid redundancy.
+        Filters epilog content based on intended recipients in group mode.
         """
         # Handle epilog observations - these contain the complete conversation state
         if obs.agent_name == "epilog":
@@ -323,25 +431,53 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 # Generate a hash of the epilog to avoid sending duplicates
                 epilog_hash = hashlib.md5(obs.last_turn.encode()).hexdigest()
                 
-                # Format the message
-                formatted_message = json.dumps({
-                    "type": "SERVER_MSG",
-                    "data": {
-                        "type": "episode_log",
-                        "log": epilog_data
-                    }
-                })
-                
-                # Publish to each active connection's epilog channel, checking for duplicates
-                for connection_id in self.active_connections:
-                    last_hash = self.last_epilog_hash.get(connection_id)
+                # In group mode, filter messages for each connection
+                if self.mode == "group":
+                    # For each active connection, create a filtered version of the epilog
+                    for connection_id in self.active_connections:
+                        last_hash = self.last_epilog_hash.get(connection_id)
+                        
+                        # Only process if it's a new epilog for this connection
+                        if last_hash != epilog_hash:
+                            # Determine which agent this connection represents
+                            recipient = self.connection_to_agent.get(connection_id, self.external_user_id)
+                            
+                            # Create a filtered copy of the epilog
+                            filtered_epilog = self.filter_epilog_for_recipient(epilog_data, recipient)
+                            
+                            # Format and send the filtered epilog
+                            filtered_message = json.dumps({
+                                "type": "SERVER_MSG",
+                                "data": {
+                                    "type": "episode_log",
+                                    "log": filtered_epilog
+                                }
+                            })
+                            
+                            channel = f"{self.epilog_channel_prefix}{connection_id}"
+                            await self.r.publish(channel, filtered_message)
+                            logger.info(f"Published filtered epilog update to {channel}")
+                            self.last_epilog_hash[connection_id] = epilog_hash
+                else:
+                    # In full mode, send the complete epilog to everyone
+                    formatted_message = json.dumps({
+                        "type": "SERVER_MSG",
+                        "data": {
+                            "type": "episode_log",
+                            "log": epilog_data
+                        }
+                    })
                     
-                    # Only publish if it's a new epilog for this connection
-                    if last_hash != epilog_hash:
-                        channel = f"{self.epilog_channel_prefix}{connection_id}"
-                        await self.r.publish(channel, formatted_message)
-                        logger.info(f"Published epilog update to {channel}")
-                        self.last_epilog_hash[connection_id] = epilog_hash
+                    # Publish to each active connection's epilog channel
+                    for connection_id in self.active_connections:
+                        last_hash = self.last_epilog_hash.get(connection_id)
+                        
+                        # Only publish if it's a new epilog for this connection
+                        if last_hash != epilog_hash:
+                            channel = f"{self.epilog_channel_prefix}{connection_id}"
+                            await self.r.publish(channel, formatted_message)
+                            logger.info(f"Published epilog update to {channel}")
+                            self.last_epilog_hash[connection_id] = epilog_hash
                 
             except json.JSONDecodeError:
                 logger.error(f"Failed to parse epilog data: {obs.last_turn}")

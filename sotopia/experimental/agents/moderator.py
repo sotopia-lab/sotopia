@@ -419,50 +419,52 @@ class Moderator(Node[AgentAction, Observation]):
                 # Group message
                 for group_name in original_target_groups:
                     if group_name in self.groups:
-                        # Create message content with context information
-                        message_content = json.dumps({
+                        # Create complete message data with all metadata
+                        message_data = {
                             "content": content,
                             "context": context,
                             "target_agents": original_target_agents,
                             "target_groups": original_target_groups,
                             "is_response": is_response
-                        })
+                        }
                         
                         # Add to epilog
                         receiver = f"Group:{group_name}"
                         self.epilog.messages.append([
-                            (sender, receiver, message_content)
+                            (sender, receiver, json.dumps(message_data))
                         ])
             
             elif original_target_agents:
                 # Individual message
                 for target_agent in original_target_agents:
-                    # Create message content with context information
-                    message_content = json.dumps({
+                    # Create complete message data with all metadata
+                    message_data = {
                         "content": content,
                         "context": "individual",
                         "target_agents": [target_agent],
+                        "target_groups": [],
                         "is_response": is_response
-                    })
+                    }
                     
                     # Add to epilog
                     receiver = f"Agent:{target_agent}"
                     self.epilog.messages.append([
-                        (sender, receiver, message_content)
+                        (sender, receiver, json.dumps(message_data))
                     ])
             
             elif context == "broadcast":
                 # Broadcast message
-                message_content = json.dumps({
+                message_data = {
                     "content": content,
                     "context": "broadcast",
                     "target_agents": self.agents,
+                    "target_groups": [],
                     "is_response": is_response
-                })
+                }
                 
                 # Add to epilog
                 self.epilog.messages.append([
-                    (sender, "Broadcast", message_content)
+                    (sender, "Broadcast", json.dumps(message_data))
                 ])
             
             elif context == "response":
@@ -470,18 +472,20 @@ class Moderator(Node[AgentAction, Observation]):
                 responding_to = message_data.get("responding_to", {})
                 original_sender = responding_to.get("sender", "unknown")
                 
-                # Create message content with context information
-                message_content = json.dumps({
+                # Create complete message data with all metadata
+                message_data = {
                     "content": content,
                     "context": "response",
+                    "target_agents": [original_sender],
+                    "target_groups": [],
                     "responding_to": responding_to,
                     "is_response": True
-                })
+                }
                 
                 # Add to epilog
                 receiver = f"Response:{original_sender}"
                 self.epilog.messages.append([
-                    (sender, receiver, message_content)
+                    (sender, receiver, json.dumps(message_data))
                 ])
             
             # Increment turn counter for new messages
