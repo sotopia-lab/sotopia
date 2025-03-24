@@ -292,7 +292,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 return AgentAction(
                     agent_name=self.node_name,
                     output_channel=self.output_channel,
-                    action_type="set_mode",
+                    action_type="none",
                     argument=json.dumps({"mode": self.mode}),
                 )
             
@@ -303,7 +303,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 return AgentAction(
                     agent_name=self.node_name,
                     output_channel=self.output_channel,
-                    action_type="setup_groups",
+                    action_type="none",
                     argument=json.dumps({"groups": self.groups}),
                 )
             
@@ -369,8 +369,9 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     return AgentAction(
                         agent_name=sender,
                         output_channel=self.output_channel,
-                        action_type="unified_message",
+                        action_type="speak",  # Using a valid action type
                         argument=json.dumps({
+                            "action_metadata": "unified_message",  # Add a flag inside the argument instead
                             "content": content,
                             "target_agents": list(expanded_agents),
                             "original_target_agents": target_agents,
@@ -401,12 +402,13 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
             original_sender = self.message_senders.get(obs.agent_name)
             
             if original_sender:
-                # Create unified message action for the response
+                # Create unified message action for the response, using a valid action type
                 return AgentAction(
                     agent_name=obs.agent_name,
                     output_channel=self.output_channel,
-                    action_type="unified_message",
+                    action_type="speak",  # Valid action type
                     argument=json.dumps({
+                        "action_metadata": "unified_message",  # Flag for special handling
                         "content": obs.last_turn,
                         "target_agents": [original_sender],  # Send back to original sender
                         "original_target_agents": [original_sender],
@@ -420,65 +422,34 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
     async def publish_observation(self, obs: Observation) -> None:
         """
         Publish observation to Redis channels.
-        Filters epilog content based on intended recipients in group mode.
+        Simply forwards epilog updates to external connections.
         """
         # Handle epilog observations - these contain the complete conversation state
         if obs.agent_name == "epilog":
             try:
                 # Parse the epilog data
                 epilog_data = json.loads(obs.last_turn)
-                
+
                 # Generate a hash of the epilog to avoid sending duplicates
                 epilog_hash = hashlib.md5(obs.last_turn.encode()).hexdigest()
-                
-                # In group mode, filter messages for each connection
-                if self.mode == "group":
-                    # For each active connection, create a filtered version of the epilog
-                    for connection_id in self.active_connections:
-                        last_hash = self.last_epilog_hash.get(connection_id)
-                        
-                        # Only process if it's a new epilog for this connection
-                        if last_hash != epilog_hash:
-                            # Determine which agent this connection represents
-                            recipient = self.connection_to_agent.get(connection_id, self.external_user_id)
-                            
-                            # Create a filtered copy of the epilog
-                            filtered_epilog = self.filter_epilog_for_recipient(epilog_data, recipient)
-                            
-                            # Format and send the filtered epilog
-                            filtered_message = json.dumps({
-                                "type": "SERVER_MSG",
-                                "data": {
-                                    "type": "episode_log",
-                                    "log": filtered_epilog
-                                }
-                            })
-                            
-                            channel = f"{self.epilog_channel_prefix}{connection_id}"
-                            await self.r.publish(channel, filtered_message)
-                            logger.info(f"Published filtered epilog update to {channel}")
-                            self.last_epilog_hash[connection_id] = epilog_hash
-                else:
-                    # In full mode, send the complete epilog to everyone
-                    formatted_message = json.dumps({
-                        "type": "SERVER_MSG",
-                        "data": {
-                            "type": "episode_log",
-                            "log": epilog_data
-                        }
-                    })
-                    
-                    # Publish to each active connection's epilog channel
-                    for connection_id in self.active_connections:
-                        last_hash = self.last_epilog_hash.get(connection_id)
-                        
-                        # Only publish if it's a new epilog for this connection
-                        if last_hash != epilog_hash:
-                            channel = f"{self.epilog_channel_prefix}{connection_id}"
-                            await self.r.publish(channel, formatted_message)
-                            logger.info(f"Published epilog update to {channel}")
-                            self.last_epilog_hash[connection_id] = epilog_hash
-                
+
+                # Send the complete epilog to external connections - no filtering
+                formatted_message = json.dumps({
+                    "type": "SERVER_MSG",
+                    "data": {"type": "episode_log", "log": epilog_data},
+                })
+
+                # Publish to each active connection's epilog channel
+                for connection_id in self.active_connections:
+                    last_hash = self.last_epilog_hash.get(connection_id)
+
+                    # Only publish if it's a new epilog for this connection
+                    if last_hash != epilog_hash:
+                        channel = f"{self.epilog_channel_prefix}{connection_id}"
+                        await self.r.publish(channel, formatted_message)
+                        logger.info(f"Published epilog update to {channel}")
+                        self.last_epilog_hash[connection_id] = epilog_hash
+
             except json.JSONDecodeError:
                 logger.error(f"Failed to parse epilog data: {obs.last_turn}")
             except Exception as e:

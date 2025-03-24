@@ -174,46 +174,6 @@ class BaseEpisodeLog(BaseModel):
             "messages": formatted_messages,
             "groups": self.groups
         }
-    
-    def add_message(self, sender: str, receiver: str, content: str, 
-                    context: str = "", target_agents: List[str] = None,
-                    target_groups: List[str] = None, responding_to: Dict = None) -> None:
-        """
-        Add a message to the episode log with proper context
-        
-        Args:
-            sender: The agent sending the message
-            receiver: The receiving agent or group
-            content: The message content
-            context: Message context type ("group", "individual", "broadcast", "response")
-            target_agents: List of targeted agent names
-            target_groups: List of targeted group names
-            responding_to: Context information about what this message is responding to
-        """
-        if target_agents is None:
-            target_agents = []
-        if target_groups is None:
-            target_groups = []
-        
-        # Create message context
-        message_data = {
-            "content": content,
-            "context": context or "regular",
-            "target_agents": target_agents,
-            "target_groups": target_groups
-        }
-        
-        # Add response context if available
-        if responding_to:
-            message_data["responding_to"] = responding_to
-        
-        # Add to current turn or create new turn
-        message_tuple = (sender, receiver, json.dumps(message_data))
-        
-        if not self.messages:
-            self.messages = [[message_tuple]]
-        else:
-            self.messages[-1].append(message_tuple)
 
 class EpisodeLog(BaseEpisodeLog, JsonModel):
     """Redis-compatible episode log with enhanced message context support"""

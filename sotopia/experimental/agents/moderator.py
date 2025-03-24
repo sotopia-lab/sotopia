@@ -390,8 +390,22 @@ class Moderator(Node[AgentAction, Observation]):
             Observations: Observations to send to agents
         """
         try:
-            # Parse the message data
-            message_data = json.loads(agent_action.argument)
+            # Parse the message data - now checking for the metadata structure
+            arg_data = json.loads(agent_action.argument)
+            
+            # Check if this is a unified message via metadata
+            is_unified = False
+            if isinstance(arg_data, dict):
+                is_unified = arg_data.get("action_metadata") == "unified_message"
+            
+            # Extract message data - different paths based on format
+            if is_unified:
+                # New format with metadata
+                message_data = arg_data
+            else:
+                # Original format - direct unified message
+                message_data = arg_data
+            
             sender = agent_action.agent_name
             content = message_data.get("content", "")
             target_agents = message_data.get("target_agents", [])
@@ -525,6 +539,9 @@ class Moderator(Node[AgentAction, Observation]):
 
     async def astep(self, agent_action: AgentAction) -> Observations | None:
         """Process an agent action step"""
+        # Track the intended recipients for privacy control
+        intended_recipients = []
+        
         # Handle setup_groups action
         if agent_action.action_type == "setup_groups":
             try:
@@ -534,7 +551,7 @@ class Moderator(Node[AgentAction, Observation]):
             except Exception as e:
                 print(f"Error setting up groups: {e}")
                 return None
-        
+
         # Handle set_mode action
         if agent_action.action_type == "set_mode":
             try:
@@ -544,19 +561,28 @@ class Moderator(Node[AgentAction, Observation]):
             except Exception as e:
                 print(f"Error setting mode: {e}")
                 return None
-                
-        # Handle unified_message action
+
+        # Handle unified_message action - this already has privacy controls built in
         if agent_action.action_type == "unified_message":
+            try:
+                # Extract target_agents from unified message
+                message_data = json.loads(agent_action.argument)
+                intended_recipients = message_data.get("target_agents", [])
+            except Exception:
+                pass
             return await self.handle_unified_message(agent_action)
-        
+
         # Handle responses based on message sender info in group mode
         if self.mode == "group" and agent_action.action_type == "speak":
             agent_name = agent_action.agent_name
             content = agent_action.argument
-            
+
             # Check if this agent has a known sender (it's responding to a message)
             original_sender = self.message_senders.get(agent_name)
             if original_sender:
+                # Track that this is intended only for the original sender
+                intended_recipients = [original_sender]
+                
                 # Create a unified message targeting the original sender
                 try:
                     return await self.handle_unified_message(AgentAction(
@@ -569,18 +595,19 @@ class Moderator(Node[AgentAction, Observation]):
                             "original_target_agents": [original_sender],
                             "original_target_groups": [],
                             "context": "response",
-                            "responding_to": {
-                                "sender": original_sender
-                            }
+                            "responding_to": {"sender": original_sender}
                         })
                     ))
                 except Exception as e:
                     print(f"Error converting speak to response message: {e}")
-            
+
             # Special handling for regular "speak" actions in group mode when no known sender
             # In group mode, regular speak actions are converted to unified messages
             # targeting all agents if no target is specified
             try:
+                # In this case, all agents are intended recipients
+                intended_recipients = self.agents.copy()
+                
                 # Create a unified message targeting all agents
                 return await self.handle_unified_message(AgentAction(
                     agent_name=agent_action.agent_name,
@@ -597,7 +624,7 @@ class Moderator(Node[AgentAction, Observation]):
             except Exception as e:
                 print(f"Error converting speak to unified message: {e}")
                 # Fall through to normal processing if conversion fails
-        
+
         # Original astep functionality for standard messages
         # Add message to epilog with proper format depending on mode
         if self.mode == "full" or agent_action.action_type != "speak":
@@ -645,18 +672,34 @@ class Moderator(Node[AgentAction, Observation]):
                 }
             )
 
-        # Create observations for next round
+        # Create observations for next round - WITH PRIVACY CONTROLS
         observations_map: dict[str, Observation] = {}
+        sender_name = agent_action.agent_name
+        
+        # In full mode, everyone sees everything
+        if self.mode == "full":
+            intended_recipients = self.agents.copy()
+        
+        # Add the sender to intended recipients (they should see their own message)
+        if sender_name not in intended_recipients:
+            intended_recipients.append(sender_name)
+        
         for output_channel, _ in self.output_channel_types.items():
             agent_name = self.agent_mapping[output_channel]
             available_actions = ["none"]
+            
             if self.action_order == "round-robin":
                 if agent_name == self.agents[self.current_agent_index]:
                     available_actions = list(self.available_actions)
                     print(f"available_actions: {available_actions}")
+            
+            # Only include the message content for intended recipients
+            is_recipient = agent_name in intended_recipients
+            message_content = agent_action.to_natural_language() if is_recipient else ""
+            
             observation = Observation(
-                agent_name=agent_name,
-                last_turn=agent_action.to_natural_language(),
+                agent_name=sender_name,
+                last_turn=message_content,  # Empty string for non-recipients
                 turn_number=self.turn_number,
                 available_actions=available_actions,
             )
