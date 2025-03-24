@@ -6,7 +6,7 @@ import pytest
 import json
 import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
-
+from sotopia.experimental.agents import RedisAgent
 # Import the necessary components
 from sotopia.api.websocket_utils import WebSocketSotopiaSimulator
 

@@ -246,7 +246,6 @@ async def test_handle_unified_message_direct_targeting(
         message_data = json.loads(action.argument)
         content = message_data.get("content", "")
         target_agents = message_data.get("target_agents", [])
-        context = message_data.get("context", "")
 
         # Add message to epilog
         test_moderator.epilog.messages.append(
@@ -289,7 +288,7 @@ async def test_handle_unified_message_direct_targeting(
     )
 
     # Call the method
-    result = await test_moderator.handle_unified_message(action)
+    _ = await test_moderator.handle_unified_message(action)
 
     # Verify epilog was updated
     assert len(test_moderator.epilog.messages) > 0
@@ -360,7 +359,7 @@ async def test_handle_unified_message_group_targeting(
     )
 
     # Call the method
-    result = await test_moderator.handle_unified_message(action)
+    _ = await test_moderator.handle_unified_message(action)
 
     # Verify epilog was updated with group info
     assert len(test_moderator.epilog.messages) > 0
@@ -393,7 +392,6 @@ async def test_handle_unified_message_broadcast(test_moderator, mock_observation
         message_data = json.loads(action.argument)
         content = message_data.get("content", "")
         target_agents = message_data.get("target_agents", [])
-        context = message_data.get("context", "")
 
         # Add message to epilog
         test_moderator.epilog.messages.append(
@@ -436,7 +434,7 @@ async def test_handle_unified_message_broadcast(test_moderator, mock_observation
     )
 
     # Call the method
-    result = await test_moderator.handle_unified_message(action)
+    _ = await test_moderator.handle_unified_message(action)
 
     # Verify epilog was updated with broadcast info
     assert len(test_moderator.epilog.messages) > 0
@@ -503,7 +501,7 @@ async def test_handle_unified_message_response(test_moderator, mock_observations
     )
 
     # Call the method
-    result = await test_moderator.handle_unified_message(action)
+    _ = await test_moderator.handle_unified_message(action)
 
     # Verify epilog was updated with response info
     assert len(test_moderator.epilog.messages) > 0

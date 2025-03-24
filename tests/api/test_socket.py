@@ -214,15 +214,6 @@ async def test_simulation_manager_create_simulator():
         # Create SimulationManager
         manager = SimulationManager()
 
-        # Call create_simulator
-        simulator = await manager.create_simulator(
-            env_id="test_env",
-            agent_ids=["agent1", "agent2"],
-            agent_models=["gpt-4o-mini", "gpt-4o-mini"],
-            evaluator_model="gpt-4o",
-            max_turns=10,
-        )
-
         # Verify simulator was created with correct parameters
         mock_simulator_class.assert_called_once()
         call_kwargs = mock_simulator_class.call_args[1]
@@ -285,7 +276,6 @@ async def test_simulation_manager_run_simulation():
     manager.send_error = AsyncMock()
 
     # Explicitly mock the send_message method
-    original_send_message = manager.send_message
     manager.send_message = AsyncMock()
 
     # Patch Redis constructor to return our mock

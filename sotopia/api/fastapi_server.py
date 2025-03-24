@@ -331,40 +331,6 @@ class SimulationManager:
             # Always send END_SIM message
             await self.send_message(websocket, WSMessageType.END_SIM, {})
 
-    async def run_simulation(
-        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
-    ) -> None:
-        """Run the simulation and process client messages"""
-        try:
-            # Start the simulation tasks
-            sim_task = asyncio.create_task(
-                self._process_simulation(websocket, simulator, None)
-            )
-            client_task = asyncio.create_task(
-                self._process_client_messages(websocket, simulator)
-            )
-
-            # Wait for either task to complete
-            done, pending = await asyncio.wait(
-                [sim_task, client_task], return_when=asyncio.FIRST_COMPLETED
-            )
-
-            # Cancel the remaining task
-            for task in pending:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
-        except Exception as e:
-            msg = f"Error running simulation: {e}"
-            logger.error(msg)
-            await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
-        finally:
-            # Always send END_SIM message
-            await self.send_message(websocket, WSMessageType.END_SIM, {})
-
     async def _process_simulator_epilogs(
         self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
     ) -> None:
