@@ -211,9 +211,6 @@ async def test_simulation_manager_create_simulator():
         mock_simulator = AsyncMock(spec=WebSocketSotopiaSimulator)
         mock_simulator_class.return_value = mock_simulator
 
-        # Create SimulationManager
-        manager = SimulationManager()
-
         # Verify simulator was created with correct parameters
         mock_simulator_class.assert_called_once()
         call_kwargs = mock_simulator_class.call_args[1]

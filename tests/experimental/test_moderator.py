@@ -391,7 +391,6 @@ async def test_handle_unified_message_broadcast(test_moderator, mock_observation
         # Parse the action argument
         message_data = json.loads(action.argument)
         content = message_data.get("content", "")
-        target_agents = message_data.get("target_agents", [])
 
         # Add message to epilog
         test_moderator.epilog.messages.append(
