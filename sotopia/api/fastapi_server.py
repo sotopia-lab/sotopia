@@ -135,7 +135,24 @@ class SimulationManager:
         self.redis_port = redis_port
         self.redis_db = redis_db
         self.redis_url = f"redis://{redis_host}:{redis_port}/{redis_db}"
+        
+    async def _process_simulation(self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator, redis_pubsub=None) -> None:
+        """
+        Process the simulation by running either the simulator epilogs or redis epilogs
 
+        Args:
+            websocket: The WebSocket connection
+            simulator: The simulation manager
+            redis_pubsub: Optional Redis pubsub for direct Redis message processing
+        """
+        try:
+            # Use the simulator's built-in arun generator to get messages
+            async for message in simulator.arun():
+                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
+                
+        except Exception as e:
+            logger.error(f"Error in simulation processor: {e}")
+            raise
     async def verify_token(self, token: str) -> Dict[str, Any]:
         """
         Verify if the token is valid for simulation

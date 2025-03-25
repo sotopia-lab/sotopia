@@ -539,34 +539,46 @@ class WebSocketSotopiaSimulator:
 
     async def _run_standard_simulation(self) -> None:
         """
-        Run a standard simulation using arun_one_episode.
-        This doesn't yield messages directly - it sends them through Redis.
+        Run a standard simulation using the new arun_one_episode function.
+        This is more efficient than the previous implementation.
         """
         logger.info(f"[{self.connection_id}] Starting standard simulation")
         try:
-            # Start the simulation
-            generator = await arun_one_episode(
-                env=self.env,
-                agent_list=list(self.agents.values()),
-                push_to_db=False,
-                streaming=True,
-            )
-
-            # Process each simulation step
-            async for _ in generator:
-                # The Redis subscriber will handle epilog updates
-                # Just continue with the simulation
-                if self.stop_simulation:
-                    logger.info(
-                        f"[{self.connection_id}] Simulation stopped during processing"
-                    )
-                    break
-
-            logger.info(
-                f"[{self.connection_id}] Standard simulation completed successfully"
-            )
+            # Create the episode config for the new arun_one_episode
+            episode_config = {
+                "environment": {
+                    "id": self.env_id,
+                    "scenario": self.env_profile.scenario if hasattr(self, "env_profile") else "",
+                    "agent_goals": self.env_profile.agent_goals if hasattr(self, "env_profile") else [],
+                },
+                "agents": [
+                    {
+                        "name": agent.agent_name if hasattr(agent, "agent_name") else f"agent_{i}",
+                        "id": self.agent_ids[i] if i < len(self.agent_ids) else "",
+                        "model": self.agent_models[i] if i < len(self.agent_models) else "gpt-4o-mini",
+                    }
+                    for i, agent in enumerate(self.agents.values()) if hasattr(self, "agents")
+                ],
+                "max_turns": self.max_turns,
+                "evaluator_model": self.evaluator_model,
+                "evaluation_dimension_list_name": self.evaluation_dimension_list_name,
+                "redis_url": self.redis_url,
+                "communication_mode": self.mode,  # Add the communication mode
+                "groups": self.groups,  # Add the groups configuration
+            }
+            
+            # Use the new arun_one_episode function
+            from sotopia.server import arun_one_episode
+            
+            async for message in arun_one_episode(episode_config, self.connection_id):
+                # Add the message to the queue to be processed by arun()
+                await self.message_queue.put({"type": "episode_log", "messages": message})
+                logger.info(f"[{self.connection_id}] Added episode log to message queue")
+                
+            logger.info(f"[{self.connection_id}] Standard simulation completed successfully")
         except Exception as e:
             logger.error(f"[{self.connection_id}] Error in standard simulation: {e}")
+            raise
 
     async def arun(self) -> AsyncGenerator[Dict[str, Any], None]:
         """
