@@ -4,7 +4,7 @@ import uuid
 
 ap1 = {
     "first_name": "Li",
-    "last_name": "Ming",
+    "last_name": "", 
     "age": 35,
     "occupation": "Database Team Project Manager",
     "gender": "Man",

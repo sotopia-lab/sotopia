@@ -140,7 +140,6 @@ class SimulationManager:
         self,
         websocket: WebSocket,
         simulator: WebSocketSotopiaSimulator,
-        redis_pubsub=None,
     ) -> None:
         """
         Process the simulation by running either the simulator epilogs or redis epilogs
@@ -148,13 +147,11 @@ class SimulationManager:
         Args:
             websocket: The WebSocket connection
             simulator: The simulation manager
-            redis_pubsub: Optional Redis pubsub for direct Redis message processing
         """
         try:
             # Use the simulator's built-in arun generator to get messages
             async for message in simulator.arun():
                 await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
-
         except Exception as e:
             logger.error(f"Error in simulation processor: {e}")
             raise
@@ -198,45 +195,12 @@ class SimulationManager:
                 logger.info("Client requested to finish simulation")
                 return True
 
-            # Handle mode switching
-            if "mode" in data:
-                mode = data["mode"]
-                if mode not in ["full", "group"]:
-                    await self.send_error(
-                        websocket,
-                        ErrorType.INVALID_MESSAGE,
-                        f"Invalid mode: {mode}. Must be 'full' or 'group'",
-                    )
-                    return False
-
-                logger.info(f"Setting communication mode to: {mode}")
-                await simulator.set_mode(mode)
-
-                # Acknowledge the mode change
-                await self.send_message(
-                    websocket,
-                    WSMessageType.SERVER_MSG,
-                    {"status": "mode_updated", "mode": mode},
-                )
-
-            # Handle group configuration
-            if "groups" in data:
-                logger.info(f"Setting up groups: {data['groups']}")
-                await simulator.set_groups(data["groups"])
-
-                # Acknowledge the groups configuration
-                await self.send_message(
-                    websocket,
-                    WSMessageType.SERVER_MSG,
-                    {"status": "groups_updated", "groups": data["groups"]},
-                )
-
-            # Handle messages
+            # Handle messages to talk to NPCs or group
             if msg_type == WSMessageType.CLIENT_MSG.value:
                 # Check if this is a message with content
                 if "message" in data or "content" in data:
                     # Get the mode (either from the message or use the current mode)
-                    mode = data.get("mode", simulator.mode)
+                    mode = simulator.mode
 
                     if mode == "full":
                         # In full mode, just forward the message
@@ -265,10 +229,6 @@ class SimulationManager:
                     else:  # group mode
                         # In group mode, we need target information
                         message_content = data.get("content", "")
-                        if "message" in data:
-                            message_content = data["message"].get(
-                                "content", message_content
-                            )
 
                         if not message_content:
                             await self.send_error(
@@ -280,16 +240,8 @@ class SimulationManager:
 
                         # Check for target agents or groups
                         target_agents = data.get("target_agents", [])
-                        if "message" in data:
-                            target_agents = data["message"].get(
-                                "target_agents", target_agents
-                            )
 
                         target_groups = data.get("target_groups", [])
-                        if "message" in data:
-                            target_groups = data["message"].get(
-                                "target_groups", target_groups
-                            )
 
                         if not target_agents and not target_groups:
                             await self.send_error(
@@ -327,7 +279,7 @@ class SimulationManager:
         try:
             # Start the simulation tasks
             sim_task = asyncio.create_task(
-                self._process_simulation(websocket, simulator, None)
+                self._process_simulation(websocket, simulator)
             )
             client_task = asyncio.create_task(
                 self._process_client_messages(websocket, simulator)
@@ -353,51 +305,6 @@ class SimulationManager:
         finally:
             # Always send END_SIM message
             await self.send_message(websocket, WSMessageType.END_SIM, {})
-
-    async def _process_simulator_epilogs(
-        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
-    ) -> None:
-        """Process epilog updates from the simulator"""
-        try:
-            async for message in simulator.arun():
-                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
-        except Exception as e:
-            logger.error(f"Error processing simulator epilogs: {e}")
-            raise
-
-    async def _process_redis_epilogs(
-        self, websocket: WebSocket, pubsub: redis.asyncio.client.PubSub
-    ) -> None:
-        """Process epilog updates directly from Redis"""
-        try:
-            while True:
-                # Get the next message from Redis
-                message = await pubsub.get_message(ignore_subscribe_messages=True)
-
-                if message and message["type"] == "message":
-                    try:
-                        # Parse the message
-                        data = json.loads(message["data"].decode())
-
-                        # Forward SERVER_MSG epilog updates to the client
-                        if (
-                            data.get("type") == "SERVER_MSG"
-                            and data.get("data", {}).get("type") == "episode_log"
-                        ):
-                            await websocket.send_json(data)
-                    except json.JSONDecodeError:
-                        logger.error(
-                            f"Failed to parse Redis message: {message['data'][:100]}..."
-                        )
-                    except Exception as e:
-                        logger.error(f"Error processing Redis message: {e}")
-
-                # Short delay to avoid CPU spinning
-                await asyncio.sleep(0.01)
-
-        except Exception as e:
-            logger.error(f"Error in Redis epilog processor: {e}")
-            raise
 
     async def _process_client_messages(
         self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
@@ -1038,9 +945,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
                     agent_profile_dicts=sim_data.get("agent_profile_dicts", []),
                     max_turns=sim_data.get("max_turns", 20),
                 )
-
-                # Ensure simulator connects to Redis
-                await simulator.connect_to_redis()
 
                 # Configure groups and mode if provided in START_SIM
                 initial_mode = sim_data.get("mode", "full")
