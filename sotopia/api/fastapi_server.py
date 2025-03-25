@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import sys
 from typing import Any, Dict, List, Optional, Literal, cast
@@ -7,7 +6,6 @@ from contextlib import asynccontextmanager
 
 from redis_om import get_redis_connection
 import rq
-import redis.asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response

@@ -17,9 +17,7 @@ from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict
 from pydantic import BaseModel
 import uuid
 import json
-import asyncio
 from redis.asyncio import Redis
-import hashlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -254,7 +252,7 @@ class WebSocketSotopiaSimulator:
             )
         except Exception as e:
             logger.error(f"Error sending message to Redis: {e}")
-    
+
     async def set_mode(self, mode: str) -> None:
         """
         Set the communication mode
@@ -359,7 +357,7 @@ class WebSocketSotopiaSimulator:
     def prepare_episode_config(self) -> Dict[str, Any]:
         """
         Prepare the simulation configuration for arun_one_episode
-        
+
         Returns:
             Dict: Episode configuration
         """
@@ -373,7 +371,7 @@ class WebSocketSotopiaSimulator:
             "default_model": "gpt-4o-mini",
             "evaluator_model": self.evaluator_model,
             "use_pk_value": True,
-            "push_to_db": False, #TODO: check, do we need to push epilog to redis database? Probably not.
+            "push_to_db": False,  # TODO: check, do we need to push epilog to redis database? Probably not.
             "evaluate_episode": False,
             "max_turns": self.max_turns,
             "scenario": self.env_profile.scenario,
@@ -381,22 +379,22 @@ class WebSocketSotopiaSimulator:
             "agents": [
                 {
                     "name": profile.first_name,
-                    "goal": self.env_profile.agent_goals[i],                
+                    "goal": self.env_profile.agent_goals[i],
                     "model_name": self.agent_models[i]
                     if i < len(self.agent_models)
                     else "gpt-4o-mini",
                     "agent_pk": profile.pk,
-                    "background": {}
+                    "background": {},
                 }
                 for i, profile in enumerate(self.agent_profiles)
-            ]
+            ],
         }
 
         # Add group messaging configuration
         config["messaging_mode"] = self.mode
         if self.groups:
             config["groups"] = self.groups
-        
+
         return config
 
     async def arun(self) -> AsyncGenerator[Dict[str, Any], None]:
