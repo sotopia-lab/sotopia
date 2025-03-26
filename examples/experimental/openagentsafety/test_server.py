@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import uuid
+
 """
 	To run follow these instructions:
     In 3 separate terminals do the following commands in the given order:
@@ -66,6 +67,7 @@ env_profile = {
 }
 print(env_profile)
 FAST_API_URL = "http://localhost:8080/"
+
 
 async def main():
     TOKEN = str(uuid.uuid4())
