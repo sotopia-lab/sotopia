@@ -83,7 +83,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     agent_name=self.name,
                     output_channel=self.output_channel,
                     action_type="none",
-                    argument="",
+                    argument=json.dumps(
+                    {"pk": self.agent_profile_pk, "model_name": self.model_name}
+                )
                 )
             args = json.loads(obs.last_turn)
             self.set_profile(args["use_pk_value"])
@@ -104,7 +106,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="none",
-                argument="",
+                argument=json.dumps(
+                    {"pk": self.agent_profile_pk, "model_name": self.model_name}
+                ),
             )
         elif len(obs.available_actions) == 1 and "leave" in obs.available_actions:
             self.shutdown_event.set()

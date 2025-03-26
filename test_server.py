@@ -4,7 +4,7 @@ import uuid
 
 ap1 = {
     "first_name": "Li",
-    "last_name": "Ming",
+    "last_name": "",
     "age": 35,
     "occupation": "Database Team Project Manager",
     "gender": "Man",
@@ -19,7 +19,7 @@ ap1_scenario = {
 
 ap2 = {
     "first_name": "Sarah",
-    "last_name": "Johnson",
+    "last_name": "",
     "age": 42,
     "occupation": "CTO",
     "gender": "Woman",

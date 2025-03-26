@@ -42,7 +42,7 @@ class BaseEpisodeLog(BaseModel):
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
     rewards_prompt: str
 
-    # Tracking for groups and message contexts
+    # Added field for group messaging support
     groups: Dict[str, List[str]] = Field(
         default_factory=dict
     )  # Group name -> list of agent names
@@ -205,7 +205,6 @@ class BaseEpisodeLog(BaseModel):
 
 class EpisodeLog(BaseEpisodeLog, JsonModel):
     """Redis-compatible episode log with enhanced message context support"""
-
     pass
 
 

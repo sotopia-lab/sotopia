@@ -173,12 +173,12 @@ async def arun_one_episode(
             await proc.wait()
 
         # Remove the temporary configuration file
-        try:
-            if os.path.exists(temp_filename):
-                os.remove(temp_filename)
-                logger.info(f"Removed temporary configuration file: {temp_filename}")
-        except Exception as e:
-            logger.error(f"Failed to remove temporary file {temp_filename}: {e}")
+        # try:
+        #     if os.path.exists(temp_filename):
+        #         os.remove(temp_filename)
+        #         logger.info(f"Removed temporary configuration file: {temp_filename}")
+        # except Exception as e:
+        #     logger.error(f"Failed to remove temporary file {temp_filename}: {e}")
 
         # Check for errors
         if proc.returncode and proc.returncode != 0:
