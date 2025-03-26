@@ -18,7 +18,9 @@ from .datamodels import AgentAction, Observation
 from sotopia.messages import ActionType
 from .logs import EpisodeLog
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 @DataModelFactory.register("observations")
 class Observations(DataModel):
@@ -93,11 +95,11 @@ class Moderator(Node[AgentAction, Observation]):
         # Group messaging support
         self.groups: Dict[str, List[str]] = groups  # Group name -> list of agent names
         self.mode = messaging_mode  # Communication mode: "full" or "group"
-        
+
         # Message context tracking
         self.message_senders: Dict[str, str] = {}  # agent -> original sender
         self.message_receivers: Dict[str, List[str]] = {}  # agent -> list of recipients
-        
+
         # Track the last epilog hash to avoid duplicates
         self.last_epilog_hash: str | None = None
 
@@ -143,7 +145,7 @@ class Moderator(Node[AgentAction, Observation]):
         # Generate hash of epilog to avoid sending duplicates
         epilog_json = epilog.model_dump_json()
         current_hash = hashlib.md5(epilog_json.encode()).hexdigest()
-        
+
         # Only send if it's different from the last epilog we sent
         if current_hash != self.last_epilog_hash:
             message_json = Message[Observation](
@@ -209,11 +211,11 @@ class Moderator(Node[AgentAction, Observation]):
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
                 print("All agents are now awake and ready")
-             
+
         # TODO: remove this once we have a better way to handle the redis_agent
         # if not self.redis_agent_as_actor:
         #     self.remove_redis_as_actor()
-        
+
         # Initialize episode log with support for groups
         self.epilog = EpisodeLog(
             environment=self.scenario,
@@ -224,9 +226,9 @@ class Moderator(Node[AgentAction, Observation]):
             rewards=[0.0] * len(self.agents),
             rewards_prompt="",
             # Add group configuration
-            groups=self.groups
+            groups=self.groups,
         )
-        
+
         # Initial message to agents
         if self.action_order == "round-robin":
             await self.send_observations(
@@ -245,7 +247,7 @@ class Moderator(Node[AgentAction, Observation]):
                 )
             )
             self.current_agent_index += 1
-            
+
         # Send initial epilog to RedisAgent
         if "moderator:redis_agent" in self.output_channel_types:
             await self.send_epilog(self.epilog, "moderator:redis_agent")
@@ -282,11 +284,11 @@ class Moderator(Node[AgentAction, Observation]):
         try:
             await asyncio.sleep(0.1)
             print("all agents have left, wrap up and stop")
-            
+
             # Make sure the final epilog has been sent to RedisAgent
             if "moderator:redis_agent" in self.output_channel_types:
                 await self.send_epilog(self.epilog, "moderator:redis_agent")
-            
+
             # Save to database if requested
             if self.push_to_db:
                 self.epilog.save()
@@ -302,35 +304,35 @@ class Moderator(Node[AgentAction, Observation]):
     async def setup_groups(self, groups_data: dict) -> None:
         """
         Configure agent groups
-        
+
         Args:
             groups_data: Dictionary mapping group names to lists of agent names
         """
         self.groups = groups_data
-        
+
         # Update epilog with groups configuration
         self.epilog.groups = groups_data
-        
+
         print(f"Updated groups configuration: {self.groups}")
-        
+
         # Send updated epilog
         if "moderator:redis_agent" in self.output_channel_types:
             await self.send_epilog(self.epilog, "moderator:redis_agent")
-    
+
     async def set_mode(self, mode: str) -> None:
         """
         Set the communication mode
-        
+
         Args:
             mode: Either "full" for normal operation or "group" for group messaging
         """
         if mode not in ["full", "group"]:
             print(f"Invalid mode: {mode}. Must be 'full' or 'group'")
             return
-            
+
         self.mode = mode
         print(f"Communication mode set to: {self.mode}")
-        
+
         # Send updated epilog
         if "moderator:redis_agent" in self.output_channel_types:
             await self.send_epilog(self.epilog, "moderator:redis_agent")
@@ -339,17 +341,17 @@ class Moderator(Node[AgentAction, Observation]):
         """
         Process a unified message and route to appropriate agents
         with strict isolation for direct messages.
-        
+
         Args:
             agent_action: The action containing the message
-            
+
         Returns:
             Observations: Observations to send to agents
         """
         try:
             # Parse the message data
             arg_data = json.loads(agent_action.argument)
-            
+
             # Extract message data
             sender = agent_action.agent_name
             content = arg_data.get("content", "")
@@ -359,8 +361,10 @@ class Moderator(Node[AgentAction, Observation]):
             context = arg_data.get("context", "individual")
             is_response = context == "response"
             is_dm = len(original_target_agents) == 1 and context == "individual"
-            is_broadcast = (not original_target_agents and not original_target_groups) or context == "broadcast"
-            
+            is_broadcast = (
+                not original_target_agents and not original_target_groups
+            ) or context == "broadcast"
+
             # Record message relationship for response tracking
             for agent in target_agents:
                 if agent in self.agents:
@@ -370,7 +374,7 @@ class Moderator(Node[AgentAction, Observation]):
                             self.message_receivers[agent].append(sender)
                     else:
                         self.message_receivers[agent] = [sender]
-            
+
             # Add message to epilog with appropriate format
             if original_target_groups:
                 # Group message
@@ -384,13 +388,13 @@ class Moderator(Node[AgentAction, Observation]):
                             "target_groups": original_target_groups,
                             "is_response": is_response,
                         }
-                        
+
                         # Add to epilog
                         receiver = f"Group:{group_name}"
                         self.epilog.messages.append(
                             [(sender, receiver, json.dumps(message_data))]
                         )
-            
+
             elif is_dm:
                 # Direct message to a single agent
                 target_agent = original_target_agents[0]
@@ -402,13 +406,13 @@ class Moderator(Node[AgentAction, Observation]):
                     "target_groups": [],
                     "is_response": is_response,
                 }
-                
+
                 # Add to epilog
                 receiver = f"Agent:{target_agent}"
                 self.epilog.messages.append(
                     [(sender, receiver, json.dumps(message_data))]
                 )
-            
+
             elif is_broadcast:
                 # Broadcast message
                 message_data = {
@@ -418,17 +422,17 @@ class Moderator(Node[AgentAction, Observation]):
                     "target_groups": [],
                     "is_response": is_response,
                 }
-                
+
                 # Add to epilog
                 self.epilog.messages.append(
                     [(sender, "Broadcast", json.dumps(message_data))]
                 )
-            
+
             elif is_response:
                 # Response message - handle specially
                 responding_to = arg_data.get("responding_to", {})
                 original_sender = responding_to.get("sender", "unknown")
-                
+
                 # Create complete message data with all metadata
                 message_data = {
                     "content": content,
@@ -438,77 +442,83 @@ class Moderator(Node[AgentAction, Observation]):
                     "responding_to": responding_to,
                     "is_response": True,
                 }
-                
+
                 # Add to epilog
                 receiver = f"Response:{original_sender}"
                 self.epilog.messages.append(
                     [(sender, receiver, json.dumps(message_data))]
                 )
-            
+
             # Increment turn counter for new messages
             if not is_response:
                 self.turn_number += 1
-            
+
             # Send updated epilog to Redis agent
             if "moderator:redis_agent" in self.output_channel_types:
                 await self.send_epilog(self.epilog, "moderator:redis_agent")
-            
+
             # Create observations for all agents
             observations_map = {}
-            
+
             for output_channel, agent_name in self.agent_mapping.items():
                 # By default, use empty message and no actions
                 message_content = ""
                 available_actions = ["none"]
-                
+
                 # Determine if this agent should receive this message
                 should_receive_message = False
-                
+
                 if is_dm:
                     # For DMs, only the target and sender see the message
                     target_agent = original_target_agents[0]
                     if agent_name == target_agent or agent_name == sender:
                         should_receive_message = True
                         available_actions = self.available_actions
-                
+
                 elif is_response:
                     # For responses, only the original sender gets it
-                    original_sender = arg_data.get("responding_to", {}).get("sender", None)
+                    original_sender = arg_data.get("responding_to", {}).get(
+                        "sender", None
+                    )
                     if agent_name == original_sender or agent_name == sender:
                         should_receive_message = True
                         available_actions = self.available_actions
-                
+
                 elif is_broadcast:
                     # For broadcasts, everyone gets it
                     should_receive_message = True
-                    
+
                     # In round-robin mode, only the current agent gets actions
                     if self.action_order == "round-robin":
                         available_actions = (
-                            self.available_actions 
-                            if agent_name == self.agents[self.current_agent_index % len(self.agents)]
+                            self.available_actions
+                            if agent_name
+                            == self.agents[self.current_agent_index % len(self.agents)]
                             else ["none"]
                         )
                     else:
                         available_actions = self.available_actions
-                
+
                 elif original_target_groups:
                     # For group messages, check if agent is in any of the target groups
                     in_target_group = False
                     for group_name in original_target_groups:
-                        if group_name in self.groups and agent_name in self.groups[group_name]:
+                        if (
+                            group_name in self.groups
+                            and agent_name in self.groups[group_name]
+                        ):
                             in_target_group = True
                             break
-                            
+
                     # Agent receives message if they're in a target group or they're the sender
                     if in_target_group or agent_name == sender:
                         should_receive_message = True
                         available_actions = self.available_actions
-                
+
                 # Set the message content if this agent should receive it
                 if should_receive_message:
                     message_content = content
-                
+
                 # Create the observation
                 observation = Observation(
                     agent_name=sender,
@@ -516,13 +526,15 @@ class Moderator(Node[AgentAction, Observation]):
                     turn_number=self.turn_number,
                     available_actions=available_actions,
                 )
-                
+
                 observations_map[output_channel] = observation
-            
+
             return Observations(observations_map=observations_map)
-        
+
         except json.JSONDecodeError:
-            print(f"Error: Failed to parse unified message data: {agent_action.argument}")
+            print(
+                f"Error: Failed to parse unified message data: {agent_action.argument}"
+            )
             return Observations(observations_map={})
         except Exception as e:
             print(f"Error handling unified message: {e}")
@@ -538,7 +550,7 @@ class Moderator(Node[AgentAction, Observation]):
             except Exception as e:
                 print(f"Error setting mode: {e}")
             return None
-            
+
         elif action.action_type == "setup_groups":
             try:
                 groups_data = json.loads(action.argument)
@@ -546,17 +558,17 @@ class Moderator(Node[AgentAction, Observation]):
             except Exception as e:
                 print(f"Error setting groups: {e}")
             return None
-            
+
         # Handle unified messages (group mode)
         elif action.action_type == "unified_message":
             return await self.handle_unified_message(action)
-            
+
         # Handle regular speak actions - try to detect if it's a DM response
         elif action.action_type == "speak":
             # Check if this agent has a known sender (it's responding to someone)
             agent_name = action.agent_name
             original_sender = self.message_senders.get(agent_name)
-            
+
             if original_sender and self.mode == "group":
                 # This is likely a response to a DM or targeted message
                 # Convert to unified message format targeting only the original sender
@@ -564,32 +576,38 @@ class Moderator(Node[AgentAction, Observation]):
                     agent_name=action.agent_name,
                     output_channel=action.output_channel,
                     action_type="unified_message",
-                    argument=json.dumps({
-                        "content": action.argument,
-                        "target_agents": [original_sender],  # Only send to original sender
-                        "original_target_agents": [original_sender],
-                        "original_target_groups": [],
-                        "context": "response",
-                        "responding_to": {"sender": original_sender}
-                    }),
+                    argument=json.dumps(
+                        {
+                            "content": action.argument,
+                            "target_agents": [
+                                original_sender
+                            ],  # Only send to original sender
+                            "original_target_agents": [original_sender],
+                            "original_target_groups": [],
+                            "context": "response",
+                            "responding_to": {"sender": original_sender},
+                        }
+                    ),
                 )
                 return await self.handle_unified_message(unified_action)
-            
+
             # Regular broadcast message
             unified_action = AgentAction(
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
                 action_type="unified_message",
-                argument=json.dumps({
-                    "content": action.argument,
-                    "target_agents": self.agents,  # All agents for regular speak
-                    "original_target_agents": [],
-                    "original_target_groups": [],
-                    "context": "broadcast"
-                }),
+                argument=json.dumps(
+                    {
+                        "content": action.argument,
+                        "target_agents": self.agents,  # All agents for regular speak
+                        "original_target_agents": [],
+                        "original_target_groups": [],
+                        "context": "broadcast",
+                    }
+                ),
             )
             return await self.handle_unified_message(unified_action)
-            
+
         # Handle non-verbal communication
         elif action.action_type == "non-verbal communication":
             # Format non-verbal as *action*
@@ -597,66 +615,72 @@ class Moderator(Node[AgentAction, Observation]):
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
                 action_type="unified_message",
-                argument=json.dumps({
-                    "content": f"*{action.argument}*",  # Format as non-verbal
-                    "target_agents": self.agents,
-                    "original_target_agents": [],
-                    "original_target_groups": [],
-                    "context": "broadcast"
-                }),
+                argument=json.dumps(
+                    {
+                        "content": f"*{action.argument}*",  # Format as non-verbal
+                        "target_agents": self.agents,
+                        "original_target_agents": [],
+                        "original_target_groups": [],
+                        "context": "broadcast",
+                    }
+                ),
             )
             return await self.handle_unified_message(unified_action)
-            
+
         # Handle physical actions
         elif action.action_type == "action":
             unified_action = AgentAction(
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
                 action_type="unified_message",
-                argument=json.dumps({
-                    "content": f"[{action.argument}]",  # Format as action
-                    "target_agents": self.agents,
-                    "original_target_agents": [],
-                    "original_target_groups": [],
-                    "context": "broadcast"
-                }),
+                argument=json.dumps(
+                    {
+                        "content": f"[{action.argument}]",  # Format as action
+                        "target_agents": self.agents,
+                        "original_target_agents": [],
+                        "original_target_groups": [],
+                        "context": "broadcast",
+                    }
+                ),
             )
             return await self.handle_unified_message(unified_action)
-            
+
         # Handle leave action
         elif action.action_type == "leave":
             # Mark this agent as having left
             agent_name = action.agent_name
             if agent_name in self.agents_awake:
                 self.agents_awake[agent_name] = False
-                    
+
             # Send a message that the agent has left
             unified_action = AgentAction(
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
                 action_type="unified_message",
-                argument=json.dumps({
-                    "content": f"{agent_name} has left the conversation.",
-                    "target_agents": self.agents,
-                    "original_target_agents": [],
-                    "original_target_groups": [],
-                    "context": "broadcast"
-                }),
+                argument=json.dumps(
+                    {
+                        "content": f"{agent_name} has left the conversation.",
+                        "target_agents": self.agents,
+                        "original_target_agents": [],
+                        "original_target_groups": [],
+                        "context": "broadcast",
+                    }
+                ),
             )
-            
+
             result = await self.handle_unified_message(unified_action)
-            
+
             # Check if all agents have left and we should wrap up
             if all(not awake for awake in self.agents_awake.values()):
                 await self.wrap_up_and_stop()
-                
+
             return result
-            
+
         # Handle no action
         elif action.action_type == "none":
             # No action needed, just return None
             return None
-            
+
         # Handle unknown action type
         else:
             print(f"Unknown action type: {action.action_type}")
