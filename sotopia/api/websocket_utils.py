@@ -354,6 +354,7 @@ class WebSocketSotopiaSimulator:
         )
 
     def prepare_episode_config(self) -> Dict[str, Any]:
+    def prepare_episode_config(self) -> Dict[str, Any]:
         """
         Prepare the simulation configuration for arun_one_episode
 
