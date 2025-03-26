@@ -943,7 +943,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str) -> None:
                     agent_profile_dicts=sim_data.get("agent_profile_dicts", []),
                     max_turns=sim_data.get("max_turns", 20),
                 )
-
+                await simulator.connect_to_redis()
                 # Configure groups and mode if provided in START_SIM
                 initial_mode = sim_data.get("mode", "full")
                 logger.info(f"Initial mode: {initial_mode}")

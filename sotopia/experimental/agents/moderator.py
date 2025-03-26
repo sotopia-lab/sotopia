@@ -114,9 +114,9 @@ class Moderator(Node[AgentAction, Observation]):
 
     async def __aenter__(self) -> Self:
         print(f"Starting moderator with scenario: {self.scenario}")
-        await self.booting()
-        assert False
-        # asyncio.create_task(self.booting())
+        # await self.booting()
+        # assert False
+        asyncio.create_task(self.booting())
         self.task_scheduler = asyncio.create_task(self._task_scheduler())
         print("Moderator booted successfully")
         return await super().__aenter__()
@@ -199,7 +199,6 @@ class Moderator(Node[AgentAction, Observation]):
             )
             print("sent checking message to agents")
             await asyncio.sleep(0.2)
-            assert self.observation_queue.empty()
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
                 print(agent_action)
@@ -208,6 +207,7 @@ class Moderator(Node[AgentAction, Observation]):
                     args: dict[str, Any] = json.loads(agent_action.argument)
                     self.agents_pk[agent_action.agent_name] = args["pk"]
                     self.agent_models[agent_action.agent_name] = args["model_name"]
+            print(self.agents_awake)
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
                 print("All agents are now awake and ready")
