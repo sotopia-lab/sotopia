@@ -12,7 +12,7 @@ extra_modules = [
 node_name = "moderator"
 node_class = "moderator"
 [nodes.node_args]
-output_channels = [ 
+output_channels = [
     "moderator:Li",
     "moderator:Sarah",
     "moderator:redis_agent"
