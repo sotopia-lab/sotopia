@@ -77,4 +77,3 @@ output_channel = "redis_agent:moderator"
 pubsub_channel = "{{connection_id}}"
 messaging_mode = "{{messaging_mode}}"
 other_agent_status = { {% for agent in agents %}"{{agent.name}}" = true{% if not loop.last %},{% endif %}{% endfor %}}
-

@@ -205,6 +205,7 @@ class BaseEpisodeLog(BaseModel):
 
 class EpisodeLog(BaseEpisodeLog, JsonModel):
     """Redis-compatible episode log with enhanced message context support"""
+
     pass
 
 

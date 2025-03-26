@@ -6,7 +6,6 @@ from sotopia.experimental.envs import generate_executable
 import uuid
 import logging
 from rich import print
-import os  # Add import for os module
 from rich.logging import RichHandler
 
 # Configure logger

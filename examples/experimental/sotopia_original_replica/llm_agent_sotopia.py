@@ -84,8 +84,8 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     output_channel=self.output_channel,
                     action_type="none",
                     argument=json.dumps(
-                    {"pk": self.agent_profile_pk, "model_name": self.model_name}
-                )
+                        {"pk": self.agent_profile_pk, "model_name": self.model_name}
+                    ),
                 )
             args = json.loads(obs.last_turn)
             self.set_profile(args["use_pk_value"])
