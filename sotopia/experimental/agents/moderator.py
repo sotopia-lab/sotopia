@@ -1,7 +1,6 @@
 import asyncio
 import sys
 import json
-import hashlib
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -157,7 +156,7 @@ class Moderator(Node[AgentAction, Observation]):
             )
         ).model_dump_json()
         await self.send(output_channel, message_json)
-            # self.last_epilog_hash = current_hash
+        # self.last_epilog_hash = current_hash
 
     async def event_handler(
         self, channel: str, message: Message[AgentAction]
@@ -463,7 +462,7 @@ class Moderator(Node[AgentAction, Observation]):
             observations_map = {}
 
             for output_channel, agent_name in self.agent_mapping.items():
-                if agent_name == 'redis_agent':
+                if agent_name == "redis_agent":
                     continue
                 # By default, use empty message and no actions
                 message_content = ""
@@ -505,14 +504,18 @@ class Moderator(Node[AgentAction, Observation]):
                             available_actions = (
                                 redis_involved_actions
                                 if agent_name
-                                == self.agents[self.current_agent_index % len(self.agents)]
+                                == self.agents[
+                                    self.current_agent_index % len(self.agents)
+                                ]
                                 else ["none"]
                             )
                         else:
                             available_actions = (
                                 self.available_actions
                                 if agent_name
-                                == self.agents[self.current_agent_index % len(self.agents)]
+                                == self.agents[
+                                    self.current_agent_index % len(self.agents)
+                                ]
                                 else ["none"]
                             )
                     else:

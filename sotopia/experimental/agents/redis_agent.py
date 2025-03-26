@@ -1,14 +1,11 @@
-import logging
 import json
 import asyncio
-import hashlib
-from rich.logging import RichHandler
 
 from aact import NodeFactory
 
 from sotopia.experimental.agents.base_agent import BaseAgent
 from sotopia.experimental.agents.datamodels import Observation, AgentAction
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Configure logging
 # FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -180,8 +177,9 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                             agent_name=self.node_name,
                             output_channel=self.output_channel,
                             action_type="setup_groups",
-                            argument=json.dumps({"mode": self.mode,
-                                            "groups": self.groups}),
+                            argument=json.dumps(
+                                {"mode": self.mode, "groups": self.groups}
+                            ),
                         )
                     return AgentAction(
                         agent_name=self.node_name,
@@ -189,7 +187,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         action_type="set_mode",
                         argument=json.dumps({"mode": self.mode}),
                     )
-
 
             # Handle message from WebSocket client
             if "message" in command_data:
@@ -395,7 +392,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
 
                 # Only send if different from the last epilog for this connection
                 # if self.last_epilog_hash.get(self.connection_id) != epilog_hash:
-                    # Format as a message for the client
+                # Format as a message for the client
                 formatted_message = json.dumps(
                     {
                         "type": "SERVER_MSG",
@@ -403,12 +400,12 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     }
                 )
 
-                    # Publish to the connection ID channel
+                # Publish to the connection ID channel
                 await self.r.publish(self.connection_id, formatted_message)
                 print(f"Published epilog update to {self.connection_id}")
 
-                    # Update hash
-                    # self.last_epilog_hash[self.connection_id] = epilog_hash
+            # Update hash
+            # self.last_epilog_hash[self.connection_id] = epilog_hash
 
             except json.JSONDecodeError:
                 print(f"Failed to parse epilog data: {obs.last_turn}")
@@ -451,8 +448,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         Returns:
             AgentAction or None: The action to perform
         """
-        
-    
+
         # Handle initialization message
         if obs.turn_number == -1:
             if self.awake:
@@ -477,7 +473,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 ),
             )
         print("Redis is awake")
-        
 
         # Update agent status
         for agent_name in self.other_agent_status.keys():
