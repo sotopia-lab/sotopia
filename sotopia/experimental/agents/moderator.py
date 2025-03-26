@@ -144,20 +144,20 @@ class Moderator(Node[AgentAction, Observation]):
         """Send the epilog to other agents with deduplication"""
         # Generate hash of epilog to avoid sending duplicates
         epilog_json = epilog.model_dump_json()
-        current_hash = hashlib.md5(epilog_json.encode()).hexdigest()
+        # current_hash = hashlib.md5(epilog_json.encode()).hexdigest()
 
         # Only send if it's different from the last epilog we sent
-        if current_hash != self.last_epilog_hash:
-            message_json = Message[Observation](
-                data=Observation(
-                    agent_name="epilog",
-                    last_turn=epilog_json,
-                    turn_number=self.turn_number,
-                    available_actions=self.available_actions,
-                )
-            ).model_dump_json()
-            await self.send(output_channel, message_json)
-            self.last_epilog_hash = current_hash
+        # if current_hash != self.last_epilog_hash:
+        message_json = Message[Observation](
+            data=Observation(
+                agent_name="epilog",
+                last_turn=epilog_json,
+                turn_number=self.turn_number,
+                available_actions=self.available_actions,
+            )
+        ).model_dump_json()
+        await self.send(output_channel, message_json)
+            # self.last_epilog_hash = current_hash
 
     async def event_handler(
         self, channel: str, message: Message[AgentAction]
@@ -253,6 +253,7 @@ class Moderator(Node[AgentAction, Observation]):
             await self.send_epilog(self.epilog, "moderator:redis_agent")
 
     def remove_redis_as_actor(self) -> None:
+        return
         # Remove from output_channel_types
         if "moderator:redis_agent" in self.output_channel_types:
             self.output_channel_types.pop("moderator:redis_agent")
@@ -286,8 +287,8 @@ class Moderator(Node[AgentAction, Observation]):
             print("all agents have left, wrap up and stop")
 
             # Make sure the final epilog has been sent to RedisAgent
-            if "moderator:redis_agent" in self.output_channel_types:
-                await self.send_epilog(self.epilog, "moderator:redis_agent")
+            # if "moderator:redis_agent" in self.output_channel_types:
+            await self.send_epilog(self.epilog, "moderator:redis_agent")
 
             # Save to database if requested
             if self.push_to_db:
@@ -316,8 +317,8 @@ class Moderator(Node[AgentAction, Observation]):
         print(f"Updated groups configuration: {self.groups}")
 
         # Send updated epilog
-        if "moderator:redis_agent" in self.output_channel_types:
-            await self.send_epilog(self.epilog, "moderator:redis_agent")
+        # if "moderator:redis_agent" in self.output_channel_types:
+        #     await self.send_epilog(self.epilog, "moderator:redis_agent")
 
     async def set_mode(self, mode: str) -> None:
         """
@@ -334,8 +335,8 @@ class Moderator(Node[AgentAction, Observation]):
         print(f"Communication mode set to: {self.mode}")
 
         # Send updated epilog
-        if "moderator:redis_agent" in self.output_channel_types:
-            await self.send_epilog(self.epilog, "moderator:redis_agent")
+        # if "moderator:redis_agent" in self.output_channel_types:
+        #     await self.send_epilog(self.epilog, "moderator:redis_agent")
 
     async def handle_unified_message(self, agent_action: AgentAction) -> Observations:
         """
@@ -454,16 +455,20 @@ class Moderator(Node[AgentAction, Observation]):
                 self.turn_number += 1
 
             # Send updated epilog to Redis agent
-            if "moderator:redis_agent" in self.output_channel_types:
-                await self.send_epilog(self.epilog, "moderator:redis_agent")
+            # if "moderator:redis_agent" in self.output_channel_types:
+            print("Epilog updated, sending to redis_agent")
+            await self.send_epilog(self.epilog, "moderator:redis_agent")
 
             # Create observations for all agents
             observations_map = {}
 
             for output_channel, agent_name in self.agent_mapping.items():
+                if agent_name == 'redis_agent':
+                    continue
                 # By default, use empty message and no actions
                 message_content = ""
                 available_actions = ["none"]
+                redis_involved_actions = ["none", "leave", "speak"]
 
                 # Determine if this agent should receive this message
                 should_receive_message = False
@@ -473,7 +478,10 @@ class Moderator(Node[AgentAction, Observation]):
                     target_agent = original_target_agents[0]
                     if agent_name == target_agent or agent_name == sender:
                         should_receive_message = True
-                        available_actions = self.available_actions
+                        if sender == "redis_agent":
+                            available_actions = redis_involved_actions
+                        else:
+                            available_actions = self.available_actions
 
                 elif is_response:
                     # For responses, only the original sender gets it
@@ -482,7 +490,10 @@ class Moderator(Node[AgentAction, Observation]):
                     )
                     if agent_name == original_sender or agent_name == sender:
                         should_receive_message = True
-                        available_actions = self.available_actions
+                        if sender == "redis_agent":
+                            available_actions = redis_involved_actions
+                        else:
+                            available_actions = self.available_actions
 
                 elif is_broadcast:
                     # For broadcasts, everyone gets it
@@ -490,12 +501,20 @@ class Moderator(Node[AgentAction, Observation]):
 
                     # In round-robin mode, only the current agent gets actions
                     if self.action_order == "round-robin":
-                        available_actions = (
-                            self.available_actions
-                            if agent_name
-                            == self.agents[self.current_agent_index % len(self.agents)]
-                            else ["none"]
-                        )
+                        if sender == "redis_agent":
+                            available_actions = (
+                                redis_involved_actions
+                                if agent_name
+                                == self.agents[self.current_agent_index % len(self.agents)]
+                                else ["none"]
+                            )
+                        else:
+                            available_actions = (
+                                self.available_actions
+                                if agent_name
+                                == self.agents[self.current_agent_index % len(self.agents)]
+                                else ["none"]
+                            )
                     else:
                         available_actions = self.available_actions
 
@@ -518,6 +537,8 @@ class Moderator(Node[AgentAction, Observation]):
                 # Set the message content if this agent should receive it
                 if should_receive_message:
                     message_content = content
+                else:
+                    continue
 
                 # Create the observation
                 observation = Observation(
@@ -554,13 +575,14 @@ class Moderator(Node[AgentAction, Observation]):
         elif action.action_type == "setup_groups":
             try:
                 groups_data = json.loads(action.argument)
+                await self.set_mode(groups_data.get("mode", "group"))
                 await self.setup_groups(groups_data.get("groups", {}))
             except Exception as e:
                 print(f"Error setting groups: {e}")
             return None
 
         # Handle unified messages (group mode)
-        elif action.action_type == "unified_message":
+        elif action.agent_name == "redis_agent":
             return await self.handle_unified_message(action)
 
         # Handle regular speak actions - try to detect if it's a DM response
@@ -575,7 +597,7 @@ class Moderator(Node[AgentAction, Observation]):
                 unified_action = AgentAction(
                     agent_name=action.agent_name,
                     output_channel=action.output_channel,
-                    action_type="unified_message",
+                    action_type="speak",
                     argument=json.dumps(
                         {
                             "content": action.argument,
@@ -595,7 +617,7 @@ class Moderator(Node[AgentAction, Observation]):
             unified_action = AgentAction(
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
-                action_type="unified_message",
+                action_type="speak",
                 argument=json.dumps(
                     {
                         "content": action.argument,
@@ -614,7 +636,7 @@ class Moderator(Node[AgentAction, Observation]):
             unified_action = AgentAction(
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
-                action_type="unified_message",
+                action_type="non-verbal communication",
                 argument=json.dumps(
                     {
                         "content": f"*{action.argument}*",  # Format as non-verbal
@@ -632,7 +654,7 @@ class Moderator(Node[AgentAction, Observation]):
             unified_action = AgentAction(
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
-                action_type="unified_message",
+                action_type="action",
                 argument=json.dumps(
                     {
                         "content": f"[{action.argument}]",  # Format as action
@@ -656,7 +678,7 @@ class Moderator(Node[AgentAction, Observation]):
             unified_action = AgentAction(
                 agent_name=action.agent_name,
                 output_channel=action.output_channel,
-                action_type="unified_message",
+                action_type="leave",
                 argument=json.dumps(
                     {
                         "content": f"{agent_name} has left the conversation.",
@@ -685,16 +707,6 @@ class Moderator(Node[AgentAction, Observation]):
         else:
             print(f"Unknown action type: {action.action_type}")
             return None
-
-    async def episode_log_to_messages(
-        self, epilog: EpisodeLog
-    ) -> list[tuple[str, str, str]]:
-        """Convert episode log to a list of messages"""
-        messages = []
-        for turn_number, turn in enumerate(epilog.messages):
-            for message in turn:
-                messages.append((message[0], message[1], message[2]))
-        return messages
 
     async def aeval(self, epilog: EpisodeLog) -> EpisodeLog:
         """

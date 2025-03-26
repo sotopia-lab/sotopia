@@ -285,7 +285,7 @@ class WebSocketSotopiaSimulator:
         Args:
             message: The message data containing:
                 - content: The message content
-                - sender: The sender (defaults to "websocket_user")
+                - sender: The sender (defaults to "redis_agent")
         """
         # Validate message
         if "content" not in message:
@@ -293,7 +293,7 @@ class WebSocketSotopiaSimulator:
             return
 
         # Set default sender if not provided
-        sender = message.get("sender", "websocket_user")
+        sender = message.get("sender", "redis_agent")
 
         # Create message payload for full mode
         payload = {"message": {"content": message["content"], "sender": sender}}
@@ -311,7 +311,7 @@ class WebSocketSotopiaSimulator:
         Args:
             message: The message data containing:
                 - content: The message content
-                - sender: The sender (defaults to "websocket_user")
+                - sender: The sender (defaults to "redis_agent")
                 - target_agents: List of specific agents to receive this message
                 - target_groups: List of groups to receive this message
         """
@@ -321,7 +321,7 @@ class WebSocketSotopiaSimulator:
             return
 
         # Set default sender if not provided
-        sender = message.get("sender", "websocket_user")
+        sender = message.get("sender", "redis_agent")
 
         # Get targets
         target_agents = message.get("target_agents", [])
@@ -342,7 +342,6 @@ class WebSocketSotopiaSimulator:
 
         # Send to RedisAgent via Redis
         await self.send_to_redis(payload)
-
         target_description = ""
         if target_agents:
             target_description += f"agents: {target_agents} "

@@ -11,15 +11,15 @@ from sotopia.experimental.agents.datamodels import Observation, AgentAction
 from typing import Any, Dict, List, Optional
 
 # Configure logging
-FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-logging.basicConfig(
-    level=logging.WARNING,
-    format=FORMAT,
-    datefmt="[%X]",
-    handlers=[RichHandler()],
-)
+# FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+# logging.basicConfig(
+#     level=logging.WARNING,
+#     format=FORMAT,
+#     datefmt="[%X]",
+#     handlers=[RichHandler()],
+# )
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 @NodeFactory.register("redis_agent")
@@ -72,25 +72,29 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.last_epilog_hash: Dict[str, str] = {}
 
         # Pending actions from websocket messages
-        self.pending_actions = []
+        self.pending_actions: asyncio.Queue[AgentAction] = asyncio.Queue()
 
         # Command listener task
+        # Start the command listener if not already running
         self.command_listener_task = None
+        self.start_command_listener()
+        # if not self.command_listener_task or self.command_listener_task.done():
+        #     await self.start_command_listener()
 
-        logger.info(f"RedisAgent initialized with connection_id: {self.connection_id}")
-        logger.info(f"RedisAgent mode: {self.mode}")
-        logger.info(f"RedisAgent groups: {self.groups}")
+        print(f"RedisAgent initialized with connection_id: {self.connection_id}")
+        print(f"RedisAgent mode: {self.mode}")
+        print(f"RedisAgent groups: {self.groups}")
 
-    async def start_command_listener(self) -> None:
+    def start_command_listener(self) -> None:
         """Start listening for commands on Redis channels"""
         if self.command_listener_task is None or self.command_listener_task.done():
             self.command_listener_task = asyncio.create_task(self._command_listener())
-            logger.info("Started Redis command listener task")
+            print("Started Redis command listener task")
 
     async def _command_listener(self) -> None:
         """Listen for commands from WebSocket clients via Redis"""
         if not self.connection_id:
-            logger.warning("No connection_id specified, command listener not started")
+            print("No connection_id specified, command listener not started")
             return
 
         pubsub = self.r.pubsub()
@@ -99,7 +103,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         try:
             # Subscribe to the websocket channel for this connection
             await pubsub.subscribe(channel)
-            logger.info(f"Subscribed to websocket channel: {channel}")
+            print(f"Subscribed to websocket channel: {channel}")
 
             while not self.shutdown_event.is_set():
                 try:
@@ -113,7 +117,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         # Process the command
                         try:
                             command_data = json.loads(message["data"].decode())
-                            logger.info(
+                            print(
                                 f"Received command from websocket: {command_data.get('type', 'unknown')}"
                             )
 
@@ -123,28 +127,28 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                             )
                             if action:
                                 # Add to pending actions queue
-                                self.pending_actions.append(action)
+                                await self.pending_actions.put(action)
 
                         except json.JSONDecodeError:
-                            logger.error(
+                            print(
                                 f"Failed to parse websocket command: {message['data'][:200]}..."
                             )
                         except Exception as e:
-                            logger.error(f"Error processing websocket command: {e}")
+                            print(f"Error processing websocket command: {e}")
 
                 except asyncio.TimeoutError:
                     # No message available, continue
                     pass
                 except Exception as e:
-                    logger.error(f"Error in command listener: {e}")
+                    print(f"Error in command listener: {e}")
                     await asyncio.sleep(1)  # Avoid tight loop on error
 
         except Exception as e:
-            logger.error(f"Fatal error in command listener: {e}")
+            print(f"Fatal error in command listener: {e}")
         finally:
             # Unsubscribe when done
             await pubsub.unsubscribe(channel)
-            logger.info("Command listener stopped")
+            print("Command listener stopped")
 
     async def process_command(
         self, command_data: dict, connection_id: str
@@ -165,37 +169,37 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 new_mode = command_data.get("mode")
                 if new_mode in ["full", "group"]:
                     self.mode = new_mode
-                    logger.info(f"Set communication mode to: {self.mode}")
+                    print(f"Set communication mode to: {self.mode}")
 
+                    if "groups" in command_data:
+                        groups = command_data.get("groups", {})
+                        self.groups = groups
+                        print(f"Updated groups configuration: {self.groups}")
+
+                        return AgentAction(
+                            agent_name=self.node_name,
+                            output_channel=self.output_channel,
+                            action_type="setup_groups",
+                            argument=json.dumps({"mode": self.mode,
+                                            "groups": self.groups}),
+                        )
                     return AgentAction(
                         agent_name=self.node_name,
                         output_channel=self.output_channel,
-                        action_type="none",
+                        action_type="set_mode",
                         argument=json.dumps({"mode": self.mode}),
                     )
 
-            # Handle group configuration
-            if "groups" in command_data:
-                groups = command_data.get("groups", {})
-                self.groups = groups
-                logger.info(f"Updated groups configuration: {self.groups}")
-
-                return AgentAction(
-                    agent_name=self.node_name,
-                    output_channel=self.output_channel,
-                    action_type="setup_groups",
-                    argument=json.dumps({"groups": self.groups}),
-                )
 
             # Handle message from WebSocket client
             if "message" in command_data:
                 msg = command_data["message"]
 
                 if not isinstance(msg, dict) or "content" not in msg:
-                    logger.error("Invalid message format")
+                    print("Invalid message format")
                     return None
 
-                sender = msg.get("sender", "websocket_user")
+                sender = msg.get("sender", "redis_agent")
                 content = msg.get("content")
 
                 # Extract target information
@@ -205,7 +209,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 # If we have a single target agent (DM case)
                 if len(target_agents) == 1 and not target_groups:
                     target_agent = target_agents[0]
-                    logger.info(f"Processing DM from {sender} to {target_agent}")
+                    print(f"Processing DM from {sender} to {target_agent}")
 
                     # Record message relationship for response tracking
                     self.message_senders[target_agent] = sender
@@ -244,7 +248,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     expanded_agents = list(set(expanded_agents))
 
                     if not expanded_agents:
-                        logger.warning(f"No agents found in groups: {target_groups}")
+                        print(f"No agents found in groups: {target_groups}")
                         return None
 
                     # Record message relationships for responses
@@ -308,7 +312,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
 
                 # No targets specified - broadcast to everyone
                 else:
-                    logger.info(f"Broadcasting message from {sender}")
+                    print(f"Broadcasting message from {sender}")
                     return AgentAction(
                         agent_name=sender,
                         output_channel=self.output_channel,
@@ -325,113 +329,117 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     )
 
         except KeyError as e:
-            logger.error(f"Missing key in command: {e}")
+            print(f"Missing key in command: {e}")
         except Exception as e:
-            logger.error(f"Error processing command: {e}")
+            print(f"Error processing command: {e}")
 
         return None
 
-    async def process_agent_response(self, obs: Observation) -> Optional[AgentAction]:
-        """
-        Process a response from an agent and route it appropriately
+    # async def process_agent_response(self, obs: Observation) -> Optional[AgentAction]:
+    #     """
+    #     Process a response from an agent and route it appropriately
 
-        Args:
-            obs: The observation from the agent
+    #     Args:
+    #         obs: The observation from the agent
 
-        Returns:
-            AgentAction or None: Action for routing the response
-        """
-        # Only process responses when the agent has a valid sender
-        if obs.agent_name in self.message_senders and obs.last_turn:
-            # Get the original sender who sent a message to this agent
-            original_sender = self.message_senders.get(obs.agent_name)
+    #     Returns:
+    #         AgentAction or None: Action for routing the response
+    #     """
+    #     # Only process responses when the agent has a valid sender
+    #     if obs.agent_name in self.message_senders and obs.last_turn:
+    #         # Get the original sender who sent a message to this agent
+    #         original_sender = self.message_senders.get(obs.agent_name)
 
-            if original_sender:
-                logger.info(
-                    f"Routing response from {obs.agent_name} back to {original_sender}"
-                )
+    #         if original_sender:
+    #             print(
+    #                 f"Routing response from {obs.agent_name} back to {original_sender}"
+    #             )
 
-                # Create a unified message action to send the response back only to the original sender
-                return AgentAction(
-                    agent_name=obs.agent_name,
-                    output_channel=self.output_channel,
-                    action_type="speak",
-                    argument=json.dumps(
-                        {
-                            "content": obs.last_turn,
-                            "target_agents": [
-                                original_sender
-                            ],  # Only the original sender
-                            "original_target_agents": [original_sender],
-                            "original_target_groups": [],
-                            "context": "response",
-                            "responding_to": {"sender": original_sender},
-                        }
-                    ),
-                )
+    #             # Create a unified message action to send the response back only to the original sender
+    #             return AgentAction(
+    #                 agent_name=obs.agent_name,
+    #                 output_channel=self.output_channel,
+    #                 action_type="speak",
+    #                 argument=json.dumps(
+    #                     {
+    #                         "content": obs.last_turn,
+    #                         "target_agents": [
+    #                             original_sender
+    #                         ],  # Only the original sender
+    #                         "original_target_agents": [original_sender],
+    #                         "original_target_groups": [],
+    #                         "context": "response",
+    #                         "responding_to": {"sender": original_sender},
+    #                     }
+    #                 ),
+    #             )
 
-        return None
+    #     return None
 
     async def publish_observation(self, obs: Observation) -> None:
         """Publish observation to Redis for WebSocket clients"""
         # Only publish if we have a connection ID
         if not self.connection_id:
+            print("No connection ID")
             return
 
         # Check if this is an epilog observation (complete conversation state)
         if obs.agent_name == "epilog":
+            print("Message is an epilog")
             try:
                 # Parse the epilog data
                 epilog_data = json.loads(obs.last_turn)
 
                 # Generate a hash of the epilog to avoid sending duplicates
-                epilog_hash = hashlib.md5(obs.last_turn.encode()).hexdigest()
+                # epilog_hash = hashlib.md5(obs.last_turn.encode()).hexdigest()
 
                 # Only send if different from the last epilog for this connection
-                if self.last_epilog_hash.get(self.connection_id) != epilog_hash:
+                # if self.last_epilog_hash.get(self.connection_id) != epilog_hash:
                     # Format as a message for the client
-                    formatted_message = json.dumps(
-                        {
-                            "type": "SERVER_MSG",
-                            "data": {"type": "episode_log", "log": epilog_data},
-                        }
-                    )
-
-                    # Publish to the connection ID channel
-                    await self.r.publish(self.connection_id, formatted_message)
-                    logger.info(f"Published epilog update to {self.connection_id}")
-
-                    # Update hash
-                    self.last_epilog_hash[self.connection_id] = epilog_hash
-
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse epilog data: {obs.last_turn}")
-            except Exception as e:
-                logger.error(f"Error publishing epilog: {e}")
-
-        elif obs.agent_name != self.node_name and obs.last_turn:
-            # This is a message from an agent (not system or self)
-            try:
-                # For agent responses, we format them as regular messages
                 formatted_message = json.dumps(
                     {
                         "type": "SERVER_MSG",
-                        "data": {
-                            "type": "agent_message",
-                            "agent": obs.agent_name,
-                            "content": obs.last_turn,
-                            "turn": obs.turn_number,
-                        },
+                        "data": {"type": "episode_log", "log": epilog_data},
                     }
                 )
 
-                # Publish to the connection's channel
+                    # Publish to the connection ID channel
                 await self.r.publish(self.connection_id, formatted_message)
-                logger.info(
-                    f"Published message from {obs.agent_name} to {self.connection_id}"
-                )
+                print(f"Published epilog update to {self.connection_id}")
+
+                    # Update hash
+                    # self.last_epilog_hash[self.connection_id] = epilog_hash
+
+            except json.JSONDecodeError:
+                print(f"Failed to parse epilog data: {obs.last_turn}")
             except Exception as e:
-                logger.error(f"Error publishing agent message: {e}")
+                print(f"Error publishing epilog: {e}")
+        else:
+            print("Unexpected message routed here ")
+
+        # elif obs.agent_name != self.node_name and obs.last_turn:
+        #     # This is a message from an agent (not system or self)
+        #     try:
+        #         # For agent responses, we format them as regular messages
+        #         formatted_message = json.dumps(
+        #             {
+        #                 "type": "SERVER_MSG",
+        #                 "data": {
+        #                     "type": "agent_message",
+        #                     "agent": obs.agent_name,
+        #                     "content": obs.last_turn,
+        #                     "turn": obs.turn_number,
+        #                 },
+        #             }
+        #         )
+
+        #         # Publish to the connection's channel
+        #         await self.r.publish(self.connection_id, formatted_message)
+        #         logger.info(
+        #             f"Published message from {obs.agent_name} to {self.connection_id}"
+        #         )
+        #     except Exception as e:
+        #         logger.error(f"Error publishing agent message: {e}")
 
     async def aact(self, obs: Observation) -> AgentAction | None:
         """
@@ -443,13 +451,8 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         Returns:
             AgentAction or None: The action to perform
         """
-        # Start the command listener if not already running
-        if not self.command_listener_task or self.command_listener_task.done():
-            await self.start_command_listener()
-
-        # Publish observation to Redis for WebSocket clients
-        await self.publish_observation(obs)
-
+        
+    
         # Handle initialization message
         if obs.turn_number == -1:
             if self.awake:
@@ -473,6 +476,8 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     }
                 ),
             )
+        print("Redis is awake")
+        
 
         # Update agent status
         for agent_name in self.other_agent_status.keys():
@@ -486,6 +491,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
 
         # Append to message history
         self.message_history.append(obs)
+        await self.publish_observation(obs)
 
         # Process agent responses to route them back to the original sender
         if (
@@ -493,14 +499,15 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
             and obs.agent_name != "epilog"
             and obs.last_turn
         ):
-            response_action = await self.process_agent_response(obs)
-            if response_action:
-                logger.info(f"Routing response from {obs.agent_name}")
-                return response_action
+            print("Unexpected message from agent received")
+            # response_action = await self.process_agent_response(obs)
+            # if response_action:
+            #     print(f"Routing response from {obs.agent_name}")
+            #     return response_action
 
         # Process any pending actions from websocket messages
-        if self.pending_actions:
-            action = self.pending_actions.pop(0)
+        if not self.pending_actions.empty():
+            action = await self.pending_actions.get()
             return action
 
         # Default action
