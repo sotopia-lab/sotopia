@@ -34,13 +34,12 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self,
         input_channels: list[str],
         output_channel: str,
-        query_interval: int,
         node_name: str,
         model_name: str,
         goal: str,
         agent_name: str = "",
         background: dict[str, Any] | None = None,
-        agent_pk: str | None = None,
+        agent_pk: str = "",
         redis_url: str = "redis://localhost:6379/0",
     ):
         super().__init__(
@@ -50,7 +49,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             node_name,
         )
         self.output_channel = output_channel
-        self.query_interval = query_interval
         self.count_ticks: int = 0
         self.message_history: list[Observation] = []
         self.goal: str = goal
@@ -73,8 +71,8 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             profile = AgentProfile(
                 first_name=first_name, last_name=last_name, **self.background
             )
-            profile.save()
         else:
+            assert not self.agent_profile_pk == "", "Agent profile pk must be provided"
             profile = AgentProfile.get(pk=self.agent_profile_pk)
 
         self.agent_profile_pk = profile.pk

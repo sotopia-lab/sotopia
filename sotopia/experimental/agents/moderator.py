@@ -99,9 +99,10 @@ class Moderator(Node[AgentAction, Observation]):
             )
 
     async def __aenter__(self) -> Self:
-        print(self.scenario)
+        print(f"Starting moderator with scenario: {self.scenario}")
         asyncio.create_task(self.booting())
         self.task_scheduler = asyncio.create_task(self._task_scheduler())
+        print("Moderator booted successfully")
         return await super().__aenter__()
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
@@ -139,12 +140,7 @@ class Moderator(Node[AgentAction, Observation]):
             self.observation_queue.task_done()
 
     async def booting(self) -> None:
-        """
-        1. send checking message to agents for every 0.1 seconds, until all agents are awake
-        - this message has turn_number of -1 for identification, agents should not record this into actual message_history
-        - if the agent booted succesfully, he is expected to return its agent_profile's pk for record.
-        2. (under round-robin action order)after all agents are awake, send agent[0] a message to allow the agent to start speaking
-        """
+        print("Booting moderator and waiting for agents...")
         while not self.all_agents_awake.is_set():
             await self.send(
                 Observations(
@@ -163,6 +159,7 @@ class Moderator(Node[AgentAction, Observation]):
                     }
                 )
             )
+            print("sent checking message to agents")
             await asyncio.sleep(0.2)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
@@ -173,7 +170,7 @@ class Moderator(Node[AgentAction, Observation]):
                     self.agent_models[agent_action.agent_name] = args["model_name"]
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
-                print("all agents are awake")
+                print("All agents are now awake and ready")
 
         self.epilog = EpisodeLog(
             environment=self.scenario,
