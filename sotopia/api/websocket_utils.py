@@ -11,7 +11,7 @@ from sotopia.database import (
     AgentProfile,
     EvaluationDimensionBuilder,
 )
-# from sotopia.server import arun_one_episode
+from sotopia.experimental.server import arun_one_episode
 
 from enum import Enum
 from typing import Type, TypedDict, Any, AsyncGenerator, Dict
@@ -300,7 +300,6 @@ class WebSocketSotopiaSimulator:
             "max_turns": self.max_turns,
             "scenario": self.env_profile.scenario,
             "connection_id": self.connection_id,
-            "redis_url": self.redis_url,
             "agents": [
                 {
                     "name": profile.first_name,

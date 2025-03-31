@@ -1,6 +1,7 @@
 from sotopia.messages import ActionType
 from aact.messages import DataModel, DataModelFactory
 from pydantic import Field
+import json
 
 
 @DataModelFactory.register("observation")

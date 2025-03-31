@@ -215,7 +215,8 @@ class Moderator(Node[AgentAction, Observation]):
                             self.agent_models[agent_action.agent_name] = args[
                                 "model_name"
                             ]
-                        except:
+                        except Exception as e:
+                            print(f"error in booting: {e}")
                             self.agents_pk[agent_action.agent_name] = "redis"
                             self.agent_models[agent_action.agent_name] = "redis"
                     else:

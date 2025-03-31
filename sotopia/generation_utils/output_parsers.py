@@ -68,8 +68,8 @@ class StrOutputParser(OutputParser[str]):
             to, content = result.split(":", 1)
             to = to.strip().lower()  # Remove extra spaces
             content = content.strip()
-        except:
-            print("Unable to parse the receiver")
+        except Exception as e:
+            print(f"Unable to parse the receiver: {e}")
             to = "all"
             content = result
         return to, result

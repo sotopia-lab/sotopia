@@ -87,7 +87,6 @@ async def main():
             print(confirmation_msg)
             msg = confirmation_msg["data"]
             agent_ids = msg["agent_ids"]
-            env_id = msg["env_id"]
             feedback1_msg = {
                 "type": "CLIENT_MSG",
                 "data": {
