@@ -17,6 +17,16 @@ from .datamodels import AgentAction, Observation
 from sotopia.messages import ActionType
 from .logs import EpisodeLog
 
+import logging
+from rich.logging import RichHandler
+
+# Configure logger with rich formatting
+log = logging.getLogger("sotopia.moderator")
+log.setLevel(logging.INFO)
+# Prevent propagation to root logger
+log.propagate = False
+log.addHandler(RichHandler(rich_tracebacks=True, show_time=True))
+
 
 @DataModelFactory.register("observations")
 class Observations(DataModel):
@@ -183,7 +193,7 @@ class Moderator(Node[AgentAction, Observation]):
             self.observation_queue.task_done()
 
     async def booting(self) -> None:
-        print("Booting moderator and waiting for agents...")
+        log.info("Booting moderator and waiting for agents...")
         while not self.all_agents_awake.is_set():
             await self.send_observations(
                 Observations(
@@ -202,7 +212,7 @@ class Moderator(Node[AgentAction, Observation]):
                     }
                 )
             )
-            print("sent checking message to agents")
+            log.info("sent checking message to agents")
             await asyncio.sleep(0.2)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
@@ -220,12 +230,14 @@ class Moderator(Node[AgentAction, Observation]):
                             self.agents_pk[agent_action.agent_name] = "redis"
                             self.agent_models[agent_action.agent_name] = "redis"
                     else:
-                        args: dict[str, Any] = json.loads(agent_action.argument)
-                        self.agents_pk[agent_action.agent_name] = args["pk"]
-                        self.agent_models[agent_action.agent_name] = args["model_name"]
+                        agent_args: dict[str, Any] = json.loads(agent_action.argument)
+                        self.agents_pk[agent_action.agent_name] = agent_args["pk"]
+                        self.agent_models[agent_action.agent_name] = agent_args[
+                            "model_name"
+                        ]
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
-                print("All agents are now awake and ready")
+                log.info("All agents are now awake and ready")
 
         # TODO: remove this once we have a better way to handle the redis_agent
         if not self.redis_agent_as_actor:
@@ -307,7 +319,7 @@ class Moderator(Node[AgentAction, Observation]):
 
     async def astep(self, agent_action: AgentAction) -> Observations | None:
         # message (sender, receivers (seperated by comma), message content)
-
+        log.info(f"astep: {agent_action.model_dump_json()}")
         arg_data = json.loads(agent_action.argument)
         receiver = arg_data.get("to", "all")
         if agent_action.action_type == "speak":

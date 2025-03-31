@@ -94,6 +94,7 @@ async def main():
                     "to": "Li",
                 },
             }
+            await asyncio.sleep(3)
             await ws.send_json(feedback1_msg)
             print("Client: Sent feedback1 message")
             await asyncio.sleep(15)

@@ -19,13 +19,11 @@ else:
     pass
 
 # Configure logging
-FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-logging.basicConfig(
-    level=logging.WARNING,
-    format=FORMAT,
-    datefmt="[%X]",
-    handlers=[RichHandler()],
-)
+log = logging.getLogger("sotopia.llm_agent")
+log.setLevel(logging.INFO)
+# Prevent propagation to root logger
+log.propagate = False
+log.addHandler(RichHandler(rich_tracebacks=True, show_time=True))
 
 
 @NodeFactory.register("llm_agent")
@@ -120,32 +118,47 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             )
         else:
             history = self._format_message_history(self.message_history)
-            to, action = await agenerate(
-                model_name=self.model_name,
-                template="Imagine that you are a friend of the other persons. Here is the "
-                "conversation between you and them.\n"
-                "List of people involved: {all_agents}"
-                "You are {agent_name} in the conversation.\n"
-                "{message_history}\n"
-                "and you plan to {goal}.\n"
-                "You can choose to interrupt the other person "
-                "by saying something or not interrupt by outputting nothing. What would you say? \n"
-                "If you choose to say something, before your output mention the person you want to talk to "
-                "or 'All' if you want to say something to everyone\n"
-                "For example, 'All: I am tired' if you want to address everyone or 'John Doe: I am tired' "
-                "if you want to address John Doe. If you choose to address a person, ensure they are in the list of "
-                "people involved\n"
-                "Please only output a sentence or do not output anything."
-                "{format_instructions}",
-                input_values={
-                    "message_history": history,
-                    "goal": self.goal,
-                    "agent_name": self.name,
-                    "all_agents": self.agents_str,
-                },
-                temperature=0.7,
-                output_parser=StrOutputParser(),
-            )
+            try:
+                response = await agenerate(
+                    model_name=self.model_name,
+                    template="Imagine that you are a friend of the other persons. Here is the "
+                    "conversation between you and them.\n"
+                    "List of people involved: {all_agents}"
+                    "You are {agent_name} in the conversation.\n"
+                    "{message_history}\n"
+                    "and you plan to {goal}.\n"
+                    "You can choose to interrupt the other person "
+                    "by saying something or not interrupt by outputting nothing. What would you say? \n"
+                    "If you choose to say something, before your output mention the person you want to talk to "
+                    "or 'All' if you want to say something to everyone\n"
+                    "For example, 'All: I am tired' if you want to address everyone or 'John Doe: I am tired' "
+                    "if you want to address John Doe. If you choose to address a person, ensure they are in the list of "
+                    "people involved\n"
+                    "Please only output a sentence or do not output anything."
+                    "{format_instructions}",
+                    input_values={
+                        "message_history": history,
+                        "goal": self.goal,
+                        "agent_name": self.name,
+                        "all_agents": self.agents_str,
+                    },
+                    temperature=0.7,
+                    output_parser=StrOutputParser(),
+                )
+            except Exception as e:
+                log.error(f"Error generating response: {e}")
+                response = ""
+            if not response:
+                return AgentAction(
+                    agent_name=self.name,
+                    output_channel=self.output_channel,
+                    action_type="none",
+                    argument=json.dumps({"action": "", "to": "all"}),
+                )
+
+            parts = response.split(":", 1)
+            to = parts[0].strip() if len(parts) > 1 else "all"
+            action = parts[1].strip() if len(parts) > 1 else response.strip()
 
             return AgentAction(
                 agent_name=self.name,
