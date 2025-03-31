@@ -18,16 +18,13 @@ else:
     pass
 
 # Configure logging
-FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-logging.basicConfig(
-    level=logging.WARNING,
-    format=FORMAT,
-    datefmt="[%X]",
-    handlers=[RichHandler()],
-)
 
-# log = logging.getLogger("sotopia.redis_agent")
-# log.setLevel(logging.INFO)
+
+log = logging.getLogger("sotopia.redis_agent")
+log.setLevel(logging.INFO)
+# Prevent propagation to root logger
+log.propagate = False
+log.addHandler(RichHandler(rich_tracebacks=True, show_time=True))
 
 
 @NodeFactory.register("redis_agent")
@@ -188,7 +185,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
             return
 
     async def aact(self, obs: Observation) -> AgentAction | None:
-        # log.info(f"NOT REACHING: {obs}")
+        log.info(f"NOT REACHING: {obs}")
         if not self.command_listener_task:
             print("Redis connection not initialized from redis_agent")
             await self.start_command_listener()
