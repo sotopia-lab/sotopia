@@ -347,7 +347,6 @@ class Moderator(Node[AgentAction, Observation]):
         if agent_action.action_type == "none":
             return None
         await self.send_epilog(self.epilog, "moderator:redis_agent")
-
         if self.turn_number < self.max_turns:
             self.turn_number += 1
         else:
@@ -362,6 +361,7 @@ class Moderator(Node[AgentAction, Observation]):
                     for output_channel, agent_name in self.agent_mapping.items()
                 }
             )
+
         receiver = receiver.lower()
         observations_map: dict[str, Observation] = {}
         for output_channel, _ in self.output_channel_types.items():

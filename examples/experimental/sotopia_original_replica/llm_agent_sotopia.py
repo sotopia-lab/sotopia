@@ -34,6 +34,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         output_channel: str,
         node_name: str,
         model_name: str,
+        agents_str: str,
         goal: str,
         agent_name: str = "",
         background: dict[str, Any] | None = None,
@@ -47,6 +48,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             node_name,
         )
         self.output_channel = output_channel
+        self.agents_str: str = agents_str
         self.count_ticks: int = 0
         self.message_history: list[Observation] = []
         self.goal: str = goal
@@ -119,7 +121,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         else:
             history = self._format_message_history(self.message_history)
             try:
-                response = await agenerate(
+                to, response = await agenerate(
                     model_name=self.model_name,
                     template="Imagine that you are a friend of the other persons. Here is the "
                     "conversation between you and them.\n"
@@ -155,14 +157,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     action_type="none",
                     argument=json.dumps({"action": "", "to": "all"}),
                 )
-
-            parts = response.split(":", 1)
-            to = parts[0].strip() if len(parts) > 1 else "all"
-            action = parts[1].strip() if len(parts) > 1 else response.strip()
-
             return AgentAction(
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="speak",
-                argument=json.dumps({"action": action, "to": to}),
+                argument=json.dumps({"action": response, "to": to}),
             )

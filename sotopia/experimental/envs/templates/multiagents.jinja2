@@ -26,6 +26,7 @@ push_to_db = {{push_to_db | render_bool }}
 evaluate_episode = {{evaluate_episode | render_bool}}
 use_pk_value = {{use_pk_value | render_bool}}
 
+{% set agents_str = agents | map(attribute='name') | join(', ') %}
 {% for agent in agents if agent.name != "redis_agent" %}
 [[nodes]]
 node_name = "{{agent.name}}"
@@ -36,7 +37,7 @@ input_channels = ["moderator:{{agent.name}}"]
 output_channel = "{{agent.name}}:moderator"
 goal = "{{agent.goal}}"
 model_name = "{{agent.model_name if agent.model_name is defined else default_model}}"
-{% set agents_str = agents | map(attribute='name') | join(', ') %}
+agents_str = "{{ agents_str }}"
 {% if agent.agent_pk is defined%}
 agent_pk = "{{agent.agent_pk}}"
 {% else %}

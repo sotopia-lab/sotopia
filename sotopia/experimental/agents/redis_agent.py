@@ -26,7 +26,8 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
-logger = logging.getLogger(__name__)
+# log = logging.getLogger("sotopia.redis_agent")
+# log.setLevel(logging.INFO)
 
 
 @NodeFactory.register("redis_agent")
@@ -187,6 +188,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
             return
 
     async def aact(self, obs: Observation) -> AgentAction | None:
+        # log.info(f"NOT REACHING: {obs}")
         if not self.command_listener_task:
             print("Redis connection not initialized from redis_agent")
             await self.start_command_listener()
@@ -208,8 +210,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 argument=json.dumps({"pk": "redis", "model_name": "redis"}),
             )
         await self.publish_observation(obs)
-        if obs.agent_name != "moderator":
-            sys.exit(0)
         for agent_name in self.other_agent_status.keys():
             if f"{agent_name} left." in obs.last_turn:
                 self.other_agent_status[agent_name] = False
@@ -222,7 +222,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         if not self.pending_actions.empty():
             action = await self.pending_actions.get()
             return action
-
         return AgentAction(
             agent_name=self.node_name,
             output_channel=self.output_channel,

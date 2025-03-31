@@ -72,7 +72,7 @@ class StrOutputParser(OutputParser[str]):
             print(f"Unable to parse the receiver: {e}")
             to = "all"
             content = result
-        return to, result
+        return to, content
 
     def get_format_instructions(self) -> str:
         return ""
