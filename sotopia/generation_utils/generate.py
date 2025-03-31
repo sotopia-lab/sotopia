@@ -2,7 +2,6 @@ import logging
 import os
 from litellm import acompletion
 from typing import cast
-import sys
 import gin
 from beartype import beartype
 

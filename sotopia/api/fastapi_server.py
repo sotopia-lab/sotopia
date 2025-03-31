@@ -210,7 +210,7 @@ class SimulationManager:
                         {
                             "content": message_content,
                             "sender": "redis_agent",
-                            "receiver": receiver
+                            "receiver": receiver,
                         }
                     )
             return False
@@ -219,7 +219,6 @@ class SimulationManager:
             logger.error(error_msg)
             await self.send_error(websocket, ErrorType.INVALID_MESSAGE, error_msg)
             return False
-
 
     async def run_simulation(
         self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
@@ -806,12 +805,16 @@ class SotopiaFastAPI(FastAPI):
                                 agent_models=sim_data.get(
                                     "agent_models", ["gpt-4o-mini"] * len(agent_ids)
                                 ),
-                                evaluator_model=sim_data.get("evaluator_model", "gpt-4o"),
+                                evaluator_model=sim_data.get(
+                                    "evaluator_model", "gpt-4o"
+                                ),
                                 evaluation_dimension_list_name=sim_data.get(
                                     "evaluation_dimension_list_name", "sotopia"
                                 ),
                                 env_profile_dict=sim_data.get("env_profile_dict", {}),
-                                agent_profile_dicts=sim_data.get("agent_profile_dicts", []),
+                                agent_profile_dicts=sim_data.get(
+                                    "agent_profile_dicts", []
+                                ),
                                 max_turns=sim_data.get("max_turns", 20),
                             )
                             await simulator.connect_to_redis()
@@ -827,7 +830,9 @@ class SotopiaFastAPI(FastAPI):
                                     "connection_id": simulator.connection_id,
                                 },
                             )
-                            logger.info("WebSocket start sim message confirmation sent.")
+                            logger.info(
+                                "WebSocket start sim message confirmation sent."
+                            )
                             # Run the simulation
                             await manager.run_simulation(websocket, simulator)
 

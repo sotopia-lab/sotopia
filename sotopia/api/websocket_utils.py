@@ -9,20 +9,17 @@ from sotopia.envs import ParallelSotopiaEnv
 from sotopia.database import (
     EnvironmentProfile,
     AgentProfile,
-    EpisodeLog,
     EvaluationDimensionBuilder,
 )
 # from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict
+from typing import Type, TypedDict, Any, AsyncGenerator, Dict
 from pydantic import BaseModel
 import uuid
-from sotopia.experimental.server import arun_one_episode
 import logging
 from redis.asyncio import Redis
 import json
-
 
 
 # Setup logging
@@ -264,10 +261,16 @@ class WebSocketSotopiaSimulator:
 
         # Set default sender if not provided
         sender = message.get("sender", "redis_agent")
-        receiver =  message.get("receiver", "all")
+        receiver = message.get("receiver", "all")
 
         # Create message payload for full mode
-        payload = {"message": {"content": message["content"], "sender": sender, "receiver":receiver}}
+        payload = {
+            "message": {
+                "content": message["content"],
+                "sender": sender,
+                "receiver": receiver,
+            }
+        }
 
         # Send to RedisAgent via Redis
         await self.send_to_redis(payload)
@@ -310,7 +313,7 @@ class WebSocketSotopiaSimulator:
                 }
                 for i, profile in enumerate(self.agent_profiles)
             ],
-        }       
+        }
         return config
 
     async def arun(self) -> AsyncGenerator[Dict[str, Any], None]:
@@ -324,7 +327,6 @@ class WebSocketSotopiaSimulator:
         episode_config = self.prepare_episode_config()
 
         # Use the new arun_one_episode function
-        from sotopia.experimental.server import arun_one_episode
 
         async for message in arun_one_episode(episode_config, self.connection_id):
             yield message

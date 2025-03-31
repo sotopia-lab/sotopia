@@ -36,7 +36,7 @@ input_channels = ["moderator:{{agent.name}}"]
 output_channel = "{{agent.name}}:moderator"
 goal = "{{agent.goal}}"
 model_name = "{{agent.model_name if agent.model_name is defined else default_model}}"
-{% set agents_str = agents | map(attribute='name') | join(', ') %} 
+{% set agents_str = agents | map(attribute='name') | join(', ') %}
 {% if agent.agent_pk is defined%}
 agent_pk = "{{agent.agent_pk}}"
 {% else %}

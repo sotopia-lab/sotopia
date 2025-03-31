@@ -12,7 +12,7 @@ extra_modules = [
 node_name = "moderator"
 node_class = "moderator"
 [nodes.node_args]
-output_channels = [ 
+output_channels = [
     "moderator:Li",
     "moderator:Sarah",
     "moderator:redis_agent"
@@ -40,7 +40,7 @@ input_channels = ["moderator:Li"]
 output_channel = "Li:moderator"
 goal = "You goal is to collaborate with AI agent in the working space. <extra_info>You will be asked to provide feedback and scoring (1-5) for the all hands meeting by the AI Agent.</extra_info> <strategy_hint>Express you think the meeting is informative and helpful, with a score of 5.</strategy_hint>"
 model_name = "gpt-4o"
- 
+
 
 agent_pk = "01JQP91SP0RD5XABRGWRF2WSA6"
 
@@ -55,7 +55,7 @@ input_channels = ["moderator:Sarah"]
 output_channel = "Sarah:moderator"
 goal = "You goal is to collaborate with AI agent in the working space. <extra_info>You will be asked to provide feedback and scoring (1-5) for the all hands meeting by the AI Agent.</extra_info> <strategy_hint>Express you think the meeting is not informative and helpful, with a score of 2.</strategy_hint>"
 model_name = "gpt-4o"
- 
+
 
 agent_pk = "01JQP91SP06EPAX81PW5KC2HWX"
 

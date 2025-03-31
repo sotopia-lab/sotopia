@@ -3,8 +3,6 @@ import json
 import asyncio
 import sys
 from rich.logging import RichHandler
-import aiohttp
-from aiohttp import ClientSession, ClientWebSocketResponse
 
 from aact import NodeFactory
 
@@ -70,17 +68,19 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.other_agent_status = other_agent_status
         self.pending_actions: asyncio.Queue[Observation] = asyncio.Queue()
         self.command_listener_task = None
-        self.websocket_prefix = "websocket:"  # Prefix for listening to websocket commands
+        self.websocket_prefix = (
+            "websocket:"  # Prefix for listening to websocket commands
+        )
         # self.start_command_listener()
         # We'll set up the websocket connection in setup_websocket
         # which will be called during the first aact call
-    
+
     async def start_command_listener(self) -> None:
         """Start listening for commands on Redis channels"""
         if self.command_listener_task is None or self.command_listener_task.done():
             self.command_listener_task = asyncio.create_task(self._command_listener())
             print("Started Redis command listener task")
-    
+
     async def _command_listener(self) -> None:
         """Listen for commands from WebSocket clients via Redis"""
         if not self.pubsub_channel:
@@ -113,7 +113,10 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                                 if "message" in command_data:
                                     msg = command_data["message"]
 
-                                    if not isinstance(msg, dict) or "content" not in msg:
+                                    if (
+                                        not isinstance(msg, dict)
+                                        or "content" not in msg
+                                    ):
                                         print("Invalid message format")
                                         return None
 
@@ -121,15 +124,19 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                                     content = msg.get("content")
                                     receiver = msg.get("receiver", "all")
 
-                                    if receiver!="all":
-                                        print(f"Processing DM from {sender} to {receiver}")
+                                    if receiver != "all":
+                                        print(
+                                            f"Processing DM from {sender} to {receiver}"
+                                        )
                                     else:
                                         print(f"Broadcasting message from {sender}")
                                     action = AgentAction(
                                         agent_name=sender,
                                         output_channel=self.output_channel,
                                         action_type="speak",
-                                        argument=json.dumps({"action": content, "to":receiver})
+                                        argument=json.dumps(
+                                            {"action": content, "to": receiver}
+                                        ),
                                     )
                             except KeyError as e:
                                 print(f"Missing key in command: {e}")
@@ -138,7 +145,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                                 print(f"Error processing command: {e}")
                                 action = None
 
-                            
                             if action:
                                 await self.send(action)
                                 # Add to pending actions queue
@@ -164,7 +170,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
             # Unsubscribe when done
             await pubsub.unsubscribe(channel)
             print("Command listener stopped")
-
 
     async def publish_observation(self, obs: Observation) -> None:
         """Publish observation to Redis"""
@@ -217,7 +222,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         if not self.pending_actions.empty():
             action = await self.pending_actions.get()
             return action
-        
+
         return AgentAction(
             agent_name=self.node_name,
             output_channel=self.output_channel,

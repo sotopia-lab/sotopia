@@ -152,7 +152,6 @@ class Moderator(Node[AgentAction, Observation]):
                 ).model_dump_json()
                 await self.send(output_channel, message_json)
 
-
     async def send_epilog(self, epilog: EpisodeLog, output_channel: str) -> None:
         """Send the epilog to other agents"""
         message_json = Message[Observation](
@@ -180,7 +179,6 @@ class Moderator(Node[AgentAction, Observation]):
             agent_action = await self.observation_queue.get()
             action_or_none = await self.astep(agent_action)
             if action_or_none is not None:
-
                 await self.send_observations(action_or_none)
             self.observation_queue.task_done()
 
@@ -214,7 +212,9 @@ class Moderator(Node[AgentAction, Observation]):
                         try:
                             args: dict[str, Any] = json.loads(agent_action.argument)
                             self.agents_pk[agent_action.agent_name] = args["pk"]
-                            self.agent_models[agent_action.agent_name] = args["model_name"]
+                            self.agent_models[agent_action.agent_name] = args[
+                                "model_name"
+                            ]
                         except:
                             self.agents_pk[agent_action.agent_name] = "redis"
                             self.agent_models[agent_action.agent_name] = "redis"
@@ -306,7 +306,7 @@ class Moderator(Node[AgentAction, Observation]):
 
     async def astep(self, agent_action: AgentAction) -> Observations | None:
         # message (sender, receivers (seperated by comma), message content)
-        
+
         arg_data = json.loads(agent_action.argument)
         receiver = arg_data.get("to", "all")
         if agent_action.action_type == "speak":

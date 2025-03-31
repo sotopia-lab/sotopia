@@ -120,7 +120,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             )
         else:
             history = self._format_message_history(self.message_history)
-            to, action= await agenerate(
+            to, action = await agenerate(
                 model_name=self.model_name,
                 template="Imagine that you are a friend of the other persons. Here is the "
                 "conversation between you and them.\n"
@@ -141,7 +141,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     "message_history": history,
                     "goal": self.goal,
                     "agent_name": self.name,
-                    "all_agents": self.agents_str
+                    "all_agents": self.agents_str,
                 },
                 temperature=0.7,
                 output_parser=StrOutputParser(),
@@ -151,5 +151,5 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent_name=self.name,
                 output_channel=self.output_channel,
                 action_type="speak",
-                argument=json.dumps({"action": action, "to":to})
+                argument=json.dumps({"action": action, "to": to}),
             )
