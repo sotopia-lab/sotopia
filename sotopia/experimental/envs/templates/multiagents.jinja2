@@ -1,4 +1,4 @@
-redis_url = "redis://localhost:6379/0"
+redis_url = "{{redis_url}}"
 extra_modules = [{% for ins in extra_modules %}
     "{{ ins }}",{% endfor %}
     "sotopia.experimental.envs.utility_nodes.chat_print_node",
@@ -36,6 +36,7 @@ input_channels = ["moderator:{{agent.name}}"]
 output_channel = "{{agent.name}}:moderator"
 goal = "{{agent.goal}}"
 model_name = "{{agent.model_name if agent.model_name is defined else default_model}}"
+{% set agents_str = agents | map(attribute='name') | join(', ') %} 
 {% if agent.agent_pk is defined%}
 agent_pk = "{{agent.agent_pk}}"
 {% else %}
@@ -50,13 +51,12 @@ agent_name = "{{agent.name}}"
 node_name = "chat_print"
 node_class = "chat_print"
 
-[nodes.node_args.print_channel_types]{% for agent in agents %}
-"{{agent.name}}:moderator" = "agent_action"{% endfor %}
-
 [nodes.node_args]
+print_channel_types = { {% for agent in agents %}"{{agent.name}}:moderator" = "agent_action"{% if not loop.last %},{% endif %}{% endfor %}}
 env_agents = [{% for agent in agents %}
     "{{ agent.name }}"{% if not loop.last %},{% endif %}{% endfor %}
 ]
+
 
 [[nodes]]
 node_name = "evaluator"
@@ -75,7 +75,4 @@ node_class = "redis_agent"
 input_channels = ["moderator:redis_agent"]
 output_channel = "redis_agent:moderator"
 pubsub_channel = "{{connection_id}}"
-
-[nodes.node_args.other_agent_status]
-{% for agent in agents %}
-"{{ agent.name }}" = true{% if not loop.last %}{% endif %}{% endfor %}
+other_agent_status = { {% for agent in agents %}"{{agent.name}}" = true{% if not loop.last %},{% endif %}{% endfor %}}

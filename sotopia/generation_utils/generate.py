@@ -2,7 +2,7 @@ import logging
 import os
 from litellm import acompletion
 from typing import cast
-
+import sys
 import gin
 from beartype import beartype
 
@@ -152,7 +152,7 @@ async def agenerate(
     result = response.choices[0].message.content
 
     try:
-        parsed_result = output_parser.parse(result)
+        to, parsed_result = output_parser.parse(result)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e
@@ -168,9 +168,10 @@ async def agenerate(
             use_fixed_model_version,
         )
         parsed_result = output_parser.parse(reformat_result)
+        to = "all"
 
     log.info(f"Generated result: {parsed_result}")
-    return parsed_result
+    return to, parsed_result
 
 
 @gin.configurable

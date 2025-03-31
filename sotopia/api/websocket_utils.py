@@ -12,12 +12,22 @@ from sotopia.database import (
     EpisodeLog,
     EvaluationDimensionBuilder,
 )
-from sotopia.server import arun_one_episode
+# from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List
+from typing import Type, TypedDict, Any, AsyncGenerator, List, Dict
 from pydantic import BaseModel
 import uuid
+from sotopia.experimental.server import arun_one_episode
+import logging
+from redis.asyncio import Redis
+import json
+
+
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class WSMessageType(str, Enum):
@@ -150,9 +160,28 @@ class WebSocketSotopiaSimulator:
         evaluator_model: str = "gpt-4o",
         evaluation_dimension_list_name: str = "sotopia",
         max_turns: int = 20,
+        redis_host: str = "localhost",
+        redis_port: int = 6379,
+        redis_db: int = 0,
     ) -> None:
-        if len(agent_ids) == 2:
-            try:
+        # Set common attributes regardless of number of agents
+        self.env_id = env_id
+        self.agent_ids = agent_ids
+        self.agent_models = agent_models
+        self.evaluator_model = evaluator_model
+        self.evaluation_dimension_list_name = evaluation_dimension_list_name
+        self.connection_id = str(uuid.uuid4())
+        self.max_turns = max_turns
+        # Redis channel
+        self.command_channel = f"websocket:{self.connection_id}"
+        # Redis connection details
+        self.redis_url = f"redis://{redis_host}:{redis_port}/{redis_db}"
+        self.redis_client = None
+        # Initialize environment and agents
+        try:
+            # Use a unified approach for any number of agents
+            if not env_profile_dict and not agent_profile_dicts:
+                # Use the standard approach with database profiles
                 self.env, self.agents, self.environment_messages = get_env_agents(
                     env_id,
                     agent_ids,
@@ -160,138 +189,142 @@ class WebSocketSotopiaSimulator:
                     evaluator_model,
                     evaluation_dimension_list_name,
                 )
+            else:
+                # Use provided profile dictionaries
+                self.env_profile = EnvironmentProfile(**env_profile_dict)
+                self.env_profile.save()
+                assert self.env_profile.pk is not None
+                self.env_id = self.env_profile.pk
+                self.agent_profiles = [
+                    AgentProfile(**agent_profile_dict)
+                    for agent_profile_dict in agent_profile_dicts
+                ]
+                self.agent_ids = []
+                for agent_profile in self.agent_profiles:
+                    agent_profile.save()
+                    assert agent_profile.pk is not None
+                    self.agent_ids.append(agent_profile.pk)
+        except Exception as e:
+            logger.error(f"Error initializing environment or agents: {e}")
+            raise
+
+    async def connect_to_redis(self) -> None:
+        """Establish connection to Redis and subscribe to channels"""
+        if self.redis_client is None:
+            try:
+                # Connect to Redis
+                self.redis_client = Redis.from_url(self.redis_url)
+                # Create pubsub interface
+                self.redis_pubsub = self.redis_client.pubsub()
+
+                # Subscribe to epilog channel
+                await self.redis_pubsub.subscribe(self.command_channel)
+                logger.info(f"Subscribed to Redis channel: {self.command_channel}")
             except Exception as e:
-                raise Exception(f"Error in loading environment or agents profiles: {e}")
+                logger.error(f"Error connecting to Redis: {e}")
+                raise
 
-            for index, agent_name in enumerate(self.env.agents):
-                self.agents[agent_name].goal = self.env.profile.agent_goals[index]
-        else:
-            assert (
-                env_profile_dict
-            ), "env_profile_dict must be provided if number of agents is greater than 2"
-            assert agent_profile_dicts, "agent_profile_dicts must be provided if number of agents is greater than 2"
-            self.env_profile = EnvironmentProfile(**env_profile_dict)
-            self.agent_profiles = [
-                AgentProfile(**agent_profile_dict)
-                for agent_profile_dict in agent_profile_dicts
-            ]
-        self.agent_models = agent_models
-        self.evaluator_model = evaluator_model
-        self.evaluation_dimension_list_name = evaluation_dimension_list_name
+    async def send_to_redis(self, message: Dict) -> None:
+        """
+        Send a message to Redis for the RedisAgent
 
-        self.connection_id = str(uuid.uuid4())
-        self.max_turns = max_turns
-
-    async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
-        # Use sotopia to run the simulation
-        if len(self.agent_models) == 2:
-            generator = await arun_one_episode(
-                env=self.env,
-                agent_list=list(self.agents.values()),
-                push_to_db=False,
-                streaming=True,
+        Args:
+            message: The message to send
+        """
+        try:
+            # Publish message to the command channel
+            print("From websocket")
+            print(message)
+            await self.redis_client.publish(self.command_channel, json.dumps(message))
+            msg_type = message.get("type", "command")
+            content_preview = ""
+            if "content" in message:
+                content_preview = f": {message['content'][:30]}..."
+            elif "message" in message and "content" in message["message"]:
+                content_preview = f": {message['message']['content'][:30]}..."
+            logger.info(
+                f"[{self.connection_id}] Sent message type: {msg_type}{content_preview}"
             )
-            assert isinstance(
-                generator, AsyncGenerator
-            ), "generator should be async generator, but got {}".format(type(generator))
+        except Exception as e:
+            logger.error(f"Error sending message to Redis: {e}")
 
-            async for messages in generator:
-                reasoning, rewards = "", [0.0, 0.0]
-                if messages[-1][0][0] == "Evaluation":
-                    reasoning = messages[-1][0][2].to_natural_language()
-                    rewards = eval(messages[-2][0][2].to_natural_language())
-                epilog = EpisodeLog(
-                    environment=self.env.profile.pk,
-                    agents=[agent.profile.pk for agent in self.agents.values()],
-                    tag="test",
-                    messages=[
-                        [
-                            (m[0], m[1], m[2].to_natural_language())
-                            for m in messages_in_turn
-                        ]
-                        for messages_in_turn in messages
-                    ],
-                    reasoning=reasoning,
-                    rewards=rewards,
-                    rewards_prompt="",
-                ).dict()
-                yield {
-                    "type": "messages",
-                    "messages": epilog,
+    async def send_message(self, message: Dict) -> None:
+        """
+        Send a regular message in full mode
+
+        Args:
+            message: The message data containing:
+                - content: The message content
+                - sender: The sender (defaults to "redis_agent")
+        """
+        # Validate message
+        if "content" not in message:
+            logger.error("Error: Message must contain 'content' field")
+            return
+
+        # Set default sender if not provided
+        sender = message.get("sender", "redis_agent")
+        receiver =  message.get("receiver", "all")
+
+        # Create message payload for full mode
+        payload = {"message": {"content": message["content"], "sender": sender, "receiver":receiver}}
+
+        # Send to RedisAgent via Redis
+        await self.send_to_redis(payload)
+        logger.info(
+            f"[{self.connection_id}] Sent full mode message: {message['content'][:30]}..."
+        )
+
+    def prepare_episode_config(self) -> Dict[str, Any]:
+        """
+        Prepare the simulation configuration for arun_one_episode
+
+        Returns:
+            Dict: Episode configuration
+        """
+        # Base configuration
+        config = {
+            "redis_url": self.redis_url,
+            "extra_modules": [
+                "examples.experimental.sotopia_original_replica.llm_agent_sotopia",
+            ],
+            "agent_node": "llm_agent",
+            "default_model": "gpt-4o-mini",
+            "evaluator_model": self.evaluator_model,
+            "use_pk_value": True,
+            "push_to_db": False,  # TODO: check, do we need to push epilog to redis database? Probably not.
+            "evaluate_episode": False,
+            "max_turns": self.max_turns,
+            "scenario": self.env_profile.scenario,
+            "connection_id": self.connection_id,
+            "redis_url": self.redis_url,
+            "agents": [
+                {
+                    "name": profile.first_name,
+                    "goal": self.env_profile.agent_goals[i],
+                    "model_name": self.agent_models[i]
+                    if i < len(self.agent_models)
+                    else "gpt-4o-mini",
+                    "agent_pk": profile.pk,
+                    "background": {},
                 }
-        elif len(self.agent_models) > 2:
-            multi_agent_generator: AsyncGenerator[dict[str, Any], None] = (
-                arun_server_adaptor(
-                    env=self.env_profile,
-                    agent_list=self.agent_profiles,
-                    agent_models=self.agent_models,
-                    evaluator_model=self.evaluator_model,
-                    evaluation_dimension_list_name=self.evaluation_dimension_list_name,
-                    push_to_db=False,
-                    streaming=True,
-                    connection_id=self.connection_id,
-                    max_turns=self.max_turns,
-                )
-            )
-            assert isinstance(
-                multi_agent_generator, AsyncGenerator
-            ), "generator should be async generator, but got {}".format(
-                type(multi_agent_generator)
-            )
+                for i, profile in enumerate(self.agent_profiles)
+            ],
+        }       
+        return config
 
-            async for message_data in multi_agent_generator:
-                yield {
-                    "type": "messages",
-                    "messages": message_data,
-                }
-        else:
-            raise ValueError("Number of agents must be 2 or greater")
+    async def arun(self) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Run the simulation and yield message updates from the queue.
 
+        Yields:
+            dict: Message data for the WebSocket client
+        """
+        # Reset control flags
+        episode_config = self.prepare_episode_config()
 
-async def arun_server_adaptor(
-    env: EnvironmentProfile,
-    agent_list: List[AgentProfile],
-    agent_models: List[str],
-    evaluator_model: str,
-    evaluation_dimension_list_name: str,
-    max_turns: int = 20,
-    push_to_db: bool = True,
-    streaming: bool = False,
-    connection_id: str = "",
-) -> AsyncGenerator[dict[str, Any], None]:
-    # Prepare episode configuration
-    from sotopia.experimental.server import arun_one_episode
+        # Use the new arun_one_episode function
+        from sotopia.experimental.server import arun_one_episode
 
-    # TODO: Unify the API of the two agents
-    config_data = {
-        "redis_url": "redis://localhost:6379/0",
-        "extra_modules": [
-            "examples.experimental.sotopia_original_replica.llm_agent_sotopia",
-            "sotopia.experimental.agents.redis_agent",
-        ],
-        "agent_node": "llm_agent",
-        "default_model": "gpt-4o-mini",
-        "evaluator_model": evaluator_model,
-        "use_pk_value": False,
-        "push_to_db": push_to_db,
-        "evaluate_episode": False,
-        "max_turns": max_turns,
-        "scenario": env.scenario,
-        "agents": [
-            {
-                "name": agent.first_name,
-                "goal": env.agent_goals[i] if i < len(env.agent_goals) else "",
-                "model_name": agent_models[i]
-                if i < len(agent_models)
-                else "gpt-4o-mini",
-                "background": agent.dict(),
-            }
-            for i, agent in enumerate(agent_list)
-        ],
-    }
-    # Use the arun_one_episode function from server.py
-    async for episode_data in arun_one_episode(
-        episode_config=config_data,
-        connection_id=connection_id,
-    ):
-        yield episode_data
+        async for message in arun_one_episode(episode_config, self.connection_id):
+            yield message

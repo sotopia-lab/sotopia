@@ -64,7 +64,15 @@ class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
 
 class StrOutputParser(OutputParser[str]):
     def parse(self, result: str) -> str:
-        return result
+        try:
+            to, content = result.split(":", 1)
+            to = to.strip().lower()  # Remove extra spaces
+            content = content.strip()
+        except:
+            print("Unable to parse the receiver")
+            to = "all"
+            content = result
+        return to, result
 
     def get_format_instructions(self) -> str:
         return ""

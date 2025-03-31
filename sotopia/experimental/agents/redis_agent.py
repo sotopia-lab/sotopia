@@ -58,79 +58,133 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.agent_profile_pk: str | None = agent_pk
         self.background: dict[str, Any] | None = background
         self.awake: bool = False
-        self.websocket_url = websocket_url
-        self.websocket_session: ClientSession | None = None
-        self.websocket: ClientWebSocketResponse | None = None
+        # self.websocket_url = websocket_url
+        # self.websocket_session: ClientSession | None = None
+        # self.websocket: ClientWebSocketResponse | None = None
         self.pubsub_channel = pubsub_channel
-        self.websocket_task: asyncio.Task[None] | None = None
-        self.last_websocket_message = None
-        self.websocket_wait_time = websocket_wait_time
+        # self.websocket_task: asyncio.Task[None] | None = None
+        # self.last_websocket_message = None
+        # self.websocket_wait_time = websocket_wait_time
         self.loop_interval = loop_interval
         self.shutdown_event = asyncio.Event()
         self.other_agent_status = other_agent_status
+        self.pending_actions: asyncio.Queue[Observation] = asyncio.Queue()
+        self.command_listener_task = None
+        self.websocket_prefix = "websocket:"  # Prefix for listening to websocket commands
+        # self.start_command_listener()
         # We'll set up the websocket connection in setup_websocket
         # which will be called during the first aact call
+    
+    async def start_command_listener(self) -> None:
+        """Start listening for commands on Redis channels"""
+        if self.command_listener_task is None or self.command_listener_task.done():
+            self.command_listener_task = asyncio.create_task(self._command_listener())
+            print("Started Redis command listener task")
+    
+    async def _command_listener(self) -> None:
+        """Listen for commands from WebSocket clients via Redis"""
+        if not self.pubsub_channel:
+            print("No connection_id specified, command listener not started")
+            return
 
-    async def setup_websocket(self) -> None:
-        """Set up the websocket connection"""
-        if self.websocket_url and not self.websocket:
-            try:
-                self.websocket_session = aiohttp.ClientSession()
-                if self.websocket_session is not None:
-                    self.websocket = await self.websocket_session.ws_connect(
-                        self.websocket_url
-                    )
-                    self.websocket_task = asyncio.create_task(self.listen_websocket())
-                    logger.info(f"Connected to websocket at {self.websocket_url}")
-            except Exception as e:
-                logger.error(f"Failed to connect to websocket: {e}")
+        pubsub = self.r.pubsub()
+        channel = f"{self.websocket_prefix}{self.pubsub_channel}"
 
-    async def listen_websocket(self) -> None:
-        """Listen for messages from websocket (NOTE: This is mock implementation, to be further developed)"""
-        while not self.shutdown_event.is_set():
-            try:
-                if self.websocket:
-                    async for msg in self.websocket:
-                        if msg.type == aiohttp.WSMsgType.TEXT:
-                            message = msg.data
-                            logger.info(f"Received message from websocket: {message}")
-                            self.last_websocket_message = message
-                        elif msg.type == aiohttp.WSMsgType.CLOSED:
-                            logger.warning("Websocket connection closed")
-                            break
-                        elif msg.type == aiohttp.WSMsgType.ERROR:
-                            logger.error(f"Websocket error: {msg.data}")
-                            break
-            except Exception as e:
-                logger.error(f"Error in websocket listener: {e}")
+        try:
+            # Subscribe to the websocket channel for this connection
+            await pubsub.subscribe(channel)
+            print(f"Subscribed to Redis channel from websocket: {channel}")
 
-            # Try to reconnect if connection was lost
-            if not self.shutdown_event.is_set():
-                logger.warning("Websocket connection lost, trying to reconnect...")
+            while not self.shutdown_event.is_set():
                 try:
-                    if self.websocket_session and self.websocket_session.closed:
-                        self.websocket_session = aiohttp.ClientSession()
-                    if self.websocket_session is not None:
-                        self.websocket = await self.websocket_session.ws_connect(
-                            self.websocket_url
-                        )
-                    logger.info("Reconnected to websocket")
+                    # Get the next message with a timeout
+                    message = await asyncio.wait_for(
+                        pubsub.get_message(ignore_subscribe_messages=True),
+                        timeout=self.loop_interval,
+                    )
+                    if message and message["type"] == "message":
+                        # Process the command
+                        try:
+                            command_data = json.loads(message["data"].decode())
+                            print(
+                                f"Received command from websocket: {command_data.get('type', 'unknown')}"
+                            )
+                            try:
+                                if "message" in command_data:
+                                    msg = command_data["message"]
+
+                                    if not isinstance(msg, dict) or "content" not in msg:
+                                        print("Invalid message format")
+                                        return None
+
+                                    sender = msg.get("sender", "redis_agent")
+                                    content = msg.get("content")
+                                    receiver = msg.get("receiver", "all")
+
+                                    if receiver!="all":
+                                        print(f"Processing DM from {sender} to {receiver}")
+                                    else:
+                                        print(f"Broadcasting message from {sender}")
+                                    action = AgentAction(
+                                        agent_name=sender,
+                                        output_channel=self.output_channel,
+                                        action_type="speak",
+                                        argument=json.dumps({"action": content, "to":receiver})
+                                    )
+                            except KeyError as e:
+                                print(f"Missing key in command: {e}")
+                                action = None
+                            except Exception as e:
+                                print(f"Error processing command: {e}")
+                                action = None
+
+                            
+                            if action:
+                                await self.send(action)
+                                # Add to pending actions queue
+                                # await self.pending_actions.put(action)
+
+                        except json.JSONDecodeError:
+                            print(
+                                f"Failed to parse websocket command: {message['data'][:200]}..."
+                            )
+                        except Exception as e:
+                            print(f"Error processing websocket command: {e}")
+
+                except asyncio.TimeoutError:
+                    # No message available, continue
+                    pass
                 except Exception as e:
-                    logger.error(f"Failed to reconnect to websocket: {e}")
-                    self.websocket = None
-                    await asyncio.sleep(1)  # Wait before retrying
+                    print(f"Error in command listener: {e}")
+                    await asyncio.sleep(1)  # Avoid tight loop on error
+
+        except Exception as e:
+            print(f"Fatal error in command listener: {e}")
+        finally:
+            # Unsubscribe when done
+            await pubsub.unsubscribe(channel)
+            print("Command listener stopped")
+
 
     async def publish_observation(self, obs: Observation) -> None:
         """Publish observation to Redis"""
-        obs_json = json.dumps(obs.model_dump())
-        await self.r.publish(self.pubsub_channel, obs_json)
+        if not self.pubsub_channel:
+            print("No connection ID")
+            return
+        if obs.agent_name == "epilog":
+            print("Message is an epilog")
+            obs_json = json.dumps(obs.model_dump())
+            print(f"The epilog object looks like: {self.obs_json}")
+            await self.r.publish(self.pubsub_channel, obs_json)
+            print(f"Published epilog update to {self.connection_id}")
+        else:
+            print(f"Non-epilog message received from {obs.agent_name}")
+            return
 
     async def aact(self, obs: Observation) -> AgentAction | None:
-        # Set up websocket on first call if needed
-        if self.websocket_url and not self.websocket_task:
-            await self.setup_websocket()
-
-        await self.publish_observation(obs)
+        if not self.command_listener_task:
+            print("Redis connection not initialized from redis_agent")
+            await self.start_command_listener()
         # Handle initialization message
         if obs.turn_number == -1:
             print(f"self.awake: {self.awake}")
@@ -139,7 +193,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     agent_name=self.node_name,
                     output_channel=self.output_channel,
                     action_type="none",
-                    argument="",
+                    argument={"pk": "redis", "model_name": "redis"},
                 )
             self.awake = True
             return AgentAction(
@@ -148,6 +202,9 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 action_type="none",
                 argument=json.dumps({"pk": "redis", "model_name": "redis"}),
             )
+        await self.publish_observation(obs)
+        if obs.agent_name != "moderator":
+            sys.exit(0)
         for agent_name in self.other_agent_status.keys():
             if f"{agent_name} left." in obs.last_turn:
                 self.other_agent_status[agent_name] = False
@@ -157,15 +214,13 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         # Append to message history
         self.message_history.append(obs)
 
-        if self.websocket_url:
-            """
-            TODO: Implement websocket message handling
-            """
-            # Default action if no websocket message is available
-            return AgentAction(
-                agent_name=self.node_name,
-                output_channel=self.output_channel,
-                action_type="none",
-                argument="",
-            )
-        return None
+        if not self.pending_actions.empty():
+            action = await self.pending_actions.get()
+            return action
+        
+        return AgentAction(
+            agent_name=self.node_name,
+            output_channel=self.output_channel,
+            action_type="none",
+            argument={"pk": "redis", "model_name": "redis"},
+        )

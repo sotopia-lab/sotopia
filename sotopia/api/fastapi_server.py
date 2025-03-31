@@ -28,8 +28,9 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     SotopiaDimensions,
 )
-from sotopia.server import arun_one_episode
-from sotopia.agents import LLMAgent, Agents
+from sotopia.experimental.server import arun_one_episode
+from examples.experimental.sotopia_original_replica.llm_agent_sotopia import LLMAgent
+from sotopia.agents import Agents
 from fastapi import (
     FastAPI,
     WebSocket,
@@ -53,8 +54,10 @@ from typing import AsyncIterator
 import logging
 from fastapi.responses import Response
 
-logger = logging.getLogger(__name__)
 
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # app = FastAPI()
 
@@ -186,36 +189,107 @@ class SimulationManager:
     ) -> bool:
         try:
             msg_type = message.get("type")
+            data = message.get("data", {})
             if msg_type == WSMessageType.FINISH_SIM.value:
                 return True
-            # TODO handle other message types
+            if msg_type == WSMessageType.CLIENT_MSG.value:
+                # Check if this is a message with content
+                if "content" in data:
+                    message_content = data.get("content", "")
+                    receiver = data.get("to", "")
+                    if not message_content:
+                        await self.send_error(
+                            websocket,
+                            ErrorType.INVALID_MESSAGE,
+                            "Message must include content",
+                        )
+                        return False
+
+                    # Forward to simulator
+                    await simulator.send_message(
+                        {
+                            "content": message_content,
+                            "sender": "redis_agent",
+                            "receiver": receiver
+                        }
+                    )
             return False
         except Exception as e:
-            msg = f"Error handling client message: {e}"
-            logger.error(msg)
-            await self.send_error(websocket, ErrorType.INVALID_MESSAGE, msg)
+            error_msg = f"Error handling client message: {e}"
+            logger.error(error_msg)
+            await self.send_error(websocket, ErrorType.INVALID_MESSAGE, error_msg)
             return False
+
 
     async def run_simulation(
         self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
     ) -> None:
+        """Run the simulation and process client messages"""
         try:
-            async for message in simulator.arun():
-                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
+            # Start the simulation tasks
+            sim_task = asyncio.create_task(
+                self._process_simulation(websocket, simulator)
+            )
+            client_task = asyncio.create_task(
+                self._process_client_messages(websocket, simulator)
+            )
 
+            # Wait for either task to complete
+            done, pending = await asyncio.wait(
+                [sim_task, client_task], return_when=asyncio.FIRST_COMPLETED
+            )
+
+            # Cancel the remaining task
+            for task in pending:
+                task.cancel()
                 try:
-                    data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
-                    if await self.handle_client_message(websocket, simulator, data):
-                        break
-                except asyncio.TimeoutError:
-                    continue
+                    await task
+                except asyncio.CancelledError:
+                    pass
 
         except Exception as e:
             msg = f"Error running simulation: {e}"
             logger.error(msg)
             await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
         finally:
+            # Always send END_SIM message
             await self.send_message(websocket, WSMessageType.END_SIM, {})
+
+    async def _process_simulation(
+        self,
+        websocket: WebSocket,
+        simulator: WebSocketSotopiaSimulator,
+    ) -> None:
+        """
+        Process the simulation by running either the simulator epilogs or redis epilogs
+
+        Args:
+            websocket: The WebSocket connection
+            simulator: The simulation manager
+        """
+        try:
+            # Use the simulator's built-in arun generator to get messages
+            async for message in simulator.arun():
+                await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
+        except Exception as e:
+            logger.error(f"Error in simulation processor: {e}")
+            raise
+
+    async def _process_client_messages(
+        self, websocket: WebSocket, simulator: WebSocketSotopiaSimulator
+    ) -> None:
+        """Process messages from the client"""
+        try:
+            while True:
+                data = await websocket.receive_json()
+                should_end = await self.handle_client_message(
+                    websocket, simulator, data
+                )
+                if should_end:
+                    break
+        except Exception as e:
+            logger.error(f"Error processing client messages: {e}")
+            raise
 
     @staticmethod
     async def send_message(
@@ -713,29 +787,57 @@ class SotopiaFastAPI(FastAPI):
                 while True:
                     start_msg = await websocket.receive_json()
                     if start_msg.get("type") != WSMessageType.START_SIM.value:
-                        continue
-                    async with manager.state.start_simulation(token):
-                        simulator = await manager.create_simulator(
-                            env_id=start_msg["data"]["env_id"],
-                            agent_ids=start_msg["data"]["agent_ids"],
-                            agent_models=start_msg["data"].get(
-                                "agent_models", ["gpt-4o-mini", "gpt-4o-mini"]
-                            ),
-                            env_profile_dict=start_msg["data"].get(
-                                "env_profile_dict", {}
-                            ),
-                            agent_profile_dicts=start_msg["data"].get(
-                                "agent_profile_dicts", []
-                            ),
-                            evaluator_model=start_msg["data"].get(
-                                "evaluator_model", "gpt-4o"
-                            ),
-                            evaluation_dimension_list_name=start_msg["data"].get(
-                                "evaluation_dimension_list_name", "sotopia"
-                            ),
-                            max_turns=start_msg["data"].get("max_turns", 20),
+                        await manager.send_error(
+                            websocket,
+                            ErrorType.INVALID_MESSAGE,
+                            "First message must be of type START_SIM",
                         )
-                        await manager.run_simulation(websocket, simulator)
+                        continue
+                    sim_data = start_msg.get("data", {})
+                    env_id = sim_data.get("env_id", "")
+                    agent_ids = sim_data.get("agent_ids", [])
+
+                    async with manager.state.start_simulation(token):
+                        try:
+                            # Create the simulator
+                            simulator = await manager.create_simulator(
+                                env_id=env_id,
+                                agent_ids=agent_ids,
+                                agent_models=sim_data.get(
+                                    "agent_models", ["gpt-4o-mini"] * len(agent_ids)
+                                ),
+                                evaluator_model=sim_data.get("evaluator_model", "gpt-4o"),
+                                evaluation_dimension_list_name=sim_data.get(
+                                    "evaluation_dimension_list_name", "sotopia"
+                                ),
+                                env_profile_dict=sim_data.get("env_profile_dict", {}),
+                                agent_profile_dicts=sim_data.get("agent_profile_dicts", []),
+                                max_turns=sim_data.get("max_turns", 20),
+                            )
+                            await simulator.connect_to_redis()
+
+                            # Initial message to client
+                            await manager.send_message(
+                                websocket,
+                                WSMessageType.SERVER_MSG,
+                                {
+                                    "status": "simulation_started",
+                                    "env_id": simulator.env_id,
+                                    "agent_ids": simulator.agent_ids,
+                                    "connection_id": simulator.connection_id,
+                                },
+                            )
+                            logger.info("WebSocket start sim message confirmation sent.")
+                            # Run the simulation
+                            await manager.run_simulation(websocket, simulator)
+
+                        except Exception as e:
+                            logger.error(f"Error creating or running simulator: {e}")
+                            await manager.send_error(
+                                websocket,
+                                ErrorType.SIMULATION_ISSUE,
+                                f"Error in simulation: {str(e)}",
+                            )
 
             except WebSocketDisconnect:
                 logger.info(f"Client disconnected: {token}")
