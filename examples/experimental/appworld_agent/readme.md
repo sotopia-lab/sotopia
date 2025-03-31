@@ -1,18 +1,16 @@
 # AppWorld Agent Example
 
-In this example, we explore the interaction between three friends, "Harry" and "Ron", who are planning a roadtrip from Seattle to Pittsburgh.
-Their goal for planning the roadtrip is to set their music playlist, split payment for gas, and create a to-do list of places they wanted to see.
+In this example, we explore the interaction between two friends, "Harry" and "Ron", who are planning a roadtrip from Seattle to Pittsburgh.
 These agents are designed to interact with mocked APIs provided by AppWorld.
 
 ## Agents Overview
 
-- **Harry**: An LLM agent tasked to plan a roadtrip with Ron. Prefers minimal distractions during the roadtrip and want to get to Pittsburgh as soon as possible.
-- **Ron**: An LLM agent tasked to plan a roadtrip with Harry. Just started learning how to drive. Likes classical and modern pop. Loves going to historical sites and enjoys exploring.
+- **Harry**: An LLM agent tasked to plan a roadtrip with Ron. His goal is to minimize distractions during the roadtrip.
+- **Ron**: An LLM agent tasked to plan a roadtrip with Harry. His goal is to explore different historical sites as much as possible.
 
 ### Actions Available to LLM Agents
 
 - **speak**: Communicate with other agents by sending a message.
-- **thought**: Make a plan or set a goal internally.
 - **none**: Choose not to take any action, often used when waiting for data.
 - **non-verbal**: Perform a non-verbal action, such as a gesture.
 - **choose_tool_action**: Choose which tool to use given all that's available in AppWorld.
@@ -36,4 +34,10 @@ The dataflow file `app_world_agent.toml` is used to configure the interaction be
    ```bash
    pip install appworld
    appworld serve apis --docker
+   ```
+
+3. **Run the minimal example**: To run this example, we then use the `aact` tool:
+
+   ```bash
+   aact run-dataflow examples/experimental/appworld_agent/appworld_agent.toml
    ```

@@ -1,6 +1,4 @@
-from argparse import Action
 import logging
-import sys
 import json
 from rich.logging import RichHandler
 from enum import Enum
@@ -105,6 +103,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     async def aact(self, obs: Observation) -> AgentAction:
         """Main action function for an agent"""
+
         # Do nothing if it's not yet your turn.
         if obs.turn_number == -1:
             if self.awake:
@@ -272,3 +271,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 with JSON.
             """
         )
+
+    def _format_message_history(self, message_history: list[Observation]) -> str:
+        ## TODO: akhatua Fix the mapping of action to be gramatically correct
+        return "\n".join(message.to_natural_language() for message in message_history)
