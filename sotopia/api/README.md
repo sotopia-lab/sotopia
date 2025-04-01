@@ -14,8 +14,7 @@ modal deploy modal_api_server.py
 
 To run the FastAPI server, you can use the following command:
 ```bash
-uv run rq worker
-uv run fastapi run sotopia/api/fastapi_server.py --workers 4 --port 8080
+uv run fastapi run sotopia/api/fastapi_server.py --port 8080
 ```
 
 Here is also an example of using the FastAPI server:
