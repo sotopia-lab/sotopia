@@ -24,7 +24,10 @@ dependencies = [
     "beartype>=0.14.0,<0.20.0",
     "hiredis>=3.0.0",
     "litellm>=0.1.1",
-    "aact"
+    "aact",
+    "modal>=0.68.18",
+    "streamlit>=1.41.1",
+    "fastapi[standard]>=0.115.6",
 ]
 
 [build-system]

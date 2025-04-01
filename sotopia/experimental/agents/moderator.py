@@ -59,7 +59,7 @@ class Moderator(Node[AgentAction, Observation]):
         push_to_db: bool = False,
         use_pk_value: bool = False,
         evaluate_episode: bool = False,
-        redis_agent_as_actor: bool = True,
+        redis_agent_as_actor: bool = False,
     ) -> None:
         # print([(channel[0], AgentAction) for channel in evaluator_channels])
         super().__init__(
@@ -115,9 +115,9 @@ class Moderator(Node[AgentAction, Observation]):
         if "moderator:redis_agent" in self.output_channel_types:
             self.output_channel_types.pop("moderator:redis_agent")
 
-        # Remove from input_channel_types - need to use the correct key
-        if "redis_agent:moderator" in self.input_channel_types:
-            self.input_channel_types.pop("redis_agent:moderator")
+        # # Remove from input_channel_types - need to use the correct key
+        # if "redis_agent:moderator" in self.input_channel_types:
+        #     self.input_channel_types.pop("redis_agent:moderator")
 
         # Remove from agents list - check if it exists first
         if "redis_agent" in self.agents:
@@ -240,8 +240,8 @@ class Moderator(Node[AgentAction, Observation]):
                 log.info("All agents are now awake and ready")
 
         # TODO: remove this once we have a better way to handle the redis_agent
-        # if not self.redis_agent_as_actor:
-        #     self.remove_redis_as_actor()
+        if not self.redis_agent_as_actor:
+            self.remove_redis_as_actor()
         self.epilog = EpisodeLog(
             environment=self.scenario,
             agents=list(self.agents_pk.values()),

@@ -77,12 +77,12 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         """Start listening for commands on Redis channels"""
         if self.command_listener_task is None or self.command_listener_task.done():
             self.command_listener_task = asyncio.create_task(self._command_listener())
-            print("Started Redis command listener task")
+            log.info("Started Redis command listener task")
 
     async def _command_listener(self) -> None:
         """Listen for commands from WebSocket clients via Redis"""
         if not self.pubsub_channel:
-            print("No connection_id specified, command listener not started")
+            log.info("No connection_id specified, command listener not started")
             return
 
         pubsub = self.r.pubsub()
@@ -91,7 +91,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         try:
             # Subscribe to the websocket channel for this connection
             await pubsub.subscribe(channel)
-            print(f"Subscribed to Redis channel from websocket: {channel}")
+            log.info(f"Subscribed to Redis channel from websocket: {channel}")
 
             while not self.shutdown_event.is_set():
                 try:
@@ -104,7 +104,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         # Process the command
                         try:
                             command_data = json.loads(message["data"].decode())
-                            print(
+                            log.info(
                                 f"Received command from websocket: {command_data.get('type', 'unknown')}"
                             )
                             try:
@@ -115,7 +115,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                                         not isinstance(msg, dict)
                                         or "content" not in msg
                                     ):
-                                        print("Invalid message format")
+                                        log.info("Invalid message format")
                                         return None
 
                                     sender = msg.get("sender", "redis_agent")
@@ -123,11 +123,11 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                                     receiver = msg.get("receiver", "all")
 
                                     if receiver != "all":
-                                        print(
+                                        log.info(
                                             f"Processing DM from {sender} to {receiver}"
                                         )
                                     else:
-                                        print(f"Broadcasting message from {sender}")
+                                        log.info(f"Broadcasting message from {sender}")
                                     action = AgentAction(
                                         agent_name=sender,
                                         output_channel=self.output_channel,
@@ -137,10 +137,10 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                                         ),
                                     )
                             except KeyError as e:
-                                print(f"Missing key in command: {e}")
+                                log.info(f"Missing key in command: {e}")
                                 action = None
                             except Exception as e:
-                                print(f"Error processing command: {e}")
+                                log.info(f"Error processing command: {e}")
                                 action = None
 
                             if action:
@@ -149,48 +149,48 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                                 # await self.pending_actions.put(action)
 
                         except json.JSONDecodeError:
-                            print(
+                            log.info(
                                 f"Failed to parse websocket command: {message['data'][:200]}..."
                             )
                         except Exception as e:
-                            print(f"Error processing websocket command: {e}")
+                            log.info(f"Error processing websocket command: {e}")
 
                 except asyncio.TimeoutError:
                     # No message available, continue
                     pass
                 except Exception as e:
-                    print(f"Error in command listener: {e}")
+                    log.info(f"Error in command listener: {e}")
                     await asyncio.sleep(1)  # Avoid tight loop on error
 
         except Exception as e:
-            print(f"Fatal error in command listener: {e}")
+            log.info(f"Fatal error in command listener: {e}")
         finally:
             # Unsubscribe when done
             await pubsub.unsubscribe(channel)
-            print("Command listener stopped")
+            log.info("Command listener stopped")
 
     async def publish_observation(self, obs: Observation) -> None:
         """Publish observation to Redis"""
         if not self.pubsub_channel:
-            print("No connection ID")
+            log.info("No connection ID")
             return
         if obs.agent_name == "epilog":
-            print("Message is an epilog")
+            log.info("Message is an epilog")
             obs_json = json.dumps(obs.model_dump())
-            print(f"The epilog object looks like: {self.obs_json}")
+            log.info(f"The epilog object looks like: {obs_json}")
             await self.r.publish(self.pubsub_channel, obs_json)
-            print(f"Published epilog update to {self.connection_id}")
+            log.info(f"Published epilog update to {self.pubsub_channel}")
         else:
-            print(f"Non-epilog message received from {obs.agent_name}")
+            log.info(f"Non-epilog message received from {obs.agent_name}")
             return
 
     async def aact(self, obs: Observation) -> AgentAction | None:
         if not self.command_listener_task:
-            print("Redis connection not initialized from redis_agent")
+            log.info("Redis connection not initialized from redis_agent")
             await self.start_command_listener()
         # Handle initialization message
         if obs.turn_number == -1:
-            print(f"self.awake: {self.awake}")
+            log.info(f"self.awake: {self.awake}")
             if self.awake:
                 return AgentAction(
                     agent_name=self.node_name,
@@ -211,16 +211,21 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                 self.other_agent_status[agent_name] = False
         if True not in self.other_agent_status.values():
             self.shutdown_event.set()
-
+            log.info("All other agents have left, shutting down")
+        
         # Append to message history
         self.message_history.append(obs)
+        log.info("ckpt1")
 
         if not self.pending_actions.empty():
             action = await self.pending_actions.get()
             return action
-        return AgentAction(
-            agent_name=self.node_name,
-            output_channel=self.output_channel,
-            action_type="none",
-            argument={"pk": "redis", "model_name": "redis"},
-        )
+        log.info("ckpt2")
+        # a = AgentAction(
+        #     agent_name=self.node_name,
+        #     output_channel=self.output_channel,
+        #     action_type="none",
+        #     argument={"pk": "redis", "model_name": "redis"},
+        # )
+        log.info("ckpt3")
+        return None

@@ -29,8 +29,7 @@ from sotopia.envs.evaluators import (
     SotopiaDimensions,
 )
 from sotopia.experimental.server import arun_one_episode
-from examples.experimental.sotopia_original_replica.llm_agent_sotopia import LLMAgent
-from sotopia.agents import Agents
+from sotopia.agents import Agents, LLMAgent
 from fastapi import (
     FastAPI,
     WebSocket,
@@ -367,7 +366,7 @@ async def nonstreaming_simulation(
             ),
         }
     )
-
+    from sotopia.server import arun_one_episode
     await arun_one_episode(
         env=env,
         agent_list=list(agents.values()),

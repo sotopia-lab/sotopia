@@ -62,9 +62,11 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
         self, channel: str, message: Message[T_agent_observation]
     ) -> AsyncIterator[tuple[str, Message[T_agent_action]]]:
         if channel in self.input_channel_types:
-            log.info(f"Inside event_handler: {self.a}")
+            if "redis" in self.a:
+                log.info(f"Inside event_handler: {self.a}")
             await self.observation_queue.put(message.data)
-            log.info(f"Put in queue: {self.a}")
+            if "redis" in self.a:
+                log.info(f"Put in queue: {self.a}")
         else:
             raise ValueError(f"Invalid channel: {channel}")
             yield "", self.output_type()
@@ -78,12 +80,16 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
 
     async def _task_scheduler(self) -> None:
         while not self.shutdown_event.is_set():
-            log.info(f"Inside task_scheduler: {self.a}")
+            if "redis" in self.a:
+                log.info(f"Inside task_scheduler: {self.a}")
             observation = await self.observation_queue.get()
-            log.info(f"Observation in task_scheduler in {self.a}: {observation}")
+            if "redis" in self.a:
+                log.info(f"Observation in task_scheduler in {self.a}: {observation}")
             action_or_none = await self.aact(observation)
-            log.info(f"Completed aact: {self.a}")
+            if "redis" in self.a:
+                log.info(f"Completed aact: {self.a}")
             if action_or_none is not None:
                 await self.send(action_or_none)
-            log.info(f"Completed send: {self.a}")
+            if 'redis' in self.a:
+                log.info(f"Completed send: {self.a}")
             self.observation_queue.task_done()
