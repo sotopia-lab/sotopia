@@ -48,6 +48,7 @@ model_name = "test_model"
 def get_mock_episodes() -> list[EpisodeLog]:
     # all_episodes = EpisodeLog.find().all()
     environment = EnvironmentProfile(
+        pk="test_env_pk",
         codename="test",
         source="test",
         scenario="Two people are talking",
@@ -97,6 +98,7 @@ def get_mock_episodes() -> list[EpisodeLog]:
 
 def get_mock_env_agents_profile() -> tuple[EnvironmentProfile, list[AgentProfile]]:
     env_profile = EnvironmentProfile(
+        pk="test_env_pk",
         codename="test",
         source="test",
         scenario="Two people are talking",

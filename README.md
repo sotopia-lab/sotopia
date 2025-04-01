@@ -15,7 +15,7 @@
 [![Project Page](https://img.shields.io/badge/Project-Page-green.svg)](https://www.sotopia.world/projects/sotopia)
 [![Paper PDF](https://img.shields.io/badge/Paper-PDF-red.svg)](https://arxiv.org/abs/2310.11667)
 [![Dataset](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Dataset-yellow)](https://huggingface.co/datasets/cmu-lti/sotopia)
-[![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://huggingface.co/spaces/cmu-lti/sotopia-space/)
+[![Demo](https://img.shields.io/badge/%F0%9F%A4%97-Sotopia%20Demo-orange)](https://demo.sotopia.world)
 
 
 
@@ -48,15 +48,19 @@ See [documentation](https://docs.sotopia.world) for more details.
 ## Get started
 
 ### Install locally
-We recommend using a virtual environment, e.g. with anaconda3: `conda create -n sotopia python=3.11; conda activate sotopia;`.
+We recommend using a virtual environment, e.g. with uv: `pip install uv; uv sync --all-extras`.
+
+> [!NOTE]
+> You can of course use any other package manager to install the dependencies (e.g. pip, conda, etc.). But we strongly recommend using uv, especially for the development of Sotopia.
+
 
 Then:
-`python -m pip install sotopia; sotopia install`
+`uv run sotopia install`
+
+> [!WARNING]
+> We recommend you using docker for setting up the redis server. Other installation methods have been shown to be error-prone.
 
 This will setup the necessary environment variables and download the necessary data.
-
-> [!TIP]
-> Having trouble installing? Or don't want to install redis for now? We are working on a public redis server for you to use. Stay tuned!
 
 OpenAI key is required to run the code. Please set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:
 ```bash
@@ -81,6 +85,9 @@ asyncio.run(
     )
 )
 ```
+> [!WARNING]
+> You won't be able to run the server locally if you don't have any datasets installed.
+
 or run
 ```bash
 python examples/minimalist_demo.py
