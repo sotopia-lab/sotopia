@@ -18,6 +18,11 @@ from enum import Enum
 from typing import Type, TypedDict, Any, AsyncGenerator, List
 from pydantic import BaseModel
 import uuid
+import logging
+import json
+import redis
+
+log = logging.getLogger("sotopia.api.fastapi_server")
 
 
 class WSMessageType(str, Enum):
@@ -180,7 +185,67 @@ class WebSocketSotopiaSimulator:
         self.evaluation_dimension_list_name = evaluation_dimension_list_name
 
         self.connection_id = str(uuid.uuid4())
+        self.to_redis_channel = f"websocket:{self.connection_id}"
         self.max_turns = max_turns
+
+    async def subscribe_to_redis(self) -> None:
+        redis_url = "redis://localhost:6379/0"  # TODO: make this configurable
+        self.redis_client = redis.asyncio.from_url(redis_url)
+        self.pubsub = self.redis_client.pubsub()
+        self.channel = f"{self.connection_id}"
+        log.info(f"Subscribing to channel: {self.channel}")
+        await self.pubsub.subscribe(self.channel)
+
+    async def send_to_redis(self, message: dict[str, Any]) -> None:
+        """
+        Send a message to Redis for the RedisAgent
+        Args:
+            message: The message to send
+        """
+        assert "redis_client" in self.__dict__, "Redis client not initialized"
+        try:
+            await self.redis_client.publish(self.to_redis_channel, json.dumps(message))
+            msg_type = message.get("type", "command")
+            content_preview = ""
+            if "content" in message:
+                content_preview = f": {message['content'][:30]}..."
+            elif "message" in message and "content" in message["message"]:
+                content_preview = f": {message['message']['content'][:30]}..."
+            log.info(
+                f"[{self.connection_id}] Sent message type: {msg_type}{content_preview}"
+            )
+        except Exception as e:
+            log.error(f"Error sending message to Redis: {e}")
+
+    async def send_message(self, message: dict[str, Any]) -> None:
+        """
+        Send a regular message in full mode
+        Args:
+            message: The message data containing:
+                - content: The message content
+                - sender: The sender (defaults to "redis_agent")
+        """
+        # Validate message
+        if "content" not in message:
+            log.error("Error: Message must contain 'content' field")
+            return
+            # Set default sender if not provided
+        sender = message.get("sender", "redis_agent")
+        receiver = message.get("receiver", "all")
+
+        # Create message payload for full mode
+        payload = {
+            "message": {
+                "content": message["content"],
+                "sender": sender,
+                "receiver": receiver,
+            }
+        }
+        # Send to RedisAgent via Redis
+        await self.send_to_redis(payload)
+        log.info(
+            f"[{self.connection_id}] Sent full mode message: {message['content'][:30]}..."
+        )
 
     async def arun(self) -> AsyncGenerator[dict[str, Any], None]:
         # Use sotopia to run the simulation

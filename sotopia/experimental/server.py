@@ -94,14 +94,6 @@ async def arun_one_episode(
     # Start the logging tasks
     stdout_task = asyncio.create_task(log_stdout())
     stderr_task = asyncio.create_task(log_stderr())
-
-    # Connect to Redis using the async client
-    redis_client = redis.asyncio.Redis(host="localhost", port=6379, db=0)
-    pubsub = redis_client.pubsub()
-    channel = f"{connection_id}" if connection_id else "sotopia:simulation"
-    print(f"Subscribing to channel: {channel}")
-    await pubsub.subscribe(channel)
-
     # Create a task to monitor the process completion
     process_done = asyncio.Event()
 

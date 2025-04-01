@@ -18,14 +18,11 @@ if sys.version_info >= (3, 11):
 else:
     pass
 
-# Configure logging
-FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-logging.basicConfig(
-    level=logging.WARNING,
-    format=FORMAT,
-    datefmt="[%X]",
-    handlers=[RichHandler()],
-)
+log = logging.getLogger("sotopia.llm_agent")
+log.setLevel(logging.INFO)
+# Prevent propagation to root logger
+log.propagate = False
+log.addHandler(RichHandler(rich_tracebacks=True, show_time=True))
 
 
 @NodeFactory.register("llm_agent")

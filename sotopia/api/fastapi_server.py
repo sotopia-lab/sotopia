@@ -52,8 +52,13 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 import logging
 from fastapi.responses import Response
+from rich.logging import RichHandler
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger("sotopia.api.fastapi_server")
+log.setLevel(logging.INFO)
+# Prevent propagation to root logger
+log.propagate = False
+log.addHandler(RichHandler(rich_tracebacks=True, show_time=True))
 
 
 # app = FastAPI()
@@ -174,7 +179,7 @@ class SimulationManager:
             )
         except Exception as e:
             error_msg = f"Failed to create simulator: {e}"
-            logger.error(error_msg)
+            log.error(error_msg)
             raise Exception(error_msg)
 
     async def handle_client_message(
@@ -186,13 +191,34 @@ class SimulationManager:
     ) -> bool:
         try:
             msg_type = message.get("type")
+            data = message.get("data", {})
             if msg_type == WSMessageType.FINISH_SIM.value:
                 return True
-            # TODO handle other message types
+            if msg_type == WSMessageType.CLIENT_MSG.value:
+                # Check if this is a message with content
+                if "content" in data:
+                    message_content = data.get("content", "")
+                    receiver = data.get("to", "")
+                    if not message_content:
+                        await self.send_error(
+                            websocket,
+                            ErrorType.INVALID_MESSAGE,
+                            "Message must include content",
+                        )
+                        return False
+
+                    # Forward to simulator
+                    await simulator.send_message(
+                        {
+                            "content": message_content,
+                            "sender": "redis_agent",
+                            "receiver": receiver,
+                        }
+                    )
             return False
         except Exception as e:
             msg = f"Error handling client message: {e}"
-            logger.error(msg)
+            log.error(msg)
             await self.send_error(websocket, ErrorType.INVALID_MESSAGE, msg)
             return False
 
@@ -202,7 +228,6 @@ class SimulationManager:
         try:
             async for message in simulator.arun():
                 await self.send_message(websocket, WSMessageType.SERVER_MSG, message)
-
                 try:
                     data = await asyncio.wait_for(websocket.receive_json(), timeout=0.1)
                     if await self.handle_client_message(websocket, simulator, data):
@@ -212,7 +237,7 @@ class SimulationManager:
 
         except Exception as e:
             msg = f"Error running simulation: {e}"
-            logger.error(msg)
+            log.error(msg)
             await self.send_error(websocket, ErrorType.SIMULATION_ISSUE, msg)
         finally:
             await self.send_message(websocket, WSMessageType.END_SIM, {})
@@ -578,7 +603,7 @@ class SotopiaFastAPI(FastAPI):
                     dimension_pks=all_dimensions_pks,
                 )
                 custom_evaluation_dimension_list.save()
-                logger.info(
+                log.info(
                     f"Created evaluation dimension list {evaluation_dimensions.name}"
                 )
             else:
@@ -641,7 +666,7 @@ class SotopiaFastAPI(FastAPI):
                 )
 
             except Exception as e:
-                logger.error(f"Error starting simulation: {e}")
+                log.error(f"Error starting simulation: {e}")
                 simulation_status.status = "Error"
                 simulation_status.save()
             return Response(content=episode_pk, status_code=202)
@@ -738,15 +763,15 @@ class SotopiaFastAPI(FastAPI):
                         await manager.run_simulation(websocket, simulator)
 
             except WebSocketDisconnect:
-                logger.info(f"Client disconnected: {token}")
+                log.info(f"Client disconnected: {token}")
             except Exception as e:
-                logger.error(f"Unexpected error: {e}")
+                log.error(f"Unexpected error: {e}")
                 await manager.send_error(websocket, ErrorType.SIMULATION_ISSUE, str(e))
             finally:
                 try:
                     await websocket.close()
                 except Exception as e:
-                    logger.error(f"Error closing websocket: {e}")
+                    log.error(f"Error closing websocket: {e}")
 
 
 app = SotopiaFastAPI()
