@@ -240,8 +240,8 @@ class Moderator(Node[AgentAction, Observation]):
                 log.info("All agents are now awake and ready")
 
         # TODO: remove this once we have a better way to handle the redis_agent
-        if not self.redis_agent_as_actor:
-            self.remove_redis_as_actor()
+        # if not self.redis_agent_as_actor:
+        #     self.remove_redis_as_actor()
         self.epilog = EpisodeLog(
             environment=self.scenario,
             agents=list(self.agents_pk.values()),
@@ -346,7 +346,6 @@ class Moderator(Node[AgentAction, Observation]):
                 return None
         if agent_action.action_type == "none":
             return None
-        await self.send_epilog(self.epilog, "moderator:redis_agent")
         if self.turn_number < self.max_turns:
             self.turn_number += 1
         else:
@@ -361,7 +360,7 @@ class Moderator(Node[AgentAction, Observation]):
                     for output_channel, agent_name in self.agent_mapping.items()
                 }
             )
-
+        await self.send_epilog(self.epilog, "moderator:redis_agent")
         receiver = receiver.lower()
         observations_map: dict[str, Observation] = {}
         for output_channel, _ in self.output_channel_types.items():

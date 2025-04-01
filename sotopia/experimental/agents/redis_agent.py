@@ -185,7 +185,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
             return
 
     async def aact(self, obs: Observation) -> AgentAction | None:
-        log.info(f"NOT REACHING: {obs}")
         if not self.command_listener_task:
             print("Redis connection not initialized from redis_agent")
             await self.start_command_listener()
