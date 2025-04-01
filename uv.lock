@@ -3123,7 +3123,6 @@ api = [
     { name = "modal" },
     { name = "streamlit" },
     { name = "uvicorn" },
-    { name = "websockets" },
 ]
 cohere = [
     { name = "cohere" },
@@ -3192,7 +3191,6 @@ requires-dist = [
     { name = "torch", marker = "extra == 'examples'" },
     { name = "transformers", marker = "extra == 'examples'" },
     { name = "uvicorn", marker = "extra == 'api'" },
-    { name = "websockets", marker = "extra == 'api'" },
 ]
 
 [package.metadata.requires-dev]

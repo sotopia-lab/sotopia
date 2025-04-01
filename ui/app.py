@@ -5,14 +5,13 @@ import streamlit as st
 # Page Configuration
 st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wide")
 
-# PORT = 8800
-# st.session_state.API_BASE = f"http://localhost:{PORT}"
-# st.session_state.WS_BASE = f"ws://localhost:{PORT}"
+# Session State Configuration for local development
+PORT = 8080
+st.session_state.API_BASE = f"http://localhost:{PORT}"
+st.session_state.WS_BASE = f"ws://localhost:{PORT}"
 
+# Modal Configuration for remote deployment
 DEFAULT_BASE = "sotopia-lab--sotopia-fastapi-webapi-serve.modal.run"
-
-# Modal Configuration
-
 if "API_BASE" not in st.session_state:
     st.session_state.API_BASE = f"https://{DEFAULT_BASE}"
     st.session_state.WS_BASE = f"ws://{DEFAULT_BASE}"

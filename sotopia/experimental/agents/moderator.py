@@ -49,6 +49,7 @@ class Moderator(Node[AgentAction, Observation]):
         push_to_db: bool = False,
         use_pk_value: bool = False,
         evaluate_episode: bool = False,
+        redis_agent_as_actor: bool = False,
     ) -> None:
         print([(channel[0], AgentAction) for channel in evaluator_channels])
         super().__init__(
@@ -76,15 +77,16 @@ class Moderator(Node[AgentAction, Observation]):
         self.current_agent_index: int = 0
         self.scenario: str = scenario
         self.agents: list[str] = list(agent_mapping.values())
-        self.agents_pk: dict[str, str] = {}
-        self.agent_models: dict[str, str] = {}
         self.agents_awake: dict[str, bool] = {name: False for name in self.agents}
         self.all_agents_awake: asyncio.Event = asyncio.Event()
         self.evaluator_channels: list[list[str]] = evaluator_channels
         self.push_to_db: bool = push_to_db
         self.use_pk_value: bool = use_pk_value
-
+        self.agents_pk: dict[str, str] = {}
+        self.agent_models: dict[str, str] = {}
+        self.redis_agent_as_actor: bool = redis_agent_as_actor
         self.evaluate_episode: bool = evaluate_episode
+
         assert (not self.evaluate_episode) or len(
             evaluator_channels
         ) > 0, "if evaluate_episode is True, evaluator_channels should not be empty"
@@ -97,6 +99,32 @@ class Moderator(Node[AgentAction, Observation]):
             raise NotImplementedError(
                 "the selected action order is currently not implemented"
             )
+
+    def remove_redis_as_actor(self) -> None:
+        # Remove from output_channel_types
+        if "moderator:redis_agent" in self.output_channel_types:
+            self.output_channel_types.pop("moderator:redis_agent")
+
+        # Remove from input_channel_types - need to use the correct key
+        if "redis_agent:moderator" in self.input_channel_types:
+            self.input_channel_types.pop("redis_agent:moderator")
+
+        # Remove from agents list - check if it exists first
+        if "redis_agent" in self.agents:
+            self.agents.remove("redis_agent")
+
+        # Remove from agent_mapping
+        if "moderator:redis_agent" in self.agent_mapping:
+            self.agent_mapping.pop("moderator:redis_agent")
+
+        if "redis_agent" in self.agents_pk:
+            self.agents_pk.pop("redis_agent")
+
+        if "redis_agent" in self.agent_models:
+            self.agent_models.pop("redis_agent")
+
+        if "redis_agent" in self.agents_awake:
+            self.agents_awake.pop("redis_agent")
 
     async def __aenter__(self) -> Self:
         print(f"Starting moderator with scenario: {self.scenario}")
@@ -111,15 +139,30 @@ class Moderator(Node[AgentAction, Observation]):
             self.task_scheduler.cancel()
         return await super().__aexit__(exc_type, exc_value, traceback)
 
-    async def send(self, observations: Observations) -> None:
+    async def send(self, output_channel: str, data: str) -> None:
+        """Send data to a specific output channel."""
+        await self.r.publish(output_channel, data)
+
+    async def send_observations(self, observations: Observations) -> None:
+        """Send observations to all relevant output channels."""
         for output_channel, output_channel_type in self.output_channel_types.items():
             if output_channel in observations.observations_map:
-                await self.r.publish(
-                    output_channel,
-                    Message[output_channel_type](  # type:ignore[valid-type]
-                        data=observations.observations_map[output_channel]
-                    ).model_dump_json(),
-                )
+                message_json = Message[output_channel_type](  # type:ignore[valid-type]
+                    data=observations.observations_map[output_channel]
+                ).model_dump_json()
+                await self.send(output_channel, message_json)
+
+    async def send_epilog(self, epilog: EpisodeLog, output_channel: str) -> None:
+        """Send the epilog to other agents"""
+        message_json = Message[Observation](
+            data=Observation(
+                agent_name="epilog",
+                last_turn=epilog.model_dump_json(),
+                turn_number=self.turn_number,
+                available_actions=self.available_actions,
+            )
+        ).model_dump_json()
+        await self.send(output_channel, message_json)
 
     async def event_handler(
         self, channel: str, message: Message[AgentAction]
@@ -133,16 +176,16 @@ class Moderator(Node[AgentAction, Observation]):
     async def _task_scheduler(self) -> None:
         await self.all_agents_awake.wait()
         while not self.shutdown_event.is_set():
-            observation = await self.observation_queue.get()
-            action_or_none = await self.astep(observation)
+            agent_action = await self.observation_queue.get()
+            action_or_none = await self.astep(agent_action)
             if action_or_none is not None:
-                await self.send(action_or_none)
+                await self.send_observations(action_or_none)
             self.observation_queue.task_done()
 
     async def booting(self) -> None:
         print("Booting moderator and waiting for agents...")
         while not self.all_agents_awake.is_set():
-            await self.send(
+            await self.send_observations(
                 Observations(
                     observations_map={
                         output_channel: Observation(
@@ -172,6 +215,10 @@ class Moderator(Node[AgentAction, Observation]):
                 self.all_agents_awake.set()
                 print("All agents are now awake and ready")
 
+        # TODO: remove this once we have a better way to handle the redis_agent
+        if not self.redis_agent_as_actor:
+            self.remove_redis_as_actor()
+
         self.epilog = EpisodeLog(
             environment=self.scenario,
             agents=list(self.agents_pk.values()),
@@ -182,7 +229,7 @@ class Moderator(Node[AgentAction, Observation]):
             rewards_prompt="",
         )
         if self.action_order == "round-robin":
-            await self.send(
+            await self.send_observations(
                 Observations(
                     observations_map={
                         output_channel: Observation(
@@ -200,14 +247,12 @@ class Moderator(Node[AgentAction, Observation]):
             self.current_agent_index += 1
 
     async def wrap_up_and_stop(self) -> None:
+        self.shutdown_event.set()
         try:
             await asyncio.sleep(0.1)
             print("all agents have left, wrap up and stop")
-            self.shutdown_event.set()  # this will disable the task scheduler
-            if self.evaluate_episode:
-                epilog = await self.aeval(self.epilog)
             if self.push_to_db:
-                epilog.save()
+                self.epilog.save()
         except Exception as e:
             print(f"error in wrap_up_and_stop: {e}")
         await asyncio.sleep(0.5)
@@ -234,18 +279,7 @@ class Moderator(Node[AgentAction, Observation]):
         assert len(self.evaluator_channels) == 1, "currently only support one evaluator"
 
         for evaluator_channel in self.evaluator_channels:
-            print(evaluator_channel[1])
-            await self.r.publish(
-                evaluator_channel[1],
-                Message[Observation](
-                    data=Observation(
-                        agent_name="moderator",
-                        last_turn=epilog.model_dump_json(),
-                        turn_number=self.turn_number,
-                        available_actions=self.available_actions,
-                    )
-                ).model_dump_json(),
-            )
+            await self.send_epilog(epilog, evaluator_channel[1])
 
         print("episode eval started")
 
@@ -261,14 +295,6 @@ class Moderator(Node[AgentAction, Observation]):
         return epilog
 
     async def astep(self, agent_action: AgentAction) -> Observations | None:
-        if agent_action.action_type == "leave":
-            self.agents_awake[agent_action.agent_name] = False
-            if True not in self.agents_awake.values():
-                await self.wrap_up_and_stop()
-                return None
-        if agent_action.action_type == "none":
-            return None
-
         # message (sender, receivers (seperated by comma), message content)
         self.epilog.messages.append(
             [
@@ -279,6 +305,19 @@ class Moderator(Node[AgentAction, Observation]):
                 )
             ]
         )
+        if agent_action.action_type == "leave":
+            self.agents_awake[agent_action.agent_name] = False
+            # Skip redis_agent when checking if all agents have left
+            if True not in self.agents_awake.values():
+                if self.evaluate_episode:
+                    self.epilog = await self.aeval(self.epilog)
+                await self.send_epilog(self.epilog, "moderator:redis_agent")
+                await self.wrap_up_and_stop()
+                return None
+        if agent_action.action_type == "none":
+            return None
+
+        await self.send_epilog(self.epilog, "moderator:redis_agent")
 
         if self.turn_number < self.max_turns:
             self.turn_number += 1
@@ -286,9 +325,9 @@ class Moderator(Node[AgentAction, Observation]):
             return Observations(
                 observations_map={
                     output_channel: Observation(
-                        agent_name="moderator",
-                        last_turn=self.scenario,
-                        turn_number=self.turn_number + 1,
+                        agent_name=agent_name,
+                        last_turn=agent_action.to_natural_language(),
+                        turn_number=self.turn_number,
                         available_actions=["leave"],
                     )
                     for output_channel, agent_name in self.agent_mapping.items()
@@ -296,13 +335,13 @@ class Moderator(Node[AgentAction, Observation]):
             )
 
         observations_map: dict[str, Observation] = {}
-        for output_channel, output_channel_type in self.output_channel_types.items():
+        for output_channel, _ in self.output_channel_types.items():
             agent_name = self.agent_mapping[output_channel]
-            available_actions: list[ActionType] = ["none"]
+            available_actions = ["none"]
             if self.action_order == "round-robin":
                 if agent_name == self.agents[self.current_agent_index]:
-                    available_actions = self.available_actions
-
+                    available_actions = list(self.available_actions)
+                    print(f"available_actions: {available_actions}")
             observation = Observation(
                 agent_name=agent_name,
                 last_turn=agent_action.to_natural_language(),
@@ -310,5 +349,6 @@ class Moderator(Node[AgentAction, Observation]):
                 available_actions=available_actions,
             )
             observations_map[output_channel] = observation
+
         self.current_agent_index = (self.current_agent_index + 1) % len(self.agents)
         return Observations(observations_map=observations_map)

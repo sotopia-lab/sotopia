@@ -320,7 +320,6 @@ def yield_env_agent_combo(
         env_profile = EnvironmentProfile.get(env_id)
         env = ParallelSotopiaEnv(
             env_profile=env_profile,
-            model_name=model_names["env"],
             action_order="round-robin",
             evaluators=[
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),

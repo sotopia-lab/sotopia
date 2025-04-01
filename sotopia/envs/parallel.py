@@ -130,8 +130,8 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             ["none", "speak", "non-verbal communication", "action", "leave"]
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
-        model_name: str = "gpt-4o-mini",
         evaluators: list[Evaluator] = [],
+        model_name: str = "gpt-4o-mini",
         terminal_evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,
         env_profile: EnvironmentProfile | None = None,
@@ -145,7 +145,6 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             model_name (str, optional): The name of the language model to use. Defaults to "gpt-3.5-turbo".
         """
         super().__init__()
-        self.model_name = model_name
         if background_class is None:
             self.background_class = ScriptBackground
         else:
@@ -167,7 +166,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
         self.terminal_evaluators = terminal_evaluators
-
+        self.model_name = model_name
         # if an environment profile is provided, use it
         assert (
             env_profile or uuid_str

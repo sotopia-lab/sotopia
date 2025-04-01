@@ -45,6 +45,9 @@ Sotopia is an open-ended social learning environment that allows agents to inter
 ## Help
 See [documentation](https://docs.sotopia.world) for more details.
 
+> [!IMPORTANT]
+> If you are trying to develop on top of Sotopia, we highly recommend to follow the [development guide](https://docs.sotopia.world/contribution/contribution).
+
 ## Get started
 
 ### Install locally

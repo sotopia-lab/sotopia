@@ -1,9 +1,10 @@
 redis_url = "redis://localhost:6379/0"
 extra_modules = [{% for ins in extra_modules %}
     "{{ ins }}",{% endfor %}
-    "examples.experimental.nodes.chat_print_node",
+    "sotopia.experimental.envs.utility_nodes.chat_print_node",
     "sotopia.experimental.agents.moderator",
-    "sotopia.experimental.agents.evaluators"
+    "sotopia.experimental.agents.evaluators",
+    "sotopia.experimental.agents.redis_agent"
 ]
 
 
@@ -25,7 +26,7 @@ push_to_db = {{push_to_db | render_bool }}
 evaluate_episode = {{evaluate_episode | render_bool}}
 use_pk_value = {{use_pk_value | render_bool}}
 
-{% for agent in agents %}
+{% for agent in agents if agent.name != "redis_agent" %}
 [[nodes]]
 node_name = "{{agent.name}}"
 node_class = "{{agent_node}}"
@@ -65,3 +66,16 @@ node_class = "evaluator"
 input_channels = ["moderator:evaluator"]
 output_channels = ["evaluator:moderator"]
 model_name = "{{evaluator_model}}"
+
+[[nodes]]
+node_name = "redis_agent"
+node_class = "redis_agent"
+
+[nodes.node_args]
+input_channels = ["moderator:redis_agent"]
+output_channel = "redis_agent:moderator"
+pubsub_channel = "{{connection_id}}"
+
+[nodes.node_args.other_agent_status]
+{% for agent in agents %}
+"{{ agent.name }}" = true{% if not loop.last %}{% endif %}{% endfor %}
