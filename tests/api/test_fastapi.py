@@ -409,11 +409,11 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
         # For CLIENT_MSG, we receive two messages:
         try:
             # First message after client message (acknowledgment)
-            first_response = websocket.receive_json(timeout=5.0)
+            first_response = websocket.receive_json()
             print(f"First response (ack): {first_response}")
 
             # Second message after client message (actual agent response)
-            second_response = websocket.receive_json(timeout=5.0)
+            second_response = websocket.receive_json()
             print(f"Second response (agent response): {second_response}")
 
             # Verify agent response
@@ -433,7 +433,7 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
 
         # Just check for a single final acknowledgment
         try:
-            final_msg = websocket.receive_json(timeout=2.0)
+            final_msg = websocket.receive_json()
             print(f"FINISH_SIM acknowledgment: {final_msg}")
         except Exception as e:
             print(f"Socket closed or final message timeout: {e}")
