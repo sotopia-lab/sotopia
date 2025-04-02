@@ -255,7 +255,7 @@ async def run_simulation():
         "gender_pronoun": "She/Her",
         "public_info": "Responsibilities: Frontend development; Skills: JavaScript, React"
     }
-    
+
     agent2 = {
         "pk": f"agent-{uuid.uuid4()}",
         "first_name": "Bob",
@@ -266,11 +266,11 @@ async def run_simulation():
         "gender_pronoun": "He/Him",
         "public_info": "Responsibilities: Feature prioritization, roadmap planning; Skills: Product strategy"
     }
-    
+
     # Define goals for agents
     goal1 = "Your goal is to collaborate with the team. <extra_info>You need to discuss project timelines.</extra_info> <strategy_hint>Be detailed in your explanations.</strategy_hint>"
     goal2 = "Your goal is to collaborate with the team. <extra_info>You need to understand technical challenges.</extra_info> <strategy_hint>Ask specific questions.</strategy_hint>"
-    
+
     # Define environment
     env_profile = {
         "pk": f"env-{uuid.uuid4()}",
@@ -278,15 +278,15 @@ async def run_simulation():
         "scenario": "A team meeting to discuss project status and next steps.",
         "agent_goals": [goal1, goal2]
     }
-    
+
     # Connect to WebSocket
     TOKEN = str(uuid.uuid4())
     ws_url = f"ws://localhost:8080/ws/simulation?token={TOKEN}"
-    
+
     async with aiohttp.ClientSession() as session:
         async with session.ws_connect(ws_url) as ws:
             print(f"Connected to {ws_url}")
-            
+
             # Start simulation
             start_message = {
                 "type": "START_SIM",
@@ -299,7 +299,7 @@ async def run_simulation():
             await ws.send_json(start_message)
             confirmation = await ws.receive_json()
             print(f"Received confirmation: {confirmation}")
-            
+
             # Send message to Alice
             client_msg = {
                 "type": "CLIENT_MSG",
@@ -309,13 +309,13 @@ async def run_simulation():
                 }
             }
             await ws.send_json(client_msg)
-            
+
             # Get responses (expect 2 epilogs: one showing the message sent, and another with the response)
             msg1 = await ws.receive_json()
             print(f"First response: {msg1}")
             msg2 = await ws.receive_json()
             print(f"Agent response: {msg2}")
-            
+
             # Send another message to all agents
             broadcast_msg = {
                 "type": "CLIENT_MSG",
@@ -325,12 +325,12 @@ async def run_simulation():
                 }
             }
             await ws.send_json(broadcast_msg)
-            
-            # For each agent, we'll get 3 epilogs (one with the message sent, and one with each of the two agent's actions) 
-            for _ in range(3):  
+
+            # For each agent, we'll get 3 epilogs (one with the message sent, and one with each of the two agent's actions)
+            for _ in range(3):
                 response = await ws.receive_json()
                 print(f"Response: {response}")
-            
+
             # End simulation
             finish_msg = {
                 "type": "FINISH_SIM"
