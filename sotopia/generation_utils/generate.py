@@ -2,7 +2,6 @@ import logging
 import os
 from litellm import acompletion
 from typing import cast
-
 import gin
 
 from pydantic import validate_call
