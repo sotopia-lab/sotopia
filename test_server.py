@@ -130,7 +130,7 @@ async def test_single_NPC() -> None:
             return
 
 
-async def test_all_NPCs(broadcast=False) -> None:
+async def test_all_NPCs(broadcast: bool = False) -> None:
     env_profile2 = {
         "codename": str(uuid.uuid1()),
         "scenario": "People are working in a startup communicating with an AI agent working with them.",

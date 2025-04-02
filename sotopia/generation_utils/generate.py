@@ -151,7 +151,7 @@ async def agenerate(
     result = response.choices[0].message.content
 
     try:
-        to, parsed_result = output_parser.parse(result)
+        parsed_result = output_parser.parse(result)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e
@@ -167,10 +167,9 @@ async def agenerate(
             use_fixed_model_version,
         )
         parsed_result = output_parser.parse(reformat_result)
-        to = "all"
 
     log.info(f"Generated result: {parsed_result}")
-    return to, parsed_result
+    return parsed_result
 
 
 @gin.configurable

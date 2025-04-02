@@ -121,7 +121,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         else:
             history = self._format_message_history(self.message_history)
             try:
-                to, response = await agenerate(
+                content = await agenerate(
                     model_name=self.model_name,
                     template="Imagine that you are a friend of the other persons. Here is the "
                     "conversation between you and them.\n"
@@ -147,6 +147,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     temperature=0.7,
                     output_parser=StrOutputParser(),
                 )
+                to, response = content.split(":", 1)
+                to = to.strip().lower()  # Remove extra spaces
+                response = response.strip()
             except Exception as e:
                 log.error(f"Error generating response: {e}")
                 response = ""

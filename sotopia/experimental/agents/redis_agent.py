@@ -54,8 +54,8 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.loop_interval = loop_interval
         self.shutdown_event = asyncio.Event()
         self.other_agent_status = other_agent_status
-        self.pending_actions: asyncio.Queue[Observation] = asyncio.Queue()
-        self.command_listener_task = None
+        self.pending_actions: asyncio.Queue[AgentAction] = asyncio.Queue()
+        self.command_listener_task: asyncio.Task | None = None
         self.websocket_prefix = (
             "websocket:"  # Prefix for listening to websocket commands
         )
@@ -63,7 +63,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
     async def start_command_listener(self) -> None:
         """Start listening for commands on Redis channels"""
         if self.command_listener_task is None or self.command_listener_task.done():
-            self.command_listener_task = asyncio.create_task(self._command_listener())
+            self.command_listener_task = await asyncio.create_task(self._command_listener())
             log.info("Started Redis command listener task")
 
     async def _command_listener(self) -> None:

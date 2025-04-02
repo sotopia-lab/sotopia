@@ -14,7 +14,7 @@ from sotopia.database import (
 from sotopia.experimental.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, Dict
+from typing import Type, TypedDict, Any, AsyncGenerator, Dict, Optional
 from pydantic import BaseModel
 import uuid
 import logging
@@ -173,7 +173,8 @@ class WebSocketSotopiaSimulator:
         self.command_channel = f"websocket:{self.connection_id}"
         # Redis connection details
         self.redis_url = f"redis://{redis_host}:{redis_port}/{redis_db}"
-        self.redis_client = None
+        self.redis_client: Optional[Redis] = None
+
         # Initialize environment and agents
         try:
             # Use a unified approach for any number of agents
@@ -222,7 +223,7 @@ class WebSocketSotopiaSimulator:
                 logger.error(f"Error connecting to Redis: {e}")
                 raise
 
-    async def send_to_redis(self, message: Dict) -> None:
+    async def send_to_redis(self, message: Dict[str, Any]) -> None:
         """
         Send a message to Redis for the RedisAgent
 
@@ -246,7 +247,7 @@ class WebSocketSotopiaSimulator:
         except Exception as e:
             logger.error(f"Error sending message to Redis: {e}")
 
-    async def send_message(self, message: Dict) -> None:
+    async def send_message(self, message: Dict[str, Any]) -> None:
         """
         Send a regular message in full mode
 
