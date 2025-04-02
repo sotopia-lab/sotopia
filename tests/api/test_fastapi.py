@@ -358,6 +358,7 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
 
     # Create test agent profiles
     test_agent1 = {
+        "pk": f"test-agent-{uuid.uuid4()}",
         "first_name": "TestAgent1",
         "last_name": "",
         "age": 30,
@@ -372,6 +373,7 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
 
     # Create environment profile
     env_profile = {
+        "pk": f"test-env-{uuid.uuid4()}",
         "codename": f"test-env-{uuid.uuid4()}",
         "scenario": "This is a test scenario for the simulation API.",
         "agent_goals": [agent_goal],
