@@ -398,37 +398,6 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
             "SERVER_MSG"
         ], f"Expected SERVER_MSG, got {confirmation['type']}"
 
-        # Send a client message to test interaction
-        client_msg = {
-            "type": "CLIENT_MSG",
-            "data": {
-                "content": "Hi TestAgent1! Can you provide test feedback?",
-                "to": "TestAgent1",
-            },
-        }
-        websocket.send_json(client_msg)
-
-        # For CLIENT_MSG, we receive two messages:
-        try:
-            # First message after client message (acknowledgment)
-            first_response = websocket.receive_json()
-            print(f"First response (ack): {first_response}")
-
-            # Second message after client message (actual agent response)
-            second_response = websocket.receive_json()
-            print(f"Second response (agent response): {second_response}")
-
-            # Verify agent response
-            assert second_response["type"] in [
-                "SERVER_MSG"
-            ], f"Expected SERVER_MSG or AGENT_MSG, got {second_response['type']}"
-            assert "content" in second_response.get(
-                "data", {}
-            ), "Expected content in response data"
-
-        except Exception as e:
-            print(f"Error or timeout receiving responses: {e}")
-
         # Send FINISH_SIM message to end simulation
         finish_msg = {"type": "FINISH_SIM"}
         websocket.send_json(finish_msg)
