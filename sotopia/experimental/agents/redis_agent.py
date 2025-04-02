@@ -63,7 +63,9 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
     async def start_command_listener(self) -> None:
         """Start listening for commands on Redis channels"""
         if self.command_listener_task is None or self.command_listener_task.done():
-            self.command_listener_task = await asyncio.create_task(self._command_listener())
+            self.command_listener_task = await asyncio.create_task(
+                self._command_listener()
+            )
             log.info("Started Redis command listener task")
 
     async def _command_listener(self) -> None:
