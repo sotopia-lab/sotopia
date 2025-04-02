@@ -173,7 +173,7 @@ class WebSocketSotopiaSimulator:
         self.command_channel = f"websocket:{self.connection_id}"
         # Redis connection details
         self.redis_url = f"redis://{redis_host}:{redis_port}/{redis_db}"
-        self.redis_client: Optional[Redis] = None
+        self.redis_client: Optional[Redis[bytes]] = None
 
         # Initialize environment and agents
         try:
@@ -232,8 +232,7 @@ class WebSocketSotopiaSimulator:
         """
         try:
             # Publish message to the command channel
-            print("From websocket")
-            print(message)
+            print(f"From websocket: {message}")
             await self.redis_client.publish(self.command_channel, json.dumps(message))
             msg_type = message.get("type", "command")
             content_preview = ""

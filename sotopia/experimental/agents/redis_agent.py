@@ -55,7 +55,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.shutdown_event = asyncio.Event()
         self.other_agent_status = other_agent_status
         self.pending_actions: asyncio.Queue[AgentAction] = asyncio.Queue()
-        self.command_listener_task: asyncio.Task | None = None
+        self.command_listener_task: asyncio.Task[None] | None = None
         self.websocket_prefix = (
             "websocket:"  # Prefix for listening to websocket commands
         )
