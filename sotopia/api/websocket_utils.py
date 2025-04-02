@@ -233,6 +233,9 @@ class WebSocketSotopiaSimulator:
         try:
             # Publish message to the command channel
             print(f"From websocket: {message}")
+            if self.redis_client is None:
+                logger.error("Redis client is not initialized")
+                return
             await self.redis_client.publish(self.command_channel, json.dumps(message))
             msg_type = message.get("type", "command")
             content_preview = ""
