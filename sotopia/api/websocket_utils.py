@@ -27,7 +27,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
 class WSMessageType(str, Enum):
     SERVER_MSG = "SERVER_MSG"
     CLIENT_MSG = "CLIENT_MSG"
@@ -331,4 +330,3 @@ class WebSocketSotopiaSimulator:
 
         async for message in arun_one_episode(episode_config, self.connection_id):
             yield message
-

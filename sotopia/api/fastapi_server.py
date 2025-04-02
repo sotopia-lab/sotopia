@@ -28,7 +28,6 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     SotopiaDimensions,
 )
-from sotopia.experimental.server import arun_one_episode
 from sotopia.agents import Agents, LLMAgent
 from fastapi import (
     FastAPI,
@@ -367,6 +366,7 @@ async def nonstreaming_simulation(
         }
     )
     from sotopia.server import arun_one_episode
+
     await arun_one_episode(
         env=env,
         agent_list=list(agents.values()),
@@ -842,7 +842,6 @@ class SotopiaFastAPI(FastAPI):
                                 ErrorType.SIMULATION_ISSUE,
                                 f"Error in simulation: {str(e)}",
                             )
-
 
             except WebSocketDisconnect:
                 logger.info(f"Client disconnected: {token}")

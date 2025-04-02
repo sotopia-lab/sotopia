@@ -196,11 +196,10 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         if True not in self.other_agent_status.values():
             self.shutdown_event.set()
             log.info("All other agents have left, shutting down")
-        
+
         # Append to message history
         self.message_history.append(obs)
         if not self.pending_actions.empty():
             action = await self.pending_actions.get()
-            return action       
+            return action
         return None
-

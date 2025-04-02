@@ -81,6 +81,7 @@ ap3_goal = (
 FAST_API_URL = "http://localhost:8080/"
 FINISH_MSG = {"type": "FINISH_SIM"}
 
+
 async def test_single_NPC() -> None:
     env_profile1 = {
         "codename": str(uuid.uuid1()),
@@ -115,7 +116,7 @@ async def test_single_NPC() -> None:
                     "content": "Hi Li Ming! Please provide feedback for the all hands meeting.",
                     "to": "Li",
                 },
-            }            
+            }
             await asyncio.sleep(15)
             await ws.send_json(feedback1_msg)
             print("Client: Sent feedback1 message")
@@ -125,8 +126,9 @@ async def test_single_NPC() -> None:
             print(msg)
 
             await ws.send_json(FINISH_MSG)
-            print('Sent finish message')
+            print("Sent finish message")
             return
+
 
 async def test_all_NPCs(broadcast=False) -> None:
     env_profile2 = {
@@ -139,40 +141,41 @@ async def test_all_NPCs(broadcast=False) -> None:
     ws_url = f"ws://localhost:8080/ws/simulation?token={TOKEN}"
     async with aiohttp.ClientSession() as session:
         async with session.ws_connect(ws_url) as ws:
-                print(f"Client connected to {ws_url}")
+            print(f"Client connected to {ws_url}")
 
-                # Send initial message
-                start_message = {
-                    "type": "START_SIM",
+            # Send initial message
+            start_message = {
+                "type": "START_SIM",
+                "data": {
+                    "agent_models": ["gpt-4o"] * 3,
+                    "env_profile_dict": env_profile2,
+                    "agent_profile_dicts": [ap1, ap2, ap3],
+                },
+            }
+            await ws.send_json(start_message)
+            print("Client: Sent START_SIM message")
+            confirmation_msg = await ws.receive_json()
+            print(confirmation_msg)
+            for npc in ["Sarah", "Turing", "Li"]:
+                feedback_msg = {
+                    "type": "CLIENT_MSG",
                     "data": {
-                        "agent_models": ["gpt-4o"] * 3,
-                        "env_profile_dict": env_profile2,
-                        "agent_profile_dicts": [ap1, ap2, ap3],
+                        "content": f"Hi {npc}! Please provide feedback for the all hands meeting.",
+                        "to": "all" if broadcast else npc,
                     },
                 }
-                await ws.send_json(start_message)
-                print("Client: Sent START_SIM message")
-                confirmation_msg = await ws.receive_json()
-                print(confirmation_msg)
-                for npc in ['Sarah', 'Turing', 'Li']:
-                    feedback_msg = {
-                        "type": "CLIENT_MSG",
-                        "data": {
-                            "content": f"Hi {npc}! Please provide feedback for the all hands meeting.",
-                            "to": "all" if broadcast else npc,
-                        },
-                    }            
-                    await asyncio.sleep(15)
-                    await ws.send_json(feedback_msg)
-                    print("Client: Sent feedback message")
-                    msg = await ws.receive_json()
-                    print(msg)
-                    msg = await ws.receive_json()
-                    print(msg)
+                await asyncio.sleep(15)
+                await ws.send_json(feedback_msg)
+                print("Client: Sent feedback message")
+                msg = await ws.receive_json()
+                print(msg)
+                msg = await ws.receive_json()
+                print(msg)
 
-                await ws.send_json(FINISH_MSG)
-                print('Sent finish message')
-                return
+            await ws.send_json(FINISH_MSG)
+            print("Sent finish message")
+            return
+
 
 async def main() -> None:
     # test only one function at a time, then kill the fast-api server, comment/uncomment other test you want and then run again
