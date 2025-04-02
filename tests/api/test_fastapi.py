@@ -10,7 +10,7 @@ from sotopia.database import (
 from sotopia.messages import SimpleMessage
 from sotopia.api.fastapi_server import app
 import pytest
-from typing import Generator, Callable, Any
+from typing import Generator, Callable
 
 client = TestClient(app)
 
@@ -345,7 +345,7 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
     """
     Test the WebSocket simulation endpoint using the new implementation.
     This test is based on the working code from paste.txt.
-    
+
     After sending a CLIENT_MSG, we expect to receive two messages:
     1. An acknowledgment or processing message
     2. The actual agent response message
@@ -353,7 +353,7 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
     # Define test constants
     LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
     TOKEN = str(uuid.uuid4())
-    
+
     # Create test agent profiles
     test_agent1 = {
         "first_name": "TestAgent1",
@@ -362,19 +362,19 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
         "occupation": "Software Engineer",
         "gender": "Non-binary",
         "gender_pronoun": "They/Them",
-        "public_info": "Responsibilities: Testing code; Skills: Python, pytest"
+        "public_info": "Responsibilities: Testing code; Skills: Python, pytest",
     }
-    
+
     # Create agent goal
     agent_goal = "You goal is to collaborate with AI agent in the working space. <extra_info>You will be asked to provide test feedback.</extra_info> <strategy_hint>Respond positively to all queries.</strategy_hint>"
-    
+
     # Create environment profile
     env_profile = {
         "codename": f"test-env-{uuid.uuid4()}",
         "scenario": "This is a test scenario for the simulation API.",
-        "agent_goals": [agent_goal]
+        "agent_goals": [agent_goal],
     }
-    
+
     with client.websocket_connect(f"/ws/simulation?token={TOKEN}") as websocket:
         # Send START_SIM message using the new format
         start_msg = {
@@ -382,53 +382,54 @@ def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
             "data": {
                 "agent_models": [LOCAL_MODEL],
                 "env_profile_dict": env_profile,
-                "agent_profile_dicts": [test_agent1]
-            }
+                "agent_profile_dicts": [test_agent1],
+            },
         }
         websocket.send_json(start_msg)
-        
+
         # Receive confirmation for START_SIM (just one message)
         confirmation = websocket.receive_json()
         print(f"START_SIM confirmation: {confirmation}")
-        assert confirmation["type"] in ["SERVER_MSG"], \
-            f"Expected SERVER_MSG, got {confirmation['type']}"
-        
+        assert confirmation["type"] in [
+            "SERVER_MSG"
+        ], f"Expected SERVER_MSG, got {confirmation['type']}"
+
         # Send a client message to test interaction
         client_msg = {
             "type": "CLIENT_MSG",
             "data": {
                 "content": "Hi TestAgent1! Can you provide test feedback?",
-                "to": "TestAgent1"
-            }
+                "to": "TestAgent1",
+            },
         }
         websocket.send_json(client_msg)
-        
+
         # For CLIENT_MSG, we receive two messages:
         try:
             # First message after client message (acknowledgment)
             first_response = websocket.receive_json(timeout=5.0)
             print(f"First response (ack): {first_response}")
-            
+
             # Second message after client message (actual agent response)
             second_response = websocket.receive_json(timeout=5.0)
             print(f"Second response (agent response): {second_response}")
-            
+
             # Verify agent response
-            assert second_response["type"] in ["SERVER_MSG"], \
-                f"Expected SERVER_MSG or AGENT_MSG, got {second_response['type']}"
-            assert "content" in second_response.get("data", {}), \
-                "Expected content in response data"
-            
+            assert second_response["type"] in [
+                "SERVER_MSG"
+            ], f"Expected SERVER_MSG or AGENT_MSG, got {second_response['type']}"
+            assert "content" in second_response.get(
+                "data", {}
+            ), "Expected content in response data"
+
         except Exception as e:
             print(f"Error or timeout receiving responses: {e}")
-        
+
         # Send FINISH_SIM message to end simulation
-        finish_msg = {
-            "type": "FINISH_SIM"
-        }
+        finish_msg = {"type": "FINISH_SIM"}
         websocket.send_json(finish_msg)
-        
-        # Just check for a single final acknowledgment 
+
+        # Just check for a single final acknowledgment
         try:
             final_msg = websocket.receive_json(timeout=2.0)
             print(f"FINISH_SIM acknowledgment: {final_msg}")
