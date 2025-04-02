@@ -27,6 +27,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+
 class WSMessageType(str, Enum):
     SERVER_MSG = "SERVER_MSG"
     CLIENT_MSG = "CLIENT_MSG"
@@ -179,6 +180,7 @@ class WebSocketSotopiaSimulator:
             # Use a unified approach for any number of agents
             if not env_profile_dict and not agent_profile_dicts:
                 # Use the standard approach with database profiles
+
                 self.env, self.agents, self.environment_messages = get_env_agents(
                     env_id,
                     agent_ids,
@@ -329,3 +331,4 @@ class WebSocketSotopiaSimulator:
 
         async for message in arun_one_episode(episode_config, self.connection_id):
             yield message
+

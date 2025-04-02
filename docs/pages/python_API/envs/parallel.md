@@ -10,7 +10,6 @@ import copy
 import itertools
 import random
 from typing import Any, Literal, Optional, Type, TypeVar
-from beartype import beartype
 from gin import configurable
 from gymnasium.spaces.dict import Dict
 from gymnasium.spaces.discrete import Discrete

@@ -16,6 +16,7 @@ from sotopia.messages import SimpleMessage
 
 def test_create_env_profile() -> None:
     env_profile = EnvironmentProfile(
+        pk="test_pk",
         scenario="The conversation between two friends in a cafe",
         agent_goals=[
             "trying to figure out the gift preference of the other agent, but not let them know you are buying gift for them",
@@ -33,6 +34,7 @@ def test_create_env_profile() -> None:
 
 def test_create_agent_profile() -> None:
     agent_profile = AgentProfile(
+        pk="test_pk",
         first_name="John",
         last_name="Doe",
     )

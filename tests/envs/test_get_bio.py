@@ -12,6 +12,7 @@ from sotopia.envs.parallel import get_bio, render_text_for_agent
 @pytest.fixture
 def _get_john_profile() -> AgentProfile:
     return AgentProfile(
+        pk="test_pk",
         first_name="John",
         last_name="Doe",
         personality_and_values="I am a big five",

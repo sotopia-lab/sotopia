@@ -843,6 +843,7 @@ class SotopiaFastAPI(FastAPI):
                                 f"Error in simulation: {str(e)}",
                             )
 
+
             except WebSocketDisconnect:
                 logger.info(f"Client disconnected: {token}")
             except Exception as e:

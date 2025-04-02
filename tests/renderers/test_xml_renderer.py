@@ -60,6 +60,7 @@ def test_nested_visibility() -> None:
 def test_renderer_in_env() -> None:
     env = ParallelSotopiaEnv(
         env_profile=EnvironmentProfile(
+            pk="test_pk",
             scenario="test",
             agent_goals=["agent_1's goal", "agent_2's goal"],
         )
@@ -69,12 +70,14 @@ def test_renderer_in_env() -> None:
         {
             "John": BaseAgent(
                 agent_profile=AgentProfile(
+                    pk="test_pk_1",
                     first_name="John",
                     last_name="Doe",
                 )
             ),
             "Jane": BaseAgent(
                 agent_profile=AgentProfile(
+                    pk="test_pk_2",
                     first_name="Jane",
                     last_name="Doe",
                 )

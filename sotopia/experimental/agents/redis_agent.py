@@ -3,9 +3,7 @@ import json
 import asyncio
 import sys
 from rich.logging import RichHandler
-
 from aact import NodeFactory
-
 from sotopia.experimental.agents.base_agent import BaseAgent
 from sotopia.experimental.agents.datamodels import Observation, AgentAction
 from typing import Any
@@ -18,8 +16,6 @@ else:
     pass
 
 # Configure logging
-
-
 log = logging.getLogger("sotopia.redis_agent")
 log.setLevel(logging.INFO)
 # Prevent propagation to root logger
@@ -54,13 +50,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.agent_profile_pk: str | None = agent_pk
         self.background: dict[str, Any] | None = background
         self.awake: bool = False
-        # self.websocket_url = websocket_url
-        # self.websocket_session: ClientSession | None = None
-        # self.websocket: ClientWebSocketResponse | None = None
         self.pubsub_channel = pubsub_channel
-        # self.websocket_task: asyncio.Task[None] | None = None
-        # self.last_websocket_message = None
-        # self.websocket_wait_time = websocket_wait_time
         self.loop_interval = loop_interval
         self.shutdown_event = asyncio.Event()
         self.other_agent_status = other_agent_status
@@ -69,9 +59,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.websocket_prefix = (
             "websocket:"  # Prefix for listening to websocket commands
         )
-        # self.start_command_listener()
-        # We'll set up the websocket connection in setup_websocket
-        # which will be called during the first aact call
 
     async def start_command_listener(self) -> None:
         """Start listening for commands on Redis channels"""
@@ -145,8 +132,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
 
                             if action:
                                 await self.send(action)
-                                # Add to pending actions queue
-                                # await self.pending_actions.put(action)
 
                         except json.JSONDecodeError:
                             log.info(
@@ -177,7 +162,6 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         if obs.agent_name == "epilog":
             log.info("Message is an epilog")
             obs_json = json.dumps(obs.model_dump())
-            log.info(f"The epilog object looks like: {obs_json}")
             await self.r.publish(self.pubsub_channel, obs_json)
             log.info(f"Published epilog update to {self.pubsub_channel}")
         else:
@@ -215,17 +199,8 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         
         # Append to message history
         self.message_history.append(obs)
-        log.info("ckpt1")
-
         if not self.pending_actions.empty():
             action = await self.pending_actions.get()
-            return action
-        log.info("ckpt2")
-        # a = AgentAction(
-        #     agent_name=self.node_name,
-        #     output_channel=self.output_channel,
-        #     action_type="none",
-        #     argument={"pk": "redis", "model_name": "redis"},
-        # )
-        log.info("ckpt3")
+            return action       
         return None
+

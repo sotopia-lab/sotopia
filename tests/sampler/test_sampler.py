@@ -108,14 +108,19 @@ def test_uniform_sampler() -> None:
     sampler = UniformSampler[Observation, AgentAction](
         env_candidates=[
             EnvironmentProfile(
+                pk="test_pk",
                 scenario=_generate_sentence(),
                 agent_goals=[_generate_sentence() for _ in range(n_agent)],
             )
             for _ in range(100)
         ],
         agent_candidates=[
-            AgentProfile(first_name=_generate_name(), last_name=_generate_name())
-            for _ in range(100)
+            AgentProfile(
+                pk=f"test_pk_agent_{i}",
+                first_name=_generate_name(),
+                last_name=_generate_name(),
+            )
+            for i in range(100)
         ],
     )
     env_params = {

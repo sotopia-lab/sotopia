@@ -58,7 +58,6 @@ env_agents = [{% for agent in agents %}
     "{{ agent.name }}"{% if not loop.last %},{% endif %}{% endfor %}
 ]
 
-
 [[nodes]]
 node_name = "evaluator"
 node_class = "evaluator"
