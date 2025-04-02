@@ -3092,7 +3092,6 @@ source = { editable = "." }
 dependencies = [
     { name = "aact" },
     { name = "absl-py" },
-    { name = "beartype" },
     { name = "fastapi", extra = ["standard"] },
     { name = "gin-config" },
     { name = "hiredis" },
