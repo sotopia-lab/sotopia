@@ -10,7 +10,7 @@ from aact.messages.registry import DataModelFactory
 from aact.messages import DataModel
 
 from sotopia.experimental.agents.base_agent import BaseAgent
-from sotopia.messages.message_classes import Observation
+from sotopia.experimental.agents.datamodels import Observation
 from sotopia.database.persistent_profile import AgentProfile
 
 from sotopia.generation_utils import agenerate, StrOutputParser
@@ -163,6 +163,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 return AgentAction(
                     agent_name=self.name,
                     action_type=ActionType.SPEAK.value,
+                    output_channel=self.output_channel,
                     argument=agent_action,
                     path="",
                 )
@@ -170,6 +171,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 return AgentAction(
                     agent_name=self.name,
                     action_type=ActionType.NON_VERBAL.value,
+                    output_channel=self.output_channel,
                     argument=agent_action,
                     path="",
                 )
@@ -177,6 +179,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 return AgentAction(
                     agent_name=self.name,
                     action_type=ActionType.CHOOSE_TOOL.value,
+                    output_channel=self.output_channel,
                     argument=agent_action,
                     path="",
                 )
@@ -184,6 +187,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 return AgentAction(
                     agent_name=self.name,
                     action_type=ActionType.USE_TOOL.value,
+                    output_channel=self.output_channel,
                     argument=agent_action,
                     path="",
                 )
@@ -213,7 +217,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.name = " ".join([profile.first_name, profile.last_name]).strip()
         self.background = profile.model_dump()
 
-    def _is_current_action(self, action: str, obs: Observation):
+    def _is_current_action(self, action: str, obs: Observation) -> bool:
         return (
             True
             if len(obs.available_actions) == 1 and action in obs.available_actions
