@@ -39,5 +39,5 @@ The dataflow file `app_world_agent.toml` is used to configure the interaction be
 3. **Run the minimal example**: To run this example, we then use the `aact` tool:
 
    ```bash
-   aact run-dataflow examples/experimental/appworld_agent/appworld_agent.toml
+   uv run aact run-dataflow examples/experimental/appworld_agent/appworld_agent.toml
    ```
