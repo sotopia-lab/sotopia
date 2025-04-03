@@ -23,7 +23,7 @@ dependencies = [
     "pydantic>=2.5.0,<3.0.0",
     "hiredis>=3.0.0",
     "litellm>=0.1.1",
-    "aact"
+    "aact @ git+https://github.com/ProKil/aact"
 ]
 
 [build-system]
@@ -76,6 +76,9 @@ aact = { git = "https://github.com/ProKil/aact" , branch = "main" }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [project.scripts]
 sotopia = "sotopia.cli:app"

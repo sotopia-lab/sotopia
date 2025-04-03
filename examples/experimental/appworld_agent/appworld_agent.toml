@@ -1,0 +1,75 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = ["examples.experimental.appworld_agent.llm_agent_appworld", "examples.experimental.nodes.chat_print_node", "examples.experimental.nodes.app_world_node", "sotopia.experimental.agents.moderator", "sotopia.experimental.agents.evaluators"]
+
+[[nodes]]
+node_name = "moderator"
+node_class = "moderator"
+
+[nodes.node_args]
+output_channels = ["moderator:Harry", "moderator:Ron", "moderator:AppWorld"]
+input_channels = ["Harry:moderator", "Ron:moderator", "AppWorld:moderator"]
+evaluator_channels = [["evaluator:moderator","moderator:evaluator"]]
+agent_mapping = {"moderator:Harry" = "Harry", "moderator:Ron" = "Ron"}
+scenario = "Two friends are planning a roadtrip from Seattle to Pittsburgh."
+max_turns = 10
+push_to_db = false
+evaluate_episode = true
+use_pk_value = false
+
+[[nodes]]
+node_name = "Harry"
+node_class = "llm_agent"
+
+[nodes.node_args]
+input_channels = ["moderator:Harry"]
+output_channel = "Harry:moderator"
+goal = "Your goal is to minimize distractions during the roadtrip."
+model_name = "gpt-4o-mini"
+agent_name = "Harry"
+background = {"occupation" = "software engineer"}
+agent_pk = ""
+
+[[nodes]]
+node_name = "Ron"
+node_class = "llm_agent"
+
+[nodes.node_args]
+input_channels = ["moderator:Ron"]
+output_channel = "Ron:moderator"
+goal = "Your goal is to explore different historical sites as much as possible."
+model_name = "gpt-4o-mini"
+agent_name = "Ron"
+background = {"occupation" = "graphic artist"}
+agent_pk = ""
+
+[[nodes]]
+node_name = "chat_print"
+node_class = "chat_print"
+
+[nodes.node_args]
+env_agents = ["Harry", "Ron"]
+
+[nodes.node_args.print_channel_types]
+"Harry:moderator" = "agent_action"
+"Ron:moderator" = "agent_action"
+
+
+[[nodes]]
+node_name = "AppWorld"
+node_class = "app_world"
+appworld_url = "http://0.0.0.0:9000"
+
+[nodes.node_args]
+input_channel = "moderator:AppWorld"
+output_channel = "AppWorld:moderator"
+input_type_str = "agent_action"
+output_type_str = "agent_action"
+
+[[nodes]]
+node_name = "evaluator"
+node_class = "evaluator"
+
+[nodes.node_args]
+input_channels = ["moderator:evaluator"]
+output_channels = ["evaluator:moderator"]
+model_name = "gpt-4o-mini"
