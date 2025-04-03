@@ -104,7 +104,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     async def aact(self, obs: Observation) -> AgentAction:
         """Main action function for an agent"""
 
-        # Do nothing if it's not yet your turn.
         if obs.turn_number == -1:
             if self.awake:
                 return AgentAction(
@@ -113,7 +112,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     action_type="none",
                     argument="",
                 )
-
             args = json.loads(obs.last_turn)
             self.set_profile(use_pk_value=args["use_pk_value"])
             self.awake = True
