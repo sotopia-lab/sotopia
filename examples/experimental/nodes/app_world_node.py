@@ -26,7 +26,7 @@ class AppWorldController(RestAPINode):
         output_type_str: str,
         node_name: str,
         redis_url: str,
-    ):
+    ) -> None:
         super().__init__(
             input_channel=input_channel,
             output_channel=output_channel,
