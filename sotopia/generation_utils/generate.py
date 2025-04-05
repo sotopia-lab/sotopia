@@ -1,6 +1,10 @@
 import logging
 import os
 from litellm import acompletion
+from litellm.utils import supports_response_schema
+from litellm.litellm_core_utils.get_supported_openai_params import (
+    get_supported_openai_params,
+)
 from typing import cast
 
 import gin
@@ -115,11 +119,14 @@ async def agenerate(
         api_key = None
 
     if structured_output:
+        params = get_supported_openai_params(model=model_name)
+        assert params is not None
         assert (
-            model_name.startswith("gpt-4o")
-            or model_name.startswith("openai/")
-            or model_name.startswith("o1")
-        ), "Structured output is only supported in limited models"
+            "response_format" in params
+        ), "response_format is not supported in this model"
+        assert supports_response_schema(
+            model=model_name
+        ), "response_schema is not supported in this model"
         messages = [{"role": "user", "content": template}]
 
         assert isinstance(

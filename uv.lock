@@ -1459,7 +1459,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.59.6"
+version = "1.65.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1474,9 +1474,9 @@ dependencies = [
     { name = "tiktoken" },
     { name = "tokenizers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/b3/36d9cc0f494d464930e2452f75991459ef37697d0039d46dc285482b5096/litellm-1.59.6.tar.gz", hash = "sha256:4096d8fc283410d9272a9b33f900ec86f29db55c9b0608b4eea465829be5c354", size = 6422373 }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/ff/6d288a2566a71b7eb1545d8223450c9b5f6150ba451a2686f5ed2264d81d/litellm-1.65.4.tar.gz", hash = "sha256:bde14fa580336da3a96007fc155cbf7b2d8a7defaa37937841b0947e028d4264", size = 6728677 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/82/fce291798ebcc3015b03f839c5f60a5bf97ce7cbf920074889d6ca3581af/litellm-1.59.6-py3-none-any.whl", hash = "sha256:324f2bc2cf24f45fde0a9189df10f6f72d4ad91c5aeff6e00ee2ddc8da26dea6", size = 6712020 },
+    { url = "https://files.pythonhosted.org/packages/72/b4/bd70a5e227f85d72228a3c437e8cd532c72691c90746971005a33f1d96c1/litellm-1.65.4-py3-none-any.whl", hash = "sha256:23a0a5888178a403829906a1bc7eb51928ae405b1f752a87b18d0f965108d74a", size = 7073374 },
 ]
 
 [[package]]
@@ -2015,7 +2015,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.60.1"
+version = "1.70.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2027,9 +2027,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/c4/a220c957aa4097f25498770c6eff8f3abd35934a8859e7a78928a8a70846/openai-1.60.1.tar.gz", hash = "sha256:beb1541dfc38b002bd629ab68b0d6fe35b870c5f4311d9bc4404d85af3214d5e", size = 348070 }
+sdist = { url = "https://files.pythonhosted.org/packages/87/f5/ae0f3cd226c2993b4ac1cc4b5f6ca099764689f403c14922c9356accec66/openai-1.70.0.tar.gz", hash = "sha256:e52a8d54c3efeb08cf58539b5b21a5abef25368b5432965e4de88cdf4e091b2b", size = 409640 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/ad/55b2d03feda5a0adc0a86048dcb7c9863fd24a3726815a04d5669e82e41e/openai-1.60.1-py3-none-any.whl", hash = "sha256:714181ec1c452353d456f143c22db892de7b373e3165063d02a2b798ed575ba1", size = 456110 },
+    { url = "https://files.pythonhosted.org/packages/e2/39/c4b38317d2c702c4bc763957735aaeaf30dfc43b5b824121c49a4ba7ba0f/openai-1.70.0-py3-none-any.whl", hash = "sha256:f6438d053fd8b2e05fd6bef70871e832d9bbdf55e119d0ac5b92726f1ae6f614", size = 599070 },
 ]
 
 [[package]]
@@ -3173,7 +3173,7 @@ requires-dist = [
     { name = "groq", marker = "extra == 'groq'" },
     { name = "hiredis", specifier = ">=3.0.0" },
     { name = "json-repair", specifier = ">=0.35.0,<0.41.0" },
-    { name = "litellm", specifier = ">=0.1.1" },
+    { name = "litellm", specifier = ">=1.65.0" },
     { name = "lxml", specifier = ">=4.9.3,<6.0.0" },
     { name = "modal", marker = "extra == 'api'" },
     { name = "openai", specifier = ">=1.11.0,<2.0.0" },

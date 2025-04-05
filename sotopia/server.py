@@ -15,13 +15,12 @@ from sotopia.agents import (
     ScriptWritingAgent,
 )
 from sotopia.agents.base_agent import BaseAgent
-from sotopia.database import EpisodeLog, NonStreamingSimulationStatus
+from sotopia.database import EpisodeLog, NonStreamingSimulationStatus, SotopiaDimensions
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
     unweighted_aggregate_evaluate,
 )
 from sotopia.generation_utils.generate import agenerate_script

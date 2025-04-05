@@ -22,7 +22,7 @@ dependencies = [
     "together>=0.2.4,<1.5.0",
     "pydantic>=2.5.0,<3.0.0",
     "hiredis>=3.0.0",
-    "litellm>=0.1.1",
+    "litellm>=1.65.0",
     "aact"
 ]
 
