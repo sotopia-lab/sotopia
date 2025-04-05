@@ -21,13 +21,13 @@ from sotopia.database import (
     EnvAgentComboStorage,
     EnvironmentProfile,
     EpisodeLog,
+    SotopiaDimensions,
 )
 from sotopia.database.serialization import get_rewards_from_episode
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.messages import AgentAction, Observation

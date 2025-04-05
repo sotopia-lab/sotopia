@@ -17,12 +17,12 @@ from sotopia.database import (
     EnvironmentProfile,
     EpisodeLog,
     EvaluationDimensionBuilder,
+    SotopiaDimensions,
 )
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.messages import AgentAction, Observation

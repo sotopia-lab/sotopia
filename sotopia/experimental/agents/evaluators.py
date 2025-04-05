@@ -9,7 +9,7 @@ from sotopia.database.persistent_profile import AgentProfile
 from typing import Generic, TypeVar, Type, Any
 from pydantic import BaseModel, Field
 
-from sotopia.envs.evaluators import GoalDimension
+from sotopia.database import GoalDimension
 from sotopia.generation_utils.generate import agenerate
 from sotopia.generation_utils.output_parsers import PydanticOutputParser
 

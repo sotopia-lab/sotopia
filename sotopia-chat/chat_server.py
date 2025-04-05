@@ -25,8 +25,8 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.server import arun_one_episode
-
-from sotopia.envs.evaluators import SotopiaDimensions, EvaluationForTwoAgents
+from sotopia.envs.evaluators import EvaluationForTwoAgents
+from sotopia.database import SotopiaDimensions
 from sotopia.logging import FileHandler
 
 process = subprocess.Popen(

@@ -13,7 +13,7 @@ from sotopia.cli.benchmark.benchmark import (
 from unittest import mock
 from unittest.mock import create_autospec
 from sotopia.cli.benchmark.benchmark import initialize_benchmark_combo
-from sotopia.database import EnvAgentComboStorage
+from sotopia.database import EnvAgentComboStorage, SotopiaDimensions
 import pytest
 
 from sotopia.envs.parallel import ParallelSotopiaEnv
@@ -25,7 +25,6 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.agents import LLMAgent
 

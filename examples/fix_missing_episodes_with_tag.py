@@ -29,7 +29,7 @@ from sotopia.agents.llm_agent import LLMAgent
 from sotopia.database.env_agent_combo_storage import (
     EnvAgentComboStorage,
 )
-from sotopia.database.logs import EpisodeLog
+from sotopia.database import EpisodeLog, SotopiaDimensions
 from sotopia.database.persistent_profile import (
     AgentProfile,
     EnvironmentProfile,
@@ -38,7 +38,6 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.messages.message_classes import AgentAction, Observation
