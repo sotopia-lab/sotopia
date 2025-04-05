@@ -48,6 +48,9 @@ from .evaluation_dimensions import (
     BaseCustomEvaluationDimension,
     CustomEvaluationDimensionList,
     BaseCustomEvaluationDimensionList,
+    GoalDimension,
+    SotopiaDimensions,
+    SotopiaDimensionsPlus,
 )
 
 __all__ = [
@@ -91,6 +94,9 @@ __all__ = [
     "CustomEvaluationDimensionList",
     "BaseCustomEvaluationDimensionList",
     "NonStreamingSimulationStatus",
+    "GoalDimension",
+    "SotopiaDimensions",
+    "SotopiaDimensionsPlus",
 ]
 
 InheritedJsonModel = TypeVar("InheritedJsonModel", bound="JsonModel")

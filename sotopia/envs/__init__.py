@@ -1,4 +1,3 @@
 from .parallel import ParallelSotopiaEnv
-from .evaluators import SotopiaDimensions
 
-__all__ = ["ParallelSotopiaEnv", "SotopiaDimensions"]
+__all__ = ["ParallelSotopiaEnv"]
