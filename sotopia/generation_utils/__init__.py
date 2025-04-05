@@ -12,6 +12,7 @@ from .output_parsers import (
     ListOfIntOutputParser,
 )
 from .convert import convert_narratives
+from .generate_agent_background import generate_background
 
 __all__ = [
     "EnvResponse",
@@ -24,4 +25,5 @@ __all__ = [
     "agenerate_action",
     "agenerate_init_profile",
     "convert_narratives",
+    "generate_background",
 ]
