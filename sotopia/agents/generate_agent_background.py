@@ -1,8 +1,7 @@
 import json
 import os
 from typing import Callable
-
-from sotopia.generation_utils.generate import convert_narratives, agenerate_init_profile
+from sotopia.generation_utils import agenerate_init_profile, convert_narratives
 from sotopia.messages import Message, ScriptBackground
 
 
