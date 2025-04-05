@@ -119,14 +119,15 @@ async def agenerate(
         api_key = None
 
     if structured_output:
-        params = get_supported_openai_params(model=model_name)
-        assert params is not None
-        assert (
-            "response_format" in params
-        ), "response_format is not supported in this model"
-        assert supports_response_schema(
-            model=model_name
-        ), "response_schema is not supported in this model"
+        if not model_name.startswith("custom/"):
+            params = get_supported_openai_params(model=model_name)
+            assert params is not None
+            assert (
+                "response_format" in params
+            ), "response_format is not supported in this model"
+            assert supports_response_schema(
+                model=model_name
+            ), "response_schema is not supported in this model"
         messages = [{"role": "user", "content": template}]
 
         assert isinstance(
