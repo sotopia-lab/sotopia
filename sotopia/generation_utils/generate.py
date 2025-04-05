@@ -119,7 +119,7 @@ async def agenerate(
         api_key = None
 
     if structured_output:
-        if not model_name.startswith("custom/"):
+        if not base_url:
             params = get_supported_openai_params(model=model_name)
             assert params is not None
             assert (
