@@ -6,7 +6,6 @@ from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
 )
 from typing import cast
-
 import gin
 
 from pydantic import validate_call
@@ -160,7 +159,7 @@ async def agenerate(
     result = response.choices[0].message.content
 
     try:
-        parsed_result = output_parser.parse(result)
+        to, parsed_result = output_parser.parse(result)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e
@@ -176,9 +175,10 @@ async def agenerate(
             use_fixed_model_version,
         )
         parsed_result = output_parser.parse(reformat_result)
+        to = "all"
 
     log.info(f"Generated result: {parsed_result}")
-    return parsed_result
+    return to, parsed_result
 
 
 @gin.configurable

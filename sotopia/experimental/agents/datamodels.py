@@ -1,6 +1,7 @@
 from sotopia.messages import ActionType
 from aact.messages import DataModel, DataModelFactory
 from pydantic import Field
+import json
 
 
 @DataModelFactory.register("observation")
@@ -33,7 +34,8 @@ class AgentAction(DataModel):
             case "none":
                 return f"{self.agent_name} did nothing."
             case "speak":
-                return f'{self.agent_name} said: "{self.argument}"'
+                arg_data = json.loads(self.argument)
+                return f'{self.agent_name} said: "{arg_data.get("action", "")}" to "{arg_data.get("to", "all")}"'
             case "non-verbal communication":
                 return f'{self.agent_name} {self.action_type}: "{self.argument}"'
             case "action":

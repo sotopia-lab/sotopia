@@ -17,6 +17,16 @@ from .datamodels import AgentAction, Observation
 from sotopia.messages import ActionType
 from .logs import EpisodeLog
 
+import logging
+from rich.logging import RichHandler
+
+# Configure logger with rich formatting
+log = logging.getLogger("sotopia.moderator")
+log.setLevel(logging.INFO)
+# Prevent propagation to root logger
+log.propagate = False
+log.addHandler(RichHandler(rich_tracebacks=True, show_time=True))
+
 
 @DataModelFactory.register("observations")
 class Observations(DataModel):
@@ -41,8 +51,8 @@ class Moderator(Node[AgentAction, Observation]):
         available_actions: list[ActionType] = [
             "none",
             "speak",
-            "non-verbal communication",
-            "action",
+            # "non-verbal communication",
+            # "action",
             "leave",
         ],
         max_turns: int = 20,
@@ -51,7 +61,7 @@ class Moderator(Node[AgentAction, Observation]):
         evaluate_episode: bool = False,
         redis_agent_as_actor: bool = False,
     ) -> None:
-        print([(channel[0], AgentAction) for channel in evaluator_channels])
+        # print([(channel[0], AgentAction) for channel in evaluator_channels])
         super().__init__(
             input_channel_types=[
                 (input_channel, AgentAction) for input_channel in input_channels
@@ -105,9 +115,9 @@ class Moderator(Node[AgentAction, Observation]):
         if "moderator:redis_agent" in self.output_channel_types:
             self.output_channel_types.pop("moderator:redis_agent")
 
-        # Remove from input_channel_types - need to use the correct key
-        if "redis_agent:moderator" in self.input_channel_types:
-            self.input_channel_types.pop("redis_agent:moderator")
+        # # Remove from input_channel_types - need to use the correct key
+        # if "redis_agent:moderator" in self.input_channel_types:
+        #     self.input_channel_types.pop("redis_agent:moderator")
 
         # Remove from agents list - check if it exists first
         if "redis_agent" in self.agents:
@@ -183,7 +193,7 @@ class Moderator(Node[AgentAction, Observation]):
             self.observation_queue.task_done()
 
     async def booting(self) -> None:
-        print("Booting moderator and waiting for agents...")
+        log.info("Booting moderator and waiting for agents...")
         while not self.all_agents_awake.is_set():
             await self.send_observations(
                 Observations(
@@ -202,23 +212,36 @@ class Moderator(Node[AgentAction, Observation]):
                     }
                 )
             )
-            print("sent checking message to agents")
+            log.info("sent checking message to agents")
             await asyncio.sleep(0.2)
             while not self.observation_queue.empty():
                 agent_action = await self.observation_queue.get()
                 if not self.agents_awake[agent_action.agent_name]:
                     self.agents_awake[agent_action.agent_name] = True
-                    args: dict[str, Any] = json.loads(agent_action.argument)
-                    self.agents_pk[agent_action.agent_name] = args["pk"]
-                    self.agent_models[agent_action.agent_name] = args["model_name"]
+                    if agent_action.agent_name == "redis_agent":
+                        try:
+                            args: dict[str, Any] = json.loads(agent_action.argument)
+                            self.agents_pk[agent_action.agent_name] = args["pk"]
+                            self.agent_models[agent_action.agent_name] = args[
+                                "model_name"
+                            ]
+                        except Exception as e:
+                            print(f"error in booting: {e}")
+                            self.agents_pk[agent_action.agent_name] = "redis"
+                            self.agent_models[agent_action.agent_name] = "redis"
+                    else:
+                        agent_args: dict[str, Any] = json.loads(agent_action.argument)
+                        self.agents_pk[agent_action.agent_name] = agent_args["pk"]
+                        self.agent_models[agent_action.agent_name] = agent_args[
+                            "model_name"
+                        ]
             if False not in self.agents_awake.values():
                 self.all_agents_awake.set()
-                print("All agents are now awake and ready")
+                log.info("All agents are now awake and ready")
 
         # TODO: remove this once we have a better way to handle the redis_agent
         if not self.redis_agent_as_actor:
             self.remove_redis_as_actor()
-
         self.epilog = EpisodeLog(
             environment=self.scenario,
             agents=list(self.agents_pk.values()),
@@ -236,7 +259,7 @@ class Moderator(Node[AgentAction, Observation]):
                             agent_name="moderator",
                             last_turn=self.scenario,
                             turn_number=0,
-                            available_actions=self.available_actions
+                            available_actions=["none"]
                             if agent_name == self.agents[0]
                             else ["none"],
                         )
@@ -296,12 +319,19 @@ class Moderator(Node[AgentAction, Observation]):
 
     async def astep(self, agent_action: AgentAction) -> Observations | None:
         # message (sender, receivers (seperated by comma), message content)
+        log.info(f"astep: {agent_action.model_dump_json()}")
+        arg_data = json.loads(agent_action.argument)
+        receiver = arg_data.get("to", "all")
+        if agent_action.action_type == "speak":
+            event = f'{agent_action.agent_name} said: "{arg_data.get("action", "")}" to "{arg_data.get("to", "all")}"'
+        else:
+            event = agent_action.to_natural_language()
         self.epilog.messages.append(
             [
                 (
                     agent_action.agent_name,
-                    "Environment",
-                    agent_action.to_natural_language(),
+                    receiver,
+                    event,
                 )
             ]
         )
@@ -316,9 +346,6 @@ class Moderator(Node[AgentAction, Observation]):
                 return None
         if agent_action.action_type == "none":
             return None
-
-        await self.send_epilog(self.epilog, "moderator:redis_agent")
-
         if self.turn_number < self.max_turns:
             self.turn_number += 1
         else:
@@ -333,18 +360,23 @@ class Moderator(Node[AgentAction, Observation]):
                     for output_channel, agent_name in self.agent_mapping.items()
                 }
             )
-
+        await self.send_epilog(self.epilog, "moderator:redis_agent")
+        receiver = receiver.lower()
         observations_map: dict[str, Observation] = {}
         for output_channel, _ in self.output_channel_types.items():
             agent_name = self.agent_mapping[output_channel]
             available_actions = ["none"]
-            if self.action_order == "round-robin":
+            if agent_name.lower() != receiver and receiver != "all":
+                continue
+            elif receiver == "all" and self.action_order == "round-robin":
                 if agent_name == self.agents[self.current_agent_index]:
                     available_actions = list(self.available_actions)
                     print(f"available_actions: {available_actions}")
+            else:
+                available_actions = list(self.available_actions)
             observation = Observation(
                 agent_name=agent_name,
-                last_turn=agent_action.to_natural_language(),
+                last_turn=event,
                 turn_number=self.turn_number,
                 available_actions=available_actions,
             )
