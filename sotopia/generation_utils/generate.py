@@ -1,10 +1,14 @@
 import logging
 import os
 from litellm import acompletion
+from litellm.utils import supports_response_schema
+from litellm.litellm_core_utils.get_supported_openai_params import (
+    get_supported_openai_params,
+)
 from typing import cast
 import gin
-from beartype import beartype
 
+from pydantic import validate_call
 from rich import print
 from rich.logging import RichHandler
 
@@ -47,7 +51,7 @@ log.addHandler(console_handler)
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 
-@beartype
+@validate_call
 async def format_bad_output(
     ill_formed_output: str,
     format_instructions: str,
@@ -80,7 +84,7 @@ async def format_bad_output(
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate(
     model_name: str,
     template: str,
@@ -114,11 +118,15 @@ async def agenerate(
         api_key = None
 
     if structured_output:
-        assert (
-            model_name.startswith("gpt-4o")
-            or model_name.startswith("openai/")
-            or model_name.startswith("o1")
-        ), "Structured output is only supported in limited models"
+        if not base_url:
+            params = get_supported_openai_params(model=model_name)
+            assert params is not None
+            assert (
+                "response_format" in params
+            ), "response_format is not supported in this model"
+            assert supports_response_schema(
+                model=model_name
+            ), "response_schema is not supported in this model"
         messages = [{"role": "user", "content": template}]
 
         assert isinstance(
@@ -174,7 +182,7 @@ async def agenerate(
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate_env_profile(
     model_name: str,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
@@ -206,7 +214,7 @@ async def agenerate_env_profile(
     )
 
 
-@beartype
+@validate_call
 async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
@@ -234,7 +242,7 @@ async def agenerate_relationship_profile(
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate_action(
     model_name: str,
     history: str,
@@ -304,7 +312,7 @@ async def agenerate_action(
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate_script(
     model_name: str,
     background: ScriptBackground,
@@ -384,7 +392,7 @@ async def agenerate_script(
         return (return_default_value, "")
 
 
-@beartype
+@validate_call
 def process_history(
     script: ScriptBackground | EnvResponse | dict[str, AgentAction],
 ) -> str:
@@ -401,7 +409,7 @@ def process_history(
     return result
 
 
-@beartype
+@validate_call
 async def agenerate_init_profile(
     model_name: str,
     basic_info: dict[str, str],
@@ -446,7 +454,7 @@ async def agenerate_init_profile(
     )
 
 
-@beartype
+@validate_call
 async def convert_narratives(
     model_name: str,
     narrative: str,
@@ -480,7 +488,7 @@ async def convert_narratives(
         raise ValueError(f"Narrative {narrative} is not supported.")
 
 
-@beartype
+@validate_call
 async def agenerate_goal(
     model_name: str,
     background: str,

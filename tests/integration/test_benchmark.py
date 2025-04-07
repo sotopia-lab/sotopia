@@ -13,7 +13,7 @@ from sotopia.cli.benchmark.benchmark import (
 from unittest import mock
 from unittest.mock import create_autospec
 from sotopia.cli.benchmark.benchmark import initialize_benchmark_combo
-from sotopia.database import EnvAgentComboStorage
+from sotopia.database import EnvAgentComboStorage, SotopiaDimensions
 import pytest
 
 from sotopia.envs.parallel import ParallelSotopiaEnv
@@ -25,7 +25,6 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.agents import LLMAgent
 
@@ -48,6 +47,7 @@ model_name = "test_model"
 def get_mock_episodes() -> list[EpisodeLog]:
     # all_episodes = EpisodeLog.find().all()
     environment = EnvironmentProfile(
+        pk="test_env_pk",
         codename="test",
         source="test",
         scenario="Two people are talking",
@@ -97,6 +97,7 @@ def get_mock_episodes() -> list[EpisodeLog]:
 
 def get_mock_env_agents_profile() -> tuple[EnvironmentProfile, list[AgentProfile]]:
     env_profile = EnvironmentProfile(
+        pk="test_env_pk",
         codename="test",
         source="test",
         scenario="Two people are talking",

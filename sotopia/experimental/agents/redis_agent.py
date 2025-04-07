@@ -18,8 +18,6 @@ else:
     pass
 
 # Configure logging
-
-
 log = logging.getLogger("sotopia.redis_agent")
 log.setLevel(logging.INFO)
 # Prevent propagation to root logger
@@ -215,17 +213,8 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         
         # Append to message history
         self.message_history.append(obs)
-        log.info("ckpt1")
 
         if not self.pending_actions.empty():
             action = await self.pending_actions.get()
             return action
-        log.info("ckpt2")
-        # a = AgentAction(
-        #     agent_name=self.node_name,
-        #     output_channel=self.output_channel,
-        #     action_type="none",
-        #     argument={"pk": "redis", "model_name": "redis"},
-        # )
-        log.info("ckpt3")
         return None

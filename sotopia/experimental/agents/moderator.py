@@ -381,5 +381,6 @@ class Moderator(Node[AgentAction, Observation]):
                 available_actions=available_actions,
             )
             observations_map[output_channel] = observation
+
         self.current_agent_index = (self.current_agent_index + 1) % len(self.agents)
         return Observations(observations_map=observations_map)

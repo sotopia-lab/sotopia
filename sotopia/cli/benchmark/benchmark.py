@@ -11,7 +11,6 @@ from itertools import chain
 from collections import defaultdict
 from typing import OrderedDict
 
-from logging import FileHandler
 from rich.logging import RichHandler
 
 from tqdm import tqdm
@@ -22,13 +21,13 @@ from sotopia.database import (
     EnvAgentComboStorage,
     EnvironmentProfile,
     EpisodeLog,
+    SotopiaDimensions,
 )
 from sotopia.database.serialization import get_rewards_from_episode
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.messages import AgentAction, Observation
@@ -37,6 +36,7 @@ from sotopia.samplers import (
     EnvAgentCombo,
 )
 from sotopia.server import run_async_server
+from sotopia.logging import FileHandler
 
 import typer
 from pathlib import Path

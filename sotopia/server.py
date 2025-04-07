@@ -4,8 +4,8 @@ import logging
 from typing import Literal, Sequence, Type, AsyncGenerator, Union
 
 import gin
+from pydantic import validate_call
 import rich
-from beartype import beartype
 
 from sotopia.agents import (
     Agents,
@@ -15,13 +15,12 @@ from sotopia.agents import (
     ScriptWritingAgent,
 )
 from sotopia.agents.base_agent import BaseAgent
-from sotopia.database import EpisodeLog, NonStreamingSimulationStatus
+from sotopia.database import EpisodeLog, NonStreamingSimulationStatus, SotopiaDimensions
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
     unweighted_aggregate_evaluate,
 )
 from sotopia.generation_utils.generate import agenerate_script
@@ -33,7 +32,7 @@ from sotopia.messages.message_classes import (
 from sotopia.samplers import BaseSampler, EnvAgentCombo
 
 
-@beartype
+@validate_call
 def run_sync_server(
     model_name_dict: dict[str, str],
     action_order: Literal["simultaneous", "round-robin", "random"],
@@ -243,7 +242,6 @@ async def arun_one_episode(
 
 
 @gin.configurable
-@beartype
 async def run_async_server(
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
     action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",

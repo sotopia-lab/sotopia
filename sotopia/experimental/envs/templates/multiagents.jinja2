@@ -1,4 +1,5 @@
 redis_url = "{{redis_url}}"
+
 extra_modules = [{% for ins in extra_modules %}
     "{{ ins }}",{% endfor %}
     "sotopia.experimental.envs.utility_nodes.chat_print_node",
@@ -58,7 +59,6 @@ env_agents = [{% for agent in agents %}
     "{{ agent.name }}"{% if not loop.last %},{% endif %}{% endfor %}
 ]
 
-
 [[nodes]]
 node_name = "evaluator"
 node_class = "evaluator"
@@ -77,3 +77,4 @@ input_channels = ["moderator:redis_agent"]
 output_channel = "redis_agent:moderator"
 pubsub_channel = "{{connection_id}}"
 other_agent_status = { {% for agent in agents %}"{{agent.name}}" = true{% if not loop.last %},{% endif %}{% endfor %}}
+

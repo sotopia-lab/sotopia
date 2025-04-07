@@ -20,13 +20,13 @@ from sotopia.database import (
     BaseEnvironmentProfile,
     BaseAgentProfile,
     BaseRelationshipProfile,
+    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
     EpisodeLLMEvaluator,
     EvaluationForTwoAgents,
-    SotopiaDimensions,
 )
 from sotopia.experimental.server import arun_one_episode
 from sotopia.agents import Agents, LLMAgent
