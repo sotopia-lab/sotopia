@@ -17,6 +17,16 @@ from .datamodels import AgentAction, Observation
 from sotopia.messages import ActionType
 from .logs import EpisodeLog
 
+import logging
+from rich.logging import RichHandler
+
+# Configure logger with rich formatting
+log = logging.getLogger("sotopia.moderator")
+log.setLevel(logging.INFO)
+# Prevent propagation to root logger
+log.propagate = False
+log.addHandler(RichHandler(rich_tracebacks=True, show_time=True))
+
 
 @DataModelFactory.register("observations")
 class Observations(DataModel):
@@ -127,10 +137,10 @@ class Moderator(Node[AgentAction, Observation]):
             self.agents_awake.pop("redis_agent")
 
     async def __aenter__(self) -> Self:
-        print(f"Starting moderator with scenario: {self.scenario}")
+        log.info("Booting moderator and waiting for agents...")
         asyncio.create_task(self.booting())
         self.task_scheduler = asyncio.create_task(self._task_scheduler())
-        print("Moderator booted successfully")
+        log.info("Moderator booted successfully")
         return await super().__aenter__()
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
@@ -208,6 +218,7 @@ class Moderator(Node[AgentAction, Observation]):
                 agent_action = await self.observation_queue.get()
                 if not self.agents_awake[agent_action.agent_name]:
                     self.agents_awake[agent_action.agent_name] = True
+                    log.info(f"Agent {agent_action.argument} is awake")
                     args: dict[str, Any] = json.loads(agent_action.argument)
                     self.agents_pk[agent_action.agent_name] = args["pk"]
                     self.agent_models[agent_action.agent_name] = args["model_name"]
