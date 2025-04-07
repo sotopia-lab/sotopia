@@ -210,7 +210,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         if True not in self.other_agent_status.values():
             self.shutdown_event.set()
             log.info("All other agents have left, shutting down")
-        
+
         # Append to message history
         self.message_history.append(obs)
 

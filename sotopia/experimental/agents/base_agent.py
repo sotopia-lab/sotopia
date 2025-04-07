@@ -90,6 +90,6 @@ class BaseAgent(Node[T_agent_observation, T_agent_action]):
                 log.info(f"Completed aact: {self.a}")
             if action_or_none is not None:
                 await self.send(action_or_none)
-            if 'redis' in self.a:
+            if "redis" in self.a:
                 log.info(f"Completed send: {self.a}")
             self.observation_queue.task_done()

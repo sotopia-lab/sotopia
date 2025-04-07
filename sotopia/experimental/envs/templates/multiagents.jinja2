@@ -77,4 +77,3 @@ input_channels = ["moderator:redis_agent"]
 output_channel = "redis_agent:moderator"
 pubsub_channel = "{{connection_id}}"
 other_agent_status = { {% for agent in agents %}"{{agent.name}}" = true{% if not loop.last %},{% endif %}{% endfor %}}
-
