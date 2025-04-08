@@ -62,6 +62,7 @@ def main() -> None:
                     "goal": agent_goals[i],
                     "model_name": "gpt-4o-mini",
                     "background": {
+                        "pk": agent_id,
                         "first_name": agent_id,
                         "last_name": agent_id,
                         "model": "gpt-4o-mini",
