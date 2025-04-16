@@ -42,6 +42,7 @@ import typer
 from pathlib import Path
 from ..app import app
 import os
+from typing import Annotated
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -436,30 +437,43 @@ def save_to_jsonl(
 
 @app.command()
 def benchmark(
-    models: list[str] = typer.Option(
-        default_model_list,
-        help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}.",
-    ),
-    agent_class: type[LLMAgent] = typer.Option(
-        LLMAgent,
-        help="The agent class you want to use for the evaluated models. Must be a subclass of LLMAgent.",
-    ),
-    partner_model: str = typer.Option(
-        "together_ai/meta-llama/Llama-3-70b-chat-hf",
-        help="The partner model you want to use.",
-    ),
-    evaluator_model: str = typer.Option(
-        "gpt-4o", help="The evaluator model you want to use."
-    ),
-    batch_size: int = typer.Option(10, help="The batch size you want to use."),
-    task: str = typer.Option("hard", help="The task id you want to benchmark."),
-    url: str = typer.Option("", help="The url to fetch the benchmark combo."),
-    print_logs: bool = typer.Option(False, help="Print logs."),
-    only_show_performance: bool = typer.Option(False, help="Only show performance."),
-    output_to_jsonl: bool = typer.Option(False, help="Output to jsonl."),
-    push_to_db: bool = typer.Option(False, help="Push to db."),
-    save_dir: str = typer.Option(".", help="The directory to save the output."),
-    tag: str = typer.Option("", help="The tag for the experiment."),
+    models: Annotated[
+        list[str],
+        typer.Argument(
+            help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}."
+        ),
+    ] = default_model_list,
+    agent_class: Annotated[
+        type[LLMAgent],
+        typer.Argument(
+            help="The agent class you want to use for the evaluated models. Must be a subclass of LLMAgent."
+        ),
+    ] = LLMAgent,
+    partner_model: Annotated[
+        str, typer.Argument(help="The partner model you want to use.")
+    ] = "together_ai/meta-llama/Llama-3-70b-chat-hf",
+    evaluator_model: Annotated[
+        str, typer.Argument(help="The evaluator model you want to use.")
+    ] = "gpt-4o",
+    batch_size: Annotated[
+        int, typer.Argument(help="The batch size you want to use.")
+    ] = 10,
+    task: Annotated[
+        str, typer.Argument(help="The task id you want to benchmark.")
+    ] = "hard",
+    url: Annotated[
+        str, typer.Argument(help="The url to fetch the benchmark combo.")
+    ] = "",
+    print_logs: Annotated[bool, typer.Argument(help="Print logs.")] = False,
+    only_show_performance: Annotated[
+        bool, typer.Argument(help="Only show performance.")
+    ] = False,
+    output_to_jsonl: Annotated[bool, typer.Argument(help="Output to jsonl.")] = False,
+    push_to_db: Annotated[bool, typer.Argument(help="Push to db.")] = False,
+    save_dir: Annotated[
+        str, typer.Argument(help="The directory to save the output.")
+    ] = ".",
+    tag: Annotated[str, typer.Argument(help="The tag for the experiment.")] = "",
 ) -> None:
     if only_show_performance:
         benchmark_display(
