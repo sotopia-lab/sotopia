@@ -195,12 +195,13 @@ async def arun_one_episode(
                 " ".join(info[agent_name]["comments"] for agent_name in env.agents)
             )
             done = all(terminated.values())
-
+        breakpoint()
         epilog = EpisodeLog(
             environment=env.profile.pk,
             agents=[agent.profile.pk for agent in agent_list],
             tag=tag,
             models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
+            agent_classes=[type(agent).__name__ for agent in agent_list],
             messages=[
                 [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
                 for messages_in_turn in messages

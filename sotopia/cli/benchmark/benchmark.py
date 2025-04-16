@@ -329,6 +329,7 @@ def _list_all_env_agent_combo_not_in_db(
     env_agent_combo_storage_index_list: list[tuple[EnvAgentComboStorage, str]],
     tag: str = "",
     task: str = "",
+    agent_class: type[LLMAgent] = LLMAgent,
 ) -> list[EnvAgentCombo[Observation, AgentAction]]:
     """Iterate over each environment and return the first env-agent combo not in the database."""
     assert tag, "tag should not be empty"
@@ -370,12 +371,16 @@ def _list_all_env_agent_combo_not_in_db(
         agent_profiles = [AgentProfile.get(id) for id in agent_ids]
         # make sure the second agent (i.e., the agent being benchmarked) is always the indexed agent
         agents = [
-            LLMAgent(agent_profile=agent_profile, model_name=agent_model)
-            for agent_profile, agent_model in zip(
-                agent_profiles,
-                [model_names["test_model"], model_names["partner_model"]]
-                if index == "0"
-                else [model_names["partner_model"], model_names["test_model"]],
+            agent_class(agent_profile=agent_profile, model_name=agent_model)
+            if (index == "0" and i == 0) or (index == "1" and i == 1)
+            else LLMAgent(agent_profile=agent_profile, model_name=agent_model)
+            for i, (agent_profile, agent_model) in enumerate(
+                zip(
+                    agent_profiles,
+                    [model_names["test_model"], model_names["partner_model"]]
+                    if index == "0"
+                    else [model_names["partner_model"], model_names["test_model"]],
+                )
             )
         ]
         list_of_env_agent_combo_storage.append((env, agents))
@@ -434,6 +439,10 @@ def benchmark(
     models: list[str] = typer.Option(
         default_model_list,
         help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}.",
+    ),
+    agent_class: type[LLMAgent] = typer.Option(
+        LLMAgent,
+        help="The agent class you want to use for the evaluated models. Must be a subclass of LLMAgent.",
     ),
     partner_model: str = typer.Option(
         "together_ai/meta-llama/Llama-3-70b-chat-hf",
@@ -496,6 +505,7 @@ def benchmark(
             tag=tag,
             env_agent_combo_storage_index_list=env_agent_combo_storage_index_list,
             task=task,
+            agent_class=agent_class,
         )
         number_of_fix_turns = 0
         while True:
@@ -511,6 +521,7 @@ def benchmark(
                 tag=tag,
                 env_agent_combo_storage_index_list=env_agent_combo_storage_index_list,
                 task=task,
+                agent_class=agent_class,
             )
             number_of_fix_turns += 1
             if len(env_agent_combo_list) == 0 or number_of_fix_turns >= 5:
