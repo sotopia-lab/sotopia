@@ -206,16 +206,18 @@ def _set_up_logs(
 
 def preprocess_episode_data(
     episode_list_with_tag: list[EpisodeLog],
-) -> dict[tuple[str, tuple[str, ...], tuple[str, ...]], bool]:
+) -> dict[tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, str]], bool]:
     """Preprocess episodes into a dictionary for quick lookup."""
     episode_dict = {}
     for episode in episode_list_with_tag:
         assert isinstance(episode, EpisodeLog), "episode should be an EpisodeLog"
         assert episode.models is not None, "episode.models should not be None"
+        agent_classes = getattr(episode, "agent_classes", None)
         episode_key = (
             episode.environment,
             tuple(episode.agents),
             tuple(episode.models),
+            tuple(agent_classes) if agent_classes else ("", ""),
         )
         episode_dict[episode_key] = True
     return episode_dict
@@ -226,14 +228,25 @@ def check_existing_episodes(
     agent_ids: list[str],
     models: dict[str, str],
     index: str,
-    episode_dict: dict[tuple[str, tuple[str, ...], tuple[str, ...]], bool],
+    episode_dict: dict[
+        tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, str]], bool
+    ],
+    agent_classes: dict[str, str],
 ) -> bool:
     models_list = (
         (models["env"], models["test_model"], models["partner_model"])
         if index == "0"
         else (models["env"], models["partner_model"], models["test_model"])
     )
-    episode_key = (env_id, tuple(agent_ids), models_list)
+    if agent_classes["test_model"] != agent_classes["partner_model"]:
+        agent_classes_list = (
+            (agent_classes["test_model"], agent_classes["partner_model"])
+            if index == "0"
+            else (agent_classes["partner_model"], agent_classes["test_model"])
+        )
+    else:
+        agent_classes_list = ("", "")
+    episode_key = (env_id, tuple(agent_ids), models_list, agent_classes_list)
     return episode_dict.get(episode_key, False)
 
 
@@ -350,6 +363,10 @@ def _list_all_env_agent_combo_not_in_db(
             models=model_names,
             index=index,
             episode_dict=episode_dict,
+            agent_classes={
+                "test_model": agent_class.__name__,
+                "partner_model": LLMAgent.__name__,
+            },
         ):
             logging.info(
                 f"Episode for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
