@@ -73,10 +73,13 @@ dimension_range_mapping = OrderedDict(
 
 
 def get_avg_reward(
-    episodes: list[EpisodeLog], model_name: str
+    episodes: list[EpisodeLog],
+    model_name: str,
+    agent_class: str = "",
+    for_partner: bool = False,
 ) -> dict[str, tuple[float, float]]:
     """
-    input: list of EpisodeLog, model_name
+    input: list of EpisodeLog, model_name, agent_class
 
     return: dictionary of {dimension: (avg_reward, margin_of_error (in 95% confidence interval))}, plus the distinct setting number and episode count (in the same format, but with 0 margin of error)
     """
@@ -86,9 +89,16 @@ def get_avg_reward(
     avg_reward_dict = {}
     avg_margin_dict = {}
     avg_variance_dict = {}
+    if for_partner:
+        index = 1
+    else:
+        index = 0
     for episode in episodes:
         assert episode.models is not None, "episode.models should not be None"
-        if episode.models[1] == model_name:
+        agent_classes = getattr(episode, "agent_classes", None)
+        if episode.models[index + 1] == model_name and (
+            not agent_class or (agent_classes and agent_classes[index] == agent_class)
+        ):
             reward = get_rewards_from_episode(episode)[0][1]
             rewards_dict[f"{episode.environment}_0"].append(reward)
         else:
@@ -311,6 +321,7 @@ def benchmark_display(
     task: str = "hard",
     output_to_jsonl: bool = False,
     save_dir: str = ".",
+    agent_class: str = "",
 ) -> dict[str, dict[str, tuple[float, float]]]:
     """
     Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
@@ -325,9 +336,14 @@ def benchmark_display(
         if len(episodes) == 0:
             print(f"No episodes found for {model}")
             continue
-        avg_rewards = get_avg_reward(episodes, model)  # type: ignore
-        model_rewards_dict[model] = avg_rewards
-        # print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
+        # Get test model results
+        test_model_rewards = get_avg_reward(episodes, model, agent_class)  # type: ignore
+        # Get partner model results
+        partner_model_rewards = get_avg_reward(
+            episodes, partner_model, agent_class, for_partner=True
+        )  # type: ignore
+        model_rewards_dict[f"{model} (test)"] = test_model_rewards
+        model_rewards_dict[f"{partner_model} (partner)"] = partner_model_rewards
         rich.print(model_rewards_dict)
     if model_rewards_dict:
         display_in_table(model_rewards_dict)
@@ -408,23 +424,71 @@ def _list_all_env_agent_combo_not_in_db(
 def display_in_table(
     model_rewards_dict: dict[str, dict[str, tuple[float, float]]],
 ) -> None:
-    table = rich.table.Table(
-        title="Rewards Evaluation (+/- CI bounds)",
-    )
-    table.add_column("Model")
-    for dimension in model_rewards_dict[list(model_rewards_dict.keys())[0]].keys():
-        table.add_column(dimension)
-    table.add_column("Settings")
-    table.add_column("Episodes")
-    for model, rewards in model_rewards_dict.items():
-        table.add_row(
-            model,
-            *(
-                [f"{rewards[k][0]:.2f} ± {rewards[k][1]:.2f}" for k in rewards.keys()]
-                + [f"{rewards[k][0]:.0f}" for k in ["setting_num", "episode_count"]]
-            ),
+    # Group models by their type (test/partner)
+    test_models = {k: v for k, v in model_rewards_dict.items() if "(test)" in k}
+    partner_models = {k: v for k, v in model_rewards_dict.items() if "(partner)" in k}
+
+    # Create a table for test models
+    if test_models:
+        test_table = rich.table.Table(
+            title="Test Model Performance (+/- CI bounds)",
+            show_header=True,
+            header_style="bold magenta",
         )
-    rich.print(table)
+        test_table.add_column("Model")
+        for dimension in list(test_models.values())[0].keys():
+            if dimension not in ["setting_num", "episode_count"]:
+                test_table.add_column(dimension)
+        test_table.add_column("Settings")
+        test_table.add_column("Episodes")
+
+        for model, rewards in test_models.items():
+            test_table.add_row(
+                model.replace(" (test)", ""),
+                *(
+                    [
+                        f"{rewards[k][0]:.2f} ± {rewards[k][1]:.2f}"
+                        for k in rewards.keys()
+                        if k not in ["setting_num", "episode_count"]
+                    ]
+                    + [
+                        f"{rewards['setting_num'][0]:.0f}",
+                        f"{rewards['episode_count'][0]:.0f}",
+                    ]
+                ),
+            )
+        rich.print(test_table)
+
+    # Create a table for partner models
+    if partner_models:
+        partner_table = rich.table.Table(
+            title="Partner Model Performance (+/- CI bounds)",
+            show_header=True,
+            header_style="bold cyan",
+        )
+        partner_table.add_column("Model")
+        for dimension in list(partner_models.values())[0].keys():
+            if dimension not in ["setting_num", "episode_count"]:
+                partner_table.add_column(dimension)
+        partner_table.add_column("Settings")
+        partner_table.add_column("Episodes")
+
+        for model, rewards in partner_models.items():
+            partner_table.add_row(
+                model.replace(" (partner)", ""),
+                *(
+                    [
+                        f"{rewards[k][0]:.2f} ± {rewards[k][1]:.2f}"
+                        for k in rewards.keys()
+                        if k not in ["setting_num", "episode_count"]
+                    ]
+                    + [
+                        f"{rewards['setting_num'][0]:.0f}",
+                        f"{rewards['episode_count'][0]:.0f}",
+                    ]
+                ),
+            )
+        rich.print(partner_table)
 
 
 def save_to_jsonl(
@@ -494,7 +558,13 @@ def benchmark(
 ) -> None:
     if only_show_performance:
         benchmark_display(
-            models, partner_model, evaluator_model, task, output_to_jsonl, save_dir
+            models,
+            partner_model,
+            evaluator_model,
+            task,
+            output_to_jsonl,
+            save_dir,
+            agent_class.__name__,
         )
         return
 
@@ -564,5 +634,10 @@ def benchmark(
                 return
 
     benchmark_display(
-        models, partner_model, evaluator_model, task, output_to_jsonl=output_to_jsonl
+        models,
+        partner_model,
+        evaluator_model,
+        task,
+        output_to_jsonl=output_to_jsonl,
+        agent_class=agent_class.__name__,
     )
