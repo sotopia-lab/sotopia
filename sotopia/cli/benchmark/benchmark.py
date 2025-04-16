@@ -459,6 +459,7 @@ def benchmark(
     output_to_jsonl: bool = typer.Option(False, help="Output to jsonl."),
     push_to_db: bool = typer.Option(False, help="Push to db."),
     save_dir: str = typer.Option(".", help="The directory to save the output."),
+    tag: str = typer.Option("", help="The tag for the experiment."),
 ) -> None:
     if only_show_performance:
         benchmark_display(
@@ -493,7 +494,11 @@ def benchmark(
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
         )
-        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+        tag = (
+            f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+            if tag == ""
+            else tag
+        )
         typer.echo(typer.style(f"Tag: {tag}", fg=typer.colors.GREEN, bold=True))
         model_names = {
             "env": evaluator_model,
