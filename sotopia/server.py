@@ -195,7 +195,6 @@ async def arun_one_episode(
                 " ".join(info[agent_name]["comments"] for agent_name in env.agents)
             )
             done = all(terminated.values())
-        breakpoint()
         epilog = EpisodeLog(
             environment=env.profile.pk,
             agents=[agent.profile.pk for agent in agent_list],

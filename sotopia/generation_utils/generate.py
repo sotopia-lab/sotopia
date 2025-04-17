@@ -254,6 +254,7 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    structured_output: bool = False,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -305,6 +306,7 @@ async def agenerate_action(
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            structured_output=structured_output,
         )
     except Exception as e:
         log.warning(f"Failed to generate action due to {e}")

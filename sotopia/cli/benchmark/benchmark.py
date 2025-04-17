@@ -340,8 +340,11 @@ def benchmark_display(
         test_model_rewards = get_avg_reward(episodes, model, agent_class)  # type: ignore
         # Get partner model results
         partner_model_rewards = get_avg_reward(
-            episodes, partner_model, agent_class, for_partner=True
-        )  # type: ignore
+            episodes,
+            partner_model,
+            agent_class,
+            for_partner=True,  # type: ignore
+        )
         model_rewards_dict[f"{model} (test)"] = test_model_rewards
         model_rewards_dict[f"{partner_model} (partner)"] = partner_model_rewards
         rich.print(model_rewards_dict)
