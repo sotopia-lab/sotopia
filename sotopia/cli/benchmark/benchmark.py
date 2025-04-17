@@ -340,10 +340,10 @@ def benchmark_display(
         test_model_rewards = get_avg_reward(episodes, model, agent_class)  # type: ignore
         # Get partner model results
         partner_model_rewards = get_avg_reward(
-            episodes,
+            episodes,  # type: ignore
             partner_model,
             agent_class,
-            for_partner=True,  # type: ignore
+            for_partner=True,
         )
         model_rewards_dict[f"{model} (test)"] = test_model_rewards
         model_rewards_dict[f"{partner_model} (partner)"] = partner_model_rewards
@@ -395,6 +395,7 @@ def _list_all_env_agent_combo_not_in_db(
         env = ParallelSotopiaEnv(
             env_profile=env_profile,
             action_order="round-robin",
+            model_name=model_names["env"],
             evaluators=[
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
