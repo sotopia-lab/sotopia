@@ -322,6 +322,7 @@ def benchmark_display(
     output_to_jsonl: bool = False,
     save_dir: str = ".",
     agent_class: str = "",
+    tag: str = "",
 ) -> dict[str, dict[str, tuple[float, float]]]:
     """
     Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
@@ -331,7 +332,6 @@ def benchmark_display(
     print(f"Displaying performance for {model_list} vs {partner_model} on task {task}")
     model_rewards_dict = dict()
     for model in model_list:
-        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
         episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()
         if len(episodes) == 0:
             print(f"No episodes found for {model}")
@@ -560,18 +560,6 @@ def benchmark(
     ] = ".",
     tag: Annotated[str, typer.Argument(help="The tag for the experiment.")] = "",
 ) -> None:
-    if only_show_performance:
-        benchmark_display(
-            models,
-            partner_model,
-            evaluator_model,
-            task,
-            output_to_jsonl,
-            save_dir,
-            agent_class.__name__,
-        )
-        return
-
     """A simple command-line interface example."""
     _set_up_logs(print_logs=print_logs)
     benchmark_combo = initialize_benchmark_combo(url)
@@ -637,11 +625,12 @@ def benchmark(
             if len(env_agent_combo_list) == 0 or number_of_fix_turns >= 5:
                 break
 
-    benchmark_display(
-        models,
-        partner_model,
-        evaluator_model,
-        task,
-        output_to_jsonl=output_to_jsonl,
-        agent_class=agent_class.__name__,
-    )
+        benchmark_display(
+            [model],
+            partner_model,
+            evaluator_model,
+            task,
+            output_to_jsonl=output_to_jsonl,
+            agent_class=agent_class.__name__,
+            tag=tag,
+        )
