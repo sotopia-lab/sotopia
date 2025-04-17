@@ -76,6 +76,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent=self.agent_name,
                 goal=self.goal,
                 script_like=self.script_like,
+                structured_output=True,
             )
             # Temporary fix for mixtral-moe model for incorrect generation format
             if "Mixtral-8x7B-Instruct-v0.1" in self.model_name:

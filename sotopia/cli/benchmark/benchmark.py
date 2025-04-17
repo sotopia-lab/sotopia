@@ -89,15 +89,12 @@ def get_avg_reward(
     avg_reward_dict = {}
     avg_margin_dict = {}
     avg_variance_dict = {}
-    if for_partner:
-        index = 1
-    else:
-        index = 0
+
     for episode in episodes:
         assert episode.models is not None, "episode.models should not be None"
         agent_classes = getattr(episode, "agent_classes", None)
-        if episode.models[index + 1] == model_name and (
-            not agent_class or (agent_classes and agent_classes[index] == agent_class)
+        if episode.models[1] == model_name and (
+            not agent_class or (agent_classes and agent_classes[0] == agent_class)
         ):
             reward = get_rewards_from_episode(episode)[0][1]
             rewards_dict[f"{episode.environment}_0"].append(reward)
@@ -248,7 +245,7 @@ def check_existing_episodes(
         if index == "0"
         else (models["env"], models["partner_model"], models["test_model"])
     )
-    if agent_classes["test_model"] != agent_classes["partner_model"]:
+    if agent_classes:
         agent_classes_list = (
             (agent_classes["test_model"], agent_classes["partner_model"])
             if index == "0"
@@ -345,8 +342,12 @@ def benchmark_display(
             agent_class,
             for_partner=True,
         )
-        model_rewards_dict[f"{model} (test)"] = test_model_rewards
-        model_rewards_dict[f"{partner_model} (partner)"] = partner_model_rewards
+        model_rewards_dict[f"{model} (test) {evaluator_model} as the evaluator"] = (
+            test_model_rewards
+        )
+        model_rewards_dict[
+            f"{partner_model} (partner) {evaluator_model} as the evaluator"
+        ] = partner_model_rewards
         rich.print(model_rewards_dict)
     if model_rewards_dict:
         display_in_table(model_rewards_dict)
@@ -587,6 +588,15 @@ def benchmark(
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
         )
+        if partner_model == model and agent_class.__name__ == LLMAgent.__name__:
+            typer.echo(
+                typer.style(
+                    "Partner model and test model, and their agent classes are the same. Please use different models.",
+                    fg=typer.colors.RED,
+                    bold=True,
+                )
+            )
+            continue
         tag = (
             f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
             if tag == ""
