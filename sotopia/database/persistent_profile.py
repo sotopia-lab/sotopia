@@ -116,7 +116,6 @@ class RelationshipProfile(BaseRelationshipProfile, JsonModel):
 
 
 class EnvironmentList(JsonModel):
-    pk: str = Field(default_factory=lambda: "")
     name: str = Field(index=True)
     environments: list[str] = Field(default_factory=lambda: [])
     agent_index: list[str] | None = Field(default_factory=lambda: None)
