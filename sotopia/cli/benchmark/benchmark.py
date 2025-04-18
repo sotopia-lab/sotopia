@@ -76,7 +76,6 @@ def get_avg_reward(
     episodes: list[EpisodeLog],
     model_name: str,
     agent_class: str = "",
-    for_partner: bool = False,
 ) -> dict[str, tuple[float, float]]:
     """
     input: list of EpisodeLog, model_name, agent_class
@@ -339,8 +338,7 @@ def benchmark_display(
         partner_model_rewards = get_avg_reward(
             episodes,  # type: ignore
             partner_model,
-            agent_class,
-            for_partner=True,
+            LLMAgent.__name__,
         )
         model_rewards_dict[f"{model} (test) {evaluator_model} as the evaluator"] = (
             test_model_rewards
@@ -408,7 +406,6 @@ def _list_all_env_agent_combo_not_in_db(
             ],
         )
         agent_profiles = [AgentProfile.get(id) for id in agent_ids]
-        # make sure the second agent (i.e., the agent being benchmarked) is always the indexed agent
         agents = [
             agent_class(agent_profile=agent_profile, model_name=agent_model)
             if (index == "0" and i == 0) or (index == "1" and i == 1)
