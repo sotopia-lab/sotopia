@@ -207,7 +207,6 @@ async def arun_one_episode(
             ],
             reasoning=info[env.agents[0]]["comments"],
             rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
-            rewards_prompt=info["rewards_prompt"]["overall_prompt"],
         )
 
         if streaming:
@@ -447,9 +446,7 @@ async def aevaluate_one_episode(
     tag: str | None = None,
     push_to_db: bool = False,
 ) -> None:
-    history = episode.rewards_prompt.replace("Prompt after formatting:", "").split(
-        ",\nBased on previous interactions"
-    )[0]
+    history = "\n".join(episode.render_for_humans()[1][:-2])
     evaluator = EpisodeLLMEvaluator(
         model_name=model,
         response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
@@ -493,8 +490,6 @@ async def aevaluate_one_episode(
         rewards=[info[agent_name]["complete_rating"] for agent_name in episode.agents],
         rewards_prompt="TBD",
     )
-    # rich.print(history)
-    # rich.print(epilog.rewards)
 
     if push_to_db:
         try:

@@ -29,7 +29,7 @@ class BaseEpisodeLog(BaseModel):
     messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
     reasoning: str = Field(default="")
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
-    rewards_prompt: str
+    rewards_prompt: str = Field(default="")
 
     @model_validator(mode="after")
     def agent_number_message_number_reward_number_turn_number_match(self) -> Self:
@@ -55,8 +55,12 @@ class BaseEpisodeLog(BaseModel):
                 assert (
                     len(turn) >= 2
                 ), "The first turn should have at least environemnt messages"
-                messages_in_this_turn.append(turn[0][2])
-                messages_in_this_turn.append(turn[1][2])
+                messages_in_this_turn.append(
+                    f"{turn[0][1]}'s perspective (i.e., what {turn[0][1]} knows before the episode starts): {turn[0][2]}"
+                )
+                messages_in_this_turn.append(
+                    f"{turn[1][1]}'s perspective (i.e., what {turn[1][1]} knows before the episode starts): {turn[1][2]}"
+                )
             for sender, receiver, message in turn:
                 if receiver == "Environment":
                     if sender != "Environment":
