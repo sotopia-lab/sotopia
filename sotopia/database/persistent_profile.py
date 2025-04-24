@@ -145,7 +145,7 @@ class EnvironmentList(JsonModel):
         )
         if agent_index is None:
             return self
-        assert len(environments) == len(agent_index), (
-            f"Number of environments {len(environments)} and agent_index {len(agent_index)} do not match"
-        )
+        assert (
+            len(environments) == len(agent_index)
+        ), f"Number of environments {len(environments)} and agent_index {len(agent_index)} do not match"
         return self
