@@ -118,21 +118,17 @@ async def agenerate(
         base_url = None
         api_key = None
 
-    if structured_output:
-        if not base_url:
-            params = get_supported_openai_params(model=model_name)
-            assert params is not None
-            assert (
-                "response_format" in params
-            ), "response_format is not supported in this model"
-            assert supports_response_schema(
-                model=model_name
-            ), "response_schema is not supported in this model"
+    if structured_output and (
+        base_url
+        or (
+            (params := get_supported_openai_params(model=model_name)) is not None
+            and "response_format" in params
+            and supports_response_schema(model=model_name)
+            and isinstance(output_parser, PydanticOutputParser)
+        )
+    ):
         messages = [{"role": "user", "content": template}]
-
-        assert isinstance(
-            output_parser, PydanticOutputParser
-        ), "structured output only supported in PydanticOutputParser"
+        assert isinstance(output_parser, PydanticOutputParser)
         response = await acompletion(
             model=model_name,
             messages=messages,

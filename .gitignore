@@ -166,3 +166,5 @@ redis-data/*
 
 sotopia/cli/install/redis-data/*
 redis-stack-server-*/
+
+*.rdb
