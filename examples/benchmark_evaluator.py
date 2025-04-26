@@ -15,8 +15,8 @@ app = Typer()
 
 target_model_patterns: list[list[str]] = [
     ["gpt-4", "gpt-4", "gpt-3.5-turbo"],
-    ["gpt-4", "gpt-4o-mini", "gpt-4"],
-    ["gpt-4", "gpt-4o-mini", "togethercomputer/llama-2-70b-chat"],
+    ["gpt-4", "gpt-3.5-turbo", "gpt-4"],
+    ["gpt-4", "gpt-3.5-turbo", "togethercomputer/llama-2-70b-chat"],
     ["gpt-4", "togethercomputer/llama-2-70b-chat", "gpt-3.5-turbo"],
 ]
 
@@ -113,7 +113,6 @@ def evaluate_evaluator(
     to_re_evaluate_list = list(human_annotation_dict.keys())
     aggregate_human_annotations: list[EpisodeLog] = list(human_annotation_dict.values())  # type: ignore
     # Call the function with the specified parameters
-
     re_evaluated_episodes: list[EpisodeLog] = EpisodeLog.find(
         EpisodeLog.tag == tag
     ).all()  # type: ignore
@@ -164,7 +163,6 @@ def evaluate_evaluator(
 
     correlation_list = []
     ordered_re_eval_episodes = []
-
     for human_annotated_episode in aggregate_human_annotations:
         for re_eval_episode in re_evaluated_episodes:
             assert isinstance(re_eval_episode, EpisodeLog)
