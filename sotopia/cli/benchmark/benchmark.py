@@ -572,7 +572,45 @@ def benchmark(
                     env_agent_combo_storage_index_list.append(
                         (env_agent_combo_storage, index)
                     )
+    elif task == "cooperative":
+        # Filter environments that have "mutual" in the codename
+        cooperative_combo = []
+        for env_agent_combo_storage in benchmark_combo:
+            env_id = env_agent_combo_storage.env_id
+            try:
+                env_profile = EnvironmentProfile.get(env_id)
+                if "mutual" in env_profile.codename.lower():
+                    cooperative_combo.append(env_agent_combo_storage)
+            except Exception as e:
+                logging.warning(f"Failed to get environment profile for {env_id}: {e}")
 
+        # Use the filtered environments for cooperative tasks
+        benchmark_combo = cooperative_combo
+        env_agent_combo_storage_index_list = [
+            (env_agent_combo_storage, "0")
+            for env_agent_combo_storage in benchmark_combo
+        ] + [
+            (env_agent_combo_storage, "1")
+            for env_agent_combo_storage in benchmark_combo
+        ]
+    elif task == "competitive":
+        competitive_combo = []
+        for env_agent_combo_storage in benchmark_combo:
+            env_id = env_agent_combo_storage.env_id
+            try:
+                env_profile = EnvironmentProfile.get(env_id)
+                if "craigslist" in env_profile.codename.lower():
+                    competitive_combo.append(env_agent_combo_storage)
+            except Exception as e:
+                logging.warning(f"Failed to get environment profile for {env_id}: {e}")
+        benchmark_combo = competitive_combo
+        env_agent_combo_storage_index_list = [
+            (env_agent_combo_storage, "0")
+            for env_agent_combo_storage in benchmark_combo
+        ] + [
+            (env_agent_combo_storage, "1")
+            for env_agent_combo_storage in benchmark_combo
+        ]
     else:
         env_agent_combo_storage_index_list = [
             (env_agent_combo_storage, "1")
@@ -581,6 +619,8 @@ def benchmark(
             (env_agent_combo_storage, "0")
             for env_agent_combo_storage in benchmark_combo
         ]
+    if models is None:
+        models = default_model_list
     for model in models:
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
