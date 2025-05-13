@@ -1,4 +1,4 @@
-# Sotopia-Minecraft User Guide
+# User Guide
 
 ```
 cd examples/experimental/group_discussion_agents
