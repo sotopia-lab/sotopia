@@ -10,8 +10,7 @@ query_interval = 15
 output_channel = "Jack"
 input_text_channels = ["Jane", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "stone_pickaxe". Please discuss the task division quickly and start working.
+goal = """You and your friends need to craft a "stone_pickaxe". Please discuss the task division quickly and start working.
 
 The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
 1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 3 pieces.
@@ -20,7 +19,7 @@ The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (
 4. You can also use !goToBlock("crafting_table", 20, 50) to locate a "crafting_table" if someone else has already crafted and placed one.
 5. Use !craftRecipe("stick", 4) to craft 4 "stick" (requires 2 planks).
 6. Use !craftRecipe("wooden_pickaxe", 1) to craft a "wooden_pickaxe" (requires 3 planks and 2 sticks).
-7. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before mining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don’t, use !craftable to check if you can craft a "wooden_pickaxe".
+7. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before mining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don't, use !craftable to check if you can craft a "wooden_pickaxe".
 8. Use !craftRecipe("stone_pickaxe", 1) to craft a "stone_pickaxe" (requires "crafting_table", 3 stones and 2 sticks)."""
 model_name = "gpt-4o-2024-11-20"
 agent_name = "Jack"
@@ -34,8 +33,7 @@ query_interval = 19
 output_channel = "Jane"
 input_text_channels = ["Jack", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "stone_pickaxe". Please discuss the task division quickly and start working.
+goal = """You and your friends need to craft a "stone_pickaxe". Please discuss the task division quickly and start working.
 
 The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
 1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 3 pieces.
@@ -44,7 +42,7 @@ The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (
 4. You can also use !goToBlock("crafting_table", 20, 50) to locate a "crafting_table" if someone else has already crafted and placed one.
 5. Use !craftRecipe("stick", 4) to craft 4 "stick" (requires 2 planks).
 6. Use !craftRecipe("wooden_pickaxe", 1) to craft a "wooden_pickaxe" (requires 3 planks and 2 sticks).
-7. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before mining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don’t, use !craftable to check if you can craft a "wooden_pickaxe".
+7. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before mining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don��t, use !craftable to check if you can craft a "wooden_pickaxe".
 8. Use !craftRecipe("stone_pickaxe", 1) to craft a "stone_pickaxe" (requires "crafting_table", 3 stones and 2 sticks)."""
 model_name = "gpt-4o-2024-11-20"
 agent_name = "Jane"
@@ -58,8 +56,7 @@ query_interval = 23
 output_channel = "John"
 input_text_channels = ["Jack", "Jane"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "stone_pickaxe". Please discuss the task division quickly and start working.
+goal = """You and your friends need to craft a "stone_pickaxe". Please discuss the task division quickly and start working.
 
 The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
 1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 3 pieces.
@@ -68,7 +65,7 @@ The complete process for crafting a "stone_pickaxe" in Minecraft is as follows (
 4. You can also use !goToBlock("crafting_table", 20, 50) to locate a "crafting_table" if someone else has already crafted and placed one.
 5. Use !craftRecipe("stick", 4) to craft 4 "stick" (requires 2 planks).
 6. Use !craftRecipe("wooden_pickaxe", 1) to craft a "wooden_pickaxe" (requires 3 planks and 2 sticks).
-7. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before mining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don’t, use !craftable to check if you can craft a "wooden_pickaxe".
+7. Use the wooden pickaxe to mine "stone", collecting at least 3 pieces. Before mining stone, make sure to type !inventory to check if you have a "wooden_pickaxe". If you don��t, use !craftable to check if you can craft a "wooden_pickaxe".
 8. Use !craftRecipe("stone_pickaxe", 1) to craft a "stone_pickaxe" (requires "crafting_table", 3 stones and 2 sticks)."""
 model_name = "gpt-4o-2024-11-20"
 agent_name = "John"

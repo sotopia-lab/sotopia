@@ -10,8 +10,7 @@ query_interval = 15
 output_channel = "Jack"
 input_text_channels = ["Jane", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "wooden_pickaxe". Please discuss the task division quickly and start working.
+goal = """You and your friends need to craft a "wooden_pickaxe". Please discuss the task division quickly and start working.
 
 The complete process for crafting a "wooden_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
 1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 3 pieces.
@@ -32,8 +31,7 @@ query_interval = 19
 output_channel = "Jane"
 input_text_channels = ["Jack", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "wooden_pickaxe". Please discuss the task division quickly and start working.
+goal = """You and your friends need to craft a "wooden_pickaxe". Please discuss the task division quickly and start working.
 
 The complete process for crafting a "wooden_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
 1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 3 pieces.
@@ -54,8 +52,7 @@ query_interval = 23
 output_channel = "John"
 input_text_channels = ["Jack", "Jane"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "wooden_pickaxe". Please discuss the task division quickly and start working.
+goal = """You and your friends need to craft a "wooden_pickaxe". Please discuss the task division quickly and start working.
 
 The complete process for crafting a "wooden_pickaxe" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
 1. Collect logs, such as "oak_log", "spruce_log" or "birch_log" with at least 3 pieces.

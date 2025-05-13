@@ -10,8 +10,7 @@ query_interval = 15
 output_channel = "Jack"
 input_text_channels = ["Jane", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "chest" and a "boat". YOUR TASK IS TO CRAFT A "crafting_table".
+goal = """You and your friends need to craft a "chest" and a "boat". YOUR TASK IS TO CRAFT A "crafting_table".
 After crafting a "crafting_table" yourself (If the condition is that the inventory shows crafting_table: 1, rather than just having previously outputted !craftRecipe(\"crafting_table\", 1)), use the command !placeHere(\"crafting_table\").
 
 The complete process for crafting a "crafting_table" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
@@ -30,8 +29,7 @@ query_interval = 19
 output_channel = "Jane"
 input_text_channels = ["Jack", "John"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "chest" and a "boat". YOUR TASK IS TO CRAFT ONE "chest".
+goal = """You and your friends need to craft a "chest" and a "boat". YOUR TASK IS TO CRAFT ONE "chest".
 Once you have crafted at least 8 planks (If the condition is that the inventory shows oak_planks: 8, birch_planks: 8 or spruce_planks: 8), use the command !goToPlayer("Jack", 0) to go to Jack's location.
 Then, use the command !goToBlock("crafting_table", 10, 20) to locate a nearby "crafting_table". Next, use !craftRecipe("chest", 1) to craft a chest, then use the command !placeHere(\"chest\") to place it.
 
@@ -51,8 +49,7 @@ query_interval = 23
 output_channel = "John"
 input_text_channels = ["Jack", "Jane"]
 input_tick_channel = "tick/secs/1"
-goal = """
-You and your friends need to craft a "chest" and a "boat". YOUR TASK IS TO CRAFT ONE BOAT.
+goal = """You and your friends need to craft a "chest" and a "boat". YOUR TASK IS TO CRAFT ONE BOAT.
 Once you have crafted at least 5 planks (If the condition is that the inventory shows oak_planks: 5, birch_planks: 5 or spruce_planks: 5), use the command !goToPlayer("Jack", 0) to go to Jack's location.
 Then, use the command !goToBlock("crafting_table", 10, 20) to locate a nearby "crafting_table". Next, use !craftRecipe("oak_boat", 1), !craftRecipe("birch_boat", 1) or !craftRecipe("spruce_boat", 1) to craft a boat.
 After that, use the command !goToBlock("chest", 10, 20) to locate a nearby "chest", and then use !putInChest("oak_boat", 1), !putInChest("birch_boat", 1) or !putInChest("spruce_boat", 1) to place the boat in the chest.
