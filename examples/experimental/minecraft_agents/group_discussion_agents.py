@@ -1,7 +1,11 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pathlib import Path
 import redis.asyncio as aioredis
 import asyncio
 import json
+import re
+import aiofiles
+from datetime import datetime
 from typing import Dict, List, AsyncIterator
 from aact import Message, NodeFactory
 from aact.messages import Tick, DataModel, DataModelFactory
@@ -11,6 +15,12 @@ from sotopia.generation_utils import agenerate
 from sotopia.generation_utils.generate import StrOutputParser
 from sotopia.messages import ActionType
 from pydantic import Field
+import openai
+import os
+from openai import AsyncOpenAI
+
+openai.api_key = os.environ["OPENAI_API_KEY"]
+client = AsyncOpenAI()
 
 REDIS_URL = "redis://localhost:6379/0"
 COMMAND_DOCS = """
@@ -126,25 +136,55 @@ player_name: (string) The name of the player to end the conversation with.
 """
 EXAMPLES = """
 Example 1: Let me check what's nearby. !nearbyBlocks
-Example 2: I found some birch logs! I'll collect them. !collectBlocks(\"birch_log\", 10)
-Example 3: I just got shot by a skeleton! Yikes! Time to regroup and maybe head back to my last death position for my stuff. !goToPlace(\"last_death_position\")
-Example 4: I'll grab some wood first. !collectBlocks(\"oak_log\", 4)
-Example 5: Looks like I need some planks first! !craftRecipe(\"birch_plancks\", 1)
-Example 6: Time to craft a crafting table. !craftRecipe(\"crafting_table\", 1)
-Example 7: Let me make some sticks. !craftRecipe(\"stick\", 4)
-Example 8: Sticks ready! Time to craft the wooden pickaxe. !craftRecipe(\"wooden_pickaxe\", 1)
-Example 9: On my way to collect some stone. !goToBlock(\"stone\", 2, 10)
-Example 10: I'm here at the stone! Time to start mining. !collectBlocks(\"stone\", 5)
-Example 11: Let's craft a stone pickaxe. !craftRecipe(\"stone_pickaxe\", 1)
+Example 2: Looks like I can't craft anything yet since I have no wooden planks or sticks. I need to find some wood. Let's look for trees nearby. !goToBlock(\"birch_log\", 10, 20)
+Example 3: No birch logs around here. I'll have to move a bit further. Let's search in a wider area. !goToBlock(\"oak_log\", 20, 50)
+Example 4: I found some birch logs! I'll collect them. !collectBlocks(\"birch_log\", 5)
+Example 5: I found some birch logs! I'll collect them. !collectBlocks(\"spruce_log\", 5)
+Example 6: I'll grab some wood first. !collectBlocks(\"oak_log\", 5)
+Example 7: Looks like I need to find a way to get gather some materials. I'll move back a little. !moveAway(10)
+Example 8: Looks like I'm out of planks. Time to gather some wood! !nearbyBlocks
+Example 9: No luck finding birch logs yet. Let's keep searching in a different direction. !moveAway(40)
+Example 10: Looks like I need some planks first! !craftRecipe(\"birch_planks\", 9)
+Example 11: Looks like I need some planks first! !craftRecipe(\"oak_planks\", 9)
+Example 12: Looks like I need some planks first! !craftRecipe(\"spruce_planks\", 9)
+Example 13: Got the birch logs! Now I'll craft them into sticks. !craftRecipe(\"stick\", 4)
+Example 14: I'm missing some sticks! Let me make some sticks. !craftRecipe(\"stick\", 4)
+Example 15: I need a crafting table and some sticks to craft a wooden pickaxe! !craftRecipe(\"crafting_table\", 1)
+Example 16: I still can't mine stone without a pickaxe. I'll need to craft some sticks first. Let's check my inventory to see what I can craft. !craftable
+Example 17: I need wooden pickaxe to collect stones! I have crafted 2 sticks. Now I can craft a wooden pickaxe. !craftRecipe(\"wooden_pickaxe\", 1)
+Example 18: I need wooden pickaxe to collect stones! !craftRecipe(\"wooden_pickaxe\", 1)
+Example 19: I've crafted a wooden pickaxe! Now I can collect some stone. Let's do it. !goToBlock(\"stone\", 2, 10)
+Example 20: I'm here at the stone! Time to start mining. !collectBlocks(\"stone\", 3)
+Example 21: Let's craft a stone pickaxe. !craftRecipe(\"stone_pickaxe\", 1)
+Example 22: I'm stuck! !moveAway(5)
+Example 23: I'm stuck! !moveAway(10)
+Example 24: I'm stuck! !moveAway(20)
+Example 25: I just got shot by a skeleton! Yikes! Time to regroup and maybe head back to my last death position for my stuff. !goToPlace(\"last_death_position\")
+
+After crafting one stone pickaxe yourself (If the condition is that the inventory shows stone_pickaxe: 1, rather than just having previously outputted !craftRecipe(\"stone_pickaxe\", 1)), ask who hasn't crafted theirs yet and use a command like !goToPlayer(\"John\", 0) to go to that person's location.
+Then, inquire about what materials they are missing and use a command like !givePlayer(\"John\", \"stone\", 3) to give them the materials.
+
+Example 26: Come here Jack!
+Example 27: Okay, I'll come right to you. !goToPlayer(\"John\", 0)
+Example 28: I'll give some plancks to you. !givePlayer(\"John\", \"stick\", 4)
+Example 29: I'll give some stones to you. !givePlayer(\"Jack\", \"stone\", 3)
+Example 30: I'll give a crafting table to you. !givePlayer(\"Jane\", \"crafting_table\", 1)
 """
 redis = aioredis.from_url(REDIS_URL)
 app = FastAPI()
 
-MAX_MESSAGES = 36  # 3 agents
+MAX_MESSAGES = 120  # 3 agents
 connections: Dict[str, WebSocket] = {}
 client_data = {}
 subscribed_channels = set()
 listener_task = None
+LOG_DIR = Path(f"agent_logs_{datetime.now().strftime('%Y%m%d_%H%M')}")
+LOG_DIR.mkdir(exist_ok=True)
+AGENT_FILES = {
+    "Jane": LOG_DIR / "jane_log.txt",
+    "John": LOG_DIR / "john_log.txt",
+    "Jack": LOG_DIR / "jack_log.txt",
+}
 
 
 @DataModelFactory.register("agent_action")
@@ -172,24 +212,56 @@ class AgentAction(DataModel):
 
 
 def _format_message_history(message_history: List[tuple[str, str]]) -> str:
-    return "\n".join(
-        (f"{speaker} said {message}") for speaker, message in message_history
+    return "\n".join((f"{speaker}: {message}") for speaker, message in message_history)
+
+
+async def openai_api_predict_async(template, image_url):
+    response = await client.chat.completions.create(
+        model="gpt-4o-2024-11-20",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": template,
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url},
+                    },
+                ],
+            }
+        ],
     )
+    return response.choices[0].message.content
 
 
 @app.on_event("startup")
 async def startup_event():
     await redis.set("conversation_count", 0)
-    print("Conversation counter initialized to 0.")
+    await redis.set("status_count", 0)
+    print("Conversation and status counter initialized to 0.")
 
 
 async def update_client_data(
-    client_id: str, stats: str, inventory: str, visionResponse: str
+    client_id: str,
+    stats: str,
+    inventory: str,
+    visionResponse: str,
+    codeOutput: str,
+    latestImageUri: str,
 ):
     await redis.set(
         f"client_data:{client_id}",
         json.dumps(
-            {"stats": stats, "inventory": inventory, "visionResponse": visionResponse}
+            {
+                "stats": stats,
+                "inventory": inventory,
+                "visionResponse": visionResponse,
+                "codeOutput": codeOutput,
+                "latestImageUri": latestImageUri,
+            }
         ),
     )
 
@@ -197,6 +269,114 @@ async def update_client_data(
 async def get_client_data(client_id: str) -> dict:
     data = await redis.get(f"client_data:{client_id}")
     return json.loads(data) if data else {}
+
+
+async def log_to_file(
+    agent_name: str, agent_message_history: List[tuple[str, str]], generated_text: str
+):
+    try:
+        if agent_name not in AGENT_FILES:
+            raise ValueError(f"Unknown agent name: {agent_name}")
+        output_file = AGENT_FILES[agent_name]
+        history_str = _format_message_history(agent_message_history)
+        log_content = (
+            f"Agent: {agent_name}\n\n"
+            f"Message History:\n{history_str}\n\n"
+            f"ToM Q&A:\n{generated_text}\n"
+            f"{'-'*40}\n"
+        )
+        async with aiofiles.open(output_file, mode="a") as file:
+            await file.write(log_content)
+        print(f"Successfully logged output for {agent_name} to {output_file}.")
+    except Exception as e:
+        print(f"Error logging output for {agent_name}: {e}")
+
+
+async def check_and_generate(
+    agent_name: str, agent_message_history: List[tuple[str, str]], latestImageUri: str
+):  # ToM questions
+    count = len(
+        re.findall(
+            r"system: The status of", _format_message_history(agent_message_history)
+        )
+    )
+    if count % 4 == 0 and count != 0:  # Multiple of 4 but not 0
+        targets = ["Jack", "Jane", "John"]
+        for target in targets:
+            template_1 = f"You are {agent_name}. What should {target} do immediately next? Respond in one concise sentence."
+            print(f"\033[1;32m{template_1}\033[0m")
+            generated_text_1 = await openai_api_predict_async(
+                template_1
+                + f" Here is the conversation history: {_format_message_history(agent_message_history)}",
+                latestImageUri,
+            )
+
+            template_2 = f"You are {agent_name}. What is {target} doing right now? Respond in one concise sentence."
+            print(f"\033[1;32m{template_2}\033[0m")
+            generated_text_2 = await openai_api_predict_async(
+                template_2
+                + f" Here is the conversation history: {_format_message_history(agent_message_history)}",
+                latestImageUri,
+            )
+
+            template_3 = f"You are {agent_name}. What materials or tools does {target} currently have? Respond in one concise sentence."
+            print(f"\033[1;32m{template_3}\033[0m")
+            generated_text_3 = await openai_api_predict_async(
+                template_3
+                + f" Here is the conversation history: {_format_message_history(agent_message_history)}",
+                latestImageUri,
+            )
+
+            template_4 = f"You are {agent_name}. Is {target} in a cooperative, competitive, or independent relationship with you? Respond in one concise sentence."
+            print(f"\033[1;32m{template_4}\033[0m")
+            generated_text_4 = await openai_api_predict_async(
+                template_4
+                + f" Here is the conversation history: {_format_message_history(agent_message_history)}",
+                latestImageUri,
+            )
+
+            template_5 = f"""You are {agent_name}. What is {target} seeing right now? If you don’t know, please answer \"I don’t know.\" Respond in one concise sentence."""
+            print(f"\033[1;32m{template_5}\033[0m")
+            generated_text_5 = await openai_api_predict_async(
+                template_5
+                + f" Here is the conversation history: {_format_message_history(agent_message_history)}",
+                latestImageUri,
+            )
+
+            template_6 = f"You are {agent_name}. What steps does {target} still need to take to complete the final goal? Respond in one concise sentence."
+            print(f"\033[1;32m{template_6}\033[0m")
+            generated_text_6 = await openai_api_predict_async(
+                template_6
+                + f" Here is the conversation history: {_format_message_history(agent_message_history)}",
+                latestImageUri,
+            )
+
+            generated_text = (
+                template_1
+                + "\n"
+                + generated_text_1
+                + "\n"
+                + template_2
+                + "\n"
+                + generated_text_2
+                + "\n"
+                + template_3
+                + "\n"
+                + generated_text_3
+                + "\n"
+                + template_4
+                + "\n"
+                + generated_text_4
+                + "\n"
+                + template_5
+                + "\n"
+                + generated_text_5
+                + "\n"
+                + template_6
+                + "\n"
+                + generated_text_6
+            )
+            await log_to_file(agent_name, agent_message_history, generated_text)
 
 
 async def redis_listener():
@@ -243,7 +423,12 @@ async def redis_listener():
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await update_client_data(
-        client_id, "Test Stats", "Test Inventory", "Test VisionResponse"
+        client_id,
+        "None",
+        "None",
+        "None",
+        "You did not take any action last time.",
+        "None",
     )
     global listener_task
     await websocket.accept()
@@ -252,7 +437,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     # Start the Redis listener only once
     if not listener_task:
         listener_task = asyncio.create_task(redis_listener())
-
     try:
         while True:
             client_message = await websocket.receive_text()
@@ -264,8 +448,15 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     stats_raw = message.get("stats", "")
                     inventory_raw = message.get("inventory", "")
                     visionResponse_raw = message.get("visionResponse", "")
+                    codeOutput_raw = message.get("codeOutput", "")
+                    latestImageUri_raw = message.get("latestImageUri", "")
                     await update_client_data(
-                        client_id, stats_raw, inventory_raw, visionResponse_raw
+                        client_id,
+                        stats_raw,
+                        inventory_raw,
+                        visionResponse_raw,
+                        codeOutput_raw,
+                        latestImageUri_raw,
                     )
                 else:
                     print(
@@ -349,28 +540,89 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                     client_id = f"{self.name}_client"
                     try:
                         client_info = await get_client_data(client_id)
-                        print(f"Accessing client_data for {client_id}: {client_info}")
                     except Exception as e:
                         print(f"Error fetching client_data for {client_id}: {e}")
                         client_info = None
                     if not client_info:
                         print(
-                            f"No data received for {client_id}, skipping stats/inventory/visionResponse assignment."
+                            f"No data received for {client_id}, skipping stats/inventory/visionResponse/codeOutput/latestImageUri assignment."
                         )
                         stats = ""
                         inventory = ""
                         visionResponse = ""
+                        codeOutput = ""
+                        latestImageUri = ""
                     else:
                         stats = client_info.get("stats", "")
                         inventory = client_info.get("inventory", "")
                         visionResponse = client_info.get("visionResponse", "")
+                        codeOutput = client_info.get("codeOutput", "").removeprefix(
+                            "Code output: "
+                        )
+                        latestImageUri = client_info.get("latestImageUri", "")
+
+                    if codeOutput:  # action execution
+                        last_self_message_index = next(
+                            (
+                                i
+                                for i in reversed(range(len(self.message_history)))
+                                if self.message_history[i][0] == self.name
+                            ),
+                            -1,
+                        )
+                        if last_self_message_index != -1:
+                            self.message_history.insert(
+                                last_self_message_index + 1,
+                                (
+                                    "system",
+                                    f"The status of {self.name}'s action execution: {codeOutput}",
+                                ),
+                            )
+                        else:
+                            self.message_history.append(
+                                (
+                                    "system",
+                                    f"The status of {self.name}'s action execution: {codeOutput}",
+                                )
+                            )
+
+                    if visionResponse:  # add image description to the memory
+                        last_self_message_index = next(
+                            (
+                                i
+                                for i in reversed(range(len(self.message_history)))
+                                if self.message_history[i][0] == self.name
+                            ),
+                            -1,
+                        )
+                        if last_self_message_index != -1:
+                            self.message_history.insert(
+                                last_self_message_index + 1,
+                                (
+                                    "system",
+                                    f"The following is the description of the game view {self.name} is seeing: {visionResponse}",
+                                ),
+                            )
+                        else:
+                            self.message_history.append(
+                                (
+                                    "system",
+                                    f"The following is the description of the game view {self.name} is seeing: {visionResponse}",
+                                )
+                            )
+
+                    agent_message_history = [
+                        (speaker, message)
+                        for speaker, message in self.message_history
+                        if speaker != "system"
+                        or (speaker == "system" and self.name in message)
+                    ]
 
                     agent_action: str = await agenerate(
                         model_name=self.model_name,
-                        # "You are {agent_name} in the conversation.\n{message_history}\n and you plan to {goal}.\n"
-                        # "Please only output a sentence or not outputting anything. {format_instructions}"
-                        template="""
-                        Imagine that you are a friend of the other persons. Here is the conversation between you and them.\n You can choose to interrupt the other person by saying something or not to interrupt by outputting notiong. What would you say?
+                        template=f"(The status of the last action execution: {codeOutput})"
+                        + """\n\n
+                        Imagine that you are a friend of the other persons. Here is the conversation between you and them.\n You can choose to interrupt the other person by saying something or not to interrupt by outputting notiong. What would you say? No need to mention your own name, just output the content directly.
                         You plan to {goal}. You are a playful Minecraft bot named {agent_name} that can converse with players, see, move, mine, build, and interact with the world by using commands.\n
                         Act human-like as if you were a typical Minecraft player, rather than an AI. Be very brief in your responses, don't apologize constantly, don't give instructions or make lists unless asked, and don't refuse requests. Don't pretend to act, use commands immediately when requested. Do NOT say this: 'Sure, I've stopped.', instead say this: 'Sure, I'll stop. !stop'. Do NOT say this: 'On my way! Give me a moment.', instead say this: 'On my way! !goToPlayer(\"playername\", 3)'.
                         Respond only as {agent_name}, never output '(FROM OTHER BOT)' or pretend to be someone else. This is extremely important to me, take a deep breath and have fun :)\n\n
@@ -378,7 +630,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         + f"{stats}{inventory}\nIMAGE_DESCRIPTION:\n{visionResponse}\n\nEXAMPLES:\n{EXAMPLES}\n\nCOMMAND_DOCS:\n{COMMAND_DOCS}\n\nConversation Begin:",
                         input_values={
                             "message_history": _format_message_history(
-                                self.message_history
+                                agent_message_history
                             ),
                             "goal": self.goal,
                             "agent_name": self.name,
@@ -387,6 +639,11 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                         output_parser=StrOutputParser(),
                     )
                     print(f"Generated action for {self.name}: {agent_action}")
+
+                    await check_and_generate(
+                        self.name, agent_message_history, latestImageUri
+                    )
+
                     if agent_action != "none" and agent_action != "":
                         self.message_history.append((self.name, agent_action))
                         return AgentAction(

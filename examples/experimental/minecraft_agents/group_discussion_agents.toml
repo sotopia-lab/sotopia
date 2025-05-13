@@ -6,12 +6,21 @@ node_name = "Jack"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 5
+query_interval = 15
 output_channel = "Jack"
 input_text_channels = ["Jane", "John"]
 input_tick_channel = "tick/secs/1"
-goal = "want to craft a Stone Pickaxe with your friends. The materials needed include various types of Logs (which need to be turned into Planks and a Crafting Table) and different kinds of Stone."
-model_name = "gpt-4o-mini"
+goal = """
+You and your friends need to craft 2 "chest" and place them. Please discuss the task division quickly and start working.
+
+The complete process for crafting a "chest" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect logs, such as "oak_log", "spruce_log", or "birch_log", with at least 3 pieces.
+2. Convert the logs into planks ("birch_planks", "spruce_planks", or "oak_planks"). Each log can produce 4 planks.
+3. Use !craftRecipe("crafting_table", 1) to craft a "crafting_table" (requires 4 planks).
+4. After crafting a "crafting_table" (Ensure the inventory shows crafting_table: 1, not just having previously outputted !craftRecipe("crafting_table", 1)), use the command !placeHere("crafting_table").
+5. After crafting or finding a "crafting_table" (You can use !goToBlock("crafting_table", 20, 50) to locate a nearby "crafting_table"), use !craftRecipe("chest", 1) to craft a "chest" (requires 8 planks).
+6. Use the command !placeHere("chest") to place the chest."""
+model_name = "gpt-4o-2024-11-20"
 agent_name = "Jack"
 
 [[nodes]]
@@ -19,12 +28,21 @@ node_name = "Jane"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 7
+query_interval = 19
 output_channel = "Jane"
 input_text_channels = ["Jack", "John"]
 input_tick_channel = "tick/secs/1"
-goal = "want to craft a Stone Pickaxe with your friends. The materials needed include various types of Logs (which need to be turned into Planks and a Crafting Table) and different kinds of Stone."
-model_name = "gpt-4o-mini"
+goal = """
+You and your friends need to craft 2 "chest" and place them. Please discuss the task division quickly and start working.
+
+The complete process for crafting a "chest" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect logs, such as "oak_log", "spruce_log", or "birch_log", with at least 3 pieces.
+2. Convert the logs into planks ("birch_planks", "spruce_planks", or "oak_planks"). Each log can produce 4 planks.
+3. Use !craftRecipe("crafting_table", 1) to craft a "crafting_table" (requires 4 planks).
+4. After crafting a "crafting_table" (Ensure the inventory shows crafting_table: 1, not just having previously outputted !craftRecipe("crafting_table", 1)), use the command !placeHere("crafting_table").
+5. After crafting or finding a "crafting_table" (You can use !goToBlock("crafting_table", 20, 50) to locate a nearby "crafting_table"), use !craftRecipe("chest", 1) to craft a "chest" (requires 8 planks).
+6. Use the command !placeHere("chest") to place the chest."""
+model_name = "gpt-4o-2024-11-20"
 agent_name = "Jane"
 
 [[nodes]]
@@ -32,12 +50,21 @@ node_name = "John"
 node_class = "llm_agent"
 
 [nodes.node_args]
-query_interval = 10
+query_interval = 23
 output_channel = "John"
 input_text_channels = ["Jack", "Jane"]
 input_tick_channel = "tick/secs/1"
-goal = "want to craft a Stone Pickaxe with your friends. The materials needed include various types of Logs (which need to be turned into Planks and a Crafting Table) and different kinds of Stone."
-model_name = "gpt-4o-mini"
+goal = """
+You and your friends need to craft 2 "chest" and place them. Please discuss the task division quickly and start working.
+
+The complete process for crafting a "chest" in Minecraft is as follows (Please craft or obtain the items strictly in the following order):
+1. Collect logs, such as "oak_log", "spruce_log", or "birch_log", with at least 3 pieces.
+2. Convert the logs into planks ("birch_planks", "spruce_planks", or "oak_planks"). Each log can produce 4 planks.
+3. Use !craftRecipe("crafting_table", 1) to craft a "crafting_table" (requires 4 planks).
+4. After crafting a "crafting_table" (Ensure the inventory shows crafting_table: 1, not just having previously outputted !craftRecipe("crafting_table", 1)), use the command !placeHere("crafting_table").
+5. After crafting or finding a "crafting_table" (You can use !goToBlock("crafting_table", 20, 50) to locate a nearby "crafting_table"), use !craftRecipe("chest", 1) to craft a "chest" (requires 8 planks).
+6. Use the command !placeHere("chest") to place the chest."""
+model_name = "gpt-4o-2024-11-20"
 agent_name = "John"
 
 [[nodes]]
