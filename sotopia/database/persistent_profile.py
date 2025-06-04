@@ -1,12 +1,13 @@
-from enum import IntEnum
 import sys
+from enum import IntEnum
+from typing import Any
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
-from pydantic import model_validator, BaseModel
+from pydantic import BaseModel, model_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
@@ -21,7 +22,7 @@ class RelationshipType(IntEnum):
 
 
 class BaseAgentProfile(BaseModel):
-    pk: str = Field(default_factory=lambda: "")
+    pk: str | None = Field(default_factory=lambda: "")
     first_name: str = Field(index=True)
     last_name: str = Field(index=True)
     age: int = Field(index=True, default_factory=lambda: 0)
@@ -45,11 +46,14 @@ class BaseAgentProfile(BaseModel):
 
 
 class AgentProfile(BaseAgentProfile, JsonModel):
-    pass
+    def __init__(self, **kwargs: Any):
+        if "pk" not in kwargs:
+            kwargs["pk"] = ""
+        super().__init__(**kwargs)
 
 
 class BaseEnvironmentProfile(BaseModel):
-    pk: str = Field(default_factory=lambda: "")
+    pk: str | None = Field(default_factory=lambda: "")
     codename: str = Field(
         index=True,
         default_factory=lambda: "",
@@ -92,11 +96,14 @@ class BaseEnvironmentProfile(BaseModel):
 
 
 class EnvironmentProfile(BaseEnvironmentProfile, JsonModel):
-    pass
+    def __init__(self, **kwargs: Any):
+        if "pk" not in kwargs:
+            kwargs["pk"] = ""
+        super().__init__(**kwargs)
 
 
 class BaseRelationshipProfile(BaseModel):
-    pk: str = Field(default_factory=lambda: "")
+    pk: str | None = Field(default_factory=lambda: "")
     agent_1_id: str = Field(index=True)
     agent_2_id: str = Field(index=True)
     relationship: RelationshipType = Field(
@@ -112,13 +119,22 @@ class BaseRelationshipProfile(BaseModel):
 
 
 class RelationshipProfile(BaseRelationshipProfile, JsonModel):
-    pass
+    def __init__(self, **kwargs: Any):
+        if "pk" not in kwargs:
+            kwargs["pk"] = ""
+        super().__init__(**kwargs)
 
 
 class EnvironmentList(JsonModel):
+    pk: str | None = Field(default_factory=lambda: "")
     name: str = Field(index=True)
     environments: list[str] = Field(default_factory=lambda: [])
     agent_index: list[str] | None = Field(default_factory=lambda: None)
+
+    def __init__(self, **kwargs: Any):
+        if "pk" not in kwargs:
+            kwargs["pk"] = ""
+        super().__init__(**kwargs)
 
     # validate the length of agent_index should be same as environments
     @model_validator(mode="after")
