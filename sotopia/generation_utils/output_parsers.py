@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Generic, Type, TypeVar, Optional
+from typing import Generic, Type, TypeVar, Optional, Any
 from pydantic import BaseModel, Field
 import json_repair
 
@@ -30,7 +30,19 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
     def parse(self, result: str) -> T:
         json_result = json_repair.loads(result)
         assert isinstance(json_result, dict)
-        if "properties" in json_result:
+
+        # Handle nested type-value structure
+        def extract_value(obj: dict[str, Any] | list[Any] | str) -> Any:
+            if isinstance(obj, dict):
+                if "value" in obj:
+                    return obj["value"]
+                return {k: extract_value(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [extract_value(item) for item in obj]
+            return obj
+
+        json_result = extract_value(json_result)
+        if isinstance(json_result, dict) and "properties" in json_result:
             return self.pydantic_object.model_validate_json(
                 json.dumps(json_result["properties"])
             )

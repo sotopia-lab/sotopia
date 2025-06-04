@@ -49,16 +49,17 @@ console_handler.setFormatter(formatter)
 log.addHandler(console_handler)
 
 # subject to future OpenAI changes
-DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
+DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4.1-nano-2025-04-14"
 
 
 @validate_call
 async def format_bad_output(
     ill_formed_output: str,
-    format_instructions: str,
+    output_parser: OutputParser[OutputType],
     model_name: str,
     use_fixed_model_version: bool = True,
 ) -> str:
+    format_instructions = output_parser.get_format_instructions()
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
     Original string: {ill_formed_output}
@@ -73,11 +74,17 @@ async def format_bad_output(
         "format_instructions": format_instructions,
     }
     content = template.format(**input_values)
-    response = await acompletion(
-        model=model_name,
-        response_format={"type": "json_object"},
-        messages=[{"role": "user", "content": content}],
-    )
+    if isinstance(output_parser, PydanticOutputParser):
+        response = await acompletion(
+            model=model_name,
+            response_format=output_parser.pydantic_object,
+            messages=[{"role": "user", "content": content}],
+        )
+    else:
+        response = await acompletion(
+            model=model_name,
+            messages=[{"role": "user", "content": content}],
+        )
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
     log.info(f"Reformated output: {reformatted_output}")
@@ -98,6 +105,9 @@ async def agenerate(
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
     # Format template with input values
+    bad_output_process_model = (
+        bad_output_process_model or DEFAULT_BAD_OUTPUT_PROCESS_MODEL
+    )
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
 
@@ -118,21 +128,18 @@ async def agenerate(
         base_url = None
         api_key = None
 
-    if structured_output:
-        if not base_url:
-            params = get_supported_openai_params(model=model_name)
-            assert params is not None
-            assert (
-                "response_format" in params
-            ), "response_format is not supported in this model"
-            assert supports_response_schema(
-                model=model_name
-            ), "response_schema is not supported in this model"
+    if structured_output and (
+        base_url
+        or (
+            (params := get_supported_openai_params(model=model_name)) is not None
+            and "response_format" in params
+            and supports_response_schema(model=model_name)
+            and isinstance(output_parser, PydanticOutputParser)
+        )
+        and "Llama-4-Maverick-17B-128E-Instruct-FP8" not in model_name
+    ):
         messages = [{"role": "user", "content": template}]
-
-        assert isinstance(
-            output_parser, PydanticOutputParser
-        ), "structured output only supported in PydanticOutputParser"
+        assert isinstance(output_parser, PydanticOutputParser)
         response = await acompletion(
             model=model_name,
             messages=messages,
@@ -171,7 +178,7 @@ async def agenerate(
         # Handle bad output reformatting
         reformat_result = await format_bad_output(
             result,
-            output_parser.get_format_instructions(),
+            output_parser,
             bad_output_process_model or model_name,
             use_fixed_model_version,
         )
@@ -254,6 +261,7 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    structured_output: bool = False,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -305,6 +313,7 @@ async def agenerate_action(
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            structured_output=structured_output,
         )
     except Exception as e:
         log.warning(f"Failed to generate action due to {e}")
