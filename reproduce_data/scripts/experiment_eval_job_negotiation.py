@@ -11,7 +11,8 @@ from absl import flags
 from rich.logging import RichHandler
 from tqdm import tqdm
 from typing import Optional, List
-
+import rich
+import logging
 from sotopia.agents import LLMAgent
 from sotopia.database import (
     AgentProfile,
@@ -113,7 +114,7 @@ def _get_agent_ids_by_big_five(big_five_target: Optional[list[str]] = None) -> l
         agent_profile = AgentProfile.get(agent_pk)
         if agent_profile.big_five == compose_big_five_target(big_five_target):
             agent_candidate_id.append(agent_pk)
-    print(f"In total there are {len(agent_candidate_id)} agents with big five target {big_five_target}")
+    logging.info(f"In total there are {len(agent_candidate_id)} agents with big five target {big_five_target}")
     return agent_candidate_id
 
 from typing import Callable
@@ -142,30 +143,32 @@ def _iterate_env_agent_combo_not_in_db(
     batch_size: int = 1,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
     """We iterate over each environment and return the **first** env-agent combo that is not in the database."""
-    filtered_candidate_ids = filter_agent_ids(filter_funcs=filters, agent_candidate_ids=agent_candidate_ids)
-    # print(f"Filtered candidate ids: {[len(candidate) for candidate in filtered_candidate_ids]}")
+
+    
+    filtered_candidate_ids = filter_agent_ids(filter_funcs=filters, agent_candidate_ids=agent_candidate_ids) # filter the agent ids by the filters on name and occupation
+    logging.info(f"Filtered candidate ids: {[len(candidate) for candidate in filtered_candidate_ids]}")
     
     if not env_ids:
-        env_ids = list(EnvironmentProfile.all_pks())
+        env_ids = list(EnvironmentProfile.all_pks()) 
     for env_id in env_ids:
         assert env_id is not None, "env_id should not be None"
         
         for _ in range(batch_size):
             env_agent_combo_storage_list = list(
-                EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_id).all()
+                EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_id).all() # get all the env-agent combos from the database
             )
             env_agent_combo_storage_list = [
-                combo for combo in env_agent_combo_storage_list if all([combo.agent_ids[idx] in filtered_candidate_ids[idx] for idx in range(len(combo.agent_ids))])
+                combo for combo in env_agent_combo_storage_list if all([combo.agent_ids[idx] in filtered_candidate_ids[idx] for idx in range(len(combo.agent_ids))])  # filter the env-agent combos by the filtered candidate ids
             ]
             
             # env_agent_combo_storage_list = [
             #     combo for combo in env_agent_combo_storage_list if all([agent_id in agent_candidate_ids for agent_id in combo.agent_ids[:1]])
             # ]
-            print(f"{len(env_agent_combo_storage_list)} env-agent combos found in the database")
-            print(f"w/o filter: {len(list(EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_id).all()))}")
+            logging.info(f"{len(env_agent_combo_storage_list)} env-agent combos found in the database")
+            logging.info(f"w/o filter: {len(list(EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env_id).all()))}")
             
             
-            if not env_agent_combo_storage_list:
+            if not env_agent_combo_storage_list: # if there are no env-agent combos in the database, we sample from the database and filter
                 # agent_candidates = [AgentProfile.get(agent_id) for agent_id in agent_candidate_ids]
                 _sample_env_agent_combo_and_push_to_db(env_id, agent_candidates=agent_candidate_ids, filters=filters)
                 env_agent_combo_storage_list = list(
@@ -174,10 +177,10 @@ def _iterate_env_agent_combo_not_in_db(
                 env_agent_combo_storage_list = [
                     combo for combo in env_agent_combo_storage_list if all([combo.agent_ids[idx] in filtered_candidate_ids[idx] for idx in range(len(combo.agent_ids))])
                 ]
-                print("Sampled env_agent_combo: ", len(env_agent_combo_storage_list))
+                logging.info("Sampled env_agent_combo: ", len(env_agent_combo_storage_list))
                 assert env_agent_combo_storage_list
                 
-            
+            # you check for agent combinations that are not already used for episodes in the database.
             first_env_agent_combo_storage_to_run: EnvAgentComboStorage | None = None
             for env_agent_combo_storage in env_agent_combo_storage_list:
                 env_agent_combo_storage = cast(
@@ -191,7 +194,8 @@ def _iterate_env_agent_combo_not_in_db(
                     continue
                 first_env_agent_combo_storage_to_run = env_agent_combo_storage
                 break
-            if first_env_agent_combo_storage_to_run:
+
+            if first_env_agent_combo_storage_to_run: # we return the first env-agent combo that is not in the database, creating the env and LLM Agents
                 env_profile = EnvironmentProfile.get(env_id)
                 env = ParallelSotopiaEnv(
                     env_profile=env_profile,
@@ -203,7 +207,7 @@ def _iterate_env_agent_combo_not_in_db(
                     terminal_evaluators=[
                         EpisodeLLMEvaluator(
                             model_names["env"],
-                            EvaluationForTwoAgents[SotopiaDimensions],
+                            EvaluationForTwoAgents[SotopiaHiringDimensions],
                         ),
                     ],
                 )
@@ -223,11 +227,11 @@ def _iterate_env_agent_combo_not_in_db(
 @gin.configurable
 def run_async_server_in_batch(
     *,
-    batch_size: int = 1,
+    batch_size: int = 4,
     model_names: dict[str] = {
         "env": "gpt-4",
-        "agent1": "gpt-3.5-turbo",
-        "agent2": "gpt-3.5-turbo",
+        "agent1": "gpt-4o",
+        "agent2": "gpt-4o",
     },
     tag: str | None = None,
     verbose: bool = False,
@@ -235,6 +239,14 @@ def run_async_server_in_batch(
     agent_ids: list[str] = [],
     env_ids: list[str] = [],
 ) -> None:
+    """
+    This runs the episodes.
+    We first filters the agents by first name and occupation to get the customer and manager agents.
+    We then get all the agents and print total number of envs.
+    After that, we then check if the convo is already in the database. - clarify this
+    We then iterate over all the envs and agent pairs in this specfic environment list and we run it individually here, not combos. Maybe need to understand this better.
+    Then the episode is run for the env and agents.
+    """
     if not verbose:
         logger = logging.getLogger()
         logger.setLevel(logging.CRITICAL)
@@ -247,7 +259,8 @@ def run_async_server_in_batch(
     agent_1_filter = lambda agent: AgentProfile.get(agent).first_name == "AI"
     agent_2_filter = lambda agent: AgentProfile.get(agent).occupation == "Candidate"
     filters = [agent_1_filter, agent_2_filter]
-    print("Total number of envs: ", len(env_ids))
+    print(len(env_ids))
+    logging.info("Total number of envs: ", len(env_ids))
     
     # we cannot get the exact length of the generator, we just give an estimate of the length
     env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, env_ids=env_ids, agent_candidate_ids=agent_ids, filters=filters, batch_size=repeat_time)
@@ -255,6 +268,8 @@ def run_async_server_in_batch(
 
     env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, env_ids=env_ids, agent_candidate_ids=agent_ids, filters=filters, batch_size=repeat_time)
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
+    print(env_agent_combo_iter_length)
+    print(env_agent_combo_iter)
 
     while True:
         for env_agent_combo in tqdm(
@@ -262,6 +277,7 @@ def run_async_server_in_batch(
             total=env_agent_combo_iter_length,
             desc="Running all envs in batch",
         ): 
+            print(env_agent_combo)
             env_agent_combo_batch.append(env_agent_combo)
             if len(env_agent_combo_batch) == batch_size:
                 logging.info(
@@ -273,6 +289,7 @@ def run_async_server_in_batch(
                         sampler=BaseSampler[Observation, AgentAction](),
                         env_agent_combo_list=env_agent_combo_batch,
                         tag=tag,
+                        push_to_db=True
                     )
                 )
                 env_agent_combo_batch = []
@@ -286,13 +303,23 @@ def run_async_server_in_batch(
                         model_dict=model_names,
                         sampler=BaseSampler[Observation, AgentAction](),
                         env_agent_combo_list=env_agent_combo_batch,
-                        tag=tag
+                        tag=tag,
+                        push_to_db=True
                     )
                 )
             return
 
 
 def main(_: Any) -> None:
+    """
+    In the main function, we first parse the gin flags, which are used to configure the environment and agents maybe?
+    We then get the environment lists from the database, and iterate over each env and agent pair.
+    In each iteration, we extract the customer and manager agents from AgentProfile. 
+    We then extract their big five traits of the candidate from the personality and values subpart. Why?
+    For the manager, they use the credibility persona - what is this?
+    We then add a tag to identify the run, and check if the episode already exists in the database.
+    If it does not, we run the server in batch.
+    """
     parse_gin_flags(
         # User-provided gin paths take precedence if relative paths conflict.
         FLAGS.gin_search_paths + _DEFAULT_GIN_SEARCH_PATHS,
@@ -305,7 +332,7 @@ def main(_: Any) -> None:
     # envs = env_agent_list[0].environments
     # agents = [index.split("_") for index in env_agent_list[0].agent_index]
     
-    target_env_list_name = "hiring"
+    target_env_list_name = "0324_hiring_competetive_test_2_agents_1_env_direct"
     target_mode = "competitive"
     
     from sotopia.database.persistent_profile import EnvironmentList
@@ -313,16 +340,18 @@ def main(_: Any) -> None:
     # print(env_agent_list)
     env_ids = env_agent_list[0].environments
     agent_ids = [index.split("_") for index in env_agent_list[0].agent_index]
-    print(env_ids, agent_ids)
-    print("In total we have {} envs and {} agent pairs".format(len(env_ids), len(agent_ids)))
+    logging.info("{env_ids}, {agent_ids}")
+    logging.info("In total we have {} envs and {} agent pairs".format(len(env_ids), len(agent_ids)))
+    i=0
     
     for env_id, agent_id in zip(env_ids, agent_ids):
+
         if target_mode not in EnvironmentProfile.get(env_id).codename:
             raise ValueError(f"Environment {env_id} does not contains {target_mode}")
-        
-        print(f"Env: {env_id}, Agent: {agent_id}")
-        candidate_agent = AgentProfile.get(agent_id[1])
-        manager_agent = AgentProfile.get(agent_id[0])
+        i+=1
+        logging.info(f"Env: {env_id}, Agent: {agent_id}")
+        candidate_agent = AgentProfile.get(agent_id[1]) #1 human candidate
+        manager_agent = AgentProfile.get(agent_id[0]) #1 AI Manager
         candidate_agent_bigfive = candidate_agent.personality_and_values.split("Personality Trait: ")[1].split("\n")[0]
         candidate_agent_bigfive = "_".join(candidate_agent_bigfive.split(" "))
         # "you will use a {} method called", help me to extract with regex
@@ -337,24 +366,26 @@ def main(_: Any) -> None:
         manager_agent_personality = "-".join(formatted_attributes)
         # python sample_and_upload_to_env.py --name 0923_1_hiring_equal_competitive_bot_transparency_human_bigfive_salary_start_date --environment_file job_scenarios_bot_0922_salary_start_date_equal_competitive.json --agent_file human_agreeableness_ai_transparency.json
         
-        suffix = f"trust-bigfive-{manager_agent_personality}-{candidate_agent_bigfive}"
+        suffix = f"trust1-bigfive-{manager_agent_personality}-{candidate_agent_bigfive}"
+        #trust-bigfive-high_transparency-high_competence-high_adaptability-Introversion_1
         # suffix = f"{candidate_agent.first_name}{candidate_agent.last_name}"
  
-        tag = f"{target_env_list_name}_{suffix}"
-        print(f"Running tag {tag}")
+        tag = f"{target_env_list_name}_{suffix}_{i}"
+        logging.info(f"Running tag {tag}")
         
         MAX_EPISODES = 20
         current_existing_episodes = len(EpisodeLog.find(EpisodeLog.tag == tag).all())
-        repeat_time = min(MAX_EPISODES - current_existing_episodes, 10)
-        print(f"Current existing episodes: {current_existing_episodes}, repeat time: {repeat_time}")
+        # repeat_time = min(MAX_EPISODES - current_existing_episodes, 10)
+        repeat_time = 1
+        logging.info(f"Current existing episodes: {current_existing_episodes}, repeat time: {repeat_time}")
         
-        # for i in range(1):
-        run_async_server_in_batch(
-                agent_ids=agent_id,
-                env_ids=[env_id],
-                repeat_time=1,
-                tag=tag
-            )
+        for i in range(1):
+            run_async_server_in_batch(
+                    agent_ids=agent_id,
+                    env_ids=[env_id],
+                    repeat_time=repeat_time,
+                    tag=tag
+                )
 
 
 if __name__ == "__main__":
@@ -381,6 +412,52 @@ if __name__ == "__main__":
     )
 
     run(main)
+
+
+
+"""
+This script is used to run experiments on Environmental Lists we would like to run and understand.
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#source 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #Example of the usage of the script
 # python sample_and_upload_to_env.py --name 0916_3_hiring_bot_trust_human_bigfive --environment_file job_scenarios_bot.json --agent_file agent_profiles_trust_bigfive.json
