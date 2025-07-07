@@ -9,7 +9,6 @@ from sotopia.server import run_async_server
 from constants import *
 
 
-
 client = redis.Redis(host="localhost", port=6379)
 
 os.environ["REDIS_OM_URL"] = "redis://:@localhost:6379"
@@ -26,36 +25,64 @@ def add_agent_to_database(**kwargs: Any) -> None:
 def add_env_profile(**kwargs: Any) -> None:
     env_profile = EnvironmentProfile(**kwargs)
     env_profile.save()
-    
+
 
 try:
-    alice = AgentProfile.find(AgentProfile.first_name == "Red", AgentProfile.last_name == "Player").first()
-except NotImplementedError as e:
+    alice = AgentProfile.find(
+        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+    ).first()
+except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
-        first_name="Red", last_name="Player", age=30,
-        occupation="", gender="", gender_pronoun="",
-        big_five="", moral_values=[],
-        decision_making_style="", secret=""
+        first_name="Red",
+        last_name="Player",
+        age=30,
+        occupation="",
+        gender="",
+        gender_pronoun="",
+        big_five="",
+        moral_values=[],
+        decision_making_style="",
+        secret="",
     )
-    alice = AgentProfile.find(AgentProfile.first_name == "Red", AgentProfile.last_name == "Player").first()
+    alice = AgentProfile.find(
+        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+    ).first()
 
 try:
-    bob = AgentProfile.find(AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player").first()
-except NotImplementedError as e:
+    bob = AgentProfile.find(
+        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+    ).first()
+except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
-        first_name="Blue", last_name="Player", age=30,
-        occupation="", gender="", gender_pronoun="",
-        big_five="", moral_values=[],
-        decision_making_style="", secret=""
+        first_name="Blue",
+        last_name="Player",
+        age=30,
+        occupation="",
+        gender="",
+        gender_pronoun="",
+        big_five="",
+        moral_values=[],
+        decision_making_style="",
+        secret="",
     )
-    bob = AgentProfile.find(AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player").first()
+    bob = AgentProfile.find(
+        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+    ).first()
 
-scenario = 'Player RED is exchanging their resources with Player BLUE.'  # @param {type:"string"}
+scenario = "Player RED is exchanging their resources with Player BLUE."  # @param {type:"string"}
 
-def trading_prompt(agent_name, resources_in_game, initial_resources, goal, number_of_proposals, social_behaviour):
-    prompt = f"""You are playing a strategic game of trading resources with another player whose resources you have no knowledge about. 
+
+def trading_prompt(
+    agent_name,
+    resources_in_game,
+    initial_resources,
+    goal,
+    number_of_proposals,
+    social_behaviour,
+):
+    prompt = f"""You are playing a strategic game of trading resources with another player whose resources you have no knowledge about.
 
 RULES:
 ```
@@ -81,7 +108,7 @@ DO NOT propose a new trade after {number_of_proposals} proposals. Your limit for
 
 3. You can reason step by step by using the following format:
 <{REASONING_TAG}> [add reasoning] </{REASONING_TAG}>
-Add as much text as you want. This information will not be sent to the other player. 
+Add as much text as you want. This information will not be sent to the other player.
 It is just for you to keep track of your reasoning.
 
 4. At each turn send messages to each other by using the following format:
@@ -119,12 +146,13 @@ This is the last round of trading. There are no future rounds after this one.
 
     return prompt
 
+
 social_goal_1 = trading_prompt(
-    "Red", "\"X\": 0, \"Y\": 0", "\"X\": 25, \"Y\": 5", "\"X\": 15, \"Y\": 15", 3, ""
+    "Red", '"X": 0, "Y": 0', '"X": 25, "Y": 5', '"X": 15, "Y": 15', 3, ""
 )
 
 social_goal_2 = trading_prompt(
-    "Blue", "\"X\": 0, \"Y\": 0", "\"X\": 5, \"Y\": 25", "\"X\": 15, \"Y\": 15", 3, ""
+    "Blue", '"X": 0, "Y": 0', '"X": 5, "Y": 25', '"X": 15, "Y": 15', 3, ""
 )
 
 add_env_profile(scenario=scenario, agent_goals=[social_goal_1, social_goal_2])
@@ -137,9 +165,9 @@ last_env = all_envs[-1]
 
 # Build a sampler that only uses that one env + those two agents
 sampler: UniformSampler = UniformSampler(
-    env_candidates=[last_env],
-    agent_candidates=[alice, bob]
+    env_candidates=[last_env], agent_candidates=[alice, bob]
 )
+
 
 async def main():
     await run_async_server(
@@ -150,6 +178,7 @@ async def main():
         },
         sampler=sampler,
     )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

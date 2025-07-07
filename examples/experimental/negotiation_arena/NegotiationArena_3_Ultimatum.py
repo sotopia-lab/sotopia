@@ -9,7 +9,6 @@ from sotopia.server import run_async_server
 from constants import *
 
 
-
 client = redis.Redis(host="localhost", port=6379)
 
 os.environ["REDIS_OM_URL"] = "redis://:@localhost:6379"
@@ -26,33 +25,53 @@ def add_agent_to_database(**kwargs: Any) -> None:
 def add_env_profile(**kwargs: Any) -> None:
     env_profile = EnvironmentProfile(**kwargs)
     env_profile.save()
-    
+
 
 try:
-    alice = AgentProfile.find(AgentProfile.first_name == "Red", AgentProfile.last_name == "Player").first()
-except NotImplementedError as e:
+    alice = AgentProfile.find(
+        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+    ).first()
+except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
-        first_name="Red", last_name="Player", age=30,
-        occupation="", gender="", gender_pronoun="",
-        big_five="", moral_values=[],
-        decision_making_style="", secret=""
+        first_name="Red",
+        last_name="Player",
+        age=30,
+        occupation="",
+        gender="",
+        gender_pronoun="",
+        big_five="",
+        moral_values=[],
+        decision_making_style="",
+        secret="",
     )
-    alice = AgentProfile.find(AgentProfile.first_name == "Red", AgentProfile.last_name == "Player").first()
+    alice = AgentProfile.find(
+        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+    ).first()
 
 try:
-    bob = AgentProfile.find(AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player").first()
-except NotImplementedError as e:
+    bob = AgentProfile.find(
+        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+    ).first()
+except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
-        first_name="Blue", last_name="Player", age=30,
-        occupation="", gender="", gender_pronoun="",
-        big_five="", moral_values=[],
-        decision_making_style="", secret=""
+        first_name="Blue",
+        last_name="Player",
+        age=30,
+        occupation="",
+        gender="",
+        gender_pronoun="",
+        big_five="",
+        moral_values=[],
+        decision_making_style="",
+        secret="",
     )
-    bob = AgentProfile.find(AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player").first()
+    bob = AgentProfile.find(
+        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+    ).first()
 
-scenario = 'Player RED is exchanging their resources with Player BLUE.'  # @param {type:"string"}
+scenario = "Player RED is exchanging their resources with Player BLUE."  # @param {type:"string"}
 
 
 def ultimatum_prompt(
@@ -68,9 +87,7 @@ def ultimatum_prompt(
         number_of_proposals + 1 if iterations % 2 else number_of_proposals
     )
     agent_two_proposals = number_of_proposals
-    proposal_limit = (
-        number_of_proposals + 1 if iterations % 2 else number_of_proposals
-    )
+    proposal_limit = number_of_proposals + 1 if iterations % 2 else number_of_proposals
 
     prompt = f""""You are playing a game involving a split of resources. You are {agent_name} and you are playing against another player.
 {AGENT_ONE} starts with {player_1_initial_resources}, {AGENT_TWO} has none to trade.
@@ -94,10 +111,10 @@ RULES:
         <{PLAYER_ANSWER_TAG}> NONE </{PLAYER_ANSWER_TAG}>
         <{PROPOSED_TRADE_TAG}> {AGENT_ONE} Gives item1: amount | {AGENT_TWO} Gives item1: 0 </{PROPOSED_TRADE_TAG}>
 
-    {AGENT_ONE if iterations % 2 else AGENT_TWO} cannot do (C) on {TURN_OR_MOVE_TAG} {proposal_limit}/{proposal_limit} and MUST ONLY answer with {ACCEPTING_TAG} (A) or {REJECTION_TAG} (B) but {AGENT_TWO if iterations % 2 else AGENT_ONE} is not affected by this condition.        
-    
+    {AGENT_ONE if iterations % 2 else AGENT_TWO} cannot do (C) on {TURN_OR_MOVE_TAG} {proposal_limit}/{proposal_limit} and MUST ONLY answer with {ACCEPTING_TAG} (A) or {REJECTION_TAG} (B) but {AGENT_TWO if iterations % 2 else AGENT_ONE} is not affected by this condition.
+
     Note: the game ends immediately if you {ACCEPTING_TAG} or {REJECTION_TAG}.
-    
+
 3. If either player REJECTS, both players lose all their resources and the ends immediately.
 
 4. There are no future games.
@@ -121,7 +138,7 @@ All the responses you send should contain the following and in this order:
 
 ```
 <{MY_NAME_TAG}> [add here] </{MY_NAME_TAG}>
-<{TURN_OR_MOVE_TAG}> [add here] / [add here]  </{TURN_OR_MOVE_TAG}> 
+<{TURN_OR_MOVE_TAG}> [add here] / [add here]  </{TURN_OR_MOVE_TAG}>
 <{RESOURCES_TAG}> [add here] </{RESOURCES_TAG}>
 <{REASONING_TAG}> [add here] </{REASONING_TAG}>
 <{PLAYER_ANSWER_TAG}> [add here] </{PLAYER_ANSWER_TAG}>
@@ -135,6 +152,7 @@ Please be sure to include all.
 """
 
     return prompt
+
 
 social_goal_1 = ultimatum_prompt(
     AGENT_ONE, "100 Dollars", "0 Dollars", "0 Dollars", 4, 4, ""
@@ -154,9 +172,9 @@ last_env = all_envs[-1]
 
 # Build a sampler that only uses that one env + those two agents
 sampler: UniformSampler = UniformSampler(
-    env_candidates=[last_env],
-    agent_candidates=[alice, bob]
+    env_candidates=[last_env], agent_candidates=[alice, bob]
 )
+
 
 async def main():
     await run_async_server(
@@ -167,6 +185,7 @@ async def main():
         },
         sampler=sampler,
     )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

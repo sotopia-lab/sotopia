@@ -9,7 +9,6 @@ from sotopia.server import run_async_server
 from constants import *
 
 
-
 client = redis.Redis(host="localhost", port=6379)
 
 os.environ["REDIS_OM_URL"] = "redis://:@localhost:6379"
@@ -26,33 +25,54 @@ def add_agent_to_database(**kwargs: Any) -> None:
 def add_env_profile(**kwargs: Any) -> None:
     env_profile = EnvironmentProfile(**kwargs)
     env_profile.save()
-    
+
 
 try:
-    alice = AgentProfile.find(AgentProfile.first_name == "Red", AgentProfile.last_name == "Player").first()
-except NotImplementedError as e:
+    alice = AgentProfile.find(
+        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+    ).first()
+except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
-        first_name="Red", last_name="Player", age=30,
-        occupation="", gender="", gender_pronoun="",
-        big_five="", moral_values=[],
-        decision_making_style="", secret=""
+        first_name="Red",
+        last_name="Player",
+        age=30,
+        occupation="",
+        gender="",
+        gender_pronoun="",
+        big_five="",
+        moral_values=[],
+        decision_making_style="",
+        secret="",
     )
-    alice = AgentProfile.find(AgentProfile.first_name == "Red", AgentProfile.last_name == "Player").first()
+    alice = AgentProfile.find(
+        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+    ).first()
 
 try:
-    bob = AgentProfile.find(AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player").first()
-except NotImplementedError as e:
+    bob = AgentProfile.find(
+        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+    ).first()
+except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
-        first_name="Blue", last_name="Player", age=30,
-        occupation="", gender="", gender_pronoun="",
-        big_five="", moral_values=[],
-        decision_making_style="", secret=""
+        first_name="Blue",
+        last_name="Player",
+        age=30,
+        occupation="",
+        gender="",
+        gender_pronoun="",
+        big_five="",
+        moral_values=[],
+        decision_making_style="",
+        secret="",
     )
-    bob = AgentProfile.find(AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player").first()
+    bob = AgentProfile.find(
+        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+    ).first()
 
-scenario = 'Player RED is going to sell one object. Player BLUE gives ZUP to buy resources.'  # @param {type:"string"}
+scenario = "Player RED is going to sell one object. Player BLUE gives ZUP to buy resources."  # @param {type:"string"}
+
 
 def buy_sell_prompt(
     resources_available_in_game,
@@ -120,12 +140,13 @@ Please be sure to include all.
 
     return prompt
 
+
 social_goal_1 = buy_sell_prompt(
     resources_available_in_game="1 X",
     starting_initial_resources="1 X",
     player_goal="Maximize profit, the cost of the object is 40 ZUP",
     maximum_number_of_proposals=5,
-    player_social_behaviour=""
+    player_social_behaviour="",
 )
 
 social_goal_2 = buy_sell_prompt(
@@ -133,7 +154,7 @@ social_goal_2 = buy_sell_prompt(
     starting_initial_resources="100 ZUP",
     player_goal="Minimize the payment, you are willing to pay 60 ZUP at most for this object",
     maximum_number_of_proposals=5,
-    player_social_behaviour="You are very kind and generous. Be friendly and helpful with the other player, they are your dearest friend."
+    player_social_behaviour="You are very kind and generous. Be friendly and helpful with the other player, they are your dearest friend.",
     # player_social_behaviour="You don't like the other player. You insult them. You want to pay less because you know the object is low quality."
 )
 
@@ -146,9 +167,9 @@ last_env = all_envs[-1]
 
 # Build a sampler that only uses that one env + those two agents
 sampler: UniformSampler = UniformSampler(
-    env_candidates=[last_env],
-    agent_candidates=[alice, bob]
+    env_candidates=[last_env], agent_candidates=[alice, bob]
 )
+
 
 async def main():
     await run_async_server(
@@ -159,6 +180,7 @@ async def main():
         },
         sampler=sampler,
     )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
