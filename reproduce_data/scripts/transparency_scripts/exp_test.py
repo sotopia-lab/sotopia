@@ -217,6 +217,8 @@ def _iterate_env_agent_combo_not_in_db(
                 agent_profiles = [AgentProfile.get(id) for id in agent_ids]
 
                 # create agents that may expose or hide chain-of-thought depending on the tag
+                
+                print("DEBUG: tag =", tag)
                 agents = [
                     make_transparency_agent(agent_profile, agent_model, tag)
                     for agent_profile, agent_model in zip(
@@ -287,10 +289,10 @@ def run_async_server_in_batch(
     logging.info("Total number of envs: ", len(env_ids))
     
     # we cannot get the exact length of the generator, we just give an estimate of the length
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, env_ids=env_ids, agent_candidate_ids=agent_ids, filters=filters, batch_size=repeat_time)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, env_ids=env_ids, agent_candidate_ids=agent_ids, filters=filters, batch_size=repeat_time, tag=tag)
     env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
 
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, env_ids=env_ids, agent_candidate_ids=agent_ids, filters=filters, batch_size=repeat_time)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names, env_ids=env_ids, agent_candidate_ids=agent_ids, filters=filters, batch_size=repeat_time, tag=tag)
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
     print("Env Agent Combo Iter length",env_agent_combo_iter_length)
     print(env_agent_combo_iter)
@@ -388,14 +390,14 @@ def main(_: Any) -> None:
         print("DEBUG: manager_agent.personality_and_values =", manager_agent.personality_and_values)
         personality_str = manager_agent.personality_and_values
         if "Credibility Persona: " in personality_str:
-            manager_agent_personality = personality_str.split("Credibility Persona: ")[1].split("\n")[0]
+            persona_line = personality_str.split("Credibility Persona: ")[1].split("\n")[0]
+            manager_agent_personality = "_".join([
+                f"{attr.strip().split()[0].lower()}_{attr.strip().split(None, 1)[1].replace(' ', '_').lower()}" if len(attr.strip().split(None, 1)) == 2 else attr.strip().replace(' ', '_').lower()
+                for attr in persona_line.split(",")
+            ])
         else:
             print("WARNING: 'Credibility Persona: ' not found in personality_and_values for agent", manager_agent)
             manager_agent_personality = "UNKNOWN"
-        attributes = manager_agent_personality.split(", ")
-        formatted_attributes = [attr.lower().replace(" ", "_") for attr in attributes]
-        # Join the attributes with hyphens
-        manager_agent_personality = "-".join(formatted_attributes)
         # python sample_and_upload_to_env.py --name 0923_1_hiring_equal_competitive_bot_transparency_human_bigfive_salary_start_date --environment_file job_scenarios_bot_0922_salary_start_date_equal_competitive.json --agent_file human_agreeableness_ai_transparency.json
         
         suffix = f"trust1-bigfive-{manager_agent_personality}-{candidate_agent_names}"

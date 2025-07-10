@@ -88,7 +88,8 @@ def make_transparency_agent(
     * For human digital twins, return a plain LLMAgent without CoT prompts.
     """
     if agent_profile.first_name == "AI":
-        transparency = "high" if (tag and "transparency_high" in tag) else "low"
+        transparency = "high" if (tag and "high_transparency" in tag) else "low"
+        print("DEBUG: transparency =", transparency)
         return TransparentLLMAgent(
             agent_profile=agent_profile,
             model_name=model_name,
