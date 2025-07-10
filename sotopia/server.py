@@ -21,6 +21,8 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
+    SotopiaDimensions,
+    SotopiaTruthfulnessDimensions,
     unweighted_aggregate_evaluate,
 )
 from sotopia.generation_utils.generate import agenerate_script
@@ -130,6 +132,7 @@ async def arun_one_episode(
     async def generate_messages() -> (
         AsyncGenerator[list[list[tuple[str, str, Message]]], None]
     ):
+        print("Reached arun_one_episode")
         environment_messages = env.reset(agents=agents, omniscient=omniscient)
         agents.reset()
         messages: list[list[tuple[str, str, Message]]] = []
@@ -189,6 +192,10 @@ async def arun_one_episode(
                     for agent_name in env.agents
                 ]
             )
+            print(
+                f"Turn {len(messages)}: Rewards: {rewards_in_turn}, Terminated: {terminated}"
+            )
+            print("Messages in this turn:", messages)
             yield messages
             rewards.append([rewards_in_turn[agent_name] for agent_name in env.agents])
             reasons.append(
@@ -231,6 +238,7 @@ async def arun_one_episode(
                     simulation_status.save()
             except Exception as e:
                 logging.error(f"Failed to save episode log: {e}")
+                print(f"Failed to save episode log: {e}")
 
     if streaming:
         return generate_messages()
@@ -264,6 +272,7 @@ async def run_async_server(
     Note: env_agent_combo_list is optional. When it defaults to [], sampler is used
     else the sampler is not used. Please pass in BaseSampler or simply not specify it when using this option.
     """
+    print("Running async server with parameters:")
 
     assert not (push_to_db and tag is None), "please provide a tag when push to db"
     assert (
@@ -308,6 +317,7 @@ async def run_async_server(
             "agent1": model_dict["agent1"],
             "agent2": model_dict["agent2"],
         }
+        print("Agents model dict:", agents_model_dict)
         env_agent_combo_iter = sampler.sample(
             agent_classes=[
                 get_agent_class(model_name) for model_name in agents_model_dict.values()
@@ -379,7 +389,7 @@ async def arun_one_script(
     agent_messages = env_message + agent_messages
 
     evaluator = EpisodeLLMEvaluator(
-        model_name="gpt-4",
+        model_name="gpt-4o",
         response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
     )
     response = unweighted_aggregate_evaluate(
@@ -442,14 +452,14 @@ async def arun_one_script(
 
 async def aevaluate_one_episode(
     episode: EpisodeLog,
-    model: str = "gpt-4",
+    model: str = "gpt-4o",
     tag: str | None = None,
     push_to_db: bool = False,
-) -> None:
+) -> dict[str, object]:
     history = "\n".join(episode.render_for_humans()[1][:-2])
     evaluator = EpisodeLLMEvaluator(
         model_name=model,
-        response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
+        response_format_class=EvaluationForTwoAgents[SotopiaTruthfulnessDimensions],
     )
     response = unweighted_aggregate_evaluate(
         list(
@@ -479,6 +489,22 @@ async def aevaluate_one_episode(
         },
     }
     assert isinstance(episode.models, list)
+    rewards_ret = [info[agent_name]["complete_rating"] for agent_name in episode.agents]
+    reasoning = str(info[episode.agents[0]]["comments"]) + str(info[episode.agents[1]]["comments"])
+
+    # Full result capturing everything you'd store in EpisodeLog
+    result_dict = {
+        "episode_pk": episode.pk,
+        "environment": episode.environment,
+        "agents": episode.agents,
+        "tag": tag,
+        "models": [model, episode.models[1], episode.models[2]],
+        "messages": episode.messages,
+        "reasoning": reasoning,
+        "rewards": rewards_ret,
+    }
+    
+    # print(result_dict)
     epilog = EpisodeLog(
         environment=episode.environment,
         agents=episode.agents,
@@ -490,7 +516,7 @@ async def aevaluate_one_episode(
         rewards=[info[agent_name]["complete_rating"] for agent_name in episode.agents],
         rewards_prompt="TBD",
     )
-
+    return result_dict
     if push_to_db:
         try:
             epilog.save()
