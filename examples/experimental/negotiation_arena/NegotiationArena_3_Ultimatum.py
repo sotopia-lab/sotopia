@@ -2,19 +2,28 @@
 import redis
 import os
 import asyncio
-from typing import Any
+from typing import Any, cast
 from sotopia.database.persistent_profile import AgentProfile, EnvironmentProfile
 from sotopia.samplers import UniformSampler
 from sotopia.server import run_async_server
-from constants import *
+from constants import (
+    AGENT_ONE,
+    AGENT_TWO,
+    RESOURCES_TAG,
+    PLAYER_ANSWER_TAG,
+    PROPOSED_TRADE_TAG,
+    ACCEPTING_TAG,
+    REJECTION_TAG,
+    MESSAGE_TAG,
+    REASONING_TAG,
+    MY_NAME_TAG,
+    TURN_OR_MOVE_TAG,
+)
 
 
 client = redis.Redis(host="localhost", port=6379)
 
 os.environ["REDIS_OM_URL"] = "redis://:@localhost:6379"
-with open("openai_api.txt", "r") as f:
-    openai_api_key = f.read().strip()
-os.environ["OPENAI_API_KEY"] = openai_api_key
 
 
 def add_agent_to_database(**kwargs: Any) -> None:
@@ -30,7 +39,7 @@ def add_env_profile(**kwargs: Any) -> None:
 try:
     alice = AgentProfile.find(
         AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
-    ).first()
+    ).all()[0]
 except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
@@ -47,12 +56,12 @@ except NotImplementedError:
     )
     alice = AgentProfile.find(
         AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
-    ).first()
+    ).all()[0]
 
 try:
     bob = AgentProfile.find(
         AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
-    ).first()
+    ).all()[0]
 except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
@@ -69,20 +78,20 @@ except NotImplementedError:
     )
     bob = AgentProfile.find(
         AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
-    ).first()
+    ).all()[0]
 
 scenario = "Player RED is exchanging their resources with Player BLUE."  # @param {type:"string"}
 
 
 def ultimatum_prompt(
-    agent_name,
-    player_1_initial_resources,
-    resources_in_game,
-    initial_resources,
-    iterations,
-    number_of_proposals,
-    social_behaviour,
-):
+    agent_name: str,
+    player_1_initial_resources: str,
+    resources_in_game: str,
+    initial_resources: str,
+    iterations: int,
+    number_of_proposals: int,
+    social_behaviour: str,
+) -> str:
     agent_one_proposals = (
         number_of_proposals + 1 if iterations % 2 else number_of_proposals
     )
@@ -166,17 +175,17 @@ add_env_profile(scenario=scenario, agent_goals=[social_goal_1, social_goal_2])
 
 # Pull all saved environments
 all_envs = list(EnvironmentProfile.find().all())
-# # Take the most recently saved profile
-last_env = all_envs[-1]
+# Take the most recently saved profile
+last_env = cast(EnvironmentProfile, all_envs[-1])
 
 
 # Build a sampler that only uses that one env + those two agents
-sampler: UniformSampler = UniformSampler(
-    env_candidates=[last_env], agent_candidates=[alice, bob]
-)
+sampler: UniformSampler[EnvironmentProfile, AgentProfile] = UniformSampler[
+    EnvironmentProfile, AgentProfile
+](env_candidates=[last_env], agent_candidates=[alice, bob])
 
 
-async def main():
+async def main() -> None:
     await run_async_server(
         model_dict={
             "env": "gpt-4o",
