@@ -47,14 +47,14 @@ class TransparentLLMAgent(LLMAgent):
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="")
 
-        # Build conversation history with mandatory CoT instruction
+        # CoT instruction to embed inside the JSON schema instead of the history
         cot_instruction = (
-            "When you compose your next action, first include your PRIVATE reasoning "
-            "wrapped inside <THINK> </THINK> tags, immediately followed by what the "
-            "other participant will actually see. You MUST do this every turn."
+            "When composing the argument field for a speak action, include your private reasoning inside <THINK></THINK> tags. This should read like a realistic stream of conscious thought, where you clarify your understanding of the situation, reflect on your intentions, weigh options, and arrive at a decision."
+            "Provide this reasoning inside <THINK> </THINK> tags that leads to your final decision/dialogue, immediately followed by what the other participant will actually see."
         )
-        history_body = "\n".join(y.to_natural_language() for _, y in self.inbox)
-        history = f"{cot_instruction}\n{history_body}"
+
+        # Conversation history without the CoT instruction
+        history = "\n".join(y.to_natural_language() for _, y in self.inbox)
         print("DEBUG: history =", history)
 
         action = await agenerate_action(
@@ -65,12 +65,16 @@ class TransparentLLMAgent(LLMAgent):
             agent=self.agent_name,
             goal=self.goal,
             script_like=self.script_like,
+            cot_instruction=cot_instruction,
         )
 
         # Hide CoT if transparency is low
+        print("DEBUG: action.argument =", action.argument)
+        print("DEBUG: transparency at test =", self.transparency)
         if self.transparency.startswith("low"):
             print("DEBUG: stripping thoughts")
             action.argument = strip_thoughts(action.argument)
+        print("DEBUG: action.argument after stripping thoughts =", action)
         return action
 
 
