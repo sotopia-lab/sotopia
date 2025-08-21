@@ -6,6 +6,7 @@ from typing import Any, cast
 from sotopia.database.persistent_profile import AgentProfile, EnvironmentProfile
 from sotopia.samplers import UniformSampler
 from sotopia.server import run_async_server
+from sotopia.messages import Observation, AgentAction
 from constants import (
     AGENT_ONE,
     AGENT_TWO,
@@ -37,9 +38,12 @@ def add_env_profile(**kwargs: Any) -> None:
 
 
 try:
-    alice = AgentProfile.find(
-        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
-    ).all()[0]
+    alice = cast(
+        AgentProfile,
+        AgentProfile.find(
+            AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+        ).all()[0],
+    )
 except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
@@ -54,14 +58,20 @@ except NotImplementedError:
         decision_making_style="",
         secret="",
     )
-    alice = AgentProfile.find(
-        AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
-    ).all()[0]
+    alice = cast(
+        AgentProfile,
+        AgentProfile.find(
+            AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
+        ).all()[0],
+    )
 
 try:
-    bob = AgentProfile.find(
-        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
-    ).all()[0]
+    bob = cast(
+        AgentProfile,
+        AgentProfile.find(
+            AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+        ).all()[0],
+    )
 except NotImplementedError:
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
@@ -76,9 +86,12 @@ except NotImplementedError:
         decision_making_style="",
         secret="",
     )
-    bob = AgentProfile.find(
-        AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
-    ).all()[0]
+    bob = cast(
+        AgentProfile,
+        AgentProfile.find(
+            AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
+        ).all()[0],
+    )
 
 scenario = "Player RED is exchanging their resources with Player BLUE."  # @param {type:"string"}
 
@@ -173,8 +186,8 @@ last_env = cast(EnvironmentProfile, all_envs[-1])
 
 
 # Build a sampler that only uses that one env + those two agents
-sampler: UniformSampler[EnvironmentProfile, AgentProfile] = UniformSampler[
-    EnvironmentProfile, AgentProfile
+sampler: UniformSampler[Observation, AgentAction] = UniformSampler[
+    Observation, AgentAction
 ](env_candidates=[last_env], agent_candidates=[alice, bob])
 
 
