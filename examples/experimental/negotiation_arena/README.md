@@ -17,9 +17,9 @@ We adopt the scenarios from https://github.com/vinid/NegotiationArena.
     ```bash
     cp /path/to/your/dump.rdb sotopia-data/redis-data/
     ```
-3. Start Redis, pointing to the snapshot:
+3. Start Redis:
     ```bash
-    redis-stack-server --dir ~/Social_RL/sotopia-data/redis-data
+    redis-stack-server --dir ~/sotopia/examples/experimental/negotiation_arena/redis-data
     ```
 
 ## Running the Scripts

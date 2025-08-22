@@ -45,7 +45,7 @@ try:
             AgentProfile.first_name == "Red", AgentProfile.last_name == "Player"
         ).all()[0],
     )
-except NotImplementedError:
+except (IndexError, NotImplementedError):
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
         first_name="Red",
@@ -73,7 +73,7 @@ try:
             AgentProfile.first_name == "Blue", AgentProfile.last_name == "Player"
         ).all()[0],
     )
-except NotImplementedError:
+except (IndexError, NotImplementedError):
     print("Agent not found, creating new agent profiles.")
     add_agent_to_database(
         first_name="Blue",
