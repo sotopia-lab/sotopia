@@ -6,7 +6,14 @@ import asyncio
 import copy
 import itertools
 from typing import Any, Optional
-from beartype import beartype
+
+try:
+    from beartype import beartype  # type: ignore[import-not-found]
+except ImportError:
+    # Fallback if beartype is not available
+    def beartype(func):  # type: ignore[no-untyped-def]
+        return func
+
 
 from sotopia.envs.parallel import (
     ParallelSotopiaEnv,
@@ -27,7 +34,7 @@ class MultiAgentSotopiaEnv(ParallelSotopiaEnv):
         super().__init__(*args, **kwargs)
         # background will be properly set in reset() method
 
-    @beartype
+    @beartype  # type: ignore[misc]
     def reset(
         self,
         seed: int | None = None,
