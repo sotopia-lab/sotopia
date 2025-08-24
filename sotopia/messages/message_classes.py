@@ -76,6 +76,69 @@ class ScriptBackground(Message):
             )
 
 
+class MultiAgentBackground(ScriptBackground):
+    agent_names: list[str] = Field(description="names of all participants")
+    agent_backgrounds: list[str] = Field(description="backgrounds of all participants")
+    agent_goals: list[str] = Field(description="goals of all participants")
+
+    @classmethod
+    def create(
+        cls,
+        scenario: str,
+        agent_names: list[str],
+        agent_backgrounds: list[str],
+        agent_goals: list[str],
+    ) -> "MultiAgentBackground":
+        """Create a MultiAgentBackground with proper field mapping."""
+        return cls(
+            scenario=scenario,
+            agent_names=agent_names,
+            agent_backgrounds=agent_backgrounds,
+            agent_goals=agent_goals,
+            # Map to ScriptBackground fields for compatibility
+            p1_name=agent_names[0] if agent_names else "",
+            p2_name=agent_names[1] if len(agent_names) > 1 else "",
+            p1_background=agent_backgrounds[0] if agent_backgrounds else "",
+            p2_background=agent_backgrounds[1] if len(agent_backgrounds) > 1 else "",
+            p1_goal=agent_goals[0] if agent_goals else "",
+            p2_goal=agent_goals[1] if len(agent_goals) > 1 else "",
+        )
+
+    def to_natural_language(self) -> str:
+        if any(self.agent_backgrounds):
+            backgrounds_text = ""
+            for i, (name, background) in enumerate(
+                zip(self.agent_names, self.agent_backgrounds)
+            ):
+                bg_text = background if background else "Unknown"
+                backgrounds_text += f"{name}'s background: {bg_text}\n"
+
+            goals_text = ""
+            for i, (name, goal) in enumerate(zip(self.agent_names, self.agent_goals)):
+                goals_text += f"{name}'s goal: {goal}\n"
+
+            return format_docstring(
+                f"""Here is the context of this interaction:
+            Scenario: {self.scenario}
+            Participants: {', '.join(self.agent_names)}
+            {backgrounds_text.strip()}
+            {goals_text.strip()}
+            """
+            )
+        else:
+            goals_text = ""
+            for name, goal in zip(self.agent_names, self.agent_goals):
+                goals_text += f"{name}'s goal: {goal}\n"
+
+            return format_docstring(
+                f"""Here is the context of this interaction:
+            Scenario: {self.scenario}
+            Participants: {', '.join(self.agent_names)}
+            {goals_text.strip()}
+            """
+            )
+
+
 class ScriptEnvironmentResponse(Message):
     terminated: bool = Field(
         description="whether the conversation is terminated",
