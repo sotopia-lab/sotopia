@@ -62,6 +62,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
             env_profile = random.choice(self.env_candidates)
             if isinstance(env_profile, str):
                 env_profile = EnvironmentProfile.get(env_profile)
+            print(f"Creating ParallelSotopiaEnv with {n_agent} agents")
             env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
             agent_profile_candidates = self.agent_candidates
