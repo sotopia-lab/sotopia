@@ -25,7 +25,7 @@ from sotopia.database import (
 )
 from sotopia.database.serialization import get_rewards_from_episode
 from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
+    EvaluationForAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
@@ -363,7 +363,7 @@ def _list_all_env_agent_combo_not_in_db(
             terminal_evaluators=[
                 EpisodeLLMEvaluator(
                     model_names["env"],
-                    EvaluationForTwoAgents[SotopiaDimensions],
+                    EvaluationForAgents[SotopiaDimensions],
                 ),
             ],
         )

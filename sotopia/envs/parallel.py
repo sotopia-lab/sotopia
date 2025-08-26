@@ -208,73 +208,166 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         ), "partial_background_file and full_background_file are not supported anymore"
         if agents is not None:
             assert agents, "agents must be provided"
-            assert len(agents) == 2, "Only supporting two agents right now"
+            assert len(agents) >= 2, f"At least 2 agents required, got {len(agents)}"
             agent_names = list(agents.keys())
             agent_goals = self.profile.agent_goals
-            assert len(agent_goals) == 2, "Only supporting two agents right now"
+            assert (
+                len(agent_goals) >= 2
+            ), f"At least 2 agent goals required, got {len(agent_goals)}"
 
-            raw_background = self.background_class(
-                scenario=self.profile.scenario,
-                p1_background=get_bio(
-                    self.profile.relationship,
-                    agents[agent_names[0]].profile,
-                    agent_id=0,
-                ),
-                p2_background=get_bio(
-                    self.profile.relationship,
-                    agents[agent_names[1]].profile,
-                    agent_id=1,
-                ),
-                p1_goal=f"<root viewer='agent_0'>{agent_goals[0]}</root>",
-                p2_goal=f"<root viewer='agent_1'>{agent_goals[1]}</root>",
-                p1_name=agent_names[0],
-                p2_name=agent_names[1],
-            )
+            # Ensure we have enough goals for all agents
+            if len(agent_goals) < len(agents):
+                # Pad with generic goals if needed
+                while len(agent_goals) < len(agents):
+                    agent_goals.append(
+                        f"Participate effectively in this {len(agents)}-agent interaction"
+                    )
+
+            # Handle both 2-agent and multi-agent scenarios
+            num_agents = len(agents)
+            raw_background: ScriptBackground
+            if num_agents > 2:
+                # Multi-agent scenario - use ScriptBackground.create_multi_agent
+                raw_agent_bios = []
+                for i, agent_name in enumerate(agent_names):
+                    bg = get_bio(
+                        self.profile.relationship,
+                        agents[agent_name].profile,
+                        agent_id=i,
+                    )
+                    raw_agent_bios.append(bg)
+
+                raw_background = ScriptBackground.create_multi_agent(
+                    scenario=self.profile.scenario,
+                    agent_names=agent_names,
+                    agent_backgrounds=raw_agent_bios,
+                    agent_goals=[
+                        f"<root viewer='agent_{i}'>{goal}</root>"
+                        for i, goal in enumerate(agent_goals[:num_agents])
+                    ],
+                )
+            else:
+                # 2-agent scenario - use existing ScriptBackground
+                raw_background = self.background_class(
+                    scenario=self.profile.scenario,
+                    p1_background=get_bio(
+                        self.profile.relationship,
+                        agents[agent_names[0]].profile,
+                        agent_id=0,
+                    ),
+                    p2_background=get_bio(
+                        self.profile.relationship,
+                        agents[agent_names[1]].profile,
+                        agent_id=1,
+                    ),
+                    p1_goal=f"<root viewer='agent_0'>{agent_goals[0]}</root>",
+                    p2_goal=f"<root viewer='agent_1'>{agent_goals[1]}</root>",
+                    p1_name=agent_names[0],
+                    p2_name=agent_names[1],
+                )
 
             if lite:
-                raw_background.p1_background = ""
-                raw_background.p2_background = ""
+                if num_agents > 2 and raw_background.agent_names:
+                    # Multi-agent lite mode
+                    raw_background.agent_backgrounds = [""] * num_agents
+                elif num_agents == 2:
+                    # 2-agent lite mode
+                    raw_background.p1_background = ""
+                    raw_background.p2_background = ""
 
-            self.background = self.background_class(
-                scenario=render_text_for_environment(raw_background.scenario),
-                p1_background=render_text_for_environment(raw_background.p1_background),
-                p2_background=render_text_for_environment(raw_background.p2_background),
-                p1_goal=render_text_for_environment(raw_background.p1_goal),
-                p2_goal=render_text_for_environment(raw_background.p2_goal),
-                p1_name=raw_background.p1_name,
-                p2_name=raw_background.p2_name,
-            )
+            # Create final rendered background
+            if num_agents > 2 and raw_background.agent_names:
+                # Multi-agent final background
+                self.background = ScriptBackground.create_multi_agent(
+                    scenario=render_text_for_environment(raw_background.scenario),
+                    agent_names=raw_background.agent_names,
+                    agent_backgrounds=[
+                        render_text_for_environment(bg)
+                        for bg in (raw_background.agent_backgrounds or [])
+                    ],
+                    agent_goals=[
+                        render_text_for_environment(goal)
+                        for goal in (raw_background.agent_goals or [])
+                    ],
+                )
+            else:
+                # 2-agent final background
+                self.background = self.background_class(
+                    scenario=render_text_for_environment(raw_background.scenario),
+                    p1_background=render_text_for_environment(
+                        raw_background.p1_background
+                    ),
+                    p2_background=render_text_for_environment(
+                        raw_background.p2_background
+                    ),
+                    p1_goal=render_text_for_environment(raw_background.p1_goal),
+                    p2_goal=render_text_for_environment(raw_background.p2_goal),
+                    p1_name=raw_background.p1_name,
+                    p2_name=raw_background.p2_name,
+                )
         else:
             raise ValueError("agents must be provided")
 
-        self.agents = [self.background.p1_name, self.background.p2_name]
-        agent_backgrounds = []
+        # Set agent list based on scenario type
+        if num_agents > 2:
+            self.agents = agent_names
+        else:
+            self.agents = [self.background.p1_name, self.background.p2_name]
+        # Create individual agent backgrounds
+        agent_backgrounds: list[ScriptBackground] = []
         if omniscient:
-            for i in range(self.num_agents):
+            for i in range(num_agents):
                 agent_backgrounds.append(copy.deepcopy(self.background))
         else:
-            for i in range(self.num_agents):
-                agent_backgrounds.append(
-                    self.background_class(
-                        scenario=render_text_for_agent(raw_background.scenario, i),
-                        p1_background=render_text_for_agent(
-                            raw_background.p1_background, i
-                        ),
-                        p2_background=render_text_for_agent(
-                            raw_background.p2_background, i
-                        ),
-                        p1_goal=render_text_for_agent(raw_background.p1_goal, i),
-                        p2_goal=render_text_for_agent(raw_background.p2_goal, i),
-                        p1_name=raw_background.p1_name,
-                        p2_name=raw_background.p2_name,
-                    )
-                )
-        background_for_a = agent_backgrounds[0]
-        background_for_b = agent_backgrounds[1]
+            if num_agents > 2 and raw_background.agent_names:
+                # Multi-agent non-omniscient backgrounds
+                for i in range(num_agents):
+                    # Each agent sees their own goal, others are hidden
+                    hidden_goals = list(raw_background.agent_goals or [])
+                    for j in range(len(hidden_goals)):
+                        if j != i:
+                            hidden_goals[j] = "Unknown"
 
-        if not omniscient:
-            background_for_a.p2_goal = "Unknown"
-            background_for_b.p1_goal = "Unknown"
+                    agent_background = ScriptBackground.create_multi_agent(
+                        scenario=render_text_for_agent(raw_background.scenario, i),
+                        agent_names=raw_background.agent_names,
+                        agent_backgrounds=[
+                            render_text_for_agent(bg, i) if j == i else "Unknown"
+                            for j, bg in enumerate(
+                                raw_background.agent_backgrounds or []
+                            )
+                        ],
+                        agent_goals=[
+                            render_text_for_agent(goal, i) for goal in hidden_goals
+                        ],
+                    )
+                    agent_backgrounds.append(agent_background)
+            else:
+                # 2-agent non-omniscient backgrounds
+                for i in range(num_agents):
+                    agent_backgrounds.append(
+                        self.background_class(
+                            scenario=render_text_for_agent(raw_background.scenario, i),
+                            p1_background=render_text_for_agent(
+                                raw_background.p1_background, i
+                            ),
+                            p2_background=render_text_for_agent(
+                                raw_background.p2_background, i
+                            ),
+                            p1_goal=render_text_for_agent(raw_background.p1_goal, i),
+                            p2_goal=render_text_for_agent(raw_background.p2_goal, i),
+                            p1_name=raw_background.p1_name,
+                            p2_name=raw_background.p2_name,
+                        )
+                    )
+        # Handle goal hiding for 2-agent case (multi-agent already handled above)
+        if num_agents == 2 and not omniscient:
+            # Type check to ensure we have ScriptBackground for 2-agent scenarios
+            if hasattr(agent_backgrounds[0], "p2_goal") and hasattr(
+                agent_backgrounds[1], "p1_goal"
+            ):
+                agent_backgrounds[0].p2_goal = "Unknown"
+                agent_backgrounds[1].p1_goal = "Unknown"
 
         self.action_spaces = {
             agent: Dict(
@@ -296,22 +389,19 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         self.recv_message("Environment", self.background)
 
-        return {
-            self.background.p1_name: Observation(
-                last_turn=background_for_a.to_natural_language(),
+        # Create observations for each agent
+        observations = {}
+        for i, agent_name in enumerate(self.agents):
+            agent_bg = agent_backgrounds[i]
+            observations[agent_name] = Observation(
+                last_turn=agent_bg.to_natural_language(),
                 turn_number=0,
                 available_actions=list(self.available_action_types)
-                if self.action_mask[0]
+                if self.action_mask[i]
                 else ["none"],
-            ),
-            self.background.p2_name: Observation(
-                last_turn=background_for_b.to_natural_language(),
-                turn_number=0,
-                available_actions=list(self.available_action_types)
-                if self.action_mask[1]
-                else ["none"],
-            ),
-        }
+            )
+
+        return observations
 
     @validate_call
     def step(
@@ -368,56 +458,33 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
+
+        # Create observations for all agents dynamically
+        observations = {}
+        for i, agent_name in enumerate(self.agents):
+            observations[agent_name] = Observation(
+                last_turn=render_text_for_agent(obs, agent_id=i),
+                turn_number=self.turn_number,
+                available_actions=list(self.available_action_types)
+                if self.action_mask[i]
+                else ["none"],
+            )
+
         return (
+            observations,
+            # Create reward dictionary for all agents
+            {agent_name: 0 for agent_name in self.agents},
+            # Create info dictionary for all agents
+            {agent_name: response.terminated for agent_name in self.agents},
+            # Create done dictionary for all agents
+            {agent_name: False for agent_name in self.agents},
+            # Create info dictionary with comments and ratings for all agents
             {
-                self.background.p1_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=0),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[0]
-                    else ["none"],
-                ),
-                self.background.p2_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=1),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[1]
-                    else ["none"],
-                ),
-            },
-            {
-                self.background.p1_name: (
-                    response.p1_rate
-                    if isinstance(response.p1_rate, float)
-                    else response.p1_rate[0]
-                )
-                if response.p1_rate
-                else 0,
-                self.background.p2_name: (
-                    response.p2_rate
-                    if isinstance(response.p2_rate, float)
-                    else response.p2_rate[0]
-                )
-                if response.p2_rate
-                else 0,
-            },
-            {
-                self.background.p1_name: response.terminated,
-                self.background.p2_name: response.terminated,
-            },
-            {
-                self.background.p1_name: False,
-                self.background.p2_name: False,
-            },
-            {
-                self.background.p1_name: {
+                agent_name: {
                     "comments": response.comments or "",
-                    "complete_rating": response.p1_rate or 0,
-                },
-                self.background.p2_name: {
-                    "comments": response.comments or "",
-                    "complete_rating": response.p2_rate or 0,
-                },
+                    "complete_rating": 0,
+                }
+                for agent_name in self.agents
             },
         )
 
@@ -504,62 +571,38 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
+        # Create info dictionary for all agents
         info = {
-            self.background.p1_name: {
+            agent_name: {
                 "comments": response.comments or "",
-                "complete_rating": response.p1_rate or 0,
-            },
-            self.background.p2_name: {
-                "comments": response.comments or "",
-                "complete_rating": response.p2_rate or 0,
-            },
+                "complete_rating": 0,
+            }
+            for agent_name in self.agents
         }
         if response.terminated:
             info["rewards_prompt"] = {
                 "overall_prompt": self.terminal_evaluators[0].prompt  # type: ignore
             }
 
+        # Create observations for all agents dynamically
+        observations = {}
+        for i, agent_name in enumerate(self.agents):
+            observations[agent_name] = Observation(
+                last_turn=render_text_for_agent(obs, agent_id=i),
+                turn_number=self.turn_number,
+                available_actions=list(self.available_action_types)
+                if self.action_mask[i]
+                else ["none"],
+            )
+
         return (
-            {
-                self.background.p1_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=0),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[0]
-                    else ["none"],
-                ),
-                self.background.p2_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=1),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[1]
-                    else ["none"],
-                ),
-            },
-            {
-                self.background.p1_name: (
-                    response.p1_rate
-                    if isinstance(response.p1_rate, float)
-                    else response.p1_rate[0]
-                )
-                if response.p1_rate
-                else 0,
-                self.background.p2_name: (
-                    response.p2_rate
-                    if isinstance(response.p2_rate, float)
-                    else response.p2_rate[0]
-                )
-                if response.p2_rate
-                else 0,
-            },
-            {
-                self.background.p1_name: response.terminated,
-                self.background.p2_name: response.terminated,
-            },
-            {
-                self.background.p1_name: False,
-                self.background.p2_name: False,
-            },
+            observations,
+            # Create reward dictionary for all agents
+            {agent_name: 0 for agent_name in self.agents},
+            # Create terminated dictionary for all agents
+            {agent_name: response.terminated for agent_name in self.agents},
+            # Create done dictionary for all agents
+            {agent_name: False for agent_name in self.agents},
             info,
         )
 

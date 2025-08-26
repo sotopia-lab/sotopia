@@ -25,7 +25,7 @@ from sotopia.envs.evaluators import (
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.server import arun_one_episode
-from sotopia.envs.evaluators import EvaluationForTwoAgents
+from sotopia.envs.evaluators import EvaluationForAgents
 from sotopia.database import SotopiaDimensions
 from sotopia.logging import FileHandler
 
@@ -63,7 +63,7 @@ async def _start_server_with_two_session_ids_and_agent_env_combo(
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            EpisodeLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
+            EpisodeLLMEvaluator("gpt-4", EvaluationForAgents[SotopiaDimensions]),
         ],
     )
     random.shuffle(session_ids)
@@ -95,7 +95,7 @@ async def _start_server_with_one_session_id_and_agent_env_combo(
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            EpisodeLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
+            EpisodeLLMEvaluator("gpt-4", EvaluationForAgents[SotopiaDimensions]),
         ],
     )
 

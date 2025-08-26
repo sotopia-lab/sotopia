@@ -1,7 +1,7 @@
 import abc
 import logging
 from collections import defaultdict
-from typing import Generic, TypeVar, Union
+from typing import Generic, TypeVar
 
 import gin
 from pydantic import BaseModel, validate_call
@@ -18,12 +18,7 @@ log = logging.getLogger("evaluators")
 T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
 
-class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
-    agent_1_evaluation: T_eval_dim
-    agent_2_evaluation: T_eval_dim
-
-
-class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
+class EvaluationForAgents(BaseModel, Generic[T_eval_dim]):
     evaluations: dict[str, T_eval_dim]
 
 
@@ -55,17 +50,6 @@ class RuleBasedTerminatedEvaluator(Evaluator):
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # Rule 1: If the conversation is too long, terminate the conversation
         conversation_too_long = turn_number >= self.max_turn_number
-        ## Rule 2: If one of the players leaves, terminate the conversation
-        # p1_leaving = (
-        #     len(messages) > 1
-        #     and isinstance(messages[-2][1], AgentAction)
-        #     and messages[-2][1].action_type == "leave"
-        # )
-        # p2_leaving = (
-        #     bool(len(messages))
-        #     and isinstance(messages[-1][1], AgentAction)
-        #     and messages[-1][1].action_type == "leave"
-        # )
         # Rule 2: If less than two players are present, terminate the conversation
         p_i_leaving = []
         for message in messages[::-1]:
@@ -109,10 +93,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     def __init__(
         self,
         model_name: str,
-        response_format_class: Union[
-            type[EvaluationForTwoAgents[T_eval_dim]],
-            type[EvaluationForMultipleAgents[T_eval_dim]],
-        ],
+        response_format_class: type[EvaluationForAgents[T_eval_dim]],
     ) -> None:
         self.model_name = model_name
         self.prompt = ""
@@ -153,7 +134,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
 
         try:
-            response: EvaluationForTwoAgents[T_eval_dim] = await agenerate(
+            response: EvaluationForAgents[T_eval_dim] = await agenerate(
                 model_name=self.model_name,
                 template="""{history},
                     Based on previous interactions, evaluate how well participants achieve their goals.
@@ -169,56 +150,22 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
             response_list = []
 
-            # Handle both EvaluationForTwoAgents and EvaluationForMultipleAgents
-            if hasattr(response, "agent_1_evaluation"):
-                # EvaluationForTwoAgents
-                for dimension in response.agent_1_evaluation.model_dump().keys():
+            for i, evaluation in enumerate(response.evaluations.values()):
+                # Map agent names to expected format (agent_1, agent_2, etc.)
+                agent_key = f"agent_{i+1}"
+                for dimension in evaluation.model_dump().keys():
                     response_list.append(
                         (
-                            "agent_1",
+                            agent_key,
                             (
                                 (
                                     dimension,
-                                    response.agent_1_evaluation.model_dump()[dimension][
-                                        1
-                                    ],
+                                    evaluation.model_dump()[dimension][1],
                                 ),
-                                response.agent_1_evaluation.model_dump()[dimension][0],
+                                evaluation.model_dump()[dimension][0],
                             ),
                         )
                     )
-                    response_list.append(
-                        (
-                            "agent_2",
-                            (
-                                (
-                                    dimension,
-                                    response.agent_2_evaluation.model_dump()[dimension][
-                                        1
-                                    ],
-                                ),
-                                response.agent_2_evaluation.model_dump()[dimension][0],
-                            ),
-                        )
-                    )
-            elif hasattr(response, "evaluations"):
-                # EvaluationForMultipleAgents
-                for i, evaluation in enumerate(response.evaluations.values()):
-                    # Map agent names to expected format (agent_1, agent_2, etc.)
-                    agent_key = f"agent_{i+1}"
-                    for dimension in evaluation.model_dump().keys():
-                        response_list.append(
-                            (
-                                agent_key,
-                                (
-                                    (
-                                        dimension,
-                                        evaluation.model_dump()[dimension][1],
-                                    ),
-                                    evaluation.model_dump()[dimension][0],
-                                ),
-                            )
-                        )
             return response_list
         except Exception as e:
             print(e)
