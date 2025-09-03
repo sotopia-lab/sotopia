@@ -33,17 +33,6 @@ from .evaluators import Evaluator, unweighted_aggregate_evaluate
 
 TBackground = TypeVar("TBackground", bound=ScriptBackground)
 
-# Omniscient view, used internally (e.g., evaluators). Did not use this for agent observations anymore.
-def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
-    action_str = ""
-    for agent, action in actions.items():
-        # Only record actions that did something
-        if action.action_type != "none":
-            if action_str != "":
-                action_str += ";"  # separate actions with semicolon
-            action_str += f"{agent} {action.to_natural_language()}"
-    return action_str
-
 def _actions_to_natural_language_for_viewer(
     actions: dict[str, AgentAction], viewer: str
 ) -> str:
