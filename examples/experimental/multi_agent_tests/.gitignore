@@ -1,6 +1,0 @@
-# Redis database files (too large for git)
-redis-data/
-*.rdb
-
-# API keys
-openai_api.txt

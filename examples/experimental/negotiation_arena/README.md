@@ -9,18 +9,10 @@ We adopt the scenarios from https://github.com/vinid/NegotiationArena.
 
 ## Setup
 
-1. At the root of this folder, create the data directory for Redis:
-    ```bash
-    mkdir -p sotopia-data/redis-data
-    ```
-2. Copy your `dump.rdb` file into that folder:
-    ```bash
-    cp /path/to/your/dump.rdb sotopia-data/redis-data/
-    ```
-3. Start Redis:
-    ```bash
-    redis-stack-server --dir ~/sotopia/examples/experimental/negotiation_arena/redis-data
-    ```
+1. Start Redis:
+```bash
+redis-stack-server --dir [path-to-your-redis-data]
+```
 
 ## Running the Scripts
 
