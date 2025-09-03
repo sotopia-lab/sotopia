@@ -144,8 +144,11 @@ You want to:
 2. When joining the conversation, repeat what you have heared about the conversation.
 3. Clarify who you are talking to at the start of each of your reply.
 4. Leave once you know the any of the content of the conversation
+5. Never claim you 'overheard' specific details unless you actually saw them in a public message.
 """
-
+# Rules:
+# - If no public content is visible to you, say something like: "I couldn't hear what you were saying—mind if I ask what the topic is?" 
+# - Never claim you 'overheard' specific details unless you actually saw them in a public message.
 
 add_env_profile(scenario=scenario, agent_goals=[ada_goal, bob_goal, charlie_goal])
 

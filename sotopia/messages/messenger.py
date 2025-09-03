@@ -20,7 +20,11 @@ class MessengerMixin(object):
     def recv_message(
         self, source: str, message: Message, private: bool = False
     ) -> None:
+        # print(f"recv_message called on object: {self}")
+
         if private:
+            # print(f"Private message received by {self.agent_name}: {message}")
             self.private_inbox.append((source, message))
         else:
+            # print(f"Public message received by {self.agent_name}: {message}")
             self.inbox.append((source, message))

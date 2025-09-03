@@ -1,4 +1,3 @@
-# parallel.py
 import asyncio
 import copy
 import itertools
@@ -33,7 +32,7 @@ from .evaluators import Evaluator, unweighted_aggregate_evaluate
 
 TBackground = TypeVar("TBackground", bound=ScriptBackground)
 
-# Omniscient view, used internally (e.g., evaluators). Did not use this for agent observations anymore.
+
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     action_str = ""
     for agent, action in actions.items():
@@ -43,29 +42,6 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
                 action_str += ";"  # separate actions with semicolon
             action_str += f"{agent} {action.to_natural_language()}"
     return action_str
-
-def _actions_to_natural_language_for_viewer(
-    actions: dict[str, AgentAction], viewer: str
-) -> str:
-    """
-    Per-viewer observation text:
-      - Public actions (no 'to'): visible to everyone
-      - Private actions (with 'to'): visible only to sender and recipients
-    """
-    parts: list[str] = []
-    for sender, action in actions.items():
-        if action.action_type == "none":
-            continue
-
-        to_list = action.to or []
-        is_public = len(to_list) == 0
-        can_see = is_public or (viewer in to_list) or (viewer == sender)
-
-        if not can_see:
-            continue
-
-        parts.append(f"{sender} {action.to_natural_language()}")
-    return ";".join(parts)
 
 
 def _map_gender_to_adj(gender: str) -> str:
@@ -458,7 +434,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
 
-        # Mask actions from agents that are not in turn
+        # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
                 complied_actions[agent] = AgentAction(action_type="none", argument="")
@@ -466,13 +442,8 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
         )
-
-        # Write actions into env transcript; mark private when applicable
         for agent, action in complied_actions.items():
-            if action.action_type == "none":
-                continue  # don't pollute the inbox with placeholder 'none's
-            is_private = bool(action.to)
-            self.recv_message(agent, action, private=is_private)
+                self.recv_message(agent, action)
 
         # Synchronous evaluators in step
         response = unweighted_aggregate_evaluate(
@@ -493,15 +464,13 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
+        obs = _actions_to_natural_language(complied_actions)
 
-        # Create observation for all agents dynamically 
-        observations: dict[str, Observation] = {}
+        # Create observations for all agents dynamically
+        observations = {}
         for i, agent_name in enumerate(self.agents):
-            obs_for_viewer = _actions_to_natural_language_for_viewer(
-                complied_actions, agent_name
-            )
             observations[agent_name] = Observation(
-                last_turn=render_text_for_agent(obs_for_viewer, agent_id=i),
+                last_turn=render_text_for_agent(obs, agent_id=i),
                 turn_number=self.turn_number,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[i]
@@ -510,9 +479,13 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         return (
             observations,
-            {agent_name: 0 for agent_name in self.agents},  # rewards
-            {agent_name: response.terminated for agent_name in self.agents},  # term
-            {agent_name: False for agent_name in self.agents},  # done
+            # Create reward dictionary for all agents
+            {agent_name: 0 for agent_name in self.agents},
+            # Create info dictionary for all agents
+            {agent_name: response.terminated for agent_name in self.agents},
+            # Create done dictionary for all agents
+            {agent_name: False for agent_name in self.agents},
+            # Create info dictionary with comments and ratings for all agents
             {
                 agent_name: {
                     "comments": response.comments or "",
@@ -554,15 +527,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
         )
-
-        # write action into env transcript; mark private when applicable
         for agent, action in complied_actions.items():
-            if action.action_type == "none":
-                continue  # dont pollute the inbox with placeholder 'none's
-            is_private = bool(action.to)
-            self.recv_message(agent, action, private=is_private)
+            self.recv_message(agent, action)
 
-        # asyns evaluators
         response = unweighted_aggregate_evaluate(
             list(
                 itertools.chain(
@@ -610,8 +577,8 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
-
-        # create info dictionary for all agent
+        obs = _actions_to_natural_language(complied_actions)
+        # Create info dictionary for all agents
         info = {
             agent_name: {
                 "comments": response.comments or "",
@@ -619,19 +586,16 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             }
             for agent_name in self.agents
         }
-        if response.terminated and self.terminal_evaluators:
+        if response.terminated:
             info["rewards_prompt"] = {
                 "overall_prompt": self.terminal_evaluators[0].prompt  # type: ignore
             }
 
-        # build per-viewer observation
-        observations: dict[str, Observation] = {}
+        # Create observations for all agents dynamically
+        observations = {}
         for i, agent_name in enumerate(self.agents):
-            obs_for_viewer = _actions_to_natural_language_for_viewer(
-                complied_actions, agent_name
-            )
             observations[agent_name] = Observation(
-                last_turn=render_text_for_agent(obs_for_viewer, agent_id=i),
+                last_turn=render_text_for_agent(obs, agent_id=i),
                 turn_number=self.turn_number,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[i]
@@ -640,9 +604,12 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         return (
             observations,
-            {agent_name: 0 for agent_name in self.agents},  # rewards
-            {agent_name: response.terminated for agent_name in self.agents},  # term
-            {agent_name: False for agent_name in self.agents},  # done
+            # Create reward dictionary for all agents
+            {agent_name: 0 for agent_name in self.agents},
+            # Create terminated dictionary for all agents
+            {agent_name: response.terminated for agent_name in self.agents},
+            # Create done dictionary for all agents
+            {agent_name: False for agent_name in self.agents},
             info,
         )
 
