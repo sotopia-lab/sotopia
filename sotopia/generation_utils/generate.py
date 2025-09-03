@@ -277,7 +277,9 @@ async def agenerate_action(
                 {action_list}.
                 Note: The script can be ended if 1. one agent have achieved social goals, 2. this conversation makes the agent uncomfortable, 3. the agent find it uninteresting/you lose your patience, 4. or for other reasons you think it should stop.
 
-                Please only generate a JSON string including the action type and the argument.
+                Please only generate a JSON string including the action type, the recipients (the `to` field), and the argument.
+                Note: If you set the `to` field, the action becomes "private". Private messages are visible only to the recipients. The recipientss must be a subset of the participants, excluding yourself.
+                      If you are speaking/acting to public, you don't need to set the `to` field.
                 Your action should follow the given format:
                 {format_instructions}
             """
@@ -294,9 +296,10 @@ async def agenerate_action(
                 {action_list}.
                 Participants: as listed in the initial background under "Participants". Use exact names when addressing others.
                 Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
-                Note: If you choose "private_message", set fields: type="private_message", to=<recipient_name>, argument=<text>. Private messages are visible only to the recipient. The recipient must be one of the participants, excluding yourself.
 
-                Please only generate a JSON string including the action type and the argument.
+                Please only generate a JSON string including the action type, the recipients (the `to` field), and the argument.
+                Note: If you set the `to` field, the action becomes "private". Private messages are visible only to the recipients. The recipientss must be a subset of the participants, excluding yourself.
+                      If you are speaking/acting to public, you don't need to set the `to` field.
                 Your action should follow the given format:
                 {format_instructions}
             """

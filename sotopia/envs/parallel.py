@@ -133,7 +133,6 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 "non-verbal communication",
                 "action",
                 "leave",
-                "private_message",
             ]
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
@@ -444,32 +443,6 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
         )
         for agent, action in complied_actions.items():
-            if action.action_type == "private_message":
-                parts = dict(
-                    p.strip().split("=", 1)
-                    for p in action.argument.split(";")
-                    if "=" in p
-                )
-                target = parts.get("to", "").strip()
-                content = parts.get("content", "").strip()
-                if target in self.agents and content:
-                    self.recv_message(
-                        target,
-                        SimpleMessage(message=f'{agent} (private): "{content}"'),
-                        private=True,
-                    )
-                    self.recv_message(
-                        "Environment",
-                        SimpleMessage(
-                            message=f"{agent} sent a private message to {target}"
-                        ),
-                    )
-                else:
-                    self.recv_message(
-                        agent,
-                        AgentAction(action_type="speak", argument=action.argument),
-                    )
-            else:
                 self.recv_message(agent, action)
 
         # Synchronous evaluators in step

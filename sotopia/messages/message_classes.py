@@ -5,9 +5,7 @@ from pydantic import BaseModel, Field
 
 from sotopia.utils import format_docstring
 
-ActionType = Literal[
-    "none", "speak", "non-verbal communication", "action", "leave", "private_message"
-]
+ActionType = Literal["none", "speak", "non-verbal communication", "action", "leave"]
 
 
 class Message(BaseModel):
@@ -171,25 +169,17 @@ class AgentAction(Message):
     # New structured fields for private messages
     to: list[str] | None = Field(
         default=None,
-        description="recipient name(s) when action_type is private_message",
+        description="recipient name(s), when specified, the action is only visible to the listed agents",
     )
 
     def to_natural_language(self) -> str:
         match self.action_type:
             case "none":
                 return "did nothing"
-            case "speak":
-                return f'said: "{self.argument}"'
-            case "non-verbal communication":
-                return f"[{self.action_type}] {self.argument}"
-            case "action":
-                return f"[{self.action_type}] {self.argument}"
-            case "private_message":
-                if self.to:
-                    return f"[private_message to={self.to}] {self.argument}"
-                return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
+            case _:
+                return f"[{self.action_type} to={self.to or 'ALL'}] {self.argument}"
 
 
 ScriptInteractionReturnType = tuple[
@@ -207,16 +197,10 @@ class ScriptInteraction(Message):
         match self.action_type:
             case "none":
                 return "did nothing"
-            case "speak":
-                return f'said: "{self.argument}"'
-            case "non-verbal communication":
-                return f"[{self.action_type}] {self.argument}"
-            case "action":
-                return f"[{self.action_type}] {self.argument}"
-            case "private_message":
-                return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
+            case _:
+                return f"[{self.action_type} to={self.to or 'ALL'}] {self.argument}"
 
         For example, the following is acceptable:
         Turn #x
