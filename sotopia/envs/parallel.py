@@ -33,6 +33,7 @@ from .evaluators import Evaluator, unweighted_aggregate_evaluate
 
 TBackground = TypeVar("TBackground", bound=ScriptBackground)
 
+
 def _actions_to_natural_language_for_viewer(
     actions: dict[str, AgentAction], viewer: str
 ) -> str:
@@ -483,7 +484,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
 
-        # Create observation for all agents dynamically 
+        # Create observation for all agents dynamically
         observations: dict[str, Observation] = {}
         for i, agent_name in enumerate(self.agents):
             obs_for_viewer = _actions_to_natural_language_for_viewer(
