@@ -168,6 +168,11 @@ class AgentAction(Message):
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
+    # New structured fields for private messages
+    to: list[str] | None = Field(
+        default=None,
+        description="recipient name(s) when action_type is private_message",
+    )
 
     def to_natural_language(self) -> str:
         match self.action_type:
@@ -180,6 +185,8 @@ class AgentAction(Message):
             case "action":
                 return f"[{self.action_type}] {self.argument}"
             case "private_message":
+                if self.to:
+                    return f"[private_message to={self.to}] {self.argument}"
                 return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
@@ -267,7 +274,9 @@ class ScriptInteraction(Message):
                 cast(int, res["turn"])
                 name: str = cast(str, res["name"])
 
-                parsed_action = AgentAction(action_type=action, argument=argument)
+                parsed_action = AgentAction(
+                    action_type=cast(ActionType, action), argument=argument
+                )
                 if name not in agent_names:
                     print(
                         f"The name of the agent, {name}, is not in the list of agent names, {agent_names}"
