@@ -8,7 +8,7 @@ from typing import Type, Union
 from redis_om import Migrator
 from sotopia.envs.evaluators import (
     EpisodeLLMEvaluator,
-    EvaluationForTwoAgents,
+    EvaluationForAgents,
     RuleBasedTerminatedEvaluator,
 )
 from sotopia.server import arun_one_episode
@@ -154,7 +154,7 @@ def run_simple_sample_with_custom_samples(
     evaluator = RuleBasedTerminatedEvaluator(max_turn_number=10, max_stale_turn=2)
     terminal_evaluator = EpisodeLLMEvaluator(
         model_name="gpt-4o-mini",
-        response_format_class=EvaluationForTwoAgents[custom_dimensions_type],  # type: ignore
+        response_format_class=EvaluationForAgents[custom_dimensions_type],  # type: ignore
     )
 
     all_agents: list[AgentProfile] = cast(

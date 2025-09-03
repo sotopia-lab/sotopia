@@ -143,7 +143,10 @@ async def agenerate(
             api_key=api_key,
         )
         result = response.choices[0].message.content
-        log.info(f"Generated result: {result}")
+        # Include agent name in logs if available
+        agent_name = input_values.get("agent", "")
+        log_prefix = f" [{agent_name}]" if agent_name else ""
+        log.info(f"Generated result{log_prefix}: {result}")
         assert isinstance(result, str)
         return cast(OutputType, output_parser.parse(result))
 
@@ -177,7 +180,10 @@ async def agenerate(
         )
         parsed_result = output_parser.parse(reformat_result)
 
-    log.info(f"Generated result: {parsed_result}")
+    # Include agent name in logs if available
+    agent_name = input_values.get("agent", "")
+    log_prefix = f" [{agent_name}]" if agent_name else ""
+    log.info(f"Generated result{log_prefix}: {parsed_result}")
     return parsed_result
 
 
@@ -303,6 +309,7 @@ async def agenerate_action(
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
+            structured_output=True,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
         )

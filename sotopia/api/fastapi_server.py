@@ -26,7 +26,7 @@ from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
     EpisodeLLMEvaluator,
-    EvaluationForTwoAgents,
+    EvaluationForAgents,
 )
 from sotopia.server import arun_one_episode
 from sotopia.agents import LLMAgent, Agents
@@ -275,7 +275,7 @@ async def nonstreaming_simulation(
         "terminal_evaluators": [
             EpisodeLLMEvaluator(
                 simulation_request.models[0],
-                EvaluationForTwoAgents[SotopiaDimensions],
+                EvaluationForAgents[SotopiaDimensions],
             ),
         ],
     }
