@@ -50,13 +50,33 @@ class RuleBasedTerminatedEvaluator(Evaluator):
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # Rule 1: If the conversation is too long, terminate the conversation
         conversation_too_long = turn_number >= self.max_turn_number
-        # Rule 2: If less than two players are present, terminate the conversation
-        p_i_leaving = []
-        for message in messages[::-1]:
-            if message[0] != "Environment" and isinstance(message[1], AgentAction):
-                if message[1].action_type == "leave":
-                    p_i_leaving.append(message[0])
-        players_leaving = len(p_i_leaving) > 0
+        # Rule 2: If fewer than two agents remain active (not left), terminate
+        # Determine latest action per agent, and count those whose latest is not "leave"
+        latest_action_by_agent: dict[str, str] = {}
+        observed_agents: set[str] = set()
+        for speaker, msg in messages:
+            if speaker != "Environment":
+                observed_agents.add(speaker)
+
+        for speaker, msg in messages[::-1]:
+            if speaker == "Environment":
+                continue
+            if not isinstance(msg, AgentAction):
+                continue
+            if speaker not in latest_action_by_agent:
+                latest_action_by_agent[speaker] = msg.action_type
+
+        # If we haven't observed any agent messages yet, do not terminate early
+        if observed_agents:
+            num_active_agents = sum(
+                1
+                for agent in observed_agents
+                if latest_action_by_agent.get(agent, "speak") != "leave"
+            )
+        else:
+            num_active_agents = 2
+
+        too_few_agents = num_active_agents < 2
         # Rule 3: If the conversation is stale for too long, terminate the conversation
         stale_count = 0
         for message in messages[::-1]:
@@ -70,10 +90,10 @@ class RuleBasedTerminatedEvaluator(Evaluator):
             if stale_count > self.max_stale_turn:
                 break
         stale_too_long = stale_count > self.max_stale_turn
-        terminated = conversation_too_long or players_leaving or stale_too_long
+        terminated = conversation_too_long or too_few_agents or stale_too_long
         reasons_for_termination = (
             f"{'The conversation is too long; ' if conversation_too_long else ''}"
-            f"{'Players are leaving; ' if players_leaving else ''}"
+            f"{'Too few active agents; ' if too_few_agents else ''}"
             f"{'The conversation stales for too long; ' if stale_too_long else ''}"
         )
         return [

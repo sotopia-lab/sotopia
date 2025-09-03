@@ -69,7 +69,10 @@ class ScriptBackground(Message):
         agent_backgrounds: list[str],
         agent_goals: list[str],
     ) -> "ScriptBackground":
-        """Create a ScriptBackground for multi-agent scenarios."""
+        assert (
+            len(agent_names) == len(agent_backgrounds) == len(agent_goals)
+        ), "agent_names, agent_backgrounds, and agent_goals must have equal length"
+        assert len(agent_names) >= 2, "At least two agents required"
         return cls(
             scenario=scenario,
             agent_names=agent_names,
@@ -85,15 +88,17 @@ class ScriptBackground(Message):
         )
 
     def to_natural_language(self) -> str:
-        # Use agent_names if available, otherwise fall back to p1_name/p2_name
-        if self.agent_names:
-            agent_names = self.agent_names
-            agent_backgrounds = self.agent_backgrounds or []
-            agent_goals = self.agent_goals or []
-        else:
-            agent_names = [self.p1_name, self.p2_name]
-            agent_backgrounds = [self.p1_background, self.p2_background]
-            agent_goals = [self.p1_goal, self.p2_goal]
+        agent_names = self.agent_names
+        agent_backgrounds = self.agent_backgrounds or []
+        agent_goals = self.agent_goals or []
+
+        # Ensure list lengths align for rendering
+        if len(agent_backgrounds) < len(agent_names):
+            agent_backgrounds = agent_backgrounds + [""] * (
+                len(agent_names) - len(agent_backgrounds)
+            )
+        if len(agent_goals) < len(agent_names):
+            agent_goals = agent_goals + [""] * (len(agent_names) - len(agent_goals))
 
         # Check if we have any backgrounds to display
         if any(agent_backgrounds):
