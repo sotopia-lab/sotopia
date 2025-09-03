@@ -50,28 +50,80 @@ class ScriptBackground(Message):
     p1_goal: str = Field(description="goal of participant 1")
     p2_goal: str = Field(description="goal of participant 2")
 
+    # Multi-agent support fields (optional for backward compatibility)
+    agent_names: list[str] | None = Field(
+        default=None, description="names of all participants"
+    )
+    agent_backgrounds: list[str] | None = Field(
+        default=None, description="backgrounds of all participants"
+    )
+    agent_goals: list[str] | None = Field(
+        default=None, description="goals of all participants"
+    )
+
+    @classmethod
+    def create_multi_agent(
+        cls,
+        scenario: str,
+        agent_names: list[str],
+        agent_backgrounds: list[str],
+        agent_goals: list[str],
+    ) -> "ScriptBackground":
+        """Create a ScriptBackground for multi-agent scenarios."""
+        return cls(
+            scenario=scenario,
+            agent_names=agent_names,
+            agent_backgrounds=agent_backgrounds,
+            agent_goals=agent_goals,
+            # Map to existing fields for compatibility
+            p1_name=agent_names[0] if agent_names else "",
+            p2_name=agent_names[1] if len(agent_names) > 1 else "",
+            p1_background=agent_backgrounds[0] if agent_backgrounds else "",
+            p2_background=agent_backgrounds[1] if len(agent_backgrounds) > 1 else "",
+            p1_goal=agent_goals[0] if agent_goals else "",
+            p2_goal=agent_goals[1] if len(agent_goals) > 1 else "",
+        )
+
     def to_natural_language(self) -> str:
-        if self.p1_background or self.p2_background:
-            p1_background = self.p1_background if self.p1_background else "Unknown"
-            p2_background = self.p2_background if self.p2_background else "Unknown"
-            # Not using AND, since in stranger relation the background is not visible
+        # Use agent_names if available, otherwise fall back to p1_name/p2_name
+        if self.agent_names:
+            agent_names = self.agent_names
+            agent_backgrounds = self.agent_backgrounds or []
+            agent_goals = self.agent_goals or []
+        else:
+            agent_names = [self.p1_name, self.p2_name]
+            agent_backgrounds = [self.p1_background, self.p2_background]
+            agent_goals = [self.p1_goal, self.p2_goal]
+
+        # Check if we have any backgrounds to display
+        if any(agent_backgrounds):
+            backgrounds_text = ""
+            for name, background in zip(agent_names, agent_backgrounds):
+                bg_text = background if background else "Unknown"
+                backgrounds_text += f"{name}'s background: {bg_text}\n"
+
+            goals_text = ""
+            for name, goal in zip(agent_names, agent_goals):
+                goals_text += f"{name}'s goal: {goal}\n"
+
             return format_docstring(
                 f"""Here is the context of this interaction:
             Scenario: {self.scenario}
-            Participants: {self.p1_name} and {self.p2_name}
-            {self.p1_name}'s background: {p1_background}
-            {self.p2_name}'s background: {p2_background}
-            {self.p1_name}'s goal: {self.p1_goal}
-            {self.p2_name}'s goal: {self.p2_goal}
+            Participants: {', '.join(agent_names)}
+            {backgrounds_text.strip()}
+            {goals_text.strip()}
             """
             )
         else:
+            goals_text = ""
+            for name, goal in zip(agent_names, agent_goals):
+                goals_text += f"{name}'s goal: {goal}\n"
+
             return format_docstring(
                 f"""Here is the context of this interaction:
             Scenario: {self.scenario}
-            Participants: {self.p1_name} and {self.p2_name}
-            {self.p1_name}'s goal: {self.p1_goal}
-            {self.p2_name}'s goal: {self.p2_goal}
+            Participants: {', '.join(agent_names)}
+            {goals_text.strip()}
             """
             )
 
@@ -114,19 +166,20 @@ class AgentAction(Message):
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
+    # New structured fields for private messages
+    to: list[str] | None = Field(
+        default=None,
+        description="recipient name(s), when specified, the action is only visible to the listed agents",
+    )
 
     def to_natural_language(self) -> str:
         match self.action_type:
             case "none":
                 return "did nothing"
-            case "speak":
-                return f'said: "{self.argument}"'
-            case "non-verbal communication":
-                return f"[{self.action_type}] {self.argument}"
-            case "action":
-                return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
+            case _:
+                return f"[{self.action_type} to={self.to or 'ALL'}] {self.argument}"
 
 
 ScriptInteractionReturnType = tuple[
@@ -144,14 +197,10 @@ class ScriptInteraction(Message):
         match self.action_type:
             case "none":
                 return "did nothing"
-            case "speak":
-                return f'said: "{self.argument}"'
-            case "non-verbal communication":
-                return f"[{self.action_type}] {self.argument}"
-            case "action":
-                return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
+            case _:
+                return f"[{self.action_type} to={self.to or 'ALL'}] {self.argument}"
 
         For example, the following is acceptable:
         Turn #x
@@ -209,7 +258,9 @@ class ScriptInteraction(Message):
                 cast(int, res["turn"])
                 name: str = cast(str, res["name"])
 
-                parsed_action = AgentAction(action_type=action, argument=argument)
+                parsed_action = AgentAction(
+                    action_type=cast(ActionType, action), argument=argument
+                )
                 if name not in agent_names:
                     print(
                         f"The name of the agent, {name}, is not in the list of agent names, {agent_names}"

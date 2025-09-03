@@ -18,9 +18,8 @@ log = logging.getLogger("evaluators")
 T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
 
-class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
-    agent_1_evaluation: T_eval_dim
-    agent_2_evaluation: T_eval_dim
+class EvaluationForAgents(BaseModel, Generic[T_eval_dim]):
+    evaluations: dict[str, T_eval_dim]
 
 
 class Evaluator(abc.ABC):
@@ -51,17 +50,13 @@ class RuleBasedTerminatedEvaluator(Evaluator):
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # Rule 1: If the conversation is too long, terminate the conversation
         conversation_too_long = turn_number >= self.max_turn_number
-        # Rule 2: If one of the players leaves, terminate the conversation
-        p1_leaving = (
-            len(messages) > 1
-            and isinstance(messages[-2][1], AgentAction)
-            and messages[-2][1].action_type == "leave"
-        )
-        p2_leaving = (
-            bool(len(messages))
-            and isinstance(messages[-1][1], AgentAction)
-            and messages[-1][1].action_type == "leave"
-        )
+        # Rule 2: If less than two players are present, terminate the conversation
+        p_i_leaving = []
+        for message in messages[::-1]:
+            if message[0] != "Environment" and isinstance(message[1], AgentAction):
+                if message[1].action_type == "leave":
+                    p_i_leaving.append(message[0])
+        players_leaving = len(p_i_leaving) > 0
         # Rule 3: If the conversation is stale for too long, terminate the conversation
         stale_count = 0
         for message in messages[::-1]:
@@ -75,11 +70,10 @@ class RuleBasedTerminatedEvaluator(Evaluator):
             if stale_count > self.max_stale_turn:
                 break
         stale_too_long = stale_count > self.max_stale_turn
-        terminated = conversation_too_long or p1_leaving or p2_leaving or stale_too_long
+        terminated = conversation_too_long or players_leaving or stale_too_long
         reasons_for_termination = (
             f"{'The conversation is too long; ' if conversation_too_long else ''}"
-            f"{'Agent 1 is leaving; ' if p1_leaving else ''}"
-            f"{'Agent 2 is leaving; ' if p2_leaving else ''}"
+            f"{'Players are leaving; ' if players_leaving else ''}"
             f"{'The conversation stales for too long; ' if stale_too_long else ''}"
         )
         return [
@@ -99,7 +93,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     def __init__(
         self,
         model_name: str,
-        response_format_class: type[EvaluationForTwoAgents[T_eval_dim]],
+        response_format_class: type[EvaluationForAgents[T_eval_dim]],
     ) -> None:
         self.model_name = model_name
         self.prompt = ""
@@ -140,7 +134,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
 
         try:
-            response: EvaluationForTwoAgents[T_eval_dim] = await agenerate(
+            response: EvaluationForAgents[T_eval_dim] = await agenerate(
                 model_name=self.model_name,
                 template="""{history},
                     Based on previous interactions, evaluate how well participants achieve their goals.
@@ -155,32 +149,23 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 structured_output=self.model_name.startswith("custom/structured"),
             )
             response_list = []
-            # TODO: multiple agents
-            for dimension in response.agent_1_evaluation.dict().keys():
-                response_list.append(
-                    (
-                        "agent_1",
+
+            for i, evaluation in enumerate(response.evaluations.values()):
+                # Map agent names to expected format (agent_1, agent_2, etc.)
+                agent_key = f"agent_{i+1}"
+                for dimension in evaluation.model_dump().keys():
+                    response_list.append(
                         (
+                            agent_key,
                             (
-                                dimension,
-                                response.agent_1_evaluation.dict()[dimension][1],
+                                (
+                                    dimension,
+                                    evaluation.model_dump()[dimension][1],
+                                ),
+                                evaluation.model_dump()[dimension][0],
                             ),
-                            response.agent_1_evaluation.dict()[dimension][0],
-                        ),
+                        )
                     )
-                )
-                response_list.append(
-                    (
-                        "agent_2",
-                        (
-                            (
-                                dimension,
-                                response.agent_2_evaluation.dict()[dimension][1],
-                            ),
-                            response.agent_2_evaluation.dict()[dimension][0],
-                        ),
-                    )
-                )
             return response_list
         except Exception as e:
             print(e)
@@ -233,42 +218,36 @@ def unweighted_aggregate_evaluate(
         responses_dict[response[0]].append(response[1])
 
     environment_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
-    agent_1_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
-    agent_2_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
+    agent_responses: dict[str, tuple[dict[str, float | int | bool], str]] = {}
+
     for k, v in responses_dict.items():
         if k == "environment":
             environment_responses = _reduce(v)
         else:
-            if k == "agent_1":
-                agent_1_responses = _reduce(v)
-            elif k == "agent_2":
-                agent_2_responses = _reduce(v)
-            else:
-                # TODO: supports more than two agents
-                raise ValueError(f"Only supports agent_1 and agent_2, got {k}")
+            # Support any number of agents (agent_1, agent_2, agent_3, etc.)
+            agent_responses[k] = _reduce(v)
+
+    # Build comments from all agents dynamically
+    agent_comments = ""
+    for agent_key, (_, comment) in agent_responses.items():
+        if comment:
+            agent_name = agent_key.replace("_", " ").title()
+            agent_comments += f"{agent_name} comments:\n{comment}\n"
 
     comments = (
-        (
-            f"Environment comments: {environment_responses[1]}\n"
-            if environment_responses[1]
-            else ""
-        )
-        + (
-            f"Agent 1 comments:\n{agent_1_responses[1]}\n"
-            if agent_1_responses[1]
-            else ""
-        )
-        + (
-            f"Agent 2 comments:\n{agent_2_responses[1]}\n"
-            if agent_2_responses[1]
-            else ""
-        )
-    )
+        f"Environment comments: {environment_responses[1]}\n"
+        if environment_responses[1]
+        else ""
+    ) + agent_comments
     if (
         "terminated" in environment_responses[0]
         and environment_responses[0]["terminated"]
     ):
         log.debug(f"[green] The conversation is terminated. {response}")
+    # Get first two agents for backward compatibility with ScriptEnvironmentResponse
+    agent_1_responses = agent_responses.get("agent_1", ({}, ""))
+    agent_2_responses = agent_responses.get("agent_2", ({}, ""))
+
     return ScriptEnvironmentResponse(
         terminated=environment_responses[0]["terminated"]
         if "terminated" in environment_responses[0]
