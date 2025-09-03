@@ -142,8 +142,8 @@ charlie_goal = """You are walking on the street passing by two people talking wi
 You want to:
 1. Find out what are the two people talking about
 2. When joining the conversation, repeat what you have heared about the conversation.
-   Else start the conversation by "I don't know what you are talking about, but..."
 3. Clarify who you are talking to at the start of each of your reply.
+4. Leave once you know the any of the content of the conversation
 """
 
 
