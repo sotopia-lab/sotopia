@@ -292,7 +292,9 @@ async def agenerate_action(
                 {history}.
                 You are at Turn #{turn_number}. Your available action types are
                 {action_list}.
+                Participants: as listed in the initial background under "Participants". Use exact names when addressing others.
                 Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
+                Note: If you choose "private_message", use argument format: to=<recipient_name>; content=<text>. Private messages are visible only to the recipient. The recipient must be one of the participants, excluding yourself.
 
                 Please only generate a JSON string including the action type and the argument.
                 Your action should follow the given format:

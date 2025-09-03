@@ -5,7 +5,9 @@ from pydantic import BaseModel, Field
 
 from sotopia.utils import format_docstring
 
-ActionType = Literal["none", "speak", "non-verbal communication", "action", "leave"]
+ActionType = Literal[
+    "none", "speak", "non-verbal communication", "action", "leave", "private_message"
+]
 
 
 class Message(BaseModel):
@@ -177,6 +179,8 @@ class AgentAction(Message):
                 return f"[{self.action_type}] {self.argument}"
             case "action":
                 return f"[{self.action_type}] {self.argument}"
+            case "private_message":
+                return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
 
@@ -201,6 +205,8 @@ class ScriptInteraction(Message):
             case "non-verbal communication":
                 return f"[{self.action_type}] {self.argument}"
             case "action":
+                return f"[{self.action_type}] {self.argument}"
+            case "private_message":
                 return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"

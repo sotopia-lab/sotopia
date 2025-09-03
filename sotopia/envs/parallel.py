@@ -127,7 +127,14 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
-            ["none", "speak", "non-verbal communication", "action", "leave"]
+            [
+                "none",
+                "speak",
+                "non-verbal communication",
+                "action",
+                "leave",
+                "private_message",
+            ]
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
         evaluators: list[Evaluator] = [],
@@ -437,8 +444,35 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
         )
         for agent, action in complied_actions.items():
-            self.recv_message(agent, action)
+            if action.action_type == "private_message":
+                parts = dict(
+                    p.strip().split("=", 1)
+                    for p in action.argument.split(";")
+                    if "=" in p
+                )
+                target = parts.get("to", "").strip()
+                content = parts.get("content", "").strip()
+                if target in self.agents and content:
+                    self.recv_message(
+                        target,
+                        SimpleMessage(message=f'{agent} (private): "{content}"'),
+                        private=True,
+                    )
+                    self.recv_message(
+                        "Environment",
+                        SimpleMessage(
+                            message=f"{agent} sent a private message to {target}"
+                        ),
+                    )
+                else:
+                    self.recv_message(
+                        agent,
+                        AgentAction(action_type="speak", argument=action.argument),
+                    )
+            else:
+                self.recv_message(agent, action)
 
+        # Synchronous evaluators in step
         response = unweighted_aggregate_evaluate(
             list(
                 itertools.chain(

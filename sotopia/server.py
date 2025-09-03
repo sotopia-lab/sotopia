@@ -178,6 +178,7 @@ async def arun_one_episode(
             for idx, agent_name in enumerate(env.agents):
                 agent_messages[agent_name] = actions[idx]
 
+                # Publicly log only non-private actions; default is public
                 messages[-1].append(
                     (agent_name, "Environment", agent_messages[agent_name])
                 )
