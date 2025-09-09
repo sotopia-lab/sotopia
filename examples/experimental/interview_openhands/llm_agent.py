@@ -324,7 +324,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 "goal": self.goal,
                                 "agent_name": self.name,
                             },
-                            temperature=0.7,
                             output_parser=StrOutputParser(),
                         )
                     except Exception as e:

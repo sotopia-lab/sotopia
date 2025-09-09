@@ -251,7 +251,7 @@ async def arun_one_episode(
 @gin.configurable
 async def run_async_server(
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
-    action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",
+    action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
     model_dict: dict[str, str] = {},
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
     omniscient: bool = False,
@@ -418,11 +418,11 @@ async def arun_one_script(
         )
     )
     info: dict[str, dict[str, str | ScriptEnvironmentResponse | float | None]] = {
-        script_background.p1_name: {
+        script_background.agent_names[0]: {
             "comments": response.comments or "",
             "complete_rating": response.p1_rate or 0,  # type: ignore
         },
-        script_background.p2_name: {
+        script_background.agent_names[1]: {
             "comments": response.comments or "",
             "complete_rating": response.p2_rate or 0,  # type: ignore
         },
@@ -432,13 +432,18 @@ async def arun_one_script(
         environment=env.profile.pk,
         agents=[agent.profile.pk for agent in agent_list],
         tag=tag,
-        models=[model_dict["env"], model_dict["agent1"], model_dict["agent2"]],
+        models=[model_dict["env"]]
+        + [
+            model_dict.get(f"agent{i+1}", model_dict.get("agent1", ""))
+            for i in range(len(agent_list))
+        ],
         messages=[
             [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
             for messages_in_turn in messages
         ],
-        reasoning=str(info[env.agents[0]]["comments"])
-        + str(info[env.agents[1]]["comments"]),
+        reasoning="".join(
+            [str(info[agent]["comments"]) for agent in env.agents[:2]]
+        ),  # Keep first 2 for compatibility
         rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
         rewards_prompt=info["rewards_prompt"]["overall_prompt"],
     )
@@ -480,7 +485,6 @@ async def aevaluate_one_episode(
                             turn_number=-1,
                             history=history,
                             messages=None,
-                            temperature=0.0,
                         )
                         for single_evaluator in [evaluator]
                     ]

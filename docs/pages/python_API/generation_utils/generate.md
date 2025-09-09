@@ -93,7 +93,7 @@ Formats badly structured output for a script into a proper format.
 - **Returns:**
   - A properly formatted `BaseMessage`.
 
-#### `agenerate(model_name: str, template: str, input_values: dict[str, str], output_parser: BaseOutputParser[OutputType], temperature: float = 0.7, structured_output: bool = False) -> OutputType`
+#### `agenerate(model_name: str, template: str, input_values: dict[str, str], output_parser: BaseOutputParser[OutputType],  structured_output: bool = False) -> OutputType`
 Generates asynchronous responses using langchain.
 
 - **Parameters:**
@@ -101,7 +101,6 @@ Generates asynchronous responses using langchain.
   - `template (str)`: The template string.
   - `input_values (dict[str, str])`: Input values for the template.
   - `output_parser (BaseOutputParser[OutputType])`: Parser for the output.
-  - `temperature (float)`: Sampling temperature.
   - `structured_output (bool)`: Whether to expect structured output.
 
 - **Returns:**
@@ -124,7 +123,6 @@ result = await agenerate_env_profile(
     model_name="gpt-4",
     inspiration_prompt="asking my boyfriend to stop being friends with his ex",
     examples="Example scenario text",
-    temperature=0.7,
 )
 print(result)
 ```

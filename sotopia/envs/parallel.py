@@ -151,12 +151,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.background_class = background_class
         self.background = self.background_class(
             scenario="",
-            p1_background="",
-            p2_background="",
-            p1_goal="",
-            p2_goal="",
-            p1_name="",
-            p2_name="",
+            agent_names=[],
+            agent_backgrounds=[],
+            agent_goals=[],
         )
 
         self.agents = []
@@ -223,151 +220,76 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                         f"Participate effectively in this {len(agents)}-agent interaction"
                     )
 
-            # Handle both 2-agent and multi-agent scenarios
+            # Handle multi-agent scenarios
             num_agents = len(agents)
             raw_background: ScriptBackground
-            if num_agents > 2:
-                # Multi-agent scenario - use ScriptBackground.create_multi_agent
-                raw_agent_bios = []
-                for i, agent_name in enumerate(agent_names):
-                    bg = get_bio(
-                        self.profile.relationship,
-                        agents[agent_name].profile,
-                        agent_id=i,
-                    )
-                    raw_agent_bios.append(bg)
+            raw_agent_bios = []
+            for i, agent_name in enumerate(agent_names):
+                bg = get_bio(
+                    self.profile.relationship,
+                    agents[agent_name].profile,
+                    agent_id=i,
+                )
+                raw_agent_bios.append(bg)
 
-                raw_background = ScriptBackground.create_multi_agent(
-                    scenario=self.profile.scenario,
-                    agent_names=agent_names,
-                    agent_backgrounds=raw_agent_bios,
-                    agent_goals=[
-                        f"<root viewer='agent_{i}'>{goal}</root>"
-                        for i, goal in enumerate(agent_goals[:num_agents])
-                    ],
-                )
-            else:
-                # 2-agent scenario - use existing ScriptBackground
-                raw_background = self.background_class(
-                    scenario=self.profile.scenario,
-                    p1_background=get_bio(
-                        self.profile.relationship,
-                        agents[agent_names[0]].profile,
-                        agent_id=0,
-                    ),
-                    p2_background=get_bio(
-                        self.profile.relationship,
-                        agents[agent_names[1]].profile,
-                        agent_id=1,
-                    ),
-                    p1_goal=f"<root viewer='agent_0'>{agent_goals[0]}</root>",
-                    p2_goal=f"<root viewer='agent_1'>{agent_goals[1]}</root>",
-                    p1_name=agent_names[0],
-                    p2_name=agent_names[1],
-                )
+            raw_background = self.background_class(
+                scenario=self.profile.scenario,
+                agent_names=agent_names,
+                agent_backgrounds=raw_agent_bios,
+                agent_goals=[
+                    f"<root viewer='agent_{i}'>{goal}</root>"
+                    for i, goal in enumerate(agent_goals[:num_agents])
+                ],
+            )
 
             if lite:
-                if num_agents > 2 and raw_background.agent_names:
-                    # Multi-agent lite mode
-                    raw_background.agent_backgrounds = [""] * num_agents
-                elif num_agents == 2:
-                    # 2-agent lite mode
-                    raw_background.p1_background = ""
-                    raw_background.p2_background = ""
+                # Lite mode - clear backgrounds
+                raw_background.agent_backgrounds = [""] * num_agents
 
-            # Create final rendered background
-            if num_agents > 2 and raw_background.agent_names:
-                # Multi-agent final background
-                self.background = ScriptBackground.create_multi_agent(
-                    scenario=render_text_for_environment(raw_background.scenario),
-                    agent_names=raw_background.agent_names,
-                    agent_backgrounds=[
-                        render_text_for_environment(bg)
-                        for bg in (raw_background.agent_backgrounds or [])
-                    ],
-                    agent_goals=[
-                        render_text_for_environment(goal)
-                        for goal in (raw_background.agent_goals or [])
-                    ],
-                )
-            else:
-                # 2-agent final background
-                self.background = self.background_class(
-                    scenario=render_text_for_environment(raw_background.scenario),
-                    p1_background=render_text_for_environment(
-                        raw_background.p1_background
-                    ),
-                    p2_background=render_text_for_environment(
-                        raw_background.p2_background
-                    ),
-                    p1_goal=render_text_for_environment(raw_background.p1_goal),
-                    p2_goal=render_text_for_environment(raw_background.p2_goal),
-                    p1_name=raw_background.p1_name,
-                    p2_name=raw_background.p2_name,
-                )
+            # Create final rendered background (works for 2+ agents)
+            self.background = self.background_class(
+                scenario=render_text_for_environment(raw_background.scenario),
+                agent_names=raw_background.agent_names,
+                agent_backgrounds=[
+                    render_text_for_environment(bg)
+                    for bg in raw_background.agent_backgrounds
+                ],
+                agent_goals=[
+                    render_text_for_environment(goal)
+                    for goal in raw_background.agent_goals
+                ],
+            )
         else:
             raise ValueError("agents must be provided")
 
-        # Set agent list based on scenario type
-        if num_agents > 2:
-            self.agents = agent_names
-        else:
-            self.agents = [self.background.p1_name, self.background.p2_name]
+        # Set agent list from background
+        self.agents = self.background.agent_names
         # Create individual agent backgrounds
         agent_backgrounds: list[ScriptBackground] = []
         if omniscient:
             for i in range(num_agents):
                 agent_backgrounds.append(copy.deepcopy(self.background))
         else:
-            if num_agents > 2 and raw_background.agent_names:
-                # Multi-agent non-omniscient backgrounds
-                for i in range(num_agents):
-                    # Each agent sees their own goal, others are hidden
-                    hidden_goals = list(raw_background.agent_goals or [])
-                    for j in range(len(hidden_goals)):
-                        if j != i:
-                            hidden_goals[j] = "Unknown"
+            # Non-omniscient backgrounds - each agent sees only their own goal
+            for i in range(num_agents):
+                # Each agent sees their own goal, others are hidden
+                hidden_goals = list(raw_background.agent_goals)
+                for j in range(len(hidden_goals)):
+                    if j != i:
+                        hidden_goals[j] = "Unknown"
 
-                    agent_background = ScriptBackground.create_multi_agent(
-                        scenario=render_text_for_agent(raw_background.scenario, i),
-                        agent_names=raw_background.agent_names,
-                        agent_backgrounds=[
-                            render_text_for_agent(bg, i) if j == i else "Unknown"
-                            for j, bg in enumerate(
-                                raw_background.agent_backgrounds or []
-                            )
-                        ],
-                        agent_goals=[
-                            render_text_for_agent(goal, i) for goal in hidden_goals
-                        ],
-                    )
-                    agent_backgrounds.append(agent_background)
-            else:
-                # 2-agent non-omniscient backgrounds
-                for i in range(num_agents):
-                    agent_backgrounds.append(
-                        self.background_class(
-                            scenario=render_text_for_agent(raw_background.scenario, i),
-                            p1_background=render_text_for_agent(
-                                raw_background.p1_background, i
-                            ),
-                            p2_background=render_text_for_agent(
-                                raw_background.p2_background, i
-                            ),
-                            p1_goal=render_text_for_agent(raw_background.p1_goal, i),
-                            p2_goal=render_text_for_agent(raw_background.p2_goal, i),
-                            p1_name=raw_background.p1_name,
-                            p2_name=raw_background.p2_name,
-                        )
-                    )
-        # Handle goal hiding for 2-agent case (multi-agent already handled above)
-        if num_agents == 2 and not omniscient:
-            # Type check to ensure we have ScriptBackground for 2-agent scenarios
-            if hasattr(agent_backgrounds[0], "p2_goal") and hasattr(
-                agent_backgrounds[1], "p1_goal"
-            ):
-                agent_backgrounds[0].p2_goal = "Unknown"
-                agent_backgrounds[1].p1_goal = "Unknown"
+                agent_background = self.background_class(
+                    scenario=render_text_for_agent(raw_background.scenario, i),
+                    agent_names=raw_background.agent_names,
+                    agent_backgrounds=[
+                        render_text_for_agent(bg, i) if j == i else "Unknown"
+                        for j, bg in enumerate(raw_background.agent_backgrounds)
+                    ],
+                    agent_goals=[
+                        render_text_for_agent(goal, i) for goal in hidden_goals
+                    ],
+                )
+                agent_backgrounds.append(agent_background)
 
         self.action_spaces = {
             agent: Dict(

@@ -130,7 +130,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     "goal": self.goal,
                     "agent_name": self.name,
                 },
-                temperature=0.7,
                 output_parser=StrOutputParser(),
             )
 

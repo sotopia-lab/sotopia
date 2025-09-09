@@ -91,7 +91,6 @@ async def agenerate(
     template: str,
     input_values: dict[str, str],
     output_parser: OutputParser[OutputType],
-    temperature: float = 0.7,
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -138,7 +137,6 @@ async def agenerate(
             messages=messages,
             response_format=output_parser.pydantic_object,
             drop_params=True,  # drop params to avoid model error if the model does not support it
-            temperature=temperature,
             base_url=base_url,
             api_key=api_key,
         )
@@ -155,7 +153,6 @@ async def agenerate(
     response = await acompletion(
         model=model_name,
         messages=messages,
-        temperature=temperature,
         drop_params=True,
         api_base=base_url,
         api_key=api_key,
@@ -193,7 +190,6 @@ async def agenerate_env_profile(
     model_name: str,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
-    temperature: float = 0.7,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> EnvironmentProfile:
@@ -214,7 +210,6 @@ async def agenerate_env_profile(
             examples=examples,
         ),
         output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
-        temperature=temperature,
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
     )
@@ -256,7 +251,6 @@ async def agenerate_action(
     action_types: list[ActionType],
     agent: str,
     goal: str,
-    temperature: float = 0.7,
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -308,7 +302,6 @@ async def agenerate_action(
                 action_list=" ".join(action_types),
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
-            temperature=temperature,
             structured_output=True,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
@@ -323,7 +316,6 @@ async def agenerate_action(
 async def agenerate_script(
     model_name: str,
     background: ScriptBackground,
-    temperature: float = 0.7,
     agent_names: list[str] = [],
     agent_name: str = "",
     history: str = "",
@@ -362,7 +354,6 @@ async def agenerate_script(
                     background=background.to_natural_language(),
                     single_turn=True,
                 ),
-                temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
             )
@@ -386,7 +377,6 @@ async def agenerate_script(
                     background=background.to_natural_language(),
                     single_turn=False,
                 ),
-                temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
             )

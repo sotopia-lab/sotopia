@@ -22,7 +22,6 @@ async def generate_n_random_numbers(n: int) -> list[int]:
         model_name="custom/llama3.2:1b@http://localhost:8000/v1",
         template="Generate {n} random integer numbers. {format_instructions}",
         input_values={"n": str(n)},
-        temperature=0.0,
         output_parser=ListOfIntOutputParser(n),
     )
 

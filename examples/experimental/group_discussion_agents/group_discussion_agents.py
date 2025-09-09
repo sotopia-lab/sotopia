@@ -102,7 +102,6 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                             "goal": self.goal,
                             "agent_name": self.name,
                         },
-                        temperature=0.7,
                         output_parser=StrOutputParser(),
                     )
                     if agent_action != "none" and agent_action != "":

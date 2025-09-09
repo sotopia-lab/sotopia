@@ -23,7 +23,6 @@ async def test_agenerate_list_integer() -> None:
         "{format_instructions}",
         {},
         ListOfIntOutputParser(number_of_int=length, range_of_int=(lower, upper)),
-        temperature=0.0,
     )
     assert isinstance(list_of_int, list)
     assert len(list_of_int) == length
@@ -40,7 +39,6 @@ async def test_logging_behavior(caplog: Any) -> None:
         "{format_instructions}",
         {},
         ListOfIntOutputParser(5, (-10, 10)),
-        temperature=0.0,
     )
     # Check if any log records were captured
     assert len(caplog.records) > 0, "No log records captured"
