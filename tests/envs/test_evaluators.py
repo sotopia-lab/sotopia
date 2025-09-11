@@ -27,7 +27,7 @@ def test_rule_based_teminated_evaluator() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 1 is leaving; "
+    assert comment == "Too few active agents; "
     response = evaluator(
         1,
         [
@@ -36,7 +36,7 @@ def test_rule_based_teminated_evaluator() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 2 is leaving; "
+    assert comment == "Too few active agents; "
     response = evaluator(
         3,
         [
@@ -101,7 +101,7 @@ async def test_rule_based_teminated_evaluator_async() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 1 is leaving; "
+    assert comment == "Too few active agents; "
     response = await evaluator.__acall__(
         1,
         [
@@ -110,7 +110,7 @@ async def test_rule_based_teminated_evaluator_async() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 2 is leaving; "
+    assert comment == "Too few active agents; "
     response = await evaluator.__acall__(
         3,
         [

@@ -48,6 +48,16 @@ class ScriptBackground(Message):
     agent_goals: list[str] = Field(description="goals of all participants")
 
     def to_natural_language(self) -> str:
+        # Format participant names naturally with "and" before the last name
+        if len(self.agent_names) == 1:
+            participants_str = self.agent_names[0]
+        elif len(self.agent_names) == 2:
+            participants_str = f"{self.agent_names[0]} and {self.agent_names[1]}"
+        else:
+            participants_str = (
+                ", ".join(self.agent_names[:-1]) + f", and {self.agent_names[-1]}"
+            )
+
         # Check if we have any backgrounds to display
         if any(self.agent_backgrounds):
             backgrounds_text = ""
@@ -62,7 +72,7 @@ class ScriptBackground(Message):
             return format_docstring(
                 f"""Here is the context of this interaction:
             Scenario: {self.scenario}
-            Participants: {', '.join(self.agent_names)}
+            Participants: {participants_str}
             {backgrounds_text.strip()}
             {goals_text.strip()}
             """
@@ -75,7 +85,7 @@ class ScriptBackground(Message):
             return format_docstring(
                 f"""Here is the context of this interaction:
             Scenario: {self.scenario}
-            Participants: {', '.join(self.agent_names)}
+            Participants: {participants_str}
             {goals_text.strip()}
             """
             )
