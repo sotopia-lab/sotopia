@@ -168,7 +168,18 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
             response_list = []
 
-            for i, evaluation in enumerate(response.evaluations.values()):
+            # Count actual participating agents (exclude Environment)
+            participating_agents = set()
+            if messages:
+                for speaker, _ in messages:
+                    if speaker != "Environment":
+                        participating_agents.add(speaker)
+            num_agents = len(participating_agents)
+
+            # Only process evaluations for the actual number of agents
+            for i, evaluation in enumerate(
+                list(response.evaluations.values())[:num_agents]
+            ):
                 # Map agent names to expected format (agent_1, agent_2, etc.)
                 agent_key = f"agent_{i+1}"
                 for dimension in evaluation.model_dump().keys():
