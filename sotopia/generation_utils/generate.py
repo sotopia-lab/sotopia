@@ -280,6 +280,25 @@ async def agenerate_action(
                 Please only generate a JSON string including the action type, the recipients (the `to` field), and the argument.
                 Note: If you set the `to` field, the action becomes "private". Private messages are visible only to the recipients. The recipientss must be a subset of the participants, excluding yourself.
                       If you are speaking/acting to public, you don't need to set the `to` field.
+
+                OUTPUT POLICY (CRITICAL):
+                - Output ONLY a JSON object with keys: "action_type", "argument", "to".
+                - Private vs public is determined by "to":
+                    * Public: "to": []  (an empty array)
+                    * Private (DM): "to": ["Exact Full Name", ...]  (subset of participants, excluding yourself)
+                - If your goal requires sending a private/DM, you MUST do it at your NEXT AVAILABLE TURN. Set a non-empty "to" with the exact full name(s).
+
+                - If you are replying to a private message, you MUST include the original sender in "to".
+                - Do NOT put display names inside "argument" to simulate DM; always use the "to" field.
+
+                EXAMPLES (FORMAT ONLY, NOT CONTENT):
+                Public speak:
+                {{ "action_type": "speak", "argument": "Let's cover methods first.", "to": [] }}
+
+                Private speak (DM to Bob Vence):
+                {{ "action_type": "speak", "argument": "Quick clarification on the clustering params?", "to": ["Bob Vence"] }}
+
+
                 Your action should follow the given format:
                 {format_instructions}
             """
@@ -300,6 +319,23 @@ async def agenerate_action(
                 Please only generate a JSON string including the action type, the recipients (the `to` field), and the argument.
                 Note: If you set the `to` field, the action becomes "private". Private messages are visible only to the recipients. The recipientss must be a subset of the participants, excluding yourself.
                       If you are speaking/acting to public, you don't need to set the `to` field.
+
+                OUTPUT POLICY (CRITICAL):
+                - Output ONLY a JSON object with keys: "action_type", "argument", "to".
+                - Private vs public is determined by "to":
+                    * Public: "to": []  (an empty array)
+                    * Private (DM): "to": ["Exact Full Name", ...]  (subset of participants, excluding yourself)
+                - If your goal requires sending a private/DM, you MUST set a non-empty "to" targeting the intended participant(s).
+                - If you are replying to a private message, you MUST include the original sender in "to".
+                - Do NOT put display names inside "argument" to simulate DM; always use the "to" field.
+
+                EXAMPLES (FORMAT ONLY, NOT CONTENT):
+                Public speak:
+                {{ "action_type": "speak", "argument": "Let's cover methods first.", "to": [] }}
+
+                Private speak (DM to Bob Vence):
+                {{ "action_type": "speak", "argument": "Quick clarification on the clustering params?", "to": ["Bob Vence"] }}
+
                 Your action should follow the given format:
                 {format_instructions}
             """
