@@ -153,21 +153,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
 
         try:
-            response: EvaluationForAgents[T_eval_dim] = await agenerate(
-                model_name=self.model_name,
-                template="""{history},
-                    Based on previous interactions, evaluate how well participants achieve their goals.
-                    Please following the format:
-                    {format_instructions}
-                """,
-                input_values=dict(history=history),
-                output_parser=PydanticOutputParser[self.response_format_class](  # type: ignore[name-defined]
-                    pydantic_object=self.response_format_class
-                ),
-                structured_output=self.model_name.startswith("custom/structured"),
-            )
-            response_list = []
-
             # Count actual participating agents (exclude Environment)
             participating_agents = set()
             if messages:
@@ -176,6 +161,33 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                         participating_agents.add(speaker)
             num_agents = len(participating_agents)
 
+            # Build explicit agent label instruction to avoid ambiguous dynamic keys in structured output
+            agent_instruction = ""
+            if num_agents > 0:
+                agent_instruction = (
+                    "There are exactly "
+                    + str(num_agents)
+                    + " agents. Under the 'evaluations' field, use exactly these keys: "
+                    + "["
+                    + ", ".join([f'"agent_{i+1}"' for i in range(num_agents)])
+                    + "] (no other keys).\n"
+                )
+
+            response: EvaluationForAgents[T_eval_dim] = await agenerate(
+                model_name=self.model_name,
+                template="""{history}
+                    Based on previous interactions, evaluate how well participants achieve their goals.
+                    {agent_instruction}
+                    Please follow the format:
+                    {format_instructions}
+                """,
+                input_values=dict(history=history, agent_instruction=agent_instruction),
+                output_parser=PydanticOutputParser[self.response_format_class](  # type: ignore[name-defined]
+                    pydantic_object=self.response_format_class
+                ),
+                structured_output=self.model_name.startswith("custom/structured"),
+            )
+            response_list = []
             # Only process evaluations for the actual number of agents
             for i, evaluation in enumerate(
                 list(response.evaluations.values())[:num_agents]
