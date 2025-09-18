@@ -1,11 +1,13 @@
 import logging
 import os
+from dataclasses import dataclass
 from litellm import acompletion
+from litellm.exceptions import BadRequestError
 from litellm.utils import supports_response_schema
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
 )
-from typing import cast
+from typing import Any, cast
 
 import gin
 
@@ -50,6 +52,25 @@ log.addHandler(console_handler)
 
 # subject to future OpenAI changes
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
+DEFAULT_TEMPERATURE = 0.7
+_TEMPERATURE_SENTINEL = object()
+
+# Cache temperature support per (model, base_url) to avoid repeated bad requests
+_TEMPERATURE_SUPPORT_CACHE: dict[tuple[str, str | None], bool] = {}
+
+
+@dataclass(frozen=True)
+class TemperatureSetting:
+    value: float | None
+    treat_as_default: bool = False
+
+
+def default_temperature(value: float | None) -> TemperatureSetting:
+    return TemperatureSetting(value=value, treat_as_default=True)
+
+
+def custom_temperature(value: float | None) -> TemperatureSetting:
+    return TemperatureSetting(value=value, treat_as_default=False)
 
 
 @validate_call
@@ -91,6 +112,7 @@ async def agenerate(
     template: str,
     input_values: dict[str, str],
     output_parser: OutputParser[OutputType],
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -117,12 +139,85 @@ async def agenerate(
         base_url = None
         api_key = None
 
+    cache_key = (model_name, base_url)
+
+    supported_params: list[str] | None = None
+    if base_url is None:
+        supported_params = get_supported_openai_params(model=model_name)
+
+    effective_temperature: float | None
+    treat_as_default: bool
+    user_provided_temperature: bool
+
+    if temperature is _TEMPERATURE_SENTINEL:
+        effective_temperature = DEFAULT_TEMPERATURE
+        treat_as_default = True
+        user_provided_temperature = False
+    elif isinstance(temperature, TemperatureSetting):
+        effective_temperature = temperature.value
+        treat_as_default = temperature.treat_as_default
+        user_provided_temperature = True
+    else:
+        effective_temperature = cast(float | None, temperature)
+        treat_as_default = False
+        user_provided_temperature = True
+
+    send_temperature = (
+        user_provided_temperature
+        and effective_temperature is not None
+        and not treat_as_default
+    )
+    non_default_requested = send_temperature and not treat_as_default
+
+    if send_temperature:
+        if cache_key in _TEMPERATURE_SUPPORT_CACHE:
+            if not _TEMPERATURE_SUPPORT_CACHE[cache_key]:
+                send_temperature = False
+                if non_default_requested:
+                    log.warning(
+                        "Model %s previously rejected temperature; ignoring temperature=%s",
+                        model_name,
+                        effective_temperature,
+                    )
+        elif supported_params is not None and "temperature" not in supported_params:
+            _TEMPERATURE_SUPPORT_CACHE[cache_key] = False
+            send_temperature = False
+            if non_default_requested:
+                log.warning(
+                    "Model %s does not support temperature; ignoring temperature=%s",
+                    model_name,
+                    effective_temperature,
+                )
+
+    async def _call_with_retry(completion_kwargs: dict[str, Any]) -> Any:
+        nonlocal send_temperature
+        call_kwargs = dict(completion_kwargs)
+        if send_temperature:
+            call_kwargs["temperature"] = effective_temperature
+        try:
+            response = await acompletion(**call_kwargs)
+            if send_temperature:
+                _TEMPERATURE_SUPPORT_CACHE[cache_key] = True
+            return response
+        except BadRequestError as exc:
+            if send_temperature and "temperature" in str(exc).lower():
+                send_temperature = False
+                _TEMPERATURE_SUPPORT_CACHE[cache_key] = False
+                if non_default_requested:
+                    log.warning(
+                        "Model %s does not support temperature; ignoring temperature=%s",
+                        model_name,
+                        effective_temperature,
+                    )
+                call_kwargs.pop("temperature", None)
+                return await acompletion(**call_kwargs)
+            raise
+
     if structured_output:
         if not base_url:
-            params = get_supported_openai_params(model=model_name)
-            assert params is not None
+            assert supported_params is not None
             assert (
-                "response_format" in params
+                "response_format" in supported_params
             ), "response_format is not supported in this model"
             assert supports_response_schema(
                 model=model_name
@@ -132,7 +227,7 @@ async def agenerate(
         assert isinstance(
             output_parser, PydanticOutputParser
         ), "structured output only supported in PydanticOutputParser"
-        response = await acompletion(
+        completion_kwargs = dict(
             model=model_name,
             messages=messages,
             response_format=output_parser.pydantic_object,
@@ -140,6 +235,7 @@ async def agenerate(
             base_url=base_url,
             api_key=api_key,
         )
+        response = await _call_with_retry(completion_kwargs)
         result = response.choices[0].message.content
         # Include agent name in logs if available
         agent_name = input_values.get("agent", "")
@@ -150,13 +246,14 @@ async def agenerate(
 
     messages = [{"role": "user", "content": template}]
 
-    response = await acompletion(
+    completion_kwargs = dict(
         model=model_name,
         messages=messages,
         drop_params=True,
         api_base=base_url,
         api_key=api_key,
     )
+    response = await _call_with_retry(completion_kwargs)
     result = response.choices[0].message.content
 
     try:
@@ -190,6 +287,7 @@ async def agenerate_env_profile(
     model_name: str,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> EnvironmentProfile:
@@ -210,6 +308,7 @@ async def agenerate_env_profile(
             examples=examples,
         ),
         output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
+        temperature=temperature,
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
     )
@@ -251,6 +350,7 @@ async def agenerate_action(
     action_types: list[ActionType],
     agent: str,
     goal: str,
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -302,6 +402,7 @@ async def agenerate_action(
                 action_list=" ".join(action_types),
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+            temperature=temperature,
             structured_output=True,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
@@ -316,6 +417,7 @@ async def agenerate_action(
 async def agenerate_script(
     model_name: str,
     background: ScriptBackground,
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     agent_names: list[str] = [],
     agent_name: str = "",
     history: str = "",
@@ -354,6 +456,7 @@ async def agenerate_script(
                     background=background.to_natural_language(),
                     single_turn=True,
                 ),
+                temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
             )
@@ -377,6 +480,7 @@ async def agenerate_script(
                     background=background.to_natural_language(),
                     single_turn=False,
                 ),
+                temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
             )

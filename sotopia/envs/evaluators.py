@@ -6,7 +6,12 @@ from typing import Generic, TypeVar
 import gin
 from pydantic import BaseModel, validate_call
 
-from sotopia.generation_utils import PydanticOutputParser, agenerate
+from sotopia.generation_utils import (
+    PydanticOutputParser,
+    agenerate,
+    custom_temperature,
+    default_temperature,
+)
 from sotopia.messages import (
     AgentAction,
     Message,
@@ -133,6 +138,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         turn_number: int,
         messages: list[tuple[str, Message]] | None,
         history: str = "",
+        temperature: float | None = 0.0,
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # filter did nothing
         if not history and messages:
@@ -173,6 +179,12 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     + "] (no other keys).\n"
                 )
 
+            temperature_setting = (
+                default_temperature(temperature)
+                if temperature == 0.0
+                else custom_temperature(temperature)
+            )
+
             response: EvaluationForAgents[T_eval_dim] = await agenerate(
                 model_name=self.model_name,
                 template="""{history}
@@ -185,6 +197,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 output_parser=PydanticOutputParser[self.response_format_class](  # type: ignore[name-defined]
                     pydantic_object=self.response_format_class
                 ),
+                temperature=temperature_setting,
                 structured_output=self.model_name.startswith("custom/structured"),
             )
             response_list = []

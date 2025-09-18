@@ -93,7 +93,7 @@ Formats badly structured output for a script into a proper format.
 - **Returns:**
   - A properly formatted `BaseMessage`.
 
-#### `agenerate(model_name: str, template: str, input_values: dict[str, str], output_parser: BaseOutputParser[OutputType],  structured_output: bool = False) -> OutputType`
+#### `agenerate(model_name: str, template: str, input_values: dict[str, str], output_parser: BaseOutputParser[OutputType], temperature: float | None | TemperatureSetting = 0.7, structured_output: bool = False) -> OutputType`
 Generates asynchronous responses using langchain.
 
 - **Parameters:**
@@ -101,6 +101,8 @@ Generates asynchronous responses using langchain.
   - `template (str)`: The template string.
   - `input_values (dict[str, str])`: Input values for the template.
   - `output_parser (BaseOutputParser[OutputType])`: Parser for the output.
+  - `temperature (float | None | TemperatureSetting)`: Sampling temperature to forward. If you leave it unset, the provider’s own default is used (we don’t send a temperature parameter). Passing a bare float or `None` is treated as an explicit override—if the model rejects it, a warning is emitted and the call is retried without the parameter. To mark a value as your baseline (so failures are silent), wrap it with `default_temperature(value)`. Use `custom_temperature(value)` to make an intentional override explicit.
+    - Helper constructors: `default_temperature(value)` and `custom_temperature(value)` live in `sotopia.generation_utils`.
   - `structured_output (bool)`: Whether to expect structured output.
 
 - **Returns:**

@@ -1,9 +1,7 @@
 import pytest
 from typing import Any
 
-from sotopia.generation_utils.generate import (
-    agenerate,
-)
+from sotopia.generation_utils import agenerate, default_temperature
 
 from sotopia.messages import AgentAction
 from sotopia.generation_utils.output_parsers import (
@@ -23,6 +21,7 @@ async def test_agenerate_list_integer() -> None:
         "{format_instructions}",
         {},
         ListOfIntOutputParser(number_of_int=length, range_of_int=(lower, upper)),
+        temperature=default_temperature(0.0),
     )
     assert isinstance(list_of_int, list)
     assert len(list_of_int) == length
@@ -39,6 +38,7 @@ async def test_logging_behavior(caplog: Any) -> None:
         "{format_instructions}",
         {},
         ListOfIntOutputParser(5, (-10, 10)),
+        temperature=default_temperature(0.0),
     )
     # Check if any log records were captured
     assert len(caplog.records) > 0, "No log records captured"
@@ -58,6 +58,7 @@ async def test_agenerate_structured_output() -> None:
         "{format_instructions}",
         {},
         PydanticOutputParser(pydantic_object=AgentAction),
+        temperature=default_temperature(0.0),
         structured_output=True,
     )
     assert isinstance(output, AgentAction)

@@ -103,6 +103,7 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                             "agent_name": self.name,
                         },
                         output_parser=StrOutputParser(),
+                        temperature=0.7,
                     )
                     if agent_action != "none" and agent_action != "":
                         self.message_history.append((self.name, agent_action))
