@@ -1,0 +1,75 @@
+{
+  "roles": {
+    "Villager": {
+      "name": "Villager",
+      "team": "Villagers",
+      "description": "Ordinary resident with no night power but vital voice in daytime debates.",
+      "goal_prompt": "Keep sharp notes about player behaviour and vote to execute suspected werewolves each day.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["none"],
+        "night_seer": ["none"],
+        "night_witch": ["none"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {}
+    },
+    "Seer": {
+      "name": "Seer",
+      "team": "Villagers",
+      "description": "Mystic who divines alignments during the night.",
+      "goal_prompt": "Inspect one player each night using an action like 'inspect NAME'; leak findings strategically without exposing yourself too early.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["none"],
+        "night_seer": ["action"],
+        "night_witch": ["none"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {}
+    },
+    "Witch": {
+      "name": "Witch",
+      "team": "Villagers",
+      "description": "Potion expert who may save one player per game and poison one player per game during the night.",
+      "goal_prompt": "During your witch phase, decide whether to 'save NAME', 'poison NAME', or pass. Use your limited potions wisely to keep villagers alive and remove wolves when confident.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["none"],
+        "night_seer": ["none"],
+        "night_witch": ["action"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {
+        "save_available": true,
+        "poison_available": true
+      }
+    },
+    "Werewolf": {
+      "name": "Werewolf",
+      "team": "Werewolves",
+      "description": "Predator hiding among villagers, coordinating nightly kills and sowing mistrust by day.",
+      "goal_prompt": "Confer quietly with fellow wolves at night. Use actions like 'kill NAME' to propose a victim. During the day, blend in while pushing misdirection.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["speak", "action"],
+        "night_seer": ["none"],
+        "night_witch": ["none"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {}
+    }
+  }
+}

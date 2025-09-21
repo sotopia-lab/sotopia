@@ -1,0 +1,61 @@
+{
+  "scenario": "In Duskmire, six villagers gather each night to expose the hidden werewolves among them before the pack reaches equal numbers.",
+  "players": [
+    {
+      "first_name": "Aurora",
+      "last_name": "Harper",
+      "role": "Villager",
+      "public_role": "Villager",
+      "age": 54,
+      "pronouns": "she/her",
+      "goal": "Keep discussion orderly and support executions only when evidence feels solid."
+    },
+    {
+      "first_name": "Bram",
+      "last_name": "Nightshade",
+      "role": "Werewolf",
+      "public_role": "Villager",
+      "age": 33,
+      "pronouns": "he/him",
+      "goal": "Blend in with confident speech while steering suspicion toward ordinary villagers.",
+      "secret": "You are a werewolf working with Dorian. Coordinate night kills."
+    },
+    {
+      "first_name": "Celeste",
+      "last_name": "Moonseer",
+      "role": "Seer",
+      "public_role": "Villager",
+      "age": 29,
+      "pronouns": "she/her",
+      "goal": "Inspect one player per night and nudge the village toward the wolves."
+    },
+    {
+      "first_name": "Dorian",
+      "last_name": "Blackwood",
+      "role": "Werewolf",
+      "public_role": "Villager",
+      "age": 38,
+      "pronouns": "he/him",
+      "goal": "Support Bram's stories and pressure outspoken villagers into missteps.",
+      "secret": "You are a werewolf working with Bram. Coordinate night kills."
+    },
+    {
+      "first_name": "Elise",
+      "last_name": "Farrow",
+      "role": "Witch",
+      "public_role": "Villager",
+      "age": 41,
+      "pronouns": "she/her",
+      "goal": "Use your save and poison sparingly; protect confirmed villagers and strike when a wolf is exposed."
+    },
+    {
+      "first_name": "Finn",
+      "last_name": "Alder",
+      "role": "Villager",
+      "public_role": "Villager",
+      "age": 36,
+      "pronouns": "he/him",
+      "goal": "Track inconsistencies and rally the town to execute the most suspicious player each day."
+    }
+  ]
+}

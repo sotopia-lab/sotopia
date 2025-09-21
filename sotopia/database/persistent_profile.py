@@ -88,6 +88,10 @@ class BaseEnvironmentProfile(BaseModel):
     agent_constraint: list[list[str]] | None = Field(
         default_factory=lambda: None,
     )
+    game_metadata: dict[str, Any] | None = Field(
+        default_factory=lambda: None,
+        description="Optional metadata for structured social games (rulebooks, config paths, etc.).",
+    )
     tag: str = Field(
         index=True,
         default_factory=lambda: "",
