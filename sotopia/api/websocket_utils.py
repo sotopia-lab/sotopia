@@ -1,5 +1,5 @@
 from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
+    EvaluationForAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
@@ -111,7 +111,7 @@ def get_env_agents(
         terminal_evaluators=[
             EpisodeLLMEvaluator(
                 evaluator_model,
-                EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
+                EvaluationForAgents[evaluation_dimensions],  # type: ignore
             ),
         ],
         env_profile=environment_profile,

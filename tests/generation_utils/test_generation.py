@@ -1,9 +1,7 @@
 import pytest
 from typing import Any
 
-from sotopia.generation_utils.generate import (
-    agenerate,
-)
+from sotopia.generation_utils import agenerate
 
 from sotopia.messages import AgentAction
 from sotopia.generation_utils.output_parsers import (
@@ -60,6 +58,7 @@ async def test_agenerate_structured_output() -> None:
         "{format_instructions}",
         {},
         PydanticOutputParser(pydantic_object=AgentAction),
+        temperature=0.0,
         structured_output=True,
     )
     assert isinstance(output, AgentAction)

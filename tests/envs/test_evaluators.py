@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
+    EvaluationForAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
@@ -27,7 +27,7 @@ def test_rule_based_teminated_evaluator() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 1 is leaving; "
+    assert comment == "Too few active agents; "
     response = evaluator(
         1,
         [
@@ -36,7 +36,7 @@ def test_rule_based_teminated_evaluator() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 2 is leaving; "
+    assert comment == "Too few active agents; "
     response = evaluator(
         3,
         [
@@ -101,7 +101,7 @@ async def test_rule_based_teminated_evaluator_async() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 1 is leaving; "
+    assert comment == "Too few active agents; "
     response = await evaluator.__acall__(
         1,
         [
@@ -110,7 +110,7 @@ async def test_rule_based_teminated_evaluator_async() -> None:
         ],
     )
     comment = response[0][1][1]
-    assert comment == "Agent 2 is leaving; "
+    assert comment == "Too few active agents; "
     response = await evaluator.__acall__(
         3,
         [
@@ -136,16 +136,19 @@ class _ReachGoal(BaseModel):
 async def test_reach_goal_llm_evaluator_async() -> None:
     evaluator = EpisodeLLMEvaluator(
         "custom/structured@http://localhost:8000/v1",
-        response_format_class=EvaluationForTwoAgents[_ReachGoal],
+        response_format_class=EvaluationForAgents[_ReachGoal],
     )
     background = ScriptBackground(
         scenario="Conversation between two friends at a trivia night",
-        p1_name="Samuel Anderson",
-        p2_name="Giselle Rousseau",
-        p1_background="Samuel Anderson is a 29-year-old male software developer. He/him pronouns. Samuel Anderson can cook very well. Personality and values description: Samuel Anderson, though somewhat impulsive and free-spirited, values enjoyment. His decision-making is often spontaneous, staying within familiar boundaries. Samuel's secrets: He was once a competitive figure skater.",
-        p2_background="Giselle Rousseau is a 21-year-old nonbinary art student. They/them pronouns. Giselle Rousseau enjoys biking and photography. Personality and values description: Giselle Rousseau, open-minded and outgoing yet sensitive, advocates care and fairness. Her decision-making is intuitive and inclusive. Giselle's secrets: Sells forged paintings to wealthy clients",
-        p1_goal="Greet your friends and be polite",
-        p2_goal="Be rude and dismissive to your friends",
+        agent_names=["Samuel Anderson", "Giselle Rousseau"],
+        agent_backgrounds=[
+            "Samuel Anderson is a 29-year-old male software developer. He/him pronouns. Samuel Anderson can cook very well. Personality and values description: Samuel Anderson, though somewhat impulsive and free-spirited, values enjoyment. His decision-making is often spontaneous, staying within familiar boundaries. Samuel's secrets: He was once a competitive figure skater.",
+            "Giselle Rousseau is a 21-year-old nonbinary art student. They/them pronouns. Giselle Rousseau enjoys biking and photography. Personality and values description: Giselle Rousseau, open-minded and outgoing yet sensitive, advocates care and fairness. Her decision-making is intuitive and inclusive. Giselle's secrets: Sells forged paintings to wealthy clients",
+        ],
+        agent_goals=[
+            "Greet your friends and be polite",
+            "Be rude and dismissive to your friends",
+        ],
     )
 
     # response1,

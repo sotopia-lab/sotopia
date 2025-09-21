@@ -101,6 +101,5 @@ class Evaluator(BaseAgent[Observation, AgentAction]):
             output_parser=PydanticOutputParser[self.response_format_class](  # type: ignore[name-defined]
                 pydantic_object=self.response_format_class
             ),
-            temperature=self.temperature,
         )
         return res.model_dump()["agents_evaluation"]

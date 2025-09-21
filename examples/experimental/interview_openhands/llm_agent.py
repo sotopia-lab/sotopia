@@ -324,8 +324,8 @@ class LLMAgent(BaseAgent[AgentAction | Tick | Text, AgentAction]):
                                 "goal": self.goal,
                                 "agent_name": self.name,
                             },
-                            temperature=0.7,
                             output_parser=StrOutputParser(),
+                            temperature=0.7,
                         )
                     except Exception as e:
                         print(f"Error during agenerate: {e}")
