@@ -6,7 +6,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import redis
 
@@ -41,7 +41,7 @@ COMMON_GUIDANCE = (
 
 
 def load_json(path: Path) -> Dict[str, Any]:
-    return json.loads(path.read_text())
+    return cast(Dict[str, Any], json.loads(path.read_text()))
 
 
 def ensure_agent(player: Dict[str, Any]) -> AgentProfile:

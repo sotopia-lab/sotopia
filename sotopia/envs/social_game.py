@@ -6,11 +6,13 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional, Sequence
+from typing import Any, Iterable, Optional, Sequence, cast
 
 from pydantic import BaseModel, Field, RootModel, ValidationError
 
 from sotopia.envs.parallel import ParallelSotopiaEnv, render_text_for_agent
+from sotopia.agents.llm_agent import Agents
+from sotopia.database import EnvironmentProfile
 from sotopia.messages import AgentAction, Observation, SimpleMessage
 
 
@@ -395,7 +397,7 @@ class GameRulebook:
             raise ValueError(
                 f"Unsupported resolution operation '{phase.resolution.operation}'"
             )
-        return handler(phase, actions, phase.resolution)
+        return cast(PhaseEvents, handler(phase, actions, phase.resolution))
 
     def _resolve_noop(
         self,
@@ -642,7 +644,7 @@ class SocialGameEnv(ParallelSotopiaEnv):
 
     def __init__(
         self,
-        env_profile,
+        env_profile: EnvironmentProfile,
         *,
         rulebook_path: str,
         actions_path: str,
@@ -680,7 +682,7 @@ class SocialGameEnv(ParallelSotopiaEnv):
         self,
         seed: int | None = None,
         options: dict[str, str] | None = None,
-        agents=None,
+        agents: Agents | None = None,
         omniscient: bool = False,
         lite: bool = False,
     ) -> dict[str, Observation]:
@@ -891,7 +893,7 @@ class SocialGameEnv(ParallelSotopiaEnv):
         self._apply_action_mask()
         baseline = self._create_blank_observations()
         observations = self._augment_observations(baseline, append_to_existing=False)
-        rewards = {agent_name: 0 for agent_name in self.agents}
+        rewards = {agent_name: 0.0 for agent_name in self.agents}
         terminated = {agent_name: bool(winner) for agent_name in self.agents}
         truncations = {agent_name: False for agent_name in self.agents}
         info = {

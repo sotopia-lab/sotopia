@@ -67,6 +67,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
                 env_profile = EnvironmentProfile.get(env_profile)
             logger.info("Creating environment with %s agents", n_agent)
             game_meta = getattr(env_profile, "game_metadata", None) or {}
+            env: ParallelSotopiaEnv
             if game_meta.get("mode") == "social_game":
                 from sotopia.envs import SocialGameEnv
 
