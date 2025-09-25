@@ -174,8 +174,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 )
             num_agents = len(agent_names)
 
-            print(f"num_agents: {num_agents}")
-
             # Build explicit agent label instruction and keys
             agent_keys = [f"agent_{i+1}" for i in range(max(num_agents, 0))]
             agent_instruction = ""
