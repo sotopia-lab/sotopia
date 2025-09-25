@@ -168,20 +168,15 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             num_agents = len(participating_agents)
 
             # Build explicit agent label instruction to avoid ambiguous dynamic keys in structured output
-            agent_keys = [f"agent_{i+1}" for i in range(max(num_agents, 0))]
             agent_instruction = ""
             if num_agents > 0:
-                names_list = ", ".join(agent_names)
                 agent_instruction = (
                     "There are exactly "
                     + str(num_agents)
                     + " agents. Under the 'evaluations' field, use exactly these keys: "
                     + "["
-                    + ", ".join([f'"{k}"' for k in agent_keys])
+                    + ", ".join([f'"agent_{i+1}"' for i in range(num_agents)])
                     + "] (no other keys).\n"
-                    + "Agents (in order): "
-                    + names_list
-                    + ".\n"
                 )
 
             temperature_setting = (
