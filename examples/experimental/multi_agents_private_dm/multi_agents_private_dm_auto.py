@@ -11,7 +11,7 @@ import asyncio
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Any, Tuple, Sequence, Dict, List, Union, cast
+from typing import Any, Tuple, Sequence, Dict, List, cast
 
 import redis
 
@@ -22,7 +22,7 @@ from sotopia.messages import Observation, AgentAction, Message
 from sotopia.messages import AgentAction as _AgentAction
 from sotopia.messages import Observation as _Observation
 from sotopia.messages import SimpleMessage as _SimpleMessage
-from sotopia.messages import ScriptBackground as _ScriptBackground
+
 # --- Evaluation imports ---
 from itertools import chain
 from sotopia.envs.evaluators import (
@@ -51,6 +51,7 @@ DM_PROTOCOL = """
 client = redis.Redis(host="localhost", port=6379)
 os.environ.setdefault("REDIS_OM_URL", "redis://:@localhost:6379")
 
+
 # ----------------------------
 # Utility: output directory + logging (text log to console only; JSON is written by us below)
 # ----------------------------
@@ -59,6 +60,7 @@ def _mk_outdir() -> Path:
     outdir = Path(__file__).resolve().parent / "runs" / ts
     outdir.mkdir(parents=True, exist_ok=True)
     return outdir
+
 
 # def _setup_logging() -> None:
 #     root = logging.getLogger()
@@ -101,6 +103,7 @@ def _mk_outdir() -> Path:
 #     logging.getLogger("sotopia").setLevel(logging.INFO)
 #     logging.getLogger("sotopia.generation").setLevel(logging.INFO)
 
+
 def _setup_logging() -> None:
     root = logging.getLogger()
     root.setLevel(logging.INFO)
@@ -139,6 +142,7 @@ def _load_config(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
+
 # DB helpers
 def _get_or_create_agent(p: dict[str, Any]) -> AgentProfile:
     """
@@ -154,7 +158,9 @@ def _get_or_create_agent(p: dict[str, Any]) -> AgentProfile:
     ln = p["last_name"]
 
     existing = list(
-        AgentProfile.find(AgentProfile.first_name == fn, AgentProfile.last_name == ln).all()
+        AgentProfile.find(
+            AgentProfile.first_name == fn, AgentProfile.last_name == ln
+        ).all()
     )
     if existing:
         return cast(AgentProfile, existing[0])
@@ -176,10 +182,14 @@ def _get_or_create_agent(p: dict[str, Any]) -> AgentProfile:
     agent.save()
     return agent
 
-def _create_env_profile(scenario: str, agent_goals: Sequence[str]) -> EnvironmentProfile:
+
+def _create_env_profile(
+    scenario: str, agent_goals: Sequence[str]
+) -> EnvironmentProfile:
     env_profile = EnvironmentProfile(scenario=scenario, agent_goals=list(agent_goals))
     env_profile.save()
     return env_profile
+
 
 # Serialization
 # def _serialize_message(triple: Tuple[str, str, Message]) -> dict[str, Any]:
@@ -211,6 +221,7 @@ def _create_env_profile(scenario: str, agent_goals: Sequence[str]) -> Environmen
 #         pass
 #     return rec
 
+
 def _serialize_message(triple):
     # guard for shape issues
     if not isinstance(triple, (list, tuple)) or len(triple) != 3:
@@ -225,12 +236,27 @@ def _serialize_message(triple):
     }
     # structured enrichment
     try:
-        from sotopia.messages import AgentAction as _AgentAction, Observation as _Observation
-        from sotopia.messages import SimpleMessage as _SimpleMessage, ScriptBackground as _ScriptBackground
+        from sotopia.messages import (
+            AgentAction as _AgentAction,
+            Observation as _Observation,
+        )
+        from sotopia.messages import (
+            SimpleMessage as _SimpleMessage,
+            ScriptBackground as _ScriptBackground,
+        )
+
         if isinstance(msg, _AgentAction):
-            rec.update({"action_type": msg.action_type, "argument": msg.argument, "to": msg.to})
+            rec.update(
+                {"action_type": msg.action_type, "argument": msg.argument, "to": msg.to}
+            )
         elif isinstance(msg, _Observation):
-            rec.update({"turn_number": msg.turn_number, "available_actions": msg.available_actions, "last_turn": msg.last_turn})
+            rec.update(
+                {
+                    "turn_number": msg.turn_number,
+                    "available_actions": msg.available_actions,
+                    "last_turn": msg.last_turn,
+                }
+            )
         elif isinstance(msg, _ScriptBackground):
             rec.update({"scenario": msg.scenario})
         elif isinstance(msg, _SimpleMessage):
@@ -244,10 +270,12 @@ def _save_json(obj: Any, path: Path) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
 
+
 def _save_jsonl(records: List[dict[str, Any]], path: Path) -> None:
     with path.open("w", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
 
 # --- Evaluation helpers -------------------------------------------------------
 def _build_history_from_triples(flat_triples: List[Tuple[str, str, Message]]) -> str:
@@ -261,6 +289,7 @@ def _build_history_from_triples(flat_triples: List[Tuple[str, str, Message]]) ->
             to_str = "ALL" if (m.to is None) else ",".join(m.to)
             lines.append(f"{sender} -> [{to_str}]: {m.argument}")
     return "\n".join(lines)
+
 
 def _to_jsonable(obj: Any) -> Any:
     """
@@ -283,6 +312,7 @@ def _to_jsonable(obj: Any) -> Any:
     # Dataclasses
     try:
         import dataclasses
+
         if dataclasses.is_dataclass(obj):
             return dataclasses.asdict(obj)
     except Exception:
@@ -306,14 +336,20 @@ async def main() -> None:
     outdir = _mk_outdir()
 
     # 1 load config
-    cfg_path = Path(os.environ.get("SCENARIO_JSON", "")) if os.environ.get("SCENARIO_JSON") else Path(__file__).with_name("scenario_config.json")
+    cfg_path = (
+        Path(os.environ.get("SCENARIO_JSON", ""))
+        if os.environ.get("SCENARIO_JSON")
+        else Path(__file__).with_name("scenario_config.json")
+    )
     if not cfg_path.exists():
         raise FileNotFoundError(f"Config file not found: {cfg_path}")
     cfg = _load_config(cfg_path)
 
     scenario: str = cfg["scenario"]
     agents_cfg: List[dict[str, Any]] = cfg["agents"]
-    models: dict[str, Any] = cfg.get("models", {"env": "gpt-4o", "agents": ["gpt-4o","gpt-4o","gpt-4o"]})
+    models: dict[str, Any] = cfg.get(
+        "models", {"env": "gpt-4o", "agents": ["gpt-4o", "gpt-4o", "gpt-4o"]}
+    )
     action_order: str = cfg.get("action_order", "round-robin")
 
     # 2 ensure agents exist or create in DB, collect goals
@@ -333,7 +369,9 @@ async def main() -> None:
     env_prof = _create_env_profile(scenario, goals)
 
     # 4 create sampler for exactly these 3 agents + env
-    sampler: UniformSampler[Observation, AgentAction] = UniformSampler[Observation, AgentAction](
+    sampler: UniformSampler[Observation, AgentAction] = UniformSampler[
+        Observation, AgentAction
+    ](
         env_candidates=[env_prof],
         agent_candidates=agent_profiles,
     )
@@ -344,7 +382,9 @@ async def main() -> None:
     for i, m in enumerate(models.get("agents", []), start=1):
         model_dict[f"agent{i}"] = m
 
-    logging.info(f"Running episode with agents: {agent_fullnames} | models: {model_dict}")
+    logging.info(
+        f"Running episode with agents: {agent_fullnames} | models: {model_dict}"
+    )
 
     # 6 run the async server (returns list of episodes; here it's 1)
     episodes = await run_async_server(
@@ -357,7 +397,9 @@ async def main() -> None:
     first = episodes[0]
     if first and isinstance(first[0], list):  # just in case some paths return nested
         flat_triples: List[Tuple[str, str, Message]] = [
-            t for turn in cast(List[List[Tuple[str, str, Message]]], first) for t in turn
+            t
+            for turn in cast(List[List[Tuple[str, str, Message]]], first)
+            for t in turn
         ]
     else:
         flat_triples = cast(List[Tuple[str, str, Message]], first)
@@ -394,13 +436,13 @@ async def main() -> None:
     }
     _save_json(evaluations_payload, outdir / "evaluations.json")
 
-
     # 7 outputs (JSON)
     # 7a  run report (scenario, agents, models, counts)
     turn_markers = sum(
         1
         for (_, _, m) in flat_triples
-        if isinstance(m, _SimpleMessage) and m.to_natural_language().startswith("Turn #")
+        if isinstance(m, _SimpleMessage)
+        and m.to_natural_language().startswith("Turn #")
     )
     max_obs_turn = 0
     for _, _, m in flat_triples:
@@ -436,7 +478,7 @@ async def main() -> None:
     }
     _save_json(report, outdir / "run_report.json")
 
-    # 7b full per-message log as JSONL 
+    # 7b full per-message log as JSONL
     # flat_records: List[dict[str, Any]] = []
     # for turn in nested_messages:
     #     for triple in turn:
@@ -454,6 +496,7 @@ async def main() -> None:
     _save_jsonl(records, outdir / "messages.jsonl")
 
     logging.info(f"Saved JSON outputs → {outdir}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

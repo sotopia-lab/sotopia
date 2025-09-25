@@ -147,7 +147,7 @@
 # 5. Never claim you 'overheard' specific details unless you actually saw them in a public message.
 # """
 # # Rules:
-# # - If no public content is visible to you, say something like: "I couldn't hear what you were saying—mind if I ask what the topic is?" 
+# # - If no public content is visible to you, say something like: "I couldn't hear what you were saying—mind if I ask what the topic is?"
 # # - Never claim you 'overheard' specific details unless you actually saw them in a public message.
 
 # add_env_profile(scenario=scenario, agent_goals=[ada_goal, bob_goal, charlie_goal])
@@ -300,7 +300,7 @@ except (IndexError, NotImplementedError):
 
 # new: scenario + goals
 scenario = """Three colleagues (Alice, Ben, and Clara) are preparing a joint research presentation.
-Alice and Ben occasionally exchange private messages (DMs) on other personal matters, and they don't want to confuse Clara with. 
+Alice and Ben occasionally exchange private messages (DMs) on other personal matters, and they don't want to confuse Clara with.
 Clara might need to ask for some specification to Alice regarding the presentation through private messages.
 All three also contribute to the public discussion about the presentation structure.
 """
