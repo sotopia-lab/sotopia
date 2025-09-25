@@ -147,3 +147,32 @@ write better code faster. Here are some extensions that you might want to instal
 - Ruff: For formatting your code.
 - MDX: For the documentation website under `docs` folder.
 - Even Better TOML: For editing aact workflow files.
+
+## Using Dev Containers for development
+You can use dev containers to make development consistent accross environments. It can be used with VS Code (preferred), other IDE's, or skip containers entirely. It is recommended to use VS Code as it is what Dev Containers was build for. Keeping a consistent IDE choice amongst developers also helps ensure we face less challenges.
+
+### Using VS Code (Recommended)
+   1. Install VS Code
+   1. Install the Dev Containers extension for VS Code
+   1. Open the sotopia folder in VS Code
+   1. When prompted, select "Reopen in Container."
+
+   VS Code will build the container using the `.devcontainer` folder and open the workspace with all dependencies installed. From there, you can now run and test the project inside the container.
+
+### Other IDEs or Editors
+Without VS Code, you will need to use basic Docker configurations.
+   1. Assuming you have a docker-compose file, run: `docker-compose up`
+   1. That should download all the necessary project requirement dependencies, and start the application (assuming the docker-file is properly configured)
+
+### Without Dev Containers
+If you do not want to use containers, you can run everything directly on your machine.
+   1. You'll need to ensure you have your pyproject.toml and / or requirments.txt files
+   1. You'll need `poetry` or `pip` to install the project dependencies.
+   1. Then you'll want to, create a virtual environment  install the project dependencies:
+      ```
+         python -m venv venv
+         source venv/bin/activate
+
+         pip install -r requirements.txt
+      ```
+   1. From there you can run the application via it's entry point
