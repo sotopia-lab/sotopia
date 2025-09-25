@@ -47,17 +47,6 @@ class ScriptBackground(Message):
     agent_backgrounds: list[str] = Field(description="backgrounds of all participants")
     agent_goals: list[str] = Field(description="goals of all participants")
 
-    # Multi-agent support fields (optional for backward compatibility)
-    agent_names: list[str] | None = Field(
-        default=None, description="names of all participants"
-    )
-    agent_backgrounds: list[str] | None = Field(
-        default=None, description="backgrounds of all participants"
-    )
-    agent_goals: list[str] | None = Field(
-        default=None, description="goals of all participants"
-    )
-
     @classmethod
     def create_multi_agent(
         cls,
