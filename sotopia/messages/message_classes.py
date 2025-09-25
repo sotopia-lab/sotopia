@@ -43,12 +43,9 @@ class Observation(Message):
 
 class ScriptBackground(Message):
     scenario: str = Field(description="scenario of the episode")
-    p1_name: str = Field(description="name of participant 1")
-    p2_name: str = Field(description="name of participant 2")
-    p1_background: str = Field(description="background of participant 1")
-    p2_background: str = Field(description="background of participant 2")
-    p1_goal: str = Field(description="goal of participant 1")
-    p2_goal: str = Field(description="goal of participant 2")
+    agent_names: list[str] = Field(description="names of all participants")
+    agent_backgrounds: list[str] = Field(description="backgrounds of all participants")
+    agent_goals: list[str] = Field(description="goals of all participants")
 
     # Multi-agent support fields (optional for backward compatibility)
     agent_names: list[str] | None = Field(
@@ -85,44 +82,44 @@ class ScriptBackground(Message):
         )
 
     def to_natural_language(self) -> str:
-        # Use agent_names if available, otherwise fall back to p1_name/p2_name
-        if self.agent_names:
-            agent_names = self.agent_names
-            agent_backgrounds = self.agent_backgrounds or []
-            agent_goals = self.agent_goals or []
+        # Format participant names naturally with "and" before the last name
+        if len(self.agent_names) == 1:
+            participants_str = self.agent_names[0]
+        elif len(self.agent_names) == 2:
+            participants_str = f"{self.agent_names[0]} and {self.agent_names[1]}"
         else:
-            agent_names = [self.p1_name, self.p2_name]
-            agent_backgrounds = [self.p1_background, self.p2_background]
-            agent_goals = [self.p1_goal, self.p2_goal]
+            participants_str = (
+                ", ".join(self.agent_names[:-1]) + f", and {self.agent_names[-1]}"
+            )
 
         # Check if we have any backgrounds to display
-        if any(agent_backgrounds):
+        if any(self.agent_backgrounds):
             backgrounds_text = ""
-            for name, background in zip(agent_names, agent_backgrounds):
+            for name, background in zip(self.agent_names, self.agent_backgrounds):
                 bg_text = background if background else "Unknown"
                 backgrounds_text += f"{name}'s background: {bg_text}\n"
 
             goals_text = ""
-            for name, goal in zip(agent_names, agent_goals):
+            for name, goal in zip(self.agent_names, self.agent_goals):
                 goals_text += f"{name}'s goal: {goal}\n"
 
             return format_docstring(
                 f"""Here is the context of this interaction:
             Scenario: {self.scenario}
-            Participants: {', '.join(agent_names)}
+            Participants: {participants_str}
             {backgrounds_text.strip()}
             {goals_text.strip()}
             """
             )
         else:
             goals_text = ""
-            for name, goal in zip(agent_names, agent_goals):
+            for name, goal in zip(self.agent_names, self.agent_goals):
                 goals_text += f"{name}'s goal: {goal}\n"
 
             return format_docstring(
                 f"""Here is the context of this interaction:
             Scenario: {self.scenario}
-            Participants: {', '.join(agent_names)}
+            Participants: {participants_str}
             {goals_text.strip()}
             """
             )

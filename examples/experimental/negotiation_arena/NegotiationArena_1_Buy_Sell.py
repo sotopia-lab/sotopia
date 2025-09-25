@@ -1,4 +1,4 @@
-# Run this in terminal: redis-stack-server --dir ~/Social_RL/sotopia-data/redis-data
+# Run this in terminal: redis-stack-server --dir ~/Sotopia/examples/experimental/negotiation_arena/redis-data
 import redis
 import os
 import asyncio
