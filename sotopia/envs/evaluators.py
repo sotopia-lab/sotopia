@@ -160,21 +160,15 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
 
         try:
-            # Determine number of agents from ScriptBackground if available; otherwise from messages
-            agent_names: list[str] = []
+            # Count actual participating agents (exclude Environment)
+            participating_agents = set()
             if messages:
-                for speaker, msg in messages:
-                    if isinstance(msg, ScriptBackground):
-                        agent_names = list(msg.agent_names or [])
-                        break
-            if not agent_names and messages:
-                # fall back to speakers in messages (exclude Environment)
-                agent_names = sorted(
-                    {speaker for speaker, _ in messages if speaker != "Environment"}
-                )
-            num_agents = len(agent_names)
+                for speaker, _ in messages:
+                    if speaker != "Environment":
+                        participating_agents.add(speaker)
+            num_agents = len(participating_agents)
 
-            # Build explicit agent label instruction and keys
+            # Build explicit agent label instruction to avoid ambiguous dynamic keys in structured output
             agent_keys = [f"agent_{i+1}" for i in range(max(num_agents, 0))]
             agent_instruction = ""
             if num_agents > 0:
