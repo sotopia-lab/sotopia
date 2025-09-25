@@ -331,7 +331,7 @@ def unweighted_aggregate_evaluate(
     ) + agent_comments
     if (
         "terminated" in environment_responses[0]
-        and bool(environment_responses[0]["terminated"])  # type: ignore[truthy-bool]
+        and bool(environment_responses[0]["terminated"])
     ):
         log.debug("[green] The conversation is terminated.")
     # Get first two agents for backward compatibility with ScriptEnvironmentResponse
