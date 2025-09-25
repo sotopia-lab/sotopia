@@ -16,7 +16,6 @@ from sotopia.messages import (
     AgentAction,
     Message,
     ScriptEnvironmentResponse,
-    ScriptBackground,
 )
 
 log = logging.getLogger("evaluators")
