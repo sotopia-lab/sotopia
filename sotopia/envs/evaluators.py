@@ -167,6 +167,8 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                         participating_agents.add(speaker)
             num_agents = len(participating_agents)
 
+            print(f"num_agents: {num_agents}")
+
             # Build explicit agent label instruction to avoid ambiguous dynamic keys in structured output
             agent_instruction = ""
             if num_agents > 0:
