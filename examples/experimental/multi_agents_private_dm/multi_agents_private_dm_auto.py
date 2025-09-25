@@ -30,7 +30,7 @@ from sotopia.envs.evaluators import (
     EvaluationForAgents,
     unweighted_aggregate_evaluate,
 )
-from sotopia.database import SotopiaDimensions  # type: ignore
+from sotopia.database import SotopiaDimensions
 
 DM_PROTOCOL = """
 # Messaging Protocol (MANDATORY)
@@ -140,7 +140,7 @@ def _setup_logging() -> None:
 # Config loading
 def _load_config(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        return dict(json.load(f))
 
 
 # DB helpers
@@ -222,13 +222,9 @@ def _create_env_profile(
 #     return rec
 
 
-def _serialize_message(triple):
-    # guard for shape issues
-    if not isinstance(triple, (list, tuple)) or len(triple) != 3:
-        return {"_skipped": True, "reason": "bad_shape", "repr": repr(triple)}
-
+def _serialize_message(triple: Tuple[str, str, Message]) -> Dict[str, Any]:
     sender, receiver, msg = triple
-    rec = {
+    rec: Dict[str, Any] = {
         "sender": sender,
         "receiver": receiver,
         "message_type": type(msg).__name__,
@@ -313,7 +309,8 @@ def _to_jsonable(obj: Any) -> Any:
     try:
         import dataclasses
 
-        if dataclasses.is_dataclass(obj):
+        # asdict requires an instance, not a dataclass type
+        if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
             return dataclasses.asdict(obj)
     except Exception:
         pass
@@ -402,7 +399,7 @@ async def main() -> None:
             for t in turn
         ]
     else:
-        flat_triples = cast(List[Tuple[str, str, Message]], first)
+        flat_triples = first
 
     # --- evaluate the episode and save to evaluations.json
     # Build evaluator transcript (only 'speak' actions)
