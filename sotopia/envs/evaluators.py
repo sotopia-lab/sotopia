@@ -16,6 +16,7 @@ from sotopia.messages import (
     AgentAction,
     Message,
     ScriptEnvironmentResponse,
+    ScriptBackground,
 )
 
 log = logging.getLogger("evaluators")
@@ -159,26 +160,37 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
 
         try:
-            # Count actual participating agents (exclude Environment)
-            participating_agents = set()
+            # Determine number of agents from ScriptBackground if available; otherwise from messages
+            agent_names: list[str] = []
             if messages:
-                for speaker, _ in messages:
-                    if speaker != "Environment":
-                        participating_agents.add(speaker)
-            num_agents = len(participating_agents)
+                for speaker, msg in messages:
+                    if isinstance(msg, ScriptBackground):
+                        agent_names = list(msg.agent_names or [])
+                        break
+            if not agent_names and messages:
+                # fall back to speakers in messages (exclude Environment)
+                agent_names = sorted(
+                    {speaker for speaker, _ in messages if speaker != "Environment"}
+                )
+            num_agents = len(agent_names)
 
             print(f"num_agents: {num_agents}")
 
-            # Build explicit agent label instruction to avoid ambiguous dynamic keys in structured output
+            # Build explicit agent label instruction and keys
+            agent_keys = [f"agent_{i+1}" for i in range(max(num_agents, 0))]
             agent_instruction = ""
             if num_agents > 0:
+                names_list = ", ".join(agent_names)
                 agent_instruction = (
                     "There are exactly "
                     + str(num_agents)
                     + " agents. Under the 'evaluations' field, use exactly these keys: "
                     + "["
-                    + ", ".join([f'"agent_{i+1}"' for i in range(num_agents)])
+                    + ", ".join([f'"{k}"' for k in agent_keys])
                     + "] (no other keys).\n"
+                    + "Agents (in order): "
+                    + names_list
+                    + ".\n"
                 )
 
             temperature_setting = (
@@ -203,12 +215,34 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 structured_output=self.model_name.startswith("custom/structured"),
             )
             response_list = []
-            # Only process evaluations for the actual number of agents
-            for i, evaluation in enumerate(
-                list(response.evaluations.values())[:num_agents]
-            ):
-                # Map agent names to expected format (agent_1, agent_2, etc.)
+
+            # Normalize evaluations to ensure we have entries for all agents
+            evals_dict = dict(response.evaluations)
+            # Preferred keys: agent_1, agent_2, ...
+            expected_keys = [f"agent_{i+1}" for i in range(num_agents)]
+
+            # If model used different keys, try to map deterministically by order
+            if not all(k in evals_dict for k in expected_keys):
+                values_in_order = list(evals_dict.values())
+                # Remap by position into expected_keys (truncate/extend as needed)
+                remapped: dict[str, T_eval_dim] = {}
+                for i, key in enumerate(expected_keys):
+                    if i < len(values_in_order):
+                        remapped[key] = values_in_order[i]
+                evals_dict = remapped or evals_dict
+
+            # If still missing entries, duplicate the last available evaluation to fill slots
+            if len(evals_dict) < num_agents and len(evals_dict) > 0:
+                last_eval = list(evals_dict.values())[-1]
+                for i in range(len(evals_dict), num_agents):
+                    evals_dict[f"agent_{i+1}"] = last_eval
+
+            # Build response list in agent_1..agent_n order
+            for i in range(num_agents):
                 agent_key = f"agent_{i+1}"
+                evaluation = evals_dict.get(agent_key)
+                if evaluation is None:
+                    continue
                 for dimension in evaluation.model_dump().keys():
                     response_list.append(
                         (
@@ -297,17 +331,17 @@ def unweighted_aggregate_evaluate(
     ) + agent_comments
     if (
         "terminated" in environment_responses[0]
-        and environment_responses[0]["terminated"]
+        and bool(environment_responses[0]["terminated"])  # type: ignore[truthy-bool]
     ):
-        log.debug(f"[green] The conversation is terminated. {response}")
+        log.debug("[green] The conversation is terminated.")
     # Get first two agents for backward compatibility with ScriptEnvironmentResponse
     agent_1_responses = agent_responses.get("agent_1", ({}, ""))
     agent_2_responses = agent_responses.get("agent_2", ({}, ""))
 
+    terminated_flag: bool = bool(environment_responses[0].get("terminated", False))
+
     return ScriptEnvironmentResponse(
-        terminated=environment_responses[0]["terminated"]
-        if "terminated" in environment_responses[0]
-        else False,
+        terminated=terminated_flag,
         p1_rate=(
             agent_1_responses[0]["overall_score"]
             if "overall_score" in agent_1_responses[0]
