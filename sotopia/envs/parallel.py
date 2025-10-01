@@ -377,15 +377,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
         )
-
-        # Write actions into env transcript; mark private when applicable
         for agent, action in complied_actions.items():
-            if action.action_type == "none":
-                continue  # don't pollute the inbox with placeholder 'none's
-            is_private = bool(action.to)
-            self.recv_message(agent, action, private=is_private)
+            self.recv_message(agent, action)
 
-        # Synchronous evaluators in step
         response = unweighted_aggregate_evaluate(
             list(
                 itertools.chain(
@@ -472,10 +466,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         # write action into env transcript; mark private when applicable
         for agent, action in complied_actions.items():
-            if action.action_type == "none":
-                continue  # dont pollute the inbox with placeholder 'none's
-            is_private = bool(action.to)
-            self.recv_message(agent, action, private=is_private)
+            self.recv_message(agent, action)
 
         # asyns evaluators
         response = unweighted_aggregate_evaluate(

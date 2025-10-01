@@ -163,6 +163,8 @@ async def main() -> None:
             "agent3": "gpt-4o",
         },
         sampler=sampler,
+        # Allow multiple agents to act in same turn for private messaging
+        action_order="simultaneous",
     )
 
 

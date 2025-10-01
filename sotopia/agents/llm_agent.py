@@ -68,20 +68,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="")
         else:
-            # Build history from public + private messages (DM)
-            history = "\n".join(f"{y.to_natural_language()}" for _, y in self.inbox)
-            if self.private_inbox:
-                history = (
-                    history
-                    + "\n"
-                    + "\n".join(
-                        f"{y.to_natural_language()}" for _, y in self.private_inbox
-                    )
-                )
-
             action = await agenerate_action(
                 self.model_name,
-                history=history,
+                history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
                 turn_number=obs.turn_number,
                 action_types=obs.available_actions,
                 agent=self.agent_name,
