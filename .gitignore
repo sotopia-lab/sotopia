@@ -167,10 +167,3 @@ redis-data/*
 sotopia/cli/install/redis-data/*
 redis-stack-server-*/
 examples/experimental/negotiation_arena/redis-data/*
-
-openai_api.txt
-**/openai_api.txt
-
-dump.rdb
-**/examples/experimental/multi_agents_private_dm/runs/
-my_comment.md
