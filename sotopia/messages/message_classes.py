@@ -47,29 +47,6 @@ class ScriptBackground(Message):
     agent_backgrounds: list[str] = Field(description="backgrounds of all participants")
     agent_goals: list[str] = Field(description="goals of all participants")
 
-    @classmethod
-    def create_multi_agent(
-        cls,
-        scenario: str,
-        agent_names: list[str],
-        agent_backgrounds: list[str],
-        agent_goals: list[str],
-    ) -> "ScriptBackground":
-        """Create a ScriptBackground for multi-agent scenarios."""
-        return cls(
-            scenario=scenario,
-            agent_names=agent_names,
-            agent_backgrounds=agent_backgrounds,
-            agent_goals=agent_goals,
-            # Map to existing fields for compatibility
-            p1_name=agent_names[0] if agent_names else "",
-            p2_name=agent_names[1] if len(agent_names) > 1 else "",
-            p1_background=agent_backgrounds[0] if agent_backgrounds else "",
-            p2_background=agent_backgrounds[1] if len(agent_backgrounds) > 1 else "",
-            p1_goal=agent_goals[0] if agent_goals else "",
-            p2_goal=agent_goals[1] if len(agent_goals) > 1 else "",
-        )
-
     def to_natural_language(self) -> str:
         # Format participant names naturally with "and" before the last name
         if len(self.agent_names) == 1:
