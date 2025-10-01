@@ -1,4 +1,3 @@
-# parallel.py
 import asyncio
 import copy
 import itertools
