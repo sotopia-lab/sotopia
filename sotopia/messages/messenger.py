@@ -4,9 +4,6 @@ from .message_classes import Message
 class MessengerMixin(object):
     def __init__(self) -> None:
         self.inbox: list[tuple[str, Message]] = []
-        """
-        Public transcript visible to all other clients
-        """
 
     def reset_inbox(self) -> None:
         self.inbox = []

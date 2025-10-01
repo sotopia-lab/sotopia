@@ -323,10 +323,8 @@ def unweighted_aggregate_evaluate(
     agent_1_responses = agent_responses.get("agent_1", ({}, ""))
     agent_2_responses = agent_responses.get("agent_2", ({}, ""))
 
-    terminated_flag: bool = bool(environment_responses[0].get("terminated", False))
-
     return ScriptEnvironmentResponse(
-        terminated=terminated_flag,
+        terminated=bool(environment_responses[0].get("terminated", False)),
         p1_rate=(
             agent_1_responses[0]["overall_score"]
             if "overall_score" in agent_1_responses[0]

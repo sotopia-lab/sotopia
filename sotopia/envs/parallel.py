@@ -140,13 +140,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
-            [
-                "none",
-                "speak",
-                "non-verbal communication",
-                "action",
-                "leave",
-            ]
+            ["none", "speak", "non-verbal communication", "action", "leave"]
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
         evaluators: list[Evaluator] = [],
@@ -289,6 +283,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             for i in range(num_agents):
                 agent_backgrounds.append(copy.deepcopy(self.background))
         else:
+            # Non-omniscient backgrounds - each agent sees only their own goal
             for i in range(num_agents):
                 # Each agent sees their own goal, others are hidden
                 hidden_goals = list(raw_background.agent_goals)
@@ -368,7 +363,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
 
-        # Mask actions from agents that are not in turn
+        # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
                 complied_actions[agent] = AgentAction(action_type="none", argument="")
@@ -462,12 +457,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
         )
-
-        # write action into env transcript; mark private when applicable
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
 
-        # asyns evaluators
         response = unweighted_aggregate_evaluate(
             list(
                 itertools.chain(
