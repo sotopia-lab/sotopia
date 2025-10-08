@@ -201,34 +201,12 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 structured_output=self.model_name.startswith("custom/structured"),
             )
             response_list = []
-
-            # Normalize evaluations to ensure we have entries for all agents
-            evals_dict = dict(response.evaluations)
-            # Preferred keys: agent_1, agent_2, ...
-            expected_keys = [f"agent_{i+1}" for i in range(num_agents)]
-
-            # If model used different keys, try to map deterministically by order
-            if not all(k in evals_dict for k in expected_keys):
-                values_in_order = list(evals_dict.values())
-                # Remap by position into expected_keys (truncate/extend as needed)
-                remapped: dict[str, T_eval_dim] = {}
-                for i, key in enumerate(expected_keys):
-                    if i < len(values_in_order):
-                        remapped[key] = values_in_order[i]
-                evals_dict = remapped or evals_dict
-
-            # If still missing entries, duplicate the last available evaluation to fill slots
-            if len(evals_dict) < num_agents and len(evals_dict) > 0:
-                last_eval = list(evals_dict.values())[-1]
-                for i in range(len(evals_dict), num_agents):
-                    evals_dict[f"agent_{i+1}"] = last_eval
-
-            # Build response list in agent_1..agent_n order
-            for i in range(num_agents):
+            # Only process evaluations for the actual number of agents
+            for i, evaluation in enumerate(
+                list(response.evaluations.values())[:num_agents]
+            ):
+                # Map agent names to expected format (agent_1, agent_2, etc.)
                 agent_key = f"agent_{i+1}"
-                evaluation = evals_dict.get(agent_key)
-                if evaluation is None:
-                    continue
                 for dimension in evaluation.model_dump().keys():
                     response_list.append(
                         (
@@ -315,16 +293,19 @@ def unweighted_aggregate_evaluate(
         if environment_responses[1]
         else ""
     ) + agent_comments
-    if "terminated" in environment_responses[0] and bool(
-        environment_responses[0]["terminated"]
+    if (
+        "terminated" in environment_responses[0]
+        and environment_responses[0]["terminated"]
     ):
-        log.debug("[green] The conversation is terminated.")
+        log.debug(f"[green] The conversation is terminated. {response}")
     # Get first two agents for backward compatibility with ScriptEnvironmentResponse
     agent_1_responses = agent_responses.get("agent_1", ({}, ""))
     agent_2_responses = agent_responses.get("agent_2", ({}, ""))
 
     return ScriptEnvironmentResponse(
-        terminated=bool(environment_responses[0].get("terminated", False)),
+        terminated=environment_responses[0]["terminated"]
+        if "terminated" in environment_responses[0]
+        else False,
         p1_rate=(
             agent_1_responses[0]["overall_score"]
             if "overall_score" in agent_1_responses[0]
