@@ -387,7 +387,7 @@ async def agenerate_action(
 
                 EXAMPLES (FORMAT ONLY, NOT CONTENT):
                 Public speak:
-                {{ "action_type": "speak", "argument": "Let's cover methods first.", "to": [] }}
+                {{ "action_type": "speak", "argument": "Let's cover methods first." }}
 
                 Private speak (DM to Bob Vence):
                 {{ "action_type": "speak", "argument": "Quick clarification on the clustering params?", "to": ["Bob Vence"] }}
