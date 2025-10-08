@@ -377,7 +377,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                         f"Invalid recipient(s) in 'to': {invalid}. Valid agents: {self.agents}"
                     )
                 if sender in action.to:
-                    raise ValueError("Agent cannot include themselves in 'to'.")
+                    raise ValueError(
+                        f"Agent cannot include themselves in 'to': sender: {sender}, action.to: {action.to}"
+                    )
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
@@ -474,7 +476,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                         f"Invalid recipient(s) in 'to': {invalid}. Valid agents: {self.agents}"
                     )
                 if sender in action.to:
-                    raise ValueError("Agent cannot include themselves in 'to'.")
+                    raise ValueError(
+                        f"Agent cannot include themselves in 'to': sender: {sender}, action.to: {action.to}"
+                    )
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
