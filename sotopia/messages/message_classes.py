@@ -38,7 +38,7 @@ class Observation(Message):
         if self.turn_number == 0:
             return f"\n{self.last_turn}\nConversation Starts:\n"
         else:
-            return f"Turn #{self.turn_number-1}: {self.last_turn}\n"
+            return f"Turn #{self.turn_number - 1}: {self.last_turn}\n"
 
 
 class ScriptBackground(Message):
@@ -139,10 +139,14 @@ class AgentAction(Message):
         match self.action_type:
             case "none":
                 return "did nothing"
+            case "speak":
+                return f'said: "{self.argument}"'
+            case "non-verbal communication":
+                return f"[{self.action_type}] {self.argument}"
+            case "action":
+                return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
-            case _:
-                return f"[{self.action_type} to={self.to or 'ALL'}] {self.argument}"
 
 
 ScriptInteractionReturnType = tuple[
@@ -160,10 +164,14 @@ class ScriptInteraction(Message):
         match self.action_type:
             case "none":
                 return "did nothing"
+            case "speak":
+                return f'said: "{self.argument}"'
+            case "non-verbal communication":
+                return f"[{self.action_type}] {self.argument}"
+            case "action":
+                return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
-            case _:
-                return f"[{self.action_type} to={self.to or 'ALL'}] {self.argument}"
 
         For example, the following is acceptable:
         Turn #x
