@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Union, cast
+import random
 from datetime import datetime
 import webbrowser
 
@@ -1359,23 +1360,28 @@ async def main() -> None:
     # Get all agent names for voting support
     all_agent_names = [f"{p.first_name} {p.last_name}" for p in agent_profiles]
 
+    # Randomize which roster entry will be the human player each run
+    human_idx = random.randrange(len(agent_profiles))
+
     # Get player info
-    player_name = f"{agent_profiles[0].first_name} {agent_profiles[0].last_name}"
-    player_role = list(role_assignments.values())[0]
+    player_name = (
+        f"{agent_profiles[human_idx].first_name} {agent_profiles[human_idx].last_name}"
+    )
+    player_role = role_assignments.get(player_name, "Villager")
 
     # Create PlayerView HTML for clean player-visible information
     player_view = PlayerView(
         PLAYER_VIEW_HTML, player_name, player_role, all_agent_names
     )
 
-    # Replace first agent with human player that writes to PlayerView
+    # Replace the chosen agent with human player that writes to PlayerView
     human_agent = PlayerViewHumanAgent(
-        agent_profile=agent_profiles[0],
+        agent_profile=agent_profiles[human_idx],
         available_agent_names=all_agent_names,
         player_view=player_view,
     )
-    human_agent.goal = env_profile.agent_goals[0]
-    agents[0] = human_agent
+    human_agent.goal = env_profile.agent_goals[human_idx]
+    agents[human_idx] = human_agent
 
     print("\n🌕 Duskmire Werewolves — Interactive Social Game")
     print("=" * 60)
