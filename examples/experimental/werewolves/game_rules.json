@@ -120,8 +120,8 @@
         "Witch",
         "Werewolf"
       ],
-      "max_cycles": 2,
-      "max_turns": 12,
+      "max_cycles": 1,
+      "max_turns": null,
       "speech_visibility": "public",
       "action_visibility": "public",
       "resolution": {
@@ -135,7 +135,7 @@
       ],
       "group": "day",
       "instructions": [
-        "Each villager speaks in turn. Share concise reasoning tied to observations."
+        "Each villager speaks once in turn. Share concise reasoning tied to observations."
       ],
       "role_instructions": {}
     },
@@ -158,6 +158,7 @@
       "entry_messages": [
         "Voting phase: use 'vote NAME' or 'vote none'."
       ],
+      "max_turns": 1,
       "exit_messages": [
         "Votes are tallied."
       ],

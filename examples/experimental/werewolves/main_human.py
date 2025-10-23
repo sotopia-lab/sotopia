@@ -61,6 +61,7 @@ class PlayerView:
         self.input_file = output_path.parent / "player_input.json"
         self.waiting_for_input = False
         self.available_actions: List[str] = []
+        self._seen_event_keys: set[str] = set()
         self._initialize_html()
 
     def _initialize_html(self) -> None:
@@ -143,9 +144,6 @@ class PlayerView:
         .input-box.waiting {{
             background: #27ae60;
             animation: pulse 2s infinite;
-        }}
-        .input-box.disabled {{
-            opacity: 0.5;
         }}
         .action-buttons {{
             display: flex;
@@ -283,15 +281,17 @@ class PlayerView:
 
     <script>
         let selectedAction = null;
+        let lastEventCount = 0;
 
-        function selectAction(action) {{
+        function selectAction(button, action) {{
             selectedAction = action;
             document.querySelectorAll('.action-btn').forEach(btn => {{
                 btn.classList.remove('selected');
             }});
-            event.target.classList.add('selected');
+            if (button) {{
+                button.classList.add('selected');
+            }}
 
-            // Show/hide textarea based on action type
             const textarea = document.getElementById('argument');
             if (action === 'none') {{
                 textarea.style.display = 'none';
@@ -315,27 +315,56 @@ class PlayerView:
                 timestamp: new Date().toISOString()
             }};
 
-            // Write to input file
-            fetch('player_input.json', {{
+            fetch('save_action', {{
                 method: 'POST',
                 headers: {{'Content-Type': 'application/json'}},
                 body: JSON.stringify(data)
-            }}).catch(() => {{
-                // Fallback: Try to save using file system (won't work in browser)
-                console.log('Action:', data);
+            }}).then(() => {{
+                document.getElementById('inputControls').style.display = 'none';
+                document.getElementById('status').textContent = 'Action submitted! Waiting for next turn...';
+                document.getElementById('inputBox').classList.remove('waiting');
+                selectedAction = null;
+                document.getElementById('argument').value = '';
+            }}).catch((err) => {{
+                console.error('Failed to save action:', err);
+                alert('Failed to submit action. Please try again.');
             }});
-
-            // Disable controls
-            document.getElementById('inputControls').style.display = 'none';
-            document.getElementById('status').textContent = 'Action submitted! Waiting for next turn...';
-            document.getElementById('inputBox').classList.remove('waiting');
         }}
 
-        // Auto-scroll to bottom
+        function checkForUpdates() {{
+            const inputBox = document.getElementById('inputBox');
+            const isWaiting = inputBox.classList.contains('waiting');
+            if (!isWaiting) {{
+                fetch(window.location.href + '?t=' + Date.now())
+                    .then(r => r.text())
+                    .then(html => {{
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newInputBox = doc.getElementById('inputBox');
+                        const newEvents = doc.getElementById('events');
+
+                        if (newEvents) {{
+                            document.getElementById('events').innerHTML = newEvents.innerHTML;
+                            scrollToBottom();
+                        }}
+
+                        if (newInputBox && newInputBox.classList.contains('waiting')) {{
+                            location.reload();
+                        }}
+                    }})
+                    .catch(() => {{}});
+            }}
+        }}
+
         function scrollToBottom() {{
-            window.scrollTo(0, document.body.scrollHeight);
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {{
+                mainContent.scrollTop = mainContent.scrollHeight;
+            }}
         }}
-        setInterval(scrollToBottom, 2000);
+
+        scrollToBottom();
+        setInterval(checkForUpdates, 2000);
     </script>
 </body>
 </html>"""
@@ -343,6 +372,14 @@ class PlayerView:
 
     def add_event(self, event_type: str, content: str, speaker: str = "") -> None:
         """Add a new event to the player view."""
+        # De-duplicate identical events across live updates and post-game backfill
+        content_norm = content.strip()
+        speaker_norm = speaker.strip()
+        event_key = f"{event_type}|{speaker_norm}|{content_norm}"
+        if event_key in self._seen_event_keys:
+            return
+        self._seen_event_keys.add(event_key)
+
         timestamp = datetime.now().strftime("%H:%M:%S")
 
         speaker_html = f'<div class="speaker">{speaker}</div>' if speaker else ""
@@ -377,7 +414,7 @@ class PlayerView:
             data = json.loads(self.input_file.read_text())
             self.waiting_for_input = False
             self._update_html()
-            return data
+            return cast(Dict[str, str], data)
         except (json.JSONDecodeError, KeyError):
             # If file is corrupt, wait and try again
             time.sleep(0.5)
@@ -402,14 +439,14 @@ class PlayerView:
             for action in self.available_actions:
                 action_label = action.replace("_", " ").title()
                 action_buttons.append(
-                    f'<button class="action-btn" onclick="selectAction(\'{action}\')">{action_label}</button>'
+                    f'<button class="action-btn" onclick="selectAction(this, \'{action}\')">{action_label}</button>'
                 )
             action_buttons_html = "\n".join(action_buttons)
 
         html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
+    <meta charset=\"UTF-8\">
     <title>Duskmire Werewolves - {self.player_name}</title>
     <style>
         body {{
@@ -577,35 +614,35 @@ class PlayerView:
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="players-box">
+    <div class=\"sidebar\">
+        <div class=\"players-box\">
             <h3>👥 Players</h3>
             <ul>
 {player_list}
             </ul>
         </div>
 
-        <div class="input-box {input_box_class}" id="inputBox">
+        <div class=\"input-box {input_box_class}\" id=\"inputBox\">
             <h3>🎮 Your Action</h3>
-            <div id="status">{status_text}</div>
-            <div id="inputControls" style="display:{input_display};">
-                <div class="action-buttons" id="actionButtons">
+            <div id=\"status\">{status_text}</div>
+            <div id=\"inputControls\" style=\"display:{input_display};\">
+                <div class=\"action-buttons\" id=\"actionButtons\">
 {action_buttons_html}
                 </div>
-                <textarea id="argument" placeholder="Enter your message or action..." style="display:none;"></textarea>
-                <button class="submit-btn" onclick="submitAction()">Submit Action</button>
+                <textarea id=\"argument\" placeholder=\"Enter your message or action...\" style=\"display:none;\"></textarea>
+                <button class=\"submit-btn\" onclick=\"submitAction()\">Submit Action</button>
             </div>
         </div>
     </div>
 
-    <div class="main-content">
-        <div class="header">
+    <div class=\"main-content\">
+        <div class=\"header\">
             <h1>🌕 Duskmire Werewolves</h1>
-            <div class="info">
+            <div class=\"info\">
                 <strong>You are:</strong> {self.player_name} | <strong>Role:</strong> {self.role}
             </div>
         </div>
-        <div id="events">
+        <div id=\"events\">
 {events_html}
         </div>
     </div>
@@ -614,12 +651,14 @@ class PlayerView:
         let selectedAction = null;
         let lastEventCount = 0;
 
-        function selectAction(action) {{
+        function selectAction(button, action) {{
             selectedAction = action;
             document.querySelectorAll('.action-btn').forEach(btn => {{
                 btn.classList.remove('selected');
             }});
-            event.target.classList.add('selected');
+            if (button) {{
+                button.classList.add('selected');
+            }}
 
             // Show/hide textarea based on action type
             const textarea = document.getElementById('argument');
@@ -651,10 +690,10 @@ class PlayerView:
                 headers: {{'Content-Type': 'application/json'}},
                 body: JSON.stringify(data)
             }}).then(() => {{
-                // Disable controls
-                document.getElementById('inputControls').style.display = 'none';
-                document.getElementById('status').textContent = 'Action submitted! Waiting for next turn...';
-                document.getElementById('inputBox').classList.remove('waiting');
+            // Disable controls
+            document.getElementById('inputControls').style.display = 'none';
+            document.getElementById('status').textContent = 'Action submitted! Waiting for next turn...';
+            document.getElementById('inputBox').classList.remove('waiting');
                 selectedAction = null;
                 document.getElementById('argument').value = '';
             }}).catch((err) => {{
@@ -665,33 +704,29 @@ class PlayerView:
 
         // Poll for updates without full page reload
         function checkForUpdates() {{
-            // Only reload if we're not currently inputting
             const inputBox = document.getElementById('inputBox');
             const isWaiting = inputBox.classList.contains('waiting');
 
-            // If input is not active, check for updates
-            if (!isWaiting) {{
-                fetch(window.location.href + '?t=' + Date.now())
-                    .then(r => r.text())
-                    .then(html => {{
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        const newInputBox = doc.getElementById('inputBox');
-                        const newEvents = doc.getElementById('events');
+            fetch(window.location.href + '?t=' + Date.now())
+                .then(r => r.text())
+                .then(html => {{
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newInputBox = doc.getElementById('inputBox');
+                    const newEvents = doc.getElementById('events');
 
-                        // Update events area
-                        if (newEvents) {{
-                            document.getElementById('events').innerHTML = newEvents.innerHTML;
-                            scrollToBottom();
-                        }}
+                    // Always update events area (even while waiting) without reloading
+                    if (newEvents) {{
+                        document.getElementById('events').innerHTML = newEvents.innerHTML;
+                        scrollToBottom();
+                    }}
 
-                        // Update input box state
-                        if (newInputBox && newInputBox.classList.contains('waiting')) {{
-                            location.reload(); // Reload when it's our turn
-                        }}
-                    }})
-                    .catch(() => {{}});
-            }}
+                    // Only reload when transitioning from not waiting -> waiting
+                    if (!isWaiting && newInputBox && newInputBox.classList.contains('waiting')) {{
+                        location.reload();
+                    }}
+                }})
+                .catch(() => {{}});
         }}
 
         // Auto-scroll to bottom
@@ -709,6 +744,153 @@ class PlayerView:
 </body>
 </html>"""
         self.output_path.write_text(html)
+
+
+def _emit_entry_to_player_view(
+    entry: Dict[str, Any], player_view: "PlayerView"
+) -> None:
+    """Mirror a single structured phase_log entry into the player view (non-vote items)."""
+    # Public announcements
+    for msg in entry.get("public", []):
+        text = msg.replace("[God]", "").strip()
+        if "Majority condemns" in text:
+            condemned = text.split("Majority condemns", 1)[1].strip()
+            if "." in condemned:
+                condemned = condemned.split(".", 1)[0].strip()
+            player_view.add_event(
+                "action", f"🗳️ Majority condemns {condemned}. Execution at twilight."
+            )
+        elif "Votes are tallied" in text:
+            player_view.add_event("phase", "🗳️ Votes are tallied.")
+        elif "was executed" in text:
+            player_view.add_event("death", text)
+        elif ("was found dead" in text or " died" in text) and (
+            " said:" not in text and " says:" not in text
+        ):
+            player_view.add_event("death", text)
+        elif "Phase 'day_vote' begins" in text or "Voting phase" in text:
+            player_view.add_event("phase", "🗳️ Voting phase. Time to make your choice.")
+        elif "Night returns" in text:
+            player_view.add_event("phase", "🌙 Night returns.")
+
+
+async def stream_phase_log(env: Any, player_view: "PlayerView") -> None:
+    """Stream structured events; buffer during vote and flush in strict order."""
+    from collections import Counter
+
+    last_index = 0
+    in_vote_phase = False
+    current_votes: Dict[str, str] = {}
+    vote_order: list[str] = []
+    buffered_phase_after_tally: list[str] = []
+    buffered_action_after_tally: list[str] = []
+    buffered_deaths_after_tally: list[str] = []
+    saw_tally_marker = False
+
+    def record_vote(actor: str, target: str) -> None:
+        nonlocal current_votes, vote_order
+        if actor not in current_votes:
+            vote_order.append(actor)
+        current_votes[actor] = target
+
+    async def flush_votes_and_buffered() -> None:
+        nonlocal in_vote_phase, current_votes, vote_order
+        nonlocal \
+            buffered_phase_after_tally, \
+            buffered_action_after_tally, \
+            buffered_deaths_after_tally
+        nonlocal saw_tally_marker
+
+        await asyncio.sleep(0.3)
+        player_view.add_event("phase", "🗳️ Votes are tallied.")
+        for actor in vote_order:
+            target = current_votes.get(actor, "none")
+            player_view.add_event("action", f"🗳️ {actor} voted for {target}")
+        if current_votes:
+            tally = Counter(current_votes.values())
+            ordered_targets: list[str] = []
+            for actor in vote_order:
+                t = current_votes.get(actor, "none")
+                if t not in ordered_targets:
+                    ordered_targets.append(t)
+            parts = [f"{t}: {tally[t]}" for t in ordered_targets]
+            player_view.add_event("phase", "🗳️ Vote summary: " + ", ".join(parts))
+        for text in buffered_action_after_tally:
+            player_view.add_event("action", text)
+        for text in buffered_phase_after_tally:
+            player_view.add_event("phase", text)
+        for text in buffered_deaths_after_tally:
+            player_view.add_event("death", text)
+        in_vote_phase = False
+        current_votes.clear()
+        vote_order.clear()
+        buffered_phase_after_tally.clear()
+        buffered_action_after_tally.clear()
+        buffered_deaths_after_tally.clear()
+        saw_tally_marker = False
+
+    while True:
+        try:
+            phase_log = getattr(env, "phase_log", [])
+            while last_index < len(phase_log):
+                entry = phase_log[last_index]
+                last_index += 1
+                public_msgs = [
+                    m.replace("[God]", "").strip() for m in entry.get("public", [])
+                ]
+
+                if any("Phase 'day_vote' begins" in m for m in public_msgs):
+                    in_vote_phase = True
+                    current_votes.clear()
+                    vote_order.clear()
+                    buffered_phase_after_tally.clear()
+                    buffered_action_after_tally.clear()
+                    buffered_deaths_after_tally.clear()
+                    saw_tally_marker = False
+                    player_view.add_event(
+                        "phase", "🗳️ Voting phase. Time to make your choice."
+                    )
+                    continue
+
+                if in_vote_phase:
+                    for actor, action in entry.get("actions", {}).items():
+                        if action.get("action_type") == "action" and str(
+                            action.get("argument", "")
+                        ).startswith("vote"):
+                            raw = str(action.get("argument", ""))
+                            target = raw[5:].strip() or "none"
+                            record_vote(actor, target)
+                    for text in public_msgs:
+                        if "Votes are tallied" in text:
+                            saw_tally_marker = True
+                        elif "Majority condemns" in text:
+                            condemned = text.split("Majority condemns", 1)[1].strip()
+                            if "." in condemned:
+                                condemned = condemned.split(".", 1)[0].strip()
+                            buffered_action_after_tally.append(
+                                f"🗳️ Majority condemns {condemned}. Execution at twilight."
+                            )
+                        elif (
+                            "twilight_execution" in text or "Execution results" in text
+                        ):
+                            buffered_phase_after_tally.append(
+                                "⚖️ Twilight execution results."
+                            )
+                        elif "was executed" in text:
+                            buffered_deaths_after_tally.append(text)
+                        elif "Night returns" in text:
+                            buffered_phase_after_tally.append("🌙 Night returns.")
+                    if saw_tally_marker:
+                        await flush_votes_and_buffered()
+                    continue
+
+                _emit_entry_to_player_view(entry, player_view)
+
+            if getattr(env, "_winner_payload", None) and last_index >= len(phase_log):
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(0.5)
 
 
 class PlayerViewHumanAgent(HumanAgent):
@@ -752,21 +934,86 @@ class PlayerViewHumanAgent(HumanAgent):
                     "GAME OVER" in line
                     or ("Werewolves win" in line)
                     or ("Villagers win" in line)
+                    or ("Winner:" in line and "Reason:" in line)
                 ):
-                    self.player_view.add_event("phase", f"🎮 GAME OVER: {line}")
+                    clean_line = line.replace("[God]", "").strip()
+                    # Normalize some common variants
+                    if "Winner:" in clean_line and "Reason:" in clean_line:
+                        self.player_view.add_event("phase", f"🎮 {clean_line}")
+                    elif "Werewolves win" in clean_line:
+                        self.player_view.add_event(
+                            "phase", "🎮 Game Over! Winner: Werewolves"
+                        )
+                    elif "Villagers win" in clean_line:
+                        self.player_view.add_event(
+                            "phase", "🎮 Game Over! Winner: Villagers"
+                        )
+                    else:
+                        self.player_view.add_event(
+                            "phase", f"🎮 GAME OVER: {clean_line}"
+                        )
 
                 # Check for voting results and eliminations
                 elif (
                     "voted for" in line
                     or "has been eliminated" in line
                     or "was eliminated" in line
+                    or "was executed" in line
+                    or "Votes are tallied" in line
+                    or "Majority condemns" in line
+                    or "Execution will happen" in line
                 ):
-                    self.player_view.add_event(
-                        "action", line.replace("[God]", "").strip()
-                    )
+                    # Normalize and add as action/phase/death events accordingly
+                    clean_line = line.replace("[God]", "").strip()
+
+                    # Capture vote summaries from structured logs
+                    if (
+                        clean_line.startswith("Action logged:")
+                        and "-> action vote" in clean_line
+                    ):
+                        try:
+                            payload = clean_line.split("Action logged:", 1)[1].strip()
+                            actor, rest = payload.split("-> action vote", 1)
+                            actor = actor.strip()
+                            target = rest.strip()
+                            if actor and target:
+                                self.player_view.add_event(
+                                    "action", f"🗳️ {actor} voted for {target}"
+                                )
+                                continue
+                        except Exception:
+                            pass
+
+                    # Majority condemnation announcement
+                    if "Majority condemns" in clean_line:
+                        condemned_name = clean_line.split("Majority condemns", 1)[
+                            1
+                        ].strip()
+                        if "." in condemned_name:
+                            condemned_name = condemned_name.split(".", 1)[0].strip()
+                        self.player_view.add_event(
+                            "action",
+                            f"🗳️ Majority condemns {condemned_name}. Execution at twilight.",
+                        )
+                        continue
+
+                    # Execution result
+                    if "was executed" in clean_line:
+                        self.player_view.add_event("death", clean_line)
+                        continue
+
+                    # Vote tally marker
+                    if "Votes are tallied" in clean_line:
+                        self.player_view.add_event("phase", "🗳️ Votes are tallied.")
+                        continue
+
+                    # Fallback: add as action event
+                    self.player_view.add_event("action", clean_line)
 
                 # Check for death announcements
-                elif "was found dead" in line or "died" in line:
+                elif ("was found dead" in line or " died" in line) and (
+                    " said:" not in line and " says:" not in line
+                ):
                     self.player_view.add_event(
                         "death", line.replace("[God]", "").strip()
                     )
@@ -792,7 +1039,11 @@ class PlayerViewHumanAgent(HumanAgent):
                             "phase", "☀️ Day breaks. Time to discuss!"
                         )
 
-                elif "Voting phase" in line or ("Phase: 'voting' begins" in line):
+                elif (
+                    "Voting phase" in line
+                    or ("Phase: 'voting' begins" in line)
+                    or ("Phase 'day_vote' begins" in line)
+                ):
                     if not (
                         self.player_view.events
                         and "Voting phase" in self.player_view.events[-1]
@@ -800,6 +1051,10 @@ class PlayerViewHumanAgent(HumanAgent):
                         self.player_view.add_event(
                             "phase", "🗳️ Voting phase. Time to make your choice."
                         )
+                elif "twilight_execution" in line or "Execution results" in line:
+                    self.player_view.add_event("phase", "⚖️ Twilight execution results.")
+                elif "Night returns" in line:
+                    self.player_view.add_event("phase", "🌙 Night returns.")
 
                 # Check for speech from players (avoid God messages and duplicates)
                 elif (" said:" in line or " says:" in line) and "[God]" not in line:
@@ -1032,13 +1287,13 @@ def print_roster(role_assignments: Dict[str, str]) -> None:
         print(f" - {name}: {role}")
 
 
-def start_http_server(port: int = 8000) -> None:
-    """Start a simple HTTP server to handle player input."""
+def start_http_server(port: int = 8000) -> Any:
+    """Start a simple HTTP server to handle player input and return the server instance."""
     from http.server import HTTPServer, SimpleHTTPRequestHandler
     import threading
 
     class PlayerInputHandler(SimpleHTTPRequestHandler):
-        def do_POST(self):
+        def do_POST(self) -> None:
             if self.path == "/save_action":
                 content_length = int(self.headers["Content-Length"])
                 post_data = self.rfile.read(content_length)
@@ -1063,27 +1318,29 @@ def start_http_server(port: int = 8000) -> None:
                 self.send_response(404)
                 self.end_headers()
 
-        def do_OPTIONS(self):
+        def do_OPTIONS(self) -> None:
             self.send_response(200)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
 
-        def log_message(self, _format, *_args):
+        def log_message(self, _format: str, *_args: Any) -> None:
             # Suppress log messages
             pass
 
     os.chdir(BASE_DIR)
     server = HTTPServer(("localhost", port), PlayerInputHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=False)
     thread.start()
     print(f"✓ HTTP server started on http://localhost:{port}")
+    return server
 
 
 async def main() -> None:
-    # Start HTTP server for handling player input from HTML
-    start_http_server(8000)
+    # Start HTTP server for handling player input from HTML and keep it alive
+    # Start and keep the HTTP server alive for the browser UI
+    _ = start_http_server(8000)
 
     env_profile, agent_profiles, role_assignments = prepare_scenario()
     env_model = "gpt-4o-mini"
@@ -1148,6 +1405,9 @@ async def main() -> None:
             print(f" - {name}")
     print("=" * 60)
 
+    # Start phase-log streaming task so UI reflects structured events in real time
+    stream_task = asyncio.create_task(stream_phase_log(env, player_view))
+
     await arun_one_episode(
         env=env,
         agent_list=agents,
@@ -1158,18 +1418,65 @@ async def main() -> None:
         push_to_db=False,
     )
 
+    # Ensure all streamed entries are flushed before proceeding
+    try:
+        await asyncio.wait_for(stream_task, timeout=2.0)
+    except Exception:
+        pass
+
     summarize_phase_log(env.phase_log)
 
-    if env._winner_payload:  # noqa: SLF001 (internal inspection for demo)
-        print("\n" + "=" * 60)
-        print("GAME RESULT")
-        print("=" * 60)
-        print(f"Winner: {env._winner_payload['winner']}")
-        print(f"Reason: {env._winner_payload['message']}")
-        player_view.add_event(
-            "phase",
-            f"🎮 Game Over! Winner: {env._winner_payload['winner']}. Reason: {env._winner_payload['message']}",
-        )
+    # Post-game: walk phase_log to ensure final votes/execution/winner are reflected in the UI
+    try:
+        # Add any vote actions logged
+        for entry in env.phase_log:
+            actions = entry.get("actions", {})
+            for actor, action in actions.items():
+                if action.get("action_type") == "action" and action.get(
+                    "argument", ""
+                ).startswith("vote"):
+                    target = action.get("argument", "")[5:].strip()
+                    if target:
+                        player_view.add_event("action", f"🗳️ {actor} voted for {target}")
+            # Execution results or majority announcements may be in public messages
+            for msg in entry.get("public", []):
+                if "Majority condemns" in msg:
+                    condemned = msg.split("Majority condemns", 1)[1].strip()
+                    if "." in condemned:
+                        condemned = condemned.split(".", 1)[0].strip()
+                    player_view.add_event(
+                        "action",
+                        f"🗳️ Majority condemns {condemned}. Execution at twilight.",
+                    )
+                if "was executed" in msg:
+                    player_view.add_event("death", msg.replace("[God]", "").strip())
+                if "Votes are tallied" in msg:
+                    player_view.add_event("phase", "🗳️ Votes are tallied.")
+
+        if env._winner_payload:  # noqa: SLF001 (internal inspection for demo)
+            winner = env._winner_payload.get("winner", "Unknown")
+            reason = env._winner_payload.get("message", "")
+            print("\n" + "=" * 60)
+            print("GAME RESULT")
+            print("=" * 60)
+            print(f"Winner: {winner}")
+            print(f"Reason: {reason}")
+            player_view.add_event(
+                "phase", f"🎮 Game Over! Winner: {winner}. Reason: {reason}"
+            )
+    except Exception as e:
+        print(f"Post-game UI update failed: {e}")
+
+    # Keep HTTP server alive a bit after game ends so browser can fetch final updates
+    try:
+        import time
+
+        print("Keeping UI server alive for 60 seconds so you can review the results...")
+        end_time = time.time() + 60
+        while time.time() < end_time:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
