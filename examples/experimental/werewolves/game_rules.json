@@ -156,7 +156,7 @@
         "visibility": "public"
       },
       "entry_messages": [
-        "Voting phase: use 'vote NAME' or 'vote none'."
+        "Voting phase: respond with action 'vote NAME' or 'vote none'. Do not speak."
       ],
       "max_turns": 1,
       "exit_messages": [
@@ -164,7 +164,7 @@
       ],
       "group": "day",
       "instructions": [
-        "Voting phase: respond with action 'vote NAME' or 'vote none'."
+        "Voting phase: respond with action 'vote NAME' or 'vote none'. Do not speak."
       ],
       "role_instructions": {}
     },

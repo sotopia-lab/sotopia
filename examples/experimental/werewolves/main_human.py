@@ -930,22 +930,38 @@ class PlayerViewHumanAgent(HumanAgent):
                 if not line:
                     continue
 
-                # Check for game over / winner announcement
+                # Skip system prompts and metadata (scenario, goals, rules)
                 if (
-                    "GAME OVER" in line
-                    or ("Werewolves win" in line)
-                    or ("Villagers win" in line)
-                    or ("Winner:" in line and "Reason:" in line)
+                    line.startswith("Scenario:")
+                    or " goal:" in line
+                    or line.startswith("GAME RULES:")
+                    or line.startswith("You are ")
+                    or line.startswith("Primary directives:")
+                    or line.startswith("Role guidance:")
+                    or line.startswith("System constraints:")
+                ):
+                    continue
+
+                # Check for game over / winner announcement
+                # Use more specific patterns to avoid matching game rules text
+                if (
+                    "GAME OVER" in line.upper()
+                    or (
+                        "Winner:" in line
+                        and ("Werewolves" in line or "Villagers" in line)
+                    )
+                    or ("[God] Werewolves win;" in line)  # Actual game result message
+                    or ("[God] Villagers win;" in line)  # Actual game result message
                 ):
                     clean_line = line.replace("[God]", "").strip()
                     # Normalize some common variants
-                    if "Winner:" in clean_line and "Reason:" in clean_line:
+                    if "Winner:" in clean_line:
                         self.player_view.add_event("phase", f"🎮 {clean_line}")
-                    elif "Werewolves win" in clean_line:
+                    elif "Werewolves win;" in clean_line:
                         self.player_view.add_event(
                             "phase", "🎮 Game Over! Winner: Werewolves"
                         )
-                    elif "Villagers win" in clean_line:
+                    elif "Villagers win;" in clean_line:
                         self.player_view.add_event(
                             "phase", "🎮 Game Over! Winner: Villagers"
                         )
@@ -1143,9 +1159,18 @@ def ensure_agent(player: Dict[str, Any]) -> AgentProfile:
         return profile
 
 
-def build_agent_goal(player: Dict[str, Any], role_prompt: str) -> str:
+def build_agent_goal(
+    player: Dict[str, Any], role_name: str, role_prompt: str, game_rule: str
+) -> str:
+    # Build role description based on actual role
+    if role_name == "Villager":
+        role_desc = f"You are {player['first_name']} {player['last_name']}, a Villager."
+    else:
+        role_desc = f"You are {player['first_name']} {player['last_name']}. Your true role is {role_name}. Other players see you as a villager."
+
     return (
-        f"You are {player['first_name']} {player['last_name']}, publicly known only as a villager.\n"
+        f"GAME RULES: {game_rule}\n\n"
+        f"{role_desc}\n"
         f"Primary directives: {player['goal']}\n"
         f"Role guidance: {role_prompt}\n"
         f"System constraints: {COMMON_GUIDANCE}"
@@ -1160,13 +1185,16 @@ def prepare_scenario() -> tuple[EnvironmentProfile, List[AgentProfile], Dict[str
     agent_goals: List[str] = []
     role_assignments: Dict[str, str] = {}
 
+    # Extract game rule to provide to all agents
+    game_rule = role_actions.get("game_rule", "")
+
     for player in roster["players"]:
         profile = ensure_agent(player)
         agents.append(profile)
         full_name = f"{player['first_name']} {player['last_name']}"
         role = player["role"]
         role_prompt = role_actions["roles"][role]["goal_prompt"]
-        agent_goals.append(build_agent_goal(player, role_prompt))
+        agent_goals.append(build_agent_goal(player, role, role_prompt, game_rule))
         role_assignments[full_name] = role
 
     scenario_text = (
@@ -1472,17 +1500,6 @@ async def main() -> None:
             )
     except Exception as e:
         print(f"Post-game UI update failed: {e}")
-
-    # Keep HTTP server alive a bit after game ends so browser can fetch final updates
-    try:
-        import time
-
-        print("Keeping UI server alive for 60 seconds so you can review the results...")
-        end_time = time.time() + 60
-        while time.time() < end_time:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
 
 
 if __name__ == "__main__":

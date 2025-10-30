@@ -35,7 +35,7 @@ redis.Redis(host="localhost", port=6379)
 
 COMMON_GUIDANCE = (
     "During your turn you must respond. If 'action' is available, use commands like 'kill NAME', "
-    "'inspect NAME', 'save NAME', 'poison NAME', or 'vote NAME'. Werewolf night speech is private to the pack. "
+    "'inspect NAME', 'save NAME', 'poison NAME', or 'vote NAME'. "
     "Day discussion is public. Voting requires an 'action' beginning with 'vote'."
 )
 
@@ -68,9 +68,18 @@ def ensure_agent(player: Dict[str, Any]) -> AgentProfile:
         return profile
 
 
-def build_agent_goal(player: Dict[str, Any], role_prompt: str) -> str:
+def build_agent_goal(
+    player: Dict[str, Any], role_name: str, role_prompt: str, game_rule: str
+) -> str:
+    # Build role description based on actual role
+    if role_name == "Villager":
+        role_desc = f"You are {player['first_name']} {player['last_name']}, a Villager."
+    else:
+        role_desc = f"You are {player['first_name']} {player['last_name']}. Your true role is {role_name}. Other players see you as a villager."
+
     return (
-        f"You are {player['first_name']} {player['last_name']}, publicly known only as a villager.\n"
+        f"GAME RULES: {game_rule}\n\n"
+        f"{role_desc}\n"
         f"Primary directives: {player['goal']}\n"
         f"Role guidance: {role_prompt}\n"
         f"System constraints: {COMMON_GUIDANCE}"
@@ -85,19 +94,19 @@ def prepare_scenario() -> tuple[EnvironmentProfile, List[AgentProfile], Dict[str
     agent_goals: List[str] = []
     role_assignments: Dict[str, str] = {}
 
+    # Extract game rule to provide to all agents
+    game_rule = role_actions.get("game_rule", "")
+
     for player in roster["players"]:
         profile = ensure_agent(player)
         agents.append(profile)
         full_name = f"{player['first_name']} {player['last_name']}"
         role = player["role"]
         role_prompt = role_actions["roles"][role]["goal_prompt"]
-        agent_goals.append(build_agent_goal(player, role_prompt))
+        agent_goals.append(build_agent_goal(player, role, role_prompt, game_rule))
         role_assignments[full_name] = role
 
-    scenario_text = (
-        roster["scenario"]
-        + " Werewolves must be eliminated before they achieve parity with villagers."
-    )
+    scenario_text = roster["scenario"]
 
     env_profile = EnvironmentProfile(
         scenario=scenario_text,
