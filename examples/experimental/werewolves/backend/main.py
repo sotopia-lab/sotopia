@@ -117,7 +117,7 @@ async def submit_action(game_id: str, action: PlayerAction):
         raise HTTPException(status_code=404, detail="Game not found")
 
     try:
-        result = await game.submit_action(action.dict())
+        result = await game.submit_action(action.model_dump())
 
         # Broadcast action acknowledgment
         await ws_manager.broadcast(
@@ -173,7 +173,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
 
 
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+async def global_exception_handler(_request, exc):
     """Global exception handler."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
@@ -183,4 +183,5 @@ async def global_exception_handler(request, exc):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True, log_level="info")
+    # Run app object directly to avoid reload import issues
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

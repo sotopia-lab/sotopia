@@ -80,8 +80,16 @@ class GameSession:
 
     async def _run_game(self):
         """Run the game loop (adapted from main_human.py)."""
-        # Prepare scenario
-        env_profile, agent_profiles, role_assignments = prepare_scenario()
+        try:
+            # Prepare scenario
+            logger.info(f"Game {self.game_id}: Preparing scenario...")
+            env_profile, agent_profiles, role_assignments = prepare_scenario()
+            logger.info(f"Game {self.game_id}: Scenario prepared successfully")
+        except Exception as e:
+            logger.error(
+                f"Game {self.game_id}: Failed to prepare scenario: {e}", exc_info=True
+            )
+            raise
 
         # Store player info
         self.all_player_names = [
@@ -147,21 +155,124 @@ class GameSession:
 
         # Replace first agent with human player
         class WebSocketHumanAgent(PlayerViewHumanAgent):
-            """Human agent that uses WebSocket player view."""
+            """Human agent that uses WebSocket player view with full observation parsing."""
 
             async def aact(self, obs):
-                # Custom implementation that uses our WebSocket player view
-                # (simplified version - you can copy full logic from main_human.py)
                 from sotopia.messages import AgentAction
 
                 self.recv_message("Environment", obs)
 
-                # Parse observation and broadcast events
+                # Parse observation to extract player-visible information
                 if hasattr(obs, "to_natural_language"):
                     obs_text = obs.to_natural_language()
-                    # Add parsing logic here similar to main_human.py
-                    # For now, just broadcast the raw observation
-                    await player_view.add_event("speak", obs_text[:200], "System")
+
+                    # Parse line by line to properly categorize events
+                    lines = obs_text.split("\n")
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+
+                        # Skip system prompts and metadata
+                        if (
+                            line.startswith("Scenario:")
+                            or " goal:" in line
+                            or line.startswith("GAME RULES:")
+                            or line.startswith("You are ")
+                            or line.startswith("Primary directives:")
+                            or line.startswith("Role guidance:")
+                            or line.startswith("System constraints:")
+                        ):
+                            continue
+
+                        # Check for game over
+                        if (
+                            "GAME OVER" in line.upper()
+                            or (
+                                "Winner:" in line
+                                and ("Werewolves" in line or "Villagers" in line)
+                            )
+                            or ("[God] Werewolves win;" in line)
+                            or ("[God] Villagers win;" in line)
+                        ):
+                            clean_line = line.replace("[God]", "").strip()
+                            await player_view.add_event("phase", f"🎮 {clean_line}")
+
+                        # Check for death announcements
+                        elif (
+                            "was found dead" in line
+                            or " died" in line
+                            or "was killed" in line
+                        ) and (" said:" not in line and " says:" not in line):
+                            clean_death = line.replace("[God]", "").strip()
+                            if clean_death:  # Only add if not empty
+                                await player_view.add_event(
+                                    "death", f"💀 {clean_death}"
+                                )
+
+                        # Check for phase announcements
+                        elif (
+                            "Night phase begins" in line
+                            or "Phase: 'night'" in line.lower()
+                        ):
+                            await player_view.add_event(
+                                "phase", "🌙 Night phase begins"
+                            )
+
+                        elif (
+                            "Day discussion starts" in line
+                            or "Phase: 'day_discussion' begins" in line
+                        ):
+                            await player_view.add_event(
+                                "phase", "☀️ Day breaks. Time to discuss!"
+                            )
+
+                        elif (
+                            "Voting phase" in line
+                            or "Phase: 'voting' begins" in line
+                            or "Phase 'day_vote' begins" in line
+                        ):
+                            await player_view.add_event("phase", "🗳️ Voting phase")
+
+                        elif (
+                            "twilight_execution" in line or "Execution results" in line
+                        ):
+                            await player_view.add_event("phase", "⚖️ Execution results")
+
+                        elif "Night returns" in line:
+                            await player_view.add_event("phase", "🌙 Night returns")
+
+                        # Check for player speech
+                        elif (
+                            " said:" in line or " says:" in line
+                        ) and "[God]" not in line:
+                            parts = line.split(
+                                " said:" if " said:" in line else " says:"
+                            )
+                            if len(parts) == 2:
+                                speaker = parts[0].strip()
+                                message = parts[1].strip().strip('"')
+                                await player_view.add_event("speak", message, speaker)
+
+                        # Check for voting and eliminations
+                        elif (
+                            "voted for" in line
+                            or "was executed" in line
+                            or "was eliminated" in line
+                            or "Votes are tallied" in line
+                            or "Majority condemns" in line
+                        ):
+                            clean_action = line.replace("[God]", "").strip()
+                            if "was executed" in clean_action:
+                                await player_view.add_event(
+                                    "death", f"⚖️ {clean_action}"
+                                )
+                            elif "Majority condemns" in clean_action:
+                                await player_view.add_event(
+                                    "action", f"🗳️ {clean_action}"
+                                )
+                            elif clean_action:
+                                await player_view.add_event("action", clean_action)
 
                 # Get available actions
                 available_actions = getattr(obs, "available_actions", ["none"])
@@ -198,11 +309,32 @@ class GameSession:
             push_to_db=False,
         )
 
-        # Game finished
+        # Game finished - check for winner
         self.status = "finished"
-        await self.broadcast_event(
-            {"type": "game_over", "content": "Game finished!", "event_class": "phase"}
-        )
+
+        # Check if there's a winner payload
+        if hasattr(env, "_winner_payload") and env._winner_payload:
+            winner = env._winner_payload.get("winner", "Unknown")
+            reason = env._winner_payload.get("message", "")
+
+            logger.info(f"Game {self.game_id}: Winner={winner}, Reason={reason}")
+
+            await self.broadcast_event(
+                {
+                    "type": "game_over",
+                    "content": f"🎮 Game Over! Winner: {winner}. {reason}",
+                    "event_class": "phase",
+                }
+            )
+        else:
+            logger.warning(f"Game {self.game_id}: No winner payload found")
+            await self.broadcast_event(
+                {
+                    "type": "game_over",
+                    "content": "Game finished!",
+                    "event_class": "phase",
+                }
+            )
 
     async def submit_action(self, action: Dict[str, Any]):
         """Submit a player action."""
