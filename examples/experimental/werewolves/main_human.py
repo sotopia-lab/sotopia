@@ -1159,9 +1159,7 @@ def ensure_agent(player: Dict[str, Any]) -> AgentProfile:
         return profile
 
 
-def build_agent_goal(
-    player: Dict[str, Any], role_name: str, role_prompt: str, game_rule: str
-) -> str:
+def build_agent_goal(player: Dict[str, Any], role_name: str, role_prompt: str) -> str:
     # Build role description based on actual role
     if role_name == "Villager":
         role_desc = f"You are {player['first_name']} {player['last_name']}, a Villager."
@@ -1169,7 +1167,6 @@ def build_agent_goal(
         role_desc = f"You are {player['first_name']} {player['last_name']}. Your true role is {role_name}. Other players see you as a villager."
 
     return (
-        f"GAME RULES: {game_rule}\n\n"
         f"{role_desc}\n"
         f"Primary directives: {player['goal']}\n"
         f"Role guidance: {role_prompt}\n"
@@ -1185,16 +1182,13 @@ def prepare_scenario() -> tuple[EnvironmentProfile, List[AgentProfile], Dict[str
     agent_goals: List[str] = []
     role_assignments: Dict[str, str] = {}
 
-    # Extract game rule to provide to all agents
-    game_rule = role_actions.get("game_rule", "")
-
     for player in roster["players"]:
         profile = ensure_agent(player)
         agents.append(profile)
         full_name = f"{player['first_name']} {player['last_name']}"
         role = player["role"]
         role_prompt = role_actions["roles"][role]["goal_prompt"]
-        agent_goals.append(build_agent_goal(player, role, role_prompt, game_rule))
+        agent_goals.append(build_agent_goal(player, role, role_prompt))
         role_assignments[full_name] = role
 
     scenario_text = (
@@ -1372,14 +1366,14 @@ async def main() -> None:
     _ = start_http_server(8000)
 
     env_profile, agent_profiles, role_assignments = prepare_scenario()
-    env_model = "gpt-4o-mini"
+    env_model = "gpt-5"
     agent_model_list = [
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
     ]
 
     env = build_environment(env_profile, role_assignments, env_model)

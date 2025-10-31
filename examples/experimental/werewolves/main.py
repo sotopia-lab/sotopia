@@ -68,9 +68,7 @@ def ensure_agent(player: Dict[str, Any]) -> AgentProfile:
         return profile
 
 
-def build_agent_goal(
-    player: Dict[str, Any], role_name: str, role_prompt: str, game_rule: str
-) -> str:
+def build_agent_goal(player: Dict[str, Any], role_name: str, role_prompt: str) -> str:
     # Build role description based on actual role
     if role_name == "Villager":
         role_desc = f"You are {player['first_name']} {player['last_name']}, a Villager."
@@ -78,9 +76,8 @@ def build_agent_goal(
         role_desc = f"You are {player['first_name']} {player['last_name']}. Your true role is {role_name}. Other players see you as a villager."
 
     return (
-        f"GAME RULES: {game_rule}\n\n"
-        f"{role_desc}\n"
-        f"Primary directives: {player['goal']}\n"
+        f"{role_desc}"
+        f"{player['goal']}"
         f"Role guidance: {role_prompt}\n"
         f"System constraints: {COMMON_GUIDANCE}"
     )
@@ -224,14 +221,14 @@ def print_roster(role_assignments: Dict[str, str]) -> None:
 
 async def main() -> None:
     env_profile, agent_profiles, role_assignments = prepare_scenario()
-    env_model = "gpt-4o-mini"
+    env_model = "gpt-5"
     agent_model_list = [
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
     ]
 
     env = build_environment(env_profile, role_assignments, env_model)

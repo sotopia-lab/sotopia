@@ -224,6 +224,13 @@ async def agenerate(
             ), "response_schema is not supported in this model"
         messages = [{"role": "user", "content": template}]
 
+        # Log the full prompt being sent to LLM
+        log.info(f"\n{'='*80}")
+        log.info(f"LLM PROMPT (model={model_name}):")
+        log.info(f"{'='*80}")
+        log.info(f"{template}")
+        log.info(f"{'='*80}\n")
+
         assert isinstance(
             output_parser, PydanticOutputParser
         ), "structured output only supported in PydanticOutputParser"

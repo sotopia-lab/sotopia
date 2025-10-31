@@ -106,8 +106,8 @@ class GameSession:
         )
 
         # Build environment
-        env_model = "gpt-4o-mini"
-        agent_model_list = ["gpt-4o-mini"] * len(agent_profiles)
+        env_model = "gpt-5"
+        agent_model_list = ["gpt-5"] * len(agent_profiles)
 
         env = build_environment(env_profile, role_assignments, env_model)
         agents = create_agents(agent_profiles, env_profile, agent_model_list)
