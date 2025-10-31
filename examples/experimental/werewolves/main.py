@@ -35,7 +35,7 @@ redis.Redis(host="localhost", port=6379)
 
 COMMON_GUIDANCE = (
     "During your turn you must respond. If 'action' is available, use commands like 'kill NAME', "
-    "'inspect NAME', 'save NAME', 'poison NAME', or 'vote NAME'. Werewolf night speech is private to the pack. "
+    "'inspect NAME', 'save NAME', 'poison NAME', or 'vote NAME'. "
     "Day discussion is public. Voting requires an 'action' beginning with 'vote'."
 )
 
@@ -68,10 +68,16 @@ def ensure_agent(player: Dict[str, Any]) -> AgentProfile:
         return profile
 
 
-def build_agent_goal(player: Dict[str, Any], role_prompt: str) -> str:
+def build_agent_goal(player: Dict[str, Any], role_name: str, role_prompt: str) -> str:
+    # Build role description based on actual role
+    if role_name == "Villager":
+        role_desc = f"You are {player['first_name']} {player['last_name']}, a Villager."
+    else:
+        role_desc = f"You are {player['first_name']} {player['last_name']}. Your true role is {role_name}. Other players see you as a villager."
+
     return (
-        f"You are {player['first_name']} {player['last_name']}, publicly known only as a villager.\n"
-        f"Primary directives: {player['goal']}\n"
+        f"{role_desc}"
+        f"{player['goal']}"
         f"Role guidance: {role_prompt}\n"
         f"System constraints: {COMMON_GUIDANCE}"
     )
@@ -91,13 +97,10 @@ def prepare_scenario() -> tuple[EnvironmentProfile, List[AgentProfile], Dict[str
         full_name = f"{player['first_name']} {player['last_name']}"
         role = player["role"]
         role_prompt = role_actions["roles"][role]["goal_prompt"]
-        agent_goals.append(build_agent_goal(player, role_prompt))
+        agent_goals.append(build_agent_goal(player, role, role_prompt))
         role_assignments[full_name] = role
 
-    scenario_text = (
-        roster["scenario"]
-        + " Werewolves must be eliminated before they achieve parity with villagers."
-    )
+    scenario_text = roster["scenario"]
 
     env_profile = EnvironmentProfile(
         scenario=scenario_text,
@@ -215,14 +218,14 @@ def print_roster(role_assignments: Dict[str, str]) -> None:
 
 async def main() -> None:
     env_profile, agent_profiles, role_assignments = prepare_scenario()
-    env_model = "gpt-4o-mini"
+    env_model = "gpt-5"
     agent_model_list = [
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
-        "gpt-4o-mini",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
+        "gpt-5",
     ]
 
     env = build_environment(env_profile, role_assignments, env_model)
