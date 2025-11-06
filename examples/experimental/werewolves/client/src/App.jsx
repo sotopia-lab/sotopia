@@ -1,31 +1,71 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Moon, Sun, Users, Skull, Eye, Heart, AlertCircle, Play, UserCheck } from 'lucide-react';
+import { Moon, Sun, Users, Skull, Eye, Heart, Play, UserCheck } from 'lucide-react';
 import './App.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = 'http://localhost:8000';
 
 function App() {
-  // Game state
-  const [gameState, setGameState] = useState(null);
-  const [playerState, setPlayerState] = useState(null);
+  const [gameId, setGameId] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [ws, setWs] = useState(null);
   
   // Lobby state
   const [showLobby, setShowLobby] = useState(true);
-  const [gameMode, setGameMode] = useState('spectate'); // 'spectate' or 'play'
+  const [gameMode, setGameMode] = useState('spectate');
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [availablePlayers, setAvailablePlayers] = useState([]);
   
   // Action state
   const [actionArgument, setActionArgument] = useState('');
+  const [waitingForInput, setWaitingForInput] = useState(false);
 
-  // Load available players on mount
   useEffect(() => {
     loadRoster();
   }, []);
+
+  useEffect(() => {
+    if (gameId && !ws) {
+      connectWebSocket(gameId);
+    }
+    return () => {
+      if (ws) ws.close();
+    };
+  }, [gameId]);
+
+  const connectWebSocket = (gid) => {
+    //const websocket = new WebSocket(`ws://localhost:8000/ws/${gid}`);
+    const wsUrl = API_URL.replace('http', 'ws') + `/ws/${gid}`;
+    const websocket = new WebSocket(wsUrl);
+
+    websocket.onopen = () => {
+      console.log('✅ WebSocket connected');
+    };
+    
+    websocket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('📨 Event received:', data);
+      
+      if (data.type === 'state_sync') {
+        setEvents(data.data.events || []);
+      } else if (data.type === 'input_request' && data.player === selectedPlayer) {
+        setWaitingForInput(true);
+      } else {
+        setEvents(prev => [...prev, data]);
+      }
+    };
+    
+    websocket.onerror = (error) => {
+      console.error('❌ WebSocket error:', error);
+    };
+    
+    websocket.onclose = () => {
+      console.log('🔌 WebSocket closed');
+    };
+    
+    setWs(websocket);
+  };
 
   const loadRoster = async () => {
     try {
@@ -42,95 +82,66 @@ function App() {
   const startGame = async () => {
     try {
       setLoading(true);
-      setError(null);
       
       const humanPlayers = gameMode === 'play' ? [selectedPlayer] : [];
+      console.log('🎮 Starting game:', { gameMode, humanPlayers });
       
-      await axios.post(`${API_URL}/game/init`, {
+      const res = await axios.post(`${API_URL}/game/start`, {
         human_players: humanPlayers,
-        auto_play: true
+        game_mode: gameMode
       });
       
+      console.log('✅ Game started:', res.data);
+      setGameId(res.data.game_id);
       setShowLobby(false);
-      pollGameState();
-      
-      // Start polling
-      const interval = setInterval(pollGameState, 2000);
-      return () => clearInterval(interval);
     } catch (err) {
-      setError('Failed to start game');
-      console.error(err);
+      console.error('❌ Failed to start game:', err);
+      alert('Failed to start game: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const pollGameState = async () => {
-    try {
-      const gameRes = await axios.get(`${API_URL}/game/state`);
-      setGameState(gameRes.data);
-      
-      // Update events (deduplicate)
-      if (gameRes.data.recent_events?.public) {
-        setEvents(gameRes.data.recent_events.public);
-      }
-      
-      // Get player state if playing as human
-      if (gameMode === 'play' && selectedPlayer) {
-        try {
-          const playerRes = await axios.get(`${API_URL}/game/state/${selectedPlayer}`);
-          setPlayerState(playerRes.data);
-        } catch (err) {
-          // Player might not exist yet
-          console.error('Player state error:', err);
-        }
-      }
-    } catch (err) {
-      console.error('Polling error:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (!showLobby && gameState) {
-      const interval = setInterval(pollGameState, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [showLobby, gameState, selectedPlayer, gameMode]);
-
-  const submitAction = async (actionType) => {
+  const submitAction = async () => {
+    if (!actionArgument.trim()) return;
+    
     try {
       setLoading(true);
-      setError(null);
       
       await axios.post(`${API_URL}/game/action`, {
+        game_id: gameId,
         player_name: selectedPlayer,
-        action_type: actionType,
+        action_type: 'speak',
         argument: actionArgument
       });
       
       setActionArgument('');
-      await pollGameState();
+      setWaitingForInput(false);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Action failed');
+      console.error('❌ Action failed:', err);
+      alert('Action failed: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const renderPhaseIcon = () => {
-    const phase = gameState?.phase || '';
-    if (phase.includes('night')) return <Moon className="w-5 h-5" />;
-    if (phase.includes('day')) return <Sun className="w-5 h-5" />;
-    return <Users className="w-5 h-5" />;
+  const getAlivePlayers = () => {
+    if (!availablePlayers.length) return [];
+    const dead = new Set();
+    events.forEach(e => {
+      if (e.type === 'death' && e.content) {
+        availablePlayers.forEach(p => {
+          if (e.content.includes(p.name)) {
+            dead.add(p.name);
+          }
+        });
+      }
+    });
+    return availablePlayers.filter(p => !dead.has(p.name));
   };
 
-  const renderRoleIcon = () => {
-    const role = playerState?.role;
-    if (role === 'Seer') return <Eye className="w-5 h-5" />;
-    if (role === 'Witch') return <Heart className="w-5 h-5" />;
-    if (role === 'Werewolf') return <Skull className="w-5 h-5" />;
-    return <Users className="w-5 h-5" />;
-  };
+  const alivePlayers = getAlivePlayers();
+  const isGameOver = events.some(e => e.type === 'game_over');
 
   // Lobby Screen
   if (showLobby) {
@@ -191,20 +202,9 @@ function App() {
     );
   }
 
-  // Loading screen
-  if (loading && !gameState) {
-    return (
-      <div className="loading-screen">
-        <Moon className="w-12 h-12 animate-pulse" />
-        <p>Loading Werewolf Game...</p>
-      </div>
-    );
-  }
-
   // Main Game Screen
   return (
     <div className="app">
-      {/* Header */}
       <header className="header">
         <div className="header-content">
           <div className="header-title">
@@ -216,146 +216,77 @@ function App() {
           </div>
           
           <div className="header-stats">
-            {renderPhaseIcon()}
-            <span className="phase-name">
-              {gameState?.phase_meta?.display_name || gameState?.phase}
-            </span>
-            
-            <div className="alive-count">
-              <Users className="w-4 h-4" />
-              <span>{gameState?.alive_players?.length || 0} alive</span>
-            </div>
+            <Users className="w-4 h-4" />
+            <span>{alivePlayers.length} alive</span>
           </div>
         </div>
       </header>
 
       <div className="main-container">
-        {/* Sidebar */}
         <aside className="sidebar">
-          {gameMode === 'play' && playerState && (
+          {gameMode === 'play' && (
             <div className="player-card">
               <div className="player-header">
-                {renderRoleIcon()}
+                <Users className="w-5 h-5" />
                 <div>
-                  <h3>{playerState?.player_name || 'Player'}</h3>
-                  <p className="role-badge">{playerState?.role}</p>
-                </div>
-              </div>
-              
-              <div className="player-stats">
-                <div className="stat">
-                  <span>Team:</span>
-                  <span className="stat-value">{playerState?.team}</span>
-                </div>
-                <div className="stat">
-                  <span>Status:</span>
-                  <span className={`stat-value ${playerState?.alive ? 'alive' : 'dead'}`}>
-                    {playerState?.alive ? 'Alive' : 'Dead'}
-                  </span>
+                  <h3>{selectedPlayer}</h3>
+                  <p className="role-badge">
+                    {availablePlayers.find(p => p.name === selectedPlayer)?.role || 'Player'}
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Players List */}
           <div className="players-list">
-            <h4>Players</h4>
+            <h4>Players ({alivePlayers.length} alive)</h4>
             <ul>
-              {gameState?.alive_players?.map((player) => (
-                <li key={player} className={gameState?.active_players?.includes(player) ? 'active' : ''}>
+              {alivePlayers.map((player) => (
+                <li key={player.name}>
                   <div className="player-item">
-                    <span>{player}</span>
-                    {gameState?.active_players?.includes(player) && (
-                      <span className="active-indicator">●</span>
-                    )}
+                    <span>{player.name}</span>
                   </div>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Game Over */}
-          {gameState?.winner && (
+          {isGameOver && (
             <div className="winner-card">
               <h3>🎉 Game Over!</h3>
-              <p className="winner">{gameState.winner.winner} Wins!</p>
-              <p className="reason">{gameState.winner.message}</p>
-              <button 
-                className="restart-btn"
-                onClick={() => window.location.reload()}
-              >
+              <p className="winner">
+                {events.find(e => e.type === 'game_over')?.content || 'Game finished!'}
+              </p>
+              <button className="restart-btn" onClick={() => window.location.reload()}>
                 Play Again
               </button>
             </div>
           )}
         </aside>
 
-        {/* Main Content */}
         <main className="main-content">
-          {/* Events Feed */}
           <div className="events-feed">
-            <h3>Game Events</h3>
+            <h3>Game Events ({events.length})</h3>
             <div className="events-list">
               {events.length === 0 ? (
-                <p className="no-events">Waiting for events...</p>
+                <p className="no-events">Waiting for game to start...</p>
               ) : (
                 events.map((event, idx) => {
-                  // Detect event type
-                  const isDeath = event.includes('died') || event.includes('dead') || event.includes('executed') || event.includes('was found dead');
-                  const isPhase = event.includes('Phase ') || event.includes('begins:') || event.includes('ends');
-                  const isSpeech = event.includes(' said: ');
-                  const isAction = event.includes('🗡️') || event.includes('🔮') || event.includes('💊') || event.includes('☠️') || event.includes('⚡');
-                  const isVote = event.includes('🗳️') || event.includes('voted') || event.includes('Votes are tallied');
-                  
-                  // Extract speaker name for speech events
-                  let speaker = '';
-                  let message = event;
-                  if (isSpeech) {
-                    const parts = event.split(' said: ');
-                    if (parts.length === 2) {
-                      speaker = parts[0];
-                      message = parts[1].replace(/^"/, '').replace(/"$/, '');
-                    }
-                  }
-                  
-                  // Add context hints for phases
-                  let contextHint = '';
-                  if (event.includes('night_werewolves')) {
-                    contextHint = '🌙 Werewolves secretly choose their victim';
-                  } else if (event.includes('night_seer')) {
-                    contextHint = '🔮 Seer investigates one player';
-                  } else if (event.includes('night_witch')) {
-                    contextHint = '🧪 Witch can save or poison someone';
-                  } else if (event.includes('dawn_report')) {
-                    contextHint = '☀️ Results of the night are revealed';
-                  } else if (event.includes('day_discussion')) {
-                    contextHint = '💬 Everyone discusses who might be a werewolf';
-                  } else if (event.includes('day_vote')) {
-                    contextHint = '🗳️ Time to vote someone out';
-                  }
+                  const content = event.content || '';
+                  const type = event.type || '';
                   
                   return (
                     <div 
                       key={idx} 
-                      className={`event ${
-                        isDeath ? 'death' : 
-                        isPhase ? 'phase' : 
-                        isSpeech ? 'speech' :
-                        isAction ? 'action' :
-                        isVote ? 'vote' :
-                        'normal'
-                      }`}
+                      className={`event ${type === 'death' ? 'death' : type === 'phase' ? 'phase' : type === 'speech' ? 'speech' : type === 'action' ? 'action' : type === 'vote' ? 'vote' : 'normal'}`}
                     >
-                      {isSpeech && speaker ? (
+                      {type === 'speech' && event.speaker ? (
                         <>
-                          <div className="event-speaker">{speaker}</div>
-                          <div className="event-message">{message}</div>
+                          <div className="event-speaker">{event.speaker}</div>
+                          <div className="event-message">{content}</div>
                         </>
                       ) : (
-                        <>
-                          <div className="event-message">{event.replace('[God]', '').trim()}</div>
-                          {contextHint && <div className="event-context">{contextHint}</div>}
-                        </>
+                        <div className="event-message">{content}</div>
                       )}
                     </div>
                   );
@@ -364,77 +295,40 @@ function App() {
             </div>
           </div>
 
-          {/* Action Panel (only for human players) */}
-          {gameMode === 'play' && playerState?.is_active && playerState?.alive && (
+          {gameMode === 'play' && waitingForInput && !isGameOver && (
             <div className="action-panel">
-              <h3>Your Turn</h3>
+              <h3>✨ Your Turn!</h3>
               
-              {error && (
-                <div className="error-message">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>{error}</span>
-                  <button onClick={() => setError(null)}>×</button>
-                </div>
-              )}
-
-              <div className="action-buttons">
-                {playerState?.available_actions?.map((action) => (
-                  action !== 'none' && (
-                    <button
-                      key={action}
-                      className={`action-btn ${action}`}
-                      onClick={() => submitAction(action)}
-                      disabled={loading || !actionArgument}
-                    >
-                      {action === 'speak' && '💬 Speak'}
-                      {action === 'action' && '⚡ Action'}
-                      {action === 'vote' && '🗳️ Vote'}
-                    </button>
-                  )
-                ))}
-              </div>
-
               <textarea
                 className="action-input"
-                placeholder={
-                  playerState?.available_actions?.includes('action')
-                    ? "Type your action (e.g., 'kill Aurora', 'inspect Bram', 'vote Celeste')"
-                    : "Type your message..."
-                }
+                placeholder="Type your message or action (e.g., 'I think Bram is suspicious' or 'vote Celeste')"
                 value={actionArgument}
                 onChange={(e) => setActionArgument(e.target.value)}
                 disabled={loading}
+                autoFocus
               />
 
               <button
                 className="submit-btn"
-                onClick={() => submitAction(playerState?.available_actions?.[0])}
-                disabled={loading || !actionArgument}
+                onClick={submitAction}
+                disabled={loading || !actionArgument.trim()}
               >
                 {loading ? 'Submitting...' : 'Submit'}
               </button>
             </div>
           )}
 
-          {gameMode === 'play' && !playerState?.is_active && playerState?.alive && (
+          {gameMode === 'play' && !waitingForInput && !isGameOver && (
             <div className="waiting-turn">
-              <p>Waiting for other players...</p>
-            </div>
-          )}
-
-          {gameMode === 'play' && !playerState?.alive && (
-            <div className="dead-overlay">
-              <Skull className="w-16 h-16" />
-              <p>You are dead</p>
-              <span>Watch the remaining players</span>
+              <p>Waiting for your turn...</p>
             </div>
           )}
           
-          {gameMode === 'spectate' && (
+          {gameMode === 'spectate' && !isGameOver && (
             <div className="spectate-info">
               <Eye className="w-12 h-12 mb-2" />
               <p>Spectator Mode</p>
-              <span>Watching AI agents play</span>
+              <span>Watching AI agents play ({events.length} events)</span>
             </div>
           )}
         </main>
