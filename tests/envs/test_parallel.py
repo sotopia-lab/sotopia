@@ -121,7 +121,7 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
 
 
 @pytest.mark.asyncio
-async def test_parallel_sotopia_env_private_messages() -> None:
+async def test_parallel_sotopia_env_multi_agents_private_messages() -> None:
     """
     Test if agent messages with `to` field (private messages) are correctly
     routed to corresponding agents (visible to sender and recipients only).
@@ -130,7 +130,7 @@ async def test_parallel_sotopia_env_private_messages() -> None:
         pk="test_pk",
         code_name="test",
         scenario="test",
-        agent_goals=["test 1", "test 2"],
+        agent_goals=["test 1", "test 2", "test 3"],
     )
     env = ParallelSotopiaEnv(env_profile=env_profile)
 
@@ -158,6 +158,17 @@ async def test_parallel_sotopia_env_private_messages() -> None:
                     }
                 ),
             ),
+            "agent3": LLMAgent(
+                "agent3",
+                model_name="gpt-4o-mini",
+                agent_profile=AgentProfile(
+                    **{
+                        "first_name": "Marry",
+                        "last_name": "Doe",
+                        "pk": "test_pk_agent_3",
+                    }
+                ),
+            ),
         }
     )
     env.reset(agents=agents)
@@ -169,6 +180,11 @@ async def test_parallel_sotopia_env_private_messages() -> None:
             to=["agent2"],
         ),
         "agent2": AgentAction(action_type="speak", argument="hi all"),
+        "agent3": AgentAction(
+            action_type="speak",
+            argument="psst only for agent1",
+            to=["agent1"],
+        ),
     }
 
     observations, _, _, _, _ = await env.astep(actions)
@@ -176,10 +192,13 @@ async def test_parallel_sotopia_env_private_messages() -> None:
     # Private content is visible to sender and recipient
     assert 'agent1 said: "psst only for agent2"' in observations["agent1"].last_turn
     assert 'agent1 said: "psst only for agent2"' in observations["agent2"].last_turn
+    assert 'agent3 said: "psst only for agent1"' in observations["agent1"].last_turn
+    assert 'agent3 said: "psst only for agent1"' in observations["agent3"].last_turn
 
     # Public content is visible to everyone
     assert 'agent2 said: "hi all"' in observations["agent1"].last_turn
     assert 'agent2 said: "hi all"' in observations["agent2"].last_turn
+    assert 'agent2 said: "hi all"' in observations["agent3"].last_turn
 
 
 @pytest.mark.asyncio
