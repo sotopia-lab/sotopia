@@ -180,3 +180,59 @@ async def test_parallel_sotopia_env_private_messages() -> None:
     # Public content is visible to everyone
     assert 'agent2 said: "hi all"' in observations["agent1"].last_turn
     assert 'agent2 said: "hi all"' in observations["agent2"].last_turn
+
+
+@pytest.mark.asyncio
+async def test_parallel_sotopia_env_invalid_receipients() -> None:
+    """
+    Test if env throws error when message recipients are invalid
+    """
+    env_profile = EnvironmentProfile(
+        pk="test_pk",
+        code_name="test",
+        scenario="test",
+        agent_goals=["test 1", "test 2"],
+    )
+    env = ParallelSotopiaEnv(env_profile=env_profile)
+
+    agents = Agents(
+        {
+            "agent1": LLMAgent(
+                "agent1",
+                model_name="gpt-4o-mini",
+                agent_profile=AgentProfile(
+                    **{
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "pk": "test_pk_agent_1",
+                    },
+                ),
+            ),
+            "agent2": LLMAgent(
+                "agent2",
+                model_name="gpt-4o-mini",
+                agent_profile=AgentProfile(
+                    **{
+                        "first_name": "Jane",
+                        "last_name": "Doe",
+                        "pk": "test_pk_agent_2",
+                    }
+                ),
+            ),
+        }
+    )
+    env.reset(agents=agents)
+
+    actions = {
+        "agent1": AgentAction(
+            action_type="speak",
+            argument="psst only for agent2",
+            to=["invalid_agent"],
+        ),
+        "agent2": AgentAction(action_type="speak", argument="hi all"),
+    }
+
+    # Agent1's action to 'invalid_agent' should raise an error, see
+    # `ParallelSotopiaEnv.astep()`
+    with pytest.raises(ValueError, match=r"Invalid recipient.*in 'to'"):
+        await env.astep(actions)
