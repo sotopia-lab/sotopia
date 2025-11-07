@@ -63,7 +63,7 @@
       "goal_prompt": "Confer quietly with fellow wolves at night. Use actions like 'kill NAME' to propose a victim. During the day, blend in while pushing misdirection.",
       "default_actions": ["speak"],
       "phase_actions": {
-        "night_werewolves": ["speak", "action"],
+        "night_werewolves": ["action"],
         "night_seer": ["none"],
         "night_witch": ["none"],
         "dawn_report": ["none"],

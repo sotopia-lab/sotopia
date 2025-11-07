@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence, cast
+
+WOLF_TIMEOUT_SECONDS = 15.0
+WOLF_MAX_EXCHANGES = 3
 
 from pydantic import BaseModel, Field, RootModel, ValidationError
 
@@ -204,6 +208,12 @@ class GameRulebook:
             "witch_saved": None,
             "witch_poisoned": None,
             "seer_result": "",
+            "wolf_votes": {},
+            "wolf_spoke": {},
+            "wolf_phase_start": 0.0,
+            "wolf_exchange_count": 0,
+            "wolf_last_vote": None,
+            "wolf_force_first_vote": False,
         }
         self.group_cycle.clear()
         self.group_stage.clear()
@@ -213,6 +223,7 @@ class GameRulebook:
         self.pending_events = PhaseEvents.phase_entry(
             self.current_phase, entry_phase.entry_messages
         )
+        self._append_phase_entry_private_messages(self.current_phase, self.pending_events)
 
     # ------------------------------------------------------------------
     # Accessors used by the environment
@@ -290,10 +301,23 @@ class GameRulebook:
             events.extend(self._resolve_phase(phase, relevant))
             advance = True
 
+        if (
+            phase.name == "night_werewolves"
+            and not self.state_flags.get("night_target")
+        ):
+            advance = False
+
         winner = self._check_end_conditions()
         if winner:
             self._schedule_phase_exit(phase)
             return events, True, winner
+
+        if (
+            phase.name == "night_werewolves"
+            and phase.turn_mode != "round-robin"
+            and not self.state_flags.get("night_target")
+        ):
+            advance = False
 
         if advance:
             self._schedule_phase_exit(phase)
@@ -312,6 +336,7 @@ class GameRulebook:
         self._register_phase_entry(next_phase)
         phase_def = self.phase_lookup[next_phase]
         entry = PhaseEvents.phase_entry(next_phase, phase_def.entry_messages)
+        self._append_phase_entry_private_messages(next_phase, entry)
         return entry
 
     # ------------------------------------------------------------------
@@ -344,6 +369,45 @@ class GameRulebook:
             "group_stage": stage,
             "display_name": phase.name.replace("_", " ").title(),
         }
+        if phase_name == "night_werewolves":
+            self.state_flags["wolf_votes"] = {}
+            self.state_flags["wolf_spoke"] = {}
+            self.state_flags["wolf_phase_start"] = time.time()
+            self.state_flags["wolf_exchange_count"] = 0
+            self.state_flags["wolf_last_vote"] = None
+            self.state_flags["wolf_force_first_vote"] = False
+
+    def _append_phase_entry_private_messages(
+        self,
+        phase_name: str,
+        events: PhaseEvents,
+    ) -> None:
+        """Inject role-specific guidance when special phases begin."""
+        if phase_name != "night_witch":
+            return
+
+        witches = [
+            name
+            for name, state in self.agent_states.items()
+            if state.role.lower() == "witch" and state.alive
+        ]
+        if not witches:
+            return
+
+        target = self.state_flags.get("night_target_display") or self.state_flags.get(
+            "night_target"
+        )
+
+        if target:
+            message = (
+                f"[God] Werewolves targeted {target} tonight. "
+                "Decide whether to save them or poison another player."
+            )
+        else:
+            message = "[God] Awaiting the werewolves' chosen victim..."
+
+        for witch in witches:
+            events.private.setdefault(witch, []).append(message)
 
     def current_phase_metadata(self) -> dict[str, Any]:
         return dict(self.current_phase_meta) if self.current_phase_meta else {}
@@ -374,6 +438,12 @@ class GameRulebook:
         if not utterance:
             return events
         line = f'{actor} said: "{utterance}"'
+        if (
+            phase.name == "night_werewolves"
+            and self.agent_states[actor].role.lower() == "werewolf"
+        ):
+            spoke = self.state_flags.setdefault("wolf_spoke", {})
+            spoke[actor] = True
         if phase.speech_visibility == "team":
             team = self.agent_states[actor].team
             events.team.setdefault(team, []).append(line)
@@ -414,14 +484,47 @@ class GameRulebook:
         resolution: PhaseResolution,
     ) -> PhaseEvents:
         events = PhaseEvents()
-        target = self._extract_target(actions.values())
-        if target:
-            self.state_flags[resolution.state_key or "night_target"] = target
-            teams = phase.acting_teams or [self.agent_states[a].team for a in actions]
-            for team in teams:
-                events.team.setdefault(team, []).append(
-                    f"[God] Target locked: {target}."
-                )
+        wolf_votes: dict[str, str] = self.state_flags.get("wolf_votes", {})
+        if not isinstance(wolf_votes, dict):
+            wolf_votes = {}
+        for actor, action in actions.items():
+            state = self.agent_states.get(actor)
+            if not state or state.role.lower() != "werewolf":
+                continue
+            text = f"{action.action_type} {action.argument}".lower()
+            if "kill" in text:
+                target = self._extract_target([action])
+                if target:
+                    if not self.state_flags.get("night_target"):
+                        self.state_flags[resolution.state_key or "night_target"] = target
+                        self.state_flags["night_target_display"] = target
+                        wolf_votes[actor] = target
+                        events.team.setdefault(state.team, []).append(
+                            f"[God] {actor} locks in {target} as the victim."
+                        )
+                        break
+            elif "pass" in text or "done" in text:
+                wolf_votes.pop(actor, None)
+            elif action.action_type == "action" and action.argument.strip():
+                # If they used action without keyword kill, still record explicit target
+                target = self._extract_target([action])
+                if target:
+                    if not self.state_flags.get("night_target"):
+                        self.state_flags[resolution.state_key or "night_target"] = target
+                        self.state_flags["night_target_display"] = target
+                        wolf_votes[actor] = target
+                        events.team.setdefault(state.team, []).append(
+                            f"[God] {actor} locks in {target} as the victim."
+                        )
+                        break
+
+        self.state_flags["wolf_votes"] = wolf_votes
+
+        living_wolves = [
+            name
+            for name, agent_state in self.agent_states.items()
+            if agent_state.alive and agent_state.role.lower() == "werewolf"
+        ]
         return events
 
     def _resolve_seer_inspect(
@@ -497,6 +600,12 @@ class GameRulebook:
             casualties.append(target)
         if poison and poison not in casualties:
             casualties.append(poison)
+        if saved and target == saved:
+            events.public.append("[God] A hidden protector thwarted the werewolves' attack.")
+        if poison and poison not in casualties:
+            events.public.append("[God] A vial of poison was brewed but ultimately unused.")
+        elif poison:
+            events.public.append("[God] Rumors whisper that a secret poison claimed a victim.")
         if not casualties:
             events.public.append("[God] Dawn breaks peacefully. No one died.")
         for victim in casualties:
@@ -504,9 +613,16 @@ class GameRulebook:
                 self.agent_states[victim].alive = False
                 events.public.append(f"[God] {victim} was found dead at dawn.")
         self.state_flags["night_target"] = None
+        self.state_flags["night_target_display"] = None
         self.state_flags["witch_saved"] = None
         self.state_flags["witch_poisoned"] = None
         self.state_flags["seer_result"] = ""
+        self.state_flags["wolf_votes"] = {}
+        self.state_flags["wolf_spoke"] = {}
+        self.state_flags["wolf_phase_start"] = time.time()
+        self.state_flags["wolf_exchange_count"] = 0
+        self.state_flags["wolf_last_vote"] = None
+        self.state_flags["wolf_force_first_vote"] = False
         return events
 
     def _resolve_vote(
@@ -741,6 +857,16 @@ class SocialGameEnv(ParallelSotopiaEnv):
         role = self.game_rulebook.agent_states[agent_name].role
         for text in phase.role_instructions.get(role, []):
             lines.append(f"[God] {text}")
+        if (
+            phase.name == "night_witch"
+            and role.lower() == "witch"
+            and hasattr(self.game_rulebook, "state_flags")
+        ):
+            target = self.game_rulebook.state_flags.get("night_target")
+            if target:
+                lines.append(f"[God] Werewolves targeted {target} this night.")
+            else:
+                lines.append("[God] No victim identified yet; wolves may still be deciding.")
         return lines
 
     def _record_phase_history(
@@ -779,6 +905,7 @@ class SocialGameEnv(ParallelSotopiaEnv):
             else {},
             "instructions": phase_def.instructions if phase_def else [],
             "role_instructions": phase_def.role_instructions if phase_def else {},
+            "recorded_at": time.time(),
         }
         self.phase_log.append(snapshot)
 

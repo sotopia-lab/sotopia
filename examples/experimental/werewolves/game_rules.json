@@ -1,6 +1,29 @@
 {
-  "initial_phase": "night_werewolves",
+  "initial_phase": "prologue_introduction",
   "phases": [
+    {
+      "name": "prologue_introduction",
+      "kind": "discussion",
+      "turn_mode": "round-robin",
+      "max_cycles": 1,
+      "speech_visibility": "public",
+      "action_visibility": "public",
+      "resolution": {
+        "operation": "noop",
+        "visibility": "public"
+      },
+      "entry_messages": [
+        "Welcome villagers! Take a moment to greet your neighbors before night falls."
+      ],
+      "exit_messages": [
+        "Dusk approaches. Everyone heads home as night begins..."
+      ],
+      "group": "day",
+      "instructions": [
+        "Each player should briefly introduce themselves and share an initial thought before night."
+      ],
+      "role_instructions": {}
+    },
     {
       "name": "night_werewolves",
       "kind": "team_target",
@@ -30,7 +53,8 @@
       ],
       "role_instructions": {
         "Werewolf": [
-          "Coordinate quietly with packmates and issue 'kill NAME'."
+          "Coordinate quietly with packmates and issue 'kill NAME'.",
+          "You must reach agreement within three exchanges; otherwise the pack leader will decide for you."
         ]
       }
     },
@@ -190,6 +214,7 @@
     }
   ],
   "phase_transitions": {
+    "prologue_introduction": "night_werewolves",
     "night_werewolves": "night_seer",
     "night_seer": "night_witch",
     "night_witch": "dawn_report",

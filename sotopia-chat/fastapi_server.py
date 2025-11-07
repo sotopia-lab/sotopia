@@ -3,10 +3,13 @@ import json
 import os
 import random
 import subprocess
+import sys
+import time
 import typing
 import uuid
 from datetime import datetime
-from typing import Literal, cast
+from pathlib import Path
+from typing import Literal, Optional, cast
 
 import pydantic
 import pytest
@@ -19,6 +22,15 @@ from redis import Redis
 from redis.lock import Lock
 from redis_om import Migrator
 from starlette.responses import Response
+from pydantic import BaseModel, ConfigDict, Field
+
+try:
+    from .werewolf_state import WerewolfStateStore, action_key as werewolf_action_key
+except ImportError:  # pragma: no cover
+    from werewolf_state import (  # type: ignore
+        WerewolfStateStore,
+        action_key as werewolf_action_key,
+    )
 
 from sotopia.database import (
     AgentProfile,
@@ -27,6 +39,7 @@ from sotopia.database import (
     MessageTransaction,
     SessionTransaction,
 )
+from pydantic import BaseModel
 
 Migrator().run()
 
@@ -40,9 +53,92 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-conn = Redis.from_url(os.environ["REDIS_OM_URL"])
+REDIS_URL = os.environ.get("REDIS_OM_URL", "redis://localhost:6379")
+conn = Redis.from_url(REDIS_URL)
+CHAT_SERVER_PATH = Path(__file__).resolve().parent / "chat_server.py"
+FASTAPI_URL = os.environ.get("FASTAPI_URL", "http://127.0.0.1:8000")
+# Add to existing imports
+WEREWOLF_SERVER_PATH = Path(__file__).resolve().parent / "werewolf_server.py"
+WEREWOLF_STATE_PREFIX = "werewolf:session"
+werewolf_state_store = WerewolfStateStore(REDIS_URL)
 
 WAITING_ROOM_TIMEOUT = float(os.environ.get("WAITING_ROOM_TIMEOUT", 1.0))
+
+
+def to_camel(string: str) -> str:
+    parts = string.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
+
+
+class CamelModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
+
+class WerewolfPlayer(CamelModel):
+    id: str
+    display_name: str
+    role: str = "unknown"
+    is_alive: bool = True
+    is_host: bool = False
+
+
+class PackMember(CamelModel):
+    id: str
+    display_name: str
+    is_alive: bool = True
+    is_human: bool = False
+
+
+class PackChatMessage(CamelModel):
+    phase: Optional[str] = None
+    message: str
+    turn: Optional[int] = None
+    recorded_at: Optional[float] = None
+
+
+class WerewolfPhase(CamelModel):
+    phase: str
+    countdown_seconds: Optional[int] = None
+    description: Optional[str] = None
+    allow_chat: bool = True
+    allow_actions: bool = True
+
+
+class WitchOptions(CamelModel):
+    can_save: bool
+    can_poison: bool
+    pending_target: Optional[str] = None
+
+
+class WerewolfSessionState(CamelModel):
+    session_id: str
+    players: list[WerewolfPlayer]
+    me: Optional[WerewolfPlayer] = None
+    phase: WerewolfPhase
+    available_actions: list[str]
+    last_updated: float
+    status: str = "initializing"
+    game_over: bool = False
+    winner: Optional[str] = None
+    winner_message: Optional[str] = None
+    log: list[dict[str, typing.Any]] = Field(default_factory=list)
+    active_player_id: Optional[str] = None
+    waiting_for_action: bool = False
+    host_id: Optional[str] = None
+    witch_options: Optional[WitchOptions] = None
+    pack_members: list[PackMember] = Field(default_factory=list)
+    team_chat: list[PackChatMessage] = Field(default_factory=list)
+
+
+def get_redis_client(*, decode_responses: bool = True) -> Redis:
+    """Return a Redis client bound to the configured URL."""
+    return Redis.from_url(
+        REDIS_URL,
+        decode_responses=decode_responses,
+    )
 
 
 @app.post("/connect/{session_id}/{role}/{id}")
@@ -165,13 +261,20 @@ async def get_lock(session_id: str) -> str:
 
 def _start_server(session_ids: list[str]) -> None:
     print("start server", session_ids)
+    chat_server_script = CHAT_SERVER_PATH
+    if not chat_server_script.exists():
+        raise RuntimeError(f"chat_server.py not found at {chat_server_script}")
+    env = os.environ.copy()
+    env.setdefault("FASTAPI_URL", FASTAPI_URL)
+    env.setdefault("REDIS_OM_URL", os.environ.get("REDIS_OM_URL", "redis://localhost:6379"))
     subprocess.Popen(
         [
-            "python",
-            "chat_server.py",
+            sys.executable,
+            str(chat_server_script),
             "start-server-with-session-ids",
             *session_ids,
-        ]
+        ],
+        env=env,
     )
 
 
@@ -274,6 +377,155 @@ async def get_agent(agent_id: str) -> AgentProfile:
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Agent not found: {e}")
     return agent_profile
+
+# Models (enhance existing WerewolfSessionState)
+class CreateWerewolfGameRequest(BaseModel):
+    host_id: str
+    num_ai_players: int = 5
+
+
+class WerewolfActionRequest(BaseModel):
+    action_type: str
+    argument: str = ""
+
+
+@app.post("/games/werewolf/create")
+async def create_werewolf_game(
+    request: CreateWerewolfGameRequest = Body(...)
+) -> dict:
+    """
+    Create a new werewolf game session with one human and N AI players.
+    
+    Returns:
+        {"session_id": "...", "status": "starting", "player_name": "..."}
+    """
+    session_id = str(uuid.uuid4())
+    
+    # Create placeholder session transaction (reuse existing model)
+    session_transaction = SessionTransaction(
+        session_id=session_id,
+        server_id=request.host_id,  # Human player ID
+        client_id="",  # Not used in werewolf
+        message_list=[],
+    )
+    session_transaction.save()
+    
+    # Start werewolf game server as subprocess
+    if not WEREWOLF_SERVER_PATH.exists():
+        raise HTTPException(
+            status_code=500,
+            detail=f"werewolf_server.py not found at {WEREWOLF_SERVER_PATH}"
+        )
+    
+    env = os.environ.copy()
+    env.setdefault("REDIS_OM_URL", os.environ.get("REDIS_OM_URL", "redis://localhost:6379"))
+    
+    subprocess.Popen(
+        [
+            sys.executable,
+            str(WEREWOLF_SERVER_PATH),
+            session_id,
+            request.host_id,
+            "--num-ai-players",
+            str(request.num_ai_players),
+        ],
+        env=env,
+    )
+
+    # Seed initial state so the frontend has a placeholder while the game boots
+    placeholder_state = WerewolfSessionState(
+        session_id=session_id,
+        players=[],
+        phase=WerewolfPhase(
+            phase="initializing",
+            description="Preparing game resources…",
+            allow_chat=False,
+            allow_actions=False,
+        ),
+        available_actions=[],
+        last_updated=time.time(),
+        status="initializing",
+        host_id=request.host_id,
+        active_player_id=None,
+        waiting_for_action=False,
+        game_over=False,
+        witch_options=None,
+    )
+    await werewolf_state_store.write_state(
+        session_id,
+        placeholder_state.model_dump(),
+        ttl=60,
+    )
+    
+    return {
+        "session_id": session_id,
+        "status": "starting",
+        "message": "Game server launching. Poll /games/werewolf/sessions/{session_id} for state."
+    }
+
+
+@app.get("/games/werewolf/sessions/{session_id}", response_model=WerewolfSessionState)
+async def get_werewolf_session(session_id: str) -> WerewolfSessionState:
+    """
+    Get current game state for a werewolf session.
+    
+    Frontend should poll this endpoint every 2 seconds.
+    """
+    state = await werewolf_state_store.read_state(session_id)
+
+    if not state:
+        raise HTTPException(
+            status_code=404,
+            detail="Game state not found. Game may still be initializing.",
+        )
+
+    try:
+        return WerewolfSessionState(**state)
+    except Exception as exc:  # pragma: no cover - defensive
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse game state: {exc}",
+        ) from exc
+
+
+@app.post("/games/werewolf/sessions/{session_id}/actions")
+async def submit_werewolf_action(
+    session_id: str,
+    participant_id: str,
+    action: WerewolfActionRequest = Body(...)
+) -> dict:
+    """
+    Submit an action for the human player.
+    
+    The werewolf_server.py will read this from Redis and process it.
+    """
+    await werewolf_state_store.push_action(
+        session_id=session_id,
+        participant_id=participant_id,
+        action_type=action.action_type,
+        argument=action.argument,
+    )
+    
+    return {
+        "status": "submitted",
+        "message": "Action queued for processing."
+    }
+
+
+@app.delete("/games/werewolf/sessions/{session_id}")
+async def delete_werewolf_session(
+    session_id: str,
+    participant_id: str,
+) -> dict:
+    """Clean up game state (optional, for early exits)."""
+    await werewolf_state_store.delete_state(session_id)
+    await werewolf_state_store.delete_action(session_id, participant_id)
+    
+    # Also delete session transaction
+    session_transaction = await _get_single_exist_session(session_id)
+    session_transaction.delete(session_transaction.pk)
+    
+    return {"status": "deleted"}
 
 
 client = TestClient(app)

@@ -1,0 +1,143 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Title -->
+  <text x="400" y="30" font-size="24" font-weight="bold" text-anchor="middle" fill="#333">
+    Werewolf Game Deployment Architecture
+  </text>
+  
+  <!-- Vercel (Frontend) -->
+  <rect x="50" y="80" width="200" height="120" fill="#0070f3" rx="10"/>
+  <text x="150" y="110" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    Vercel
+  </text>
+  <text x="150" y="135" font-size="14" text-anchor="middle" fill="white">
+    Next.js Frontend
+  </text>
+  <text x="150" y="155" font-size="12" text-anchor="middle" fill="#e0e0e0">
+    • WerewolfLobby
+  </text>
+  <text x="150" y="172" font-size="12" text-anchor="middle" fill="#e0e0e0">
+    • GameBoard
+  </text>
+  <text x="150" y="189" font-size="12" text-anchor="middle" fill="#e0e0e0">
+    • Real-time polling
+  </text>
+  
+  <!-- Railway (Backend) -->
+  <rect x="300" y="80" width="220" height="200" fill="#8b5cf6" rx="10"/>
+  <text x="410" y="110" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    Railway.app
+  </text>
+  <text x="410" y="135" font-size="14" text-anchor="middle" fill="white">
+    Backend Services
+  </text>
+  
+  <!-- FastAPI -->
+  <rect x="315" y="150" width="180" height="50" fill="#6366f1" rx="5"/>
+  <text x="405" y="175" font-size="13" text-anchor="middle" fill="white">
+    FastAPI Server
+  </text>
+  <text x="405" y="190" font-size="11" text-anchor="middle" fill="#e0e0e0">
+    /games/werewolf/*
+  </text>
+  
+  <!-- Werewolf Server -->
+  <rect x="315" y="215" width="180" height="50" fill="#4f46e5" rx="5"/>
+  <text x="405" y="237" font-size="13" text-anchor="middle" fill="white">
+    werewolf_server.py
+  </text>
+  <text x="405" y="252" font-size="11" text-anchor="middle" fill="#e0e0e0">
+    (subprocess per game)
+  </text>
+  
+  <!-- Redis -->
+  <rect x="570" y="80" width="180" height="120" fill="#dc2626" rx="10"/>
+  <text x="660" y="110" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    Redis
+  </text>
+  <text x="660" y="135" font-size="14" text-anchor="middle" fill="white">
+    State Storage
+  </text>
+  <text x="660" y="160" font-size="12" text-anchor="middle" fill="#fee">
+    • Game state
+  </text>
+  <text x="660" y="177" font-size="12" text-anchor="middle" fill="#fee">
+    • Player actions
+  </text>
+  <text x="660" y="194" font-size="12" text-anchor="middle" fill="#fee">
+    • Phase transitions
+  </text>
+  
+  <!-- OpenAI -->
+  <rect x="300" y="330" width="220" height="100" fill="#10a37f" rx="10"/>
+  <text x="410" y="360" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    OpenAI API
+  </text>
+  <text x="410" y="385" font-size="14" text-anchor="middle" fill="white">
+    LLM Agents
+  </text>
+  <text x="410" y="407" font-size="12" text-anchor="middle" fill="#d0f0e0">
+    5 AI players (gpt-4o-mini)
+  </text>
+  
+  <!-- User -->
+  <rect x="50" y="330" width="200" height="100" fill="#374151" rx="10"/>
+  <text x="150" y="360" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    👤 Human Player
+  </text>
+  <text x="150" y="385" font-size="14" text-anchor="middle" fill="white">
+    Browser
+  </text>
+  <text x="150" y="407" font-size="12" text-anchor="middle" fill="#d1d5db">
+    Chrome/Safari/Firefox
+  </text>
+  
+  <!-- Arrows -->
+  <!-- User to Vercel -->
+  <path d="M 150 330 L 150 200" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="165" y="270" font-size="11" fill="#666">HTTPS</text>
+  
+  <!-- Vercel to Railway -->
+  <path d="M 250 140 L 300 140" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="260" y="130" font-size="11" fill="#666">REST API</text>
+  
+  <!-- Railway to Redis -->
+  <path d="M 520 140 L 570 140" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="530" y="130" font-size="11" fill="#666">Redis</text>
+  <path d="M 570 160 L 520 180" stroke="#666" stroke-width="2" fill="none" marker-start="url(#arrowhead)"/>
+  
+  <!-- Railway to OpenAI -->
+  <path d="M 410 280 L 410 330" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="425" y="310" font-size="11" fill="#666">API calls</text>
+  
+  <!-- Legends -->
+  <rect x="50" y="480" width="700" height="100" fill="#f9fafb" stroke="#d1d5db" rx="5"/>
+  <text x="60" y="505" font-size="14" font-weight="bold" fill="#374151">
+    Data Flow:
+  </text>
+  <text x="60" y="525" font-size="12" fill="#6b7280">
+    1. Human creates game via Vercel frontend
+  </text>
+  <text x="60" y="543" font-size="12" fill="#6b7280">
+    2. Railway spawns werewolf_server.py subprocess
+  </text>
+  <text x="60" y="561" font-size="12" fill="#6b7280">
+    3. Game state stored in Redis, polled by frontend every 2s
+  </text>
+  
+  <text x="420" y="525" font-size="12" fill="#6b7280">
+    4. Human actions submitted via POST
+  </text>
+  <text x="420" y="543" font-size="12" fill="#6b7280">
+    5. AI agents query OpenAI for decisions
+  </text>
+  <text x="420" y="561" font-size="12" fill="#6b7280">
+    6. Game updates published to Redis
+  </text>
+  
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#666" />
+    </marker>
+  </defs>
+</svg>
