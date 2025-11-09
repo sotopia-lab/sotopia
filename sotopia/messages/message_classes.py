@@ -1,7 +1,7 @@
 import re
 from typing import Literal, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 from sotopia.utils import format_docstring
 
@@ -38,7 +38,7 @@ class Observation(Message):
         if self.turn_number == 0:
             return f"\n{self.last_turn}\nConversation Starts:\n"
         else:
-            return f"Turn #{self.turn_number-1}: {self.last_turn}\n"
+            return f"Turn #{self.turn_number - 1}: {self.last_turn}\n"
 
 
 class ScriptBackground(Message):
@@ -129,6 +129,11 @@ class AgentAction(Message):
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
+    # New structured fields for private messages
+    to: list[str] | None = Field(
+        default=None,
+        description="recipient name(s), when specified, the action is only visible to the listed agents",
+    )
 
     def to_natural_language(self) -> str:
         match self.action_type:
@@ -142,6 +147,27 @@ class AgentAction(Message):
                 return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
+
+    @field_validator("to", mode="before")
+    @classmethod
+    def filter_to(cls, to: list[str] | None, info: ValidationInfo) -> list[str] | None:
+        """
+        Normalize and validate the `to` recipients.
+
+        - If `to` is None or empty list or no context is provided, return unchanged.
+        - If `info.context["agent_names"]` is provided (via `model_validate(..., context=...)`),
+          remove any recipients not in that set (those are invalid recipient names).
+        """
+        if not to:
+            return to
+
+        agent_names = (
+            set(info.context.get("agent_names", [])) if info.context else set()
+        )
+        if not agent_names:
+            return to
+
+        return list(agent_names & set(to))
 
 
 ScriptInteractionReturnType = tuple[
@@ -224,7 +250,9 @@ class ScriptInteraction(Message):
                 cast(int, res["turn"])
                 name: str = cast(str, res["name"])
 
-                parsed_action = AgentAction(action_type=action, argument=argument)
+                parsed_action = AgentAction(
+                    action_type=cast(ActionType, action), argument=argument
+                )
                 if name not in agent_names:
                     print(
                         f"The name of the agent, {name}, is not in the list of agent names, {agent_names}"

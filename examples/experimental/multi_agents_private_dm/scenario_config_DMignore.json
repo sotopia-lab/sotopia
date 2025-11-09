@@ -1,0 +1,55 @@
+{
+  "scenario": "Two friends (Ada and Bob) are having a private conversation.\nA stranger (Charlie) wants to join the conversation but gets ignored.\n",
+  "agents": [
+    {
+      "first_name": "Ada",
+      "last_name": "One",
+      "profile": {
+        "age": 45,
+        "occupation": "Antique Dealer",
+        "gender": "Woman",
+        "gender_pronoun": "she/her",
+        "big_five": "high extraversion, low neuroticism",
+        "moral_values": ["fairness", "honesty"],
+        "decision_making_style": "strategic",
+        "secret": "Current time is Tue 02 Sep 2025 09:05:13 PM EDT"
+      },
+      "goal": "You are a friend of Bob.\nYou and Bob are having a private conversation about the movie Blade Runner 2049.\nYou want to:\n1. Continue chatting with Bob (with private message).\n2. Ignore any other messages not sent by Bob.\n3. Clarify who you are talking to at the start of each of your reply.\n"
+    },
+    {
+      "first_name": "Bob",
+      "last_name": "Two",
+      "profile": {
+        "age": 28,
+        "occupation": "Engineer",
+        "gender": "Non-binary",
+        "gender_pronoun": "they/them",
+        "big_five": "high agreeableness, moderate extraversion",
+        "moral_values": ["cooperation", "profit"],
+        "decision_making_style": "competitive",
+        "secret": "Current time is Tue 02 Sep 2025 09:05:13 PM EDT"
+      },
+      "goal": "You are a friend of Ada.\nYou and Ada are having a private conversation about the movie Blade Runner 2049.\nYou want to:\n1. Continue chatting with Ada (with private message).\n2. Ignore any other messages not sent by Ada.\n3. Clarify who you are talking to at the start of each of your reply.\n"
+    },
+    {
+      "first_name": "Charlie",
+      "last_name": "Three",
+      "profile": {
+        "age": 30,
+        "occupation": "Collector",
+        "gender": "Man",
+        "gender_pronoun": "he/him",
+        "big_five": "high openness, high conscientiousness",
+        "moral_values": ["value", "respect"],
+        "decision_making_style": "analytical",
+        "secret": "None"
+      },
+      "goal": "You are walking on the street passing by two people talking with each other.\nYou want to:\n1. Find out what are the two people talking about\n2. When joining the conversation, repeat what you have heard about the conversation.\n3. Clarify who you are talking to at the start of each of your reply.\n4. Leave once you know any of the content of the conversation\n5. Never claim you 'overheard' specific details unless you actually saw them in a public message.\n"
+    }
+  ],
+  "models": {
+    "env": "gpt-4o",
+    "agents": ["gpt-4o", "gpt-4o", "gpt-4o"]
+  },
+  "action_order": "round-robin"
+}

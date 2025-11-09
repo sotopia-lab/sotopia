@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
     "python_full_version < '3.11'",
@@ -3163,7 +3163,7 @@ requires-dist = [
     { name = "google-generativeai", marker = "extra == 'google-generativeai'" },
     { name = "groq", marker = "extra == 'groq'" },
     { name = "hiredis", specifier = ">=3.0.0" },
-    { name = "json-repair", specifier = ">=0.35.0,<0.45.0" },
+    { name = "json-repair", specifier = ">=0.35.0,<0.49.0" },
     { name = "litellm", specifier = ">=1.65.0" },
     { name = "lxml", specifier = ">=4.9.3,<6.0.0" },
     { name = "modal", marker = "extra == 'api'" },
