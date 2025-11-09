@@ -351,35 +351,22 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, it needs to be converted into AgentAction
+        # For action sampled from action space, convert and validate with context
+        # this checks and filters the `to` field in actions, see `AgentAction.filter_to()`
         complied_actions: dict[str, AgentAction] = {}
-        for key in actions.keys():
-            action = actions[key]
-            if isinstance(action, AgentAction):
-                complied_actions[key] = action
-            else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
-                ]
-                complied_actions[key] = AgentAction.parse_obj(action)
+        for sender, action in actions.items():
+            context = {"agent_names": self.agents, "sender": sender}
+            action_data: dict[str, int | str] = (
+                action.model_dump() if isinstance(action, AgentAction) else action
+            )
+            complied_actions[sender] = AgentAction.model_validate(
+                action_data, context=context
+            )
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
                 complied_actions[agent] = AgentAction(action_type="none", argument="")
-
-        # Validate private recipients in 'to'
-        for sender, action in complied_actions.items():
-            if action.to:
-                invalid = [r for r in action.to if r not in self.agents]
-                if invalid:
-                    raise ValueError(
-                        f"Invalid recipient(s) in 'to': {invalid}. Valid agents: {self.agents}"
-                    )
-                if sender in action.to:
-                    raise ValueError(
-                        f"Agent cannot include themselves in 'to': sender: {sender}, action.to: {action.to}"
-                    )
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
@@ -450,35 +437,22 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, it needs to be converted into AgentAction
+        # For action sampled from action space, convert and validate with context
+        # this checks and filters the `to` field in actions, see `AgentAction.filter_to()`
         complied_actions: dict[str, AgentAction] = {}
-        for key in actions.keys():
-            action = actions[key]
-            if isinstance(action, AgentAction):
-                complied_actions[key] = action
-            else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
-                ]
-                complied_actions[key] = AgentAction.parse_obj(action)
+        for sender, action in actions.items():
+            context = {"agent_names": self.agents, "sender": sender}
+            action_data: dict[str, int | str] = (
+                action.model_dump() if isinstance(action, AgentAction) else action
+            )
+            complied_actions[sender] = AgentAction.model_validate(
+                action_data, context=context
+            )
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
                 complied_actions[agent] = AgentAction(action_type="none", argument="")
-
-        # Validate private recipients in 'to'
-        for sender, action in complied_actions.items():
-            if action.to:
-                invalid = [r for r in action.to if r not in self.agents]
-                if invalid:
-                    raise ValueError(
-                        f"Invalid recipient(s) in 'to': {invalid}. Valid agents: {self.agents}"
-                    )
-                if sender in action.to:
-                    raise ValueError(
-                        f"Agent cannot include themselves in 'to': sender: {sender}, action.to: {action.to}"
-                    )
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")

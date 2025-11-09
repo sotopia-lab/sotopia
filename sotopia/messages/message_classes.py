@@ -1,7 +1,7 @@
 import re
 from typing import Literal, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 from sotopia.utils import format_docstring
 
@@ -147,6 +147,27 @@ class AgentAction(Message):
                 return f"[{self.action_type}] {self.argument}"
             case "leave":
                 return "left the conversation"
+
+    @field_validator("to", mode="before")
+    @classmethod
+    def filter_to(cls, to: list[str] | None, info: ValidationInfo) -> list[str] | None:
+        """
+        Normalize and validate the `to` recipients.
+
+        - If `to` is None or empty list or no context is provided, return unchanged.
+        - If `info.context["agent_names"]` is provided (via `model_validate(..., context=...)`),
+          remove any recipients not in that set (those are invalid recipient names).
+        """
+        if not to:
+            return to
+
+        agent_names = (
+            set(info.context.get("agent_names", [])) if info.context else set()
+        )
+        if not agent_names:
+            return to
+
+        return list(agent_names & set(to))
 
 
 ScriptInteractionReturnType = tuple[
