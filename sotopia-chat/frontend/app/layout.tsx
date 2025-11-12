@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-    title: "Werewolves Experiment",
-    description: "Experimental lobby for Sotopia social games"
+    title: "Sotopia Social Game Arena",
+    description: "Modular Next.js frontend for Sotopia research games",
 };
 
 export default function RootLayout({

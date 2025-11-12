@@ -68,7 +68,7 @@ npm install
 
 # Create .env.local
 cat > .env.local << EOF
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 EOF
 
 # Start development server
@@ -246,7 +246,7 @@ await r.set(action_key, ..., ex=120)  # 2 minutes instead of 60s
    - Import your GitHub repository
    - Set environment variable:
      ```
-     NEXT_PUBLIC_API_URL=https://your-railway-app.railway.app
+     NEXT_PUBLIC_API_BASE_URL=https://your-railway-app.railway.app
      ```
    - Deploy
 
