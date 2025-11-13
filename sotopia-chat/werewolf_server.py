@@ -25,6 +25,7 @@ from sotopia.database.persistent_profile import AgentProfile
 from sotopia.database import SotopiaDimensions
 from sotopia.envs import SocialGameEnv
 from sotopia.messages import AgentAction, Observation
+from aiohttp import ClientSession
 
 try:
     from .werewolf_state import WerewolfStateStore
@@ -348,6 +349,13 @@ async def async_run_werewolf_game(
             state_store,
             status="completed",
         )
+        await _record_match_outcome(
+            session_id=session_id,
+            human_id=human_id,
+            human_name=human_full_name,
+            env=env,
+            total_turns=turn_counter,
+        )
         typer.echo(f"Game {session_id} completed after {turn_counter} turns.")
     except Exception as exc:
         if env:
@@ -362,6 +370,37 @@ async def async_run_werewolf_game(
             )
         typer.echo(f"Game {session_id} failed: {exc}", err=True)
         raise
+
+
+async def _record_match_outcome(
+    session_id: str,
+    human_id: str,
+    human_name: str,
+    env: SocialGameEnv,
+    total_turns: int,
+) -> None:
+    winner_payload = env._winner_payload or {}
+    winner = winner_payload.get("winner") or "unknown"
+    winner = "human" if human_name in winner else winner
+    duration_seconds = max(total_turns * 6, 1)
+    payload = {
+        "game": "werewolf",
+        "ticket_id": session_id,
+        "participant_id": human_id,
+        "opponent_model": "werewolf-llm-pack",
+        "winner": winner,
+        "duration_seconds": duration_seconds,
+        "recorded_at": time.time(),
+    }
+    async with ClientSession() as session:
+        url = os.environ.get("LEADERBOARD_LOG_URL")
+        if not url:
+            api_base = os.environ.get("FASTAPI_URL", "http://127.0.0.1:8000")
+            url = f"{api_base.rstrip('/')}/games/leaderboard/logs"
+        try:
+            await session.post(url, json=payload, timeout=5)
+        except Exception as exc:  # pragma: no cover
+            typer.echo(f"Failed to record match outcome: {exc}", err=True)
 
 
 @app.command()
