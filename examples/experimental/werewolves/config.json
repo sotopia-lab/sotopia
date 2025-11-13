@@ -1,0 +1,65 @@
+{
+  "scenario": "Werewolves Game",
+  "description": "This game is called Werewolves (also known as Mafia), which is a social deduction game.  GAME STRUCTURE: This game contains six players: two villagers, two werewolves, one seer, and one witch. Each cycle consists of Night phases followed by Day phases. WIN CONDITIONS: Villagers win by eliminating all Werewolves. Werewolves win when they equal or outnumber the Villagers. NIGHT PHASES: (1) Werewolves wake and privately choose one Villager to kill using 'kill NAME'. (2) The Seer wakes and inspects one player using 'inspect NAME' to learn if they are a Werewolf or Villager. (3) The Witch wakes and may use their one-time save potion with 'save NAME' (if someone died tonight) or their one-time poison potion with 'poison NAME' to kill someone. DAY PHASES: (1) Dawn: All players learn who died during the night (if any). (2) Discussion: All living players openly discuss and debate who might be a Werewolf. Use 'speak' to share your thoughts and suspicions. (3) Voting: Each player votes to eliminate one suspected Werewolf using 'vote NAME'. The player with the most votes is executed. (4) Twilight: The execution result is announced and night returns. COMMUNICATION RULES: All day discussions are public. Dead players cannot speak or act. STRATEGY: Villagers must use logic, observation, and deduction to identify Werewolves through their behavior and voting patterns. Werewolves must deceive others, blend in as Villagers, and create confusion. Special roles (Seer, Witch) should use their powers strategically without revealing themselves too early. Trust is earned through consistent behavior and alignment of words with actions.\n During your turn you must respond. If 'action' is available, use commands like 'kill NAME', 'inspect NAME', 'save NAME', 'poison NAME', or 'vote NAME'. Day discussion is public. Voting requires an 'action' beginning with 'vote'." ,
+  "role_goals": {
+    "Villager": "Act openly and collaboratively to identify werewolves.",
+    "Werewolf": "Deceive others, avoid detection, and eliminate villagers.",
+    "Seer": "Discreetly inspect players at night to uncover werewolves.",
+    "Witch": "Use save/poison potions strategically to aid villagers."
+  },
+  "role_secrets": {
+    "Villager": "",
+    "Werewolf": "I am a werewolf.",
+    "Seer": "",
+    "Witch": ""
+  },
+  "agents": [
+    { "name": "Aurora", "role": "Villager" , "team": "Villagers"},
+    { "name": "Bram", "role": "Werewolf" , "team": "Werewolves"},
+    { "name": "Celeste", "role": "Seer" , "team": "Villagers"},
+    { "name": "Dorian", "role": "Werewolf" , "team": "Werewolves"},
+    { "name": "Elise", "role": "Witch" , "team": "Villagers"},
+    { "name": "Finn", "role": "Villager" , "team": "Villagers"}
+  ],
+  "initial_state": "Night_werewolf",
+  "state_transition": {
+    "Night_werewolf": "Night_seer",
+    "Night_seer": "Night_witch",
+    "Night_witch": "Day_discussion",
+    "Day_discussion": "Day_vote",
+    "Day_vote": "Night_werewolf"
+  },
+  "state_properties": {
+    "Night_werewolf": {
+      "acting_roles": ["Werewolf"],
+      "actions": ["speak", "action"],
+      "visibility": "team"
+    },
+    "Night_seer": {
+      "acting_roles": ["Seer"],
+      "actions": ["action"],
+      "visibility": "private"
+    },
+    "Night_witch": {
+      "acting_roles": ["Witch"],
+      "actions": ["action"],
+      "visibility": "private",
+      "internal_state": {
+        "save_available": true,
+        "poison_available": true
+      }
+    },
+    "Day_discussion": {
+      "actions": ["speak"],
+      "visibility": "public"
+    },
+    "Day_vote": {
+      "actions": ["action"],
+      "visibility": { "during": "private", "after": "public" }
+    }
+  },
+  "end_conditions": [
+    { "type": "team_eliminated", "team": "Werewolves", "winner": "Villagers", "message": "[Game] Villagers win; no werewolves remain." },
+    { "type": "parity", "team": "Werewolves", "other": "Villagers", "winner": "Werewolves", "message": "[Game] Werewolves win; they now match the village." }
+  ]
+}

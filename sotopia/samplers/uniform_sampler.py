@@ -71,12 +71,12 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
             if game_meta.get("mode") == "social_game":
                 from sotopia.envs import SocialGameEnv
 
+                config_path = game_meta.get("config_path")
+                assert (
+                    config_path
+                ), "game_metadata.config_path is required for social_game"
                 env = SocialGameEnv(
-                    env_profile=env_profile,
-                    rulebook_path=game_meta["rulebook_path"],
-                    actions_path=game_meta["actions_path"],
-                    role_assignments=game_meta["role_assignments"],
-                    **env_params,
+                    env_profile=env_profile, config_path=config_path, **env_params
                 )
             else:
                 env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
