@@ -28,6 +28,17 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
     pydantic_object: Type[T]
 
     def parse(self, result: str) -> T:
+        # Strip markdown code blocks if present
+        result = result.strip()
+        if result.startswith("```"):
+            # Remove opening ```json or ``` and closing ```
+            lines = result.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]  # Remove first line with ```
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]  # Remove last line with ```
+            result = "\n".join(lines)
+
         json_result = json_repair.loads(result)
         assert isinstance(json_result, dict)
         if "properties" in json_result:
