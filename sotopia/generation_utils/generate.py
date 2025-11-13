@@ -98,7 +98,7 @@ async def format_bad_output(
     content = template.format(**input_values)
 
     # Build completion kwargs
-    completion_kwargs = {
+    completion_kwargs: dict[str, Any] = {
         "model": model_name,
         "messages": [{"role": "user", "content": content}],
     }
