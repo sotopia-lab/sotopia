@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import secrets
 import random
 import subprocess
 import sys
@@ -33,7 +32,6 @@ try:
 except ImportError:  # pragma: no cover
     from werewolf_state import (  # type: ignore
         WerewolfStateStore,
-        action_key as werewolf_action_key,
     )
 
 from sotopia.database import (
@@ -43,7 +41,6 @@ from sotopia.database import (
     MessageTransaction,
     SessionTransaction,
 )
-from pydantic import BaseModel
 
 Migrator().run()
 
@@ -170,8 +167,7 @@ def _game_queue_statuses() -> list[GameQueueStatus]:
         running_sessions = sum(
             1
             for rec in MATCHMAKING_ASSIGNMENTS
-            if rec["game"] == slug
-            and rec["matched_at"] > time.time() - 900
+            if rec["game"] == slug and rec["matched_at"] > time.time() - 900
         )
         statuses.append(
             GameQueueStatus(
@@ -182,16 +178,16 @@ def _game_queue_statuses() -> list[GameQueueStatus]:
                 running_sessions=running_sessions,
                 last_match=last_match,
                 games_played=int(telemetry.get(f"games_played:{slug}", 0)),
-                avg_session_seconds=_compute_avg_session_seconds(
-                    slug, telemetry
-                ),
+                avg_session_seconds=_compute_avg_session_seconds(slug, telemetry),
                 enabled=_is_game_enabled(slug),
             )
         )
     return statuses
 
 
-def _compute_avg_session_seconds(slug: str, telemetry: dict[str, str]) -> Optional[float]:
+def _compute_avg_session_seconds(
+    slug: str, telemetry: dict[str, str]
+) -> Optional[float]:
     total = float(telemetry.get(f"total_session_seconds:{slug}", 0) or 0)
     count = float(telemetry.get(f"session_count:{slug}", 0) or 0)
     if not count:
@@ -278,10 +274,7 @@ def _ticket_key(ticket_id: str) -> str:
 
 
 def _persist_queue_snapshot() -> None:
-    snapshot = {
-        slug: json.dumps(queue)
-        for slug, queue in MATCHMAKING_QUEUE.items()
-    }
+    snapshot = {slug: json.dumps(queue) for slug, queue in MATCHMAKING_QUEUE.items()}
     if snapshot:
         conn.hset(QUEUE_SNAPSHOT_KEY, mapping=snapshot)
 
@@ -349,7 +342,9 @@ def _identity_token_key(token: str) -> str:
     return f"{IDENTITY_TOKEN_KEY}{token}"
 
 
-def _create_identity(participant_id: str, display_name: Optional[str]) -> IdentityResponse:
+def _create_identity(
+    participant_id: str, display_name: Optional[str]
+) -> IdentityResponse:
     token = str(uuid.uuid4())
     record = {
         "participant_id": participant_id,
@@ -494,9 +489,7 @@ async def _matchmaking_scheduler() -> None:
                     recorded_at=now,
                 )
                 _record_match_log(match_entry)
-                leaderboard_entries = _compute_leaderboard(
-                    _load_match_logs(limit=200)
-                )
+                leaderboard_entries = _compute_leaderboard(_load_match_logs(limit=200))
                 _persist_leaderboard(leaderboard_entries)
                 MATCHMAKING_ASSIGNMENTS.append(
                     {
@@ -838,7 +831,9 @@ def _start_server(session_ids: list[str]) -> None:
         raise RuntimeError(f"chat_server.py not found at {chat_server_script}")
     env = os.environ.copy()
     env.setdefault("FASTAPI_URL", FASTAPI_URL)
-    env.setdefault("REDIS_OM_URL", os.environ.get("REDIS_OM_URL", "redis://localhost:6379"))
+    env.setdefault(
+        "REDIS_OM_URL", os.environ.get("REDIS_OM_URL", "redis://localhost:6379")
+    )
     subprocess.Popen(
         [
             sys.executable,
@@ -950,6 +945,7 @@ async def get_agent(agent_id: str) -> AgentProfile:
         raise HTTPException(status_code=404, detail=f"Agent not found: {e}")
     return agent_profile
 
+
 # Models (enhance existing WerewolfSessionState)
 class CreateWerewolfGameRequest(BaseModel):
     host_id: str
@@ -962,17 +958,15 @@ class WerewolfActionRequest(BaseModel):
 
 
 @app.post("/games/werewolf/create")
-async def create_werewolf_game(
-    request: CreateWerewolfGameRequest = Body(...)
-) -> dict:
+async def create_werewolf_game(request: CreateWerewolfGameRequest = Body(...)) -> dict:
     """
     Create a new werewolf game session with one human and N AI players.
-    
+
     Returns:
         {"session_id": "...", "status": "starting", "player_name": "..."}
     """
     session_id = str(uuid.uuid4())
-    
+
     # Create placeholder session transaction (reuse existing model)
     session_transaction = SessionTransaction(
         session_id=session_id,
@@ -981,17 +975,19 @@ async def create_werewolf_game(
         message_list=[],
     )
     session_transaction.save()
-    
+
     # Start werewolf game server as subprocess
     if not WEREWOLF_SERVER_PATH.exists():
         raise HTTPException(
             status_code=500,
-            detail=f"werewolf_server.py not found at {WEREWOLF_SERVER_PATH}"
+            detail=f"werewolf_server.py not found at {WEREWOLF_SERVER_PATH}",
         )
-    
+
     env = os.environ.copy()
-    env.setdefault("REDIS_OM_URL", os.environ.get("REDIS_OM_URL", "redis://localhost:6379"))
-    
+    env.setdefault(
+        "REDIS_OM_URL", os.environ.get("REDIS_OM_URL", "redis://localhost:6379")
+    )
+
     subprocess.Popen(
         [
             sys.executable,
@@ -1028,11 +1024,11 @@ async def create_werewolf_game(
         placeholder_state.model_dump(),
         ttl=60,
     )
-    
+
     return {
         "session_id": session_id,
         "status": "starting",
-        "message": "Game server launching. Poll /games/werewolf/sessions/{session_id} for state."
+        "message": "Game server launching. Poll /games/werewolf/sessions/{session_id} for state.",
     }
 
 
@@ -1040,7 +1036,7 @@ async def create_werewolf_game(
 async def get_werewolf_session(session_id: str) -> WerewolfSessionState:
     """
     Get current game state for a werewolf session.
-    
+
     Frontend should poll this endpoint every 2 seconds.
     """
     state = await werewolf_state_store.read_state(session_id)
@@ -1062,13 +1058,11 @@ async def get_werewolf_session(session_id: str) -> WerewolfSessionState:
 
 @app.post("/games/werewolf/sessions/{session_id}/actions")
 async def submit_werewolf_action(
-    session_id: str,
-    participant_id: str,
-    action: WerewolfActionRequest = Body(...)
+    session_id: str, participant_id: str, action: WerewolfActionRequest = Body(...)
 ) -> dict:
     """
     Submit an action for the human player.
-    
+
     The werewolf_server.py will read this from Redis and process it.
     """
     await werewolf_state_store.push_action(
@@ -1077,11 +1071,8 @@ async def submit_werewolf_action(
         action_type=action.action_type,
         argument=action.argument,
     )
-    
-    return {
-        "status": "submitted",
-        "message": "Action queued for processing."
-    }
+
+    return {"status": "submitted", "message": "Action queued for processing."}
 
 
 @app.delete("/games/werewolf/sessions/{session_id}")
@@ -1092,11 +1083,11 @@ async def delete_werewolf_session(
     """Clean up game state (optional, for early exits)."""
     await werewolf_state_store.delete_state(session_id)
     await werewolf_state_store.delete_action(session_id, participant_id)
-    
+
     # Also delete session transaction
     session_transaction = await _get_single_exist_session(session_id)
     session_transaction.delete(session_transaction.pk)
-    
+
     return {"status": "deleted"}
 
 
@@ -1133,7 +1124,8 @@ async def enqueue_matchmaking(
             MATCHMAKING_QUEUE.setdefault(slug, []).append(ticket_id)
             _record_queue_depth(slug)
         estimated_wait = max(
-            _avg_wait_seconds(), 15 + sum(len(MATCHMAKING_QUEUE[g]) for g in valid_games)
+            _avg_wait_seconds(),
+            15 + sum(len(MATCHMAKING_QUEUE[g]) for g in valid_games),
         )
         position = min(len(MATCHMAKING_QUEUE[valid_games[0]]), 99)
     _persist_queue_snapshot()

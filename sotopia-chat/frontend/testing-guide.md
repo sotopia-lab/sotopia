@@ -160,7 +160,7 @@ redis-cli MONITOR | grep werewolf
 ## Common Issues & Solutions
 
 ### Issue 1: "Failed to create game"
-**Cause:** werewolf_server.py not found  
+**Cause:** werewolf_server.py not found
 **Solution:**
 ```bash
 # Verify file exists
@@ -171,7 +171,7 @@ ls examples/experimental/werewolves/backend/
 ```
 
 ### Issue 2: "Connection Error" in frontend
-**Cause:** CORS or backend not running  
+**Cause:** CORS or backend not running
 **Solution:**
 ```python
 # In fastapi_server.py, verify CORS middleware:
@@ -185,7 +185,7 @@ app.add_middleware(
 ```
 
 ### Issue 3: "Game state not found"
-**Cause:** Game server crashed or Redis cleared  
+**Cause:** Game server crashed or Redis cleared
 **Solution:**
 ```bash
 # Check if subprocess is running
@@ -199,7 +199,7 @@ python werewolf_server.py run-werewolf-game SESSION_ID PLAYER_ID 5
 ```
 
 ### Issue 4: Actions not registering
-**Cause:** Action key mismatch or expired  
+**Cause:** Action key mismatch or expired
 **Solution:**
 ```bash
 # Check Redis for pending actions
@@ -322,15 +322,15 @@ logging.basicConfig(level=logging.DEBUG)
 
 ## Success Criteria
 
-✅ Backend starts without errors  
-✅ Frontend loads at localhost:3000/werewolf  
-✅ Can create a game via UI  
-✅ Game state updates every 2 seconds  
-✅ Can submit actions (speak, vote, etc.)  
-✅ AI agents respond within 5 seconds  
-✅ Game completes after ~20-30 turns  
-✅ Game over screen displays correctly  
-✅ Can start a new game after completion  
+✅ Backend starts without errors
+✅ Frontend loads at localhost:3000/werewolf
+✅ Can create a game via UI
+✅ Game state updates every 2 seconds
+✅ Can submit actions (speak, vote, etc.)
+✅ AI agents respond within 5 seconds
+✅ Game completes after ~20-30 turns
+✅ Game over screen displays correctly
+✅ Can start a new game after completion
 
 ---
 

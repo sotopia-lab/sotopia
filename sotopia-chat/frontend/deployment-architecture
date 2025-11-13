@@ -3,7 +3,7 @@
   <text x="400" y="30" font-size="24" font-weight="bold" text-anchor="middle" fill="#333">
     Werewolf Game Deployment Architecture
   </text>
-  
+
   <!-- Vercel (Frontend) -->
   <rect x="50" y="80" width="200" height="120" fill="#0070f3" rx="10"/>
   <text x="150" y="110" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
@@ -21,7 +21,7 @@
   <text x="150" y="189" font-size="12" text-anchor="middle" fill="#e0e0e0">
     • Real-time polling
   </text>
-  
+
   <!-- Railway (Backend) -->
   <rect x="300" y="80" width="220" height="200" fill="#8b5cf6" rx="10"/>
   <text x="410" y="110" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
@@ -30,7 +30,7 @@
   <text x="410" y="135" font-size="14" text-anchor="middle" fill="white">
     Backend Services
   </text>
-  
+
   <!-- FastAPI -->
   <rect x="315" y="150" width="180" height="50" fill="#6366f1" rx="5"/>
   <text x="405" y="175" font-size="13" text-anchor="middle" fill="white">
@@ -39,7 +39,7 @@
   <text x="405" y="190" font-size="11" text-anchor="middle" fill="#e0e0e0">
     /games/werewolf/*
   </text>
-  
+
   <!-- Werewolf Server -->
   <rect x="315" y="215" width="180" height="50" fill="#4f46e5" rx="5"/>
   <text x="405" y="237" font-size="13" text-anchor="middle" fill="white">
@@ -48,7 +48,7 @@
   <text x="405" y="252" font-size="11" text-anchor="middle" fill="#e0e0e0">
     (subprocess per game)
   </text>
-  
+
   <!-- Redis -->
   <rect x="570" y="80" width="180" height="120" fill="#dc2626" rx="10"/>
   <text x="660" y="110" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
@@ -66,7 +66,7 @@
   <text x="660" y="194" font-size="12" text-anchor="middle" fill="#fee">
     • Phase transitions
   </text>
-  
+
   <!-- OpenAI -->
   <rect x="300" y="330" width="220" height="100" fill="#10a37f" rx="10"/>
   <text x="410" y="360" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
@@ -78,7 +78,7 @@
   <text x="410" y="407" font-size="12" text-anchor="middle" fill="#d0f0e0">
     5 AI players (gpt-4o-mini)
   </text>
-  
+
   <!-- User -->
   <rect x="50" y="330" width="200" height="100" fill="#374151" rx="10"/>
   <text x="150" y="360" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
@@ -90,25 +90,25 @@
   <text x="150" y="407" font-size="12" text-anchor="middle" fill="#d1d5db">
     Chrome/Safari/Firefox
   </text>
-  
+
   <!-- Arrows -->
   <!-- User to Vercel -->
   <path d="M 150 330 L 150 200" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
   <text x="165" y="270" font-size="11" fill="#666">HTTPS</text>
-  
+
   <!-- Vercel to Railway -->
   <path d="M 250 140 L 300 140" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
   <text x="260" y="130" font-size="11" fill="#666">REST API</text>
-  
+
   <!-- Railway to Redis -->
   <path d="M 520 140 L 570 140" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
   <text x="530" y="130" font-size="11" fill="#666">Redis</text>
   <path d="M 570 160 L 520 180" stroke="#666" stroke-width="2" fill="none" marker-start="url(#arrowhead)"/>
-  
+
   <!-- Railway to OpenAI -->
   <path d="M 410 280 L 410 330" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
   <text x="425" y="310" font-size="11" fill="#666">API calls</text>
-  
+
   <!-- Legends -->
   <rect x="50" y="480" width="700" height="100" fill="#f9fafb" stroke="#d1d5db" rx="5"/>
   <text x="60" y="505" font-size="14" font-weight="bold" fill="#374151">
@@ -123,7 +123,7 @@
   <text x="60" y="561" font-size="12" fill="#6b7280">
     3. Game state stored in Redis, polled by frontend every 2s
   </text>
-  
+
   <text x="420" y="525" font-size="12" fill="#6b7280">
     4. Human actions submitted via POST
   </text>
@@ -133,7 +133,7 @@
   <text x="420" y="561" font-size="12" fill="#6b7280">
     6. Game updates published to Redis
   </text>
-  
+
   <!-- Arrow marker definition -->
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">

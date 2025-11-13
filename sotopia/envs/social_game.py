@@ -223,7 +223,9 @@ class GameRulebook:
         self.pending_events = PhaseEvents.phase_entry(
             self.current_phase, entry_phase.entry_messages
         )
-        self._append_phase_entry_private_messages(self.current_phase, self.pending_events)
+        self._append_phase_entry_private_messages(
+            self.current_phase, self.pending_events
+        )
 
     # ------------------------------------------------------------------
     # Accessors used by the environment
@@ -301,9 +303,8 @@ class GameRulebook:
             events.extend(self._resolve_phase(phase, relevant))
             advance = True
 
-        if (
-            phase.name == "night_werewolves"
-            and not self.state_flags.get("night_target")
+        if phase.name == "night_werewolves" and not self.state_flags.get(
+            "night_target"
         ):
             advance = False
 
@@ -496,7 +497,9 @@ class GameRulebook:
                 target = self._extract_target([action])
                 if target:
                     if not self.state_flags.get("night_target"):
-                        self.state_flags[resolution.state_key or "night_target"] = target
+                        self.state_flags[resolution.state_key or "night_target"] = (
+                            target
+                        )
                         self.state_flags["night_target_display"] = target
                         wolf_votes[actor] = target
                         events.team.setdefault(state.team, []).append(
@@ -510,7 +513,9 @@ class GameRulebook:
                 target = self._extract_target([action])
                 if target:
                     if not self.state_flags.get("night_target"):
-                        self.state_flags[resolution.state_key or "night_target"] = target
+                        self.state_flags[resolution.state_key or "night_target"] = (
+                            target
+                        )
                         self.state_flags["night_target_display"] = target
                         wolf_votes[actor] = target
                         events.team.setdefault(state.team, []).append(
@@ -601,11 +606,17 @@ class GameRulebook:
         if poison and poison not in casualties:
             casualties.append(poison)
         if saved and target == saved:
-            events.public.append("[God] A hidden protector thwarted the werewolves' attack.")
+            events.public.append(
+                "[God] A hidden protector thwarted the werewolves' attack."
+            )
         if poison and poison not in casualties:
-            events.public.append("[God] A vial of poison was brewed but ultimately unused.")
+            events.public.append(
+                "[God] A vial of poison was brewed but ultimately unused."
+            )
         elif poison:
-            events.public.append("[God] Rumors whisper that a secret poison claimed a victim.")
+            events.public.append(
+                "[God] Rumors whisper that a secret poison claimed a victim."
+            )
         if not casualties:
             events.public.append("[God] Dawn breaks peacefully. No one died.")
         for victim in casualties:
@@ -866,7 +877,9 @@ class SocialGameEnv(ParallelSotopiaEnv):
             if target:
                 lines.append(f"[God] Werewolves targeted {target} this night.")
             else:
-                lines.append("[God] No victim identified yet; wolves may still be deciding.")
+                lines.append(
+                    "[God] No victim identified yet; wolves may still be deciding."
+                )
         return lines
 
     def _record_phase_history(

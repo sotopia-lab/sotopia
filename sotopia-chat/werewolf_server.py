@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import typer
 
@@ -20,9 +19,8 @@ from examples.experimental.werewolves.main_human import (  # type: ignore[import
     create_agents,
     prepare_scenario,
 )
-from sotopia.agents import Agents, LLMAgent
+from sotopia.agents import Agents
 from sotopia.database.persistent_profile import AgentProfile
-from sotopia.database import SotopiaDimensions
 from sotopia.envs import SocialGameEnv
 from sotopia.messages import AgentAction, Observation
 from aiohttp import ClientSession
@@ -32,7 +30,9 @@ try:
 except ImportError:  # pragma: no cover
     from werewolf_state import WerewolfStateStore  # type: ignore
 
-BASE_DIR = Path(__file__).resolve().parents[1] / "examples" / "experimental" / "werewolves"
+BASE_DIR = (
+    Path(__file__).resolve().parents[1] / "examples" / "experimental" / "werewolves"
+)
 ROLE_ACTIONS_PATH = BASE_DIR / "role_actions.json"
 RULEBOOK_PATH = BASE_DIR / "game_rules.json"
 ROSTER_PATH = BASE_DIR / "roster.json"
@@ -120,7 +120,9 @@ async def publish_game_state(
             }
         )
 
-    me_entry = next((player for player in players_payload if player["id"] == human_name), None)
+    me_entry = next(
+        (player for player in players_payload if player["id"] == human_name), None
+    )
 
     phase_def = rulebook.phase_lookup.get(rulebook.current_phase)
     human_role = role_assignments.get(human_name, "unknown")
@@ -155,7 +157,9 @@ async def publish_game_state(
     witch_options = None
     if human_state and human_state.role.lower() == "witch":
         state_flags = getattr(env.game_rulebook, "state_flags", {})
-        pending_target = state_flags.get("night_target_display") or state_flags.get("night_target")
+        pending_target = state_flags.get("night_target_display") or state_flags.get(
+            "night_target"
+        )
         witch_options = {
             "can_save": bool(human_state.attributes.get("save_available", True)),
             "can_poison": bool(human_state.attributes.get("poison_available", True)),
@@ -179,7 +183,9 @@ async def publish_game_state(
         "last_updated": time.time(),
         "game_over": bool(env._winner_payload),
         "winner": env._winner_payload.get("winner") if env._winner_payload else None,
-        "winner_message": env._winner_payload.get("message") if env._winner_payload else None,
+        "winner_message": env._winner_payload.get("message")
+        if env._winner_payload
+        else None,
         "status": status,
         "log": env.phase_log,
         "pack_members": pack_members,
@@ -201,7 +207,9 @@ async def async_run_werewolf_game(
     # Pick random slot for human player
     import random
 
-    state_store = WerewolfStateStore(os.environ.get("REDIS_OM_URL", "redis://localhost:6379"))
+    state_store = WerewolfStateStore(
+        os.environ.get("REDIS_OM_URL", "redis://localhost:6379")
+    )
     env: SocialGameEnv | None = None
     role_assignments: Dict[str, str] = {}
     human_full_name = human_id
@@ -279,8 +287,14 @@ async def async_run_werewolf_game(
                     action for action in available_actions if action != "none"
                 ]
 
-                if agent_name == human_full_name and agent_name in active_agents and not meaningful_actions:
-                    agent_messages[agent_name] = AgentAction(action_type="none", argument="")
+                if (
+                    agent_name == human_full_name
+                    and agent_name in active_agents
+                    and not meaningful_actions
+                ):
+                    agent_messages[agent_name] = AgentAction(
+                        action_type="none", argument=""
+                    )
                     continue
 
                 if agent_name == human_full_name and agent_name in active_agents:
