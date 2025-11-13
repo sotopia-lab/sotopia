@@ -34,16 +34,27 @@ export interface LobbyComponentProps {
     onGameCreated: (sessionId: string, participantId: string) => void;
 }
 
+export type GameStatus = "online" | "maintenance" | "coming-soon";
+
 export interface GameSummary {
     slug: string;
     title: string;
     summary: string;
     tags?: string[];
     accentColor?: string;
+    minPlayers?: number;
+    maxPlayers?: number;
+    estDurationMinutes?: number;
+    status?: GameStatus;
 }
 
 export interface GameDefinition<TSession = unknown>
     extends GameSummary {
+    features?: {
+        teamChat?: boolean;
+        spectators?: boolean;
+        hasLeaderboard?: boolean;
+    };
     components: {
         Consent: ComponentType<ConsentComponentProps>;
         Lobby: ComponentType<LobbyComponentProps>;
