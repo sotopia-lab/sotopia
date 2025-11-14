@@ -21,7 +21,7 @@
     { "name": "Elise", "role": "Witch" , "team": "Villagers"},
     { "name": "Finn", "role": "Villager" , "team": "Villagers"}
   ],
-  "initial_state": "Night_werewolf",
+  "initial_state": "Day_discussion",
   "state_transition": {
     "Night_werewolf": "Night_seer",
     "Night_seer": "Night_witch",
@@ -55,7 +55,8 @@
     },
     "Day_vote": {
       "actions": ["action"],
-      "visibility": { "during": "private", "after": "public" }
+      "action_order": "simultaneous",
+      "visibility": "public"
     }
   },
   "end_conditions": [

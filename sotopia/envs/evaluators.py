@@ -1,7 +1,7 @@
 import abc
 import logging
 from collections import defaultdict
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import gin
 from pydantic import BaseModel, validate_call
@@ -33,15 +33,53 @@ class Evaluator(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self, turn_number: int, messages: list[tuple[str, Message]]
+        self, turn_number: int, messages: list[tuple[str, Message]], **kwargs: Any
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         raise NotImplementedError
 
     @abc.abstractmethod
     async def __acall__(
-        self, turn_number: int, messages: list[tuple[str, Message]]
+        self, turn_number: int, messages: list[tuple[str, Message]], **kwargs: Any
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         raise NotImplementedError
+
+
+class SocialGameEndEvaluator(Evaluator):
+    """Base evaluator for social game win conditions.
+
+    Subclasses should implement _check_win_conditions() to check
+    game-specific win conditions using the environment state.
+    """
+
+    def __init__(self, max_turn_number: int = 100) -> None:
+        self.max_turn_number = max_turn_number
+
+    def __call__(
+        self, turn_number: int, messages: list[tuple[str, Message]], **kwargs: Any
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
+        # Check turn limit
+        if turn_number >= self.max_turn_number:
+            return [("environment", (("terminated", True), "Max turns reached"))]
+
+        # Extract environment from kwargs
+        env = kwargs.get("env")
+        if not env:
+            return [("environment", (("terminated", False), ""))]
+
+        # Check game-specific win conditions
+        terminated, reason = self._check_win_conditions(env, turn_number, messages)
+        return [("environment", (("terminated", terminated), reason))]
+
+    async def __acall__(
+        self, turn_number: int, messages: list[tuple[str, Message]], **kwargs: Any
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
+        return self.__call__(turn_number, messages, **kwargs)
+
+    def _check_win_conditions(
+        self, env: Any, turn_number: int, messages: list[tuple[str, Message]]
+    ) -> tuple[bool, str]:
+        """Check game-specific win conditions. Override in subclasses."""
+        return False, ""
 
 
 class RuleBasedTerminatedEvaluator(Evaluator):
@@ -51,7 +89,7 @@ class RuleBasedTerminatedEvaluator(Evaluator):
 
     @validate_call
     def __call__(
-        self, turn_number: int, messages: list[tuple[str, Message]]
+        self, turn_number: int, messages: list[tuple[str, Message]], **kwargs: Any
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # Rule 1: If the conversation is too long, terminate the conversation
         conversation_too_long = turn_number >= self.max_turn_number
@@ -109,9 +147,9 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         ]
 
     async def __acall__(
-        self, turn_number: int, messages: list[tuple[str, Message]]
+        self, turn_number: int, messages: list[tuple[str, Message]], **kwargs: Any
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        return self(turn_number, messages)
+        return self(turn_number, messages, **kwargs)
 
 
 class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
@@ -125,7 +163,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         self.response_format_class = response_format_class
 
     def __call__(
-        self, turn_number: int, messages: list[tuple[str, Message]]
+        self, turn_number: int, messages: list[tuple[str, Message]], **kwargs: Any
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         raise NotImplementedError(
             "ReachGoalLLMEvaluator is not implemented for synchronous evaluation"
@@ -139,6 +177,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         messages: list[tuple[str, Message]] | None,
         history: str = "",
         temperature: float | None = 0.0,
+        **kwargs: Any,
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # filter did nothing
         if not history and messages:

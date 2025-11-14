@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 import logging
-from typing import Any, Dict, List, cast, Tuple
+from typing import Any, Dict, List, cast
 
 import redis
 
@@ -18,13 +18,9 @@ from sotopia.database.persistent_profile import (
     RelationshipType,
 )
 from sotopia.envs import SocialGameEnv
-from sotopia.envs.evaluators import (
-    EpisodeLLMEvaluator,
-    EvaluationForAgents,
-    RuleBasedTerminatedEvaluator,
-)
+from sotopia.envs.evaluators import SocialGameEndEvaluator
 from sotopia.server import arun_one_episode
-from sotopia.database import SotopiaDimensions
+from sotopia.messages import AgentAction, SimpleMessage, Message
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -32,9 +28,8 @@ CONFIG_PATH = BASE_DIR / "config.json"
 os.environ.setdefault("REDIS_OM_URL", "redis://:@localhost:6379")
 redis.Redis(host="localhost", port=6379)
 
-# Configure debug file logging for generation traces
+# Configure debug file logging
 LOG_FILE = BASE_DIR / "werewolves_game_debug.log"
-# _fh is the file handler, which is used to log the >=DEBUG levels to a .log file.
 _fh = logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8")
 _fh.setFormatter(
     logging.Formatter("%(asctime)s %(levelname)-7s %(name)s - %(message)s")
@@ -44,168 +39,296 @@ _gen_logger.setLevel(logging.DEBUG)
 _gen_logger.addHandler(_fh)
 
 
-def load_json(path: Path) -> Dict[str, Any]:
-    return cast(Dict[str, Any], json.loads(path.read_text()))
+# ============================================================================
+# Werewolf game-end evaluator
+# ============================================================================
 
 
-def split_name(full_name: str) -> Tuple[str, str]:
-    first_name, last_name = (
-        full_name.split(" ", 1) if " " in full_name else (full_name, "")
-    )
-    return first_name, last_name
+class WerewolfGameEndEvaluator(SocialGameEndEvaluator):
+    """Evaluator that checks werewolf win conditions."""
+
+    def _check_win_conditions(
+        self, env: Any, turn_number: int, messages: List[tuple[str, Message]]
+    ) -> tuple[bool, str]:
+        """Check if game has ended based on werewolf win conditions."""
+        # Count alive players by team
+        team_counts: Dict[str, int] = {}
+        for agent_name, alive in env.agent_alive.items():
+            if alive:
+                role = env.agent_to_role.get(agent_name, "")
+                team = env.role_to_team.get(role, "")
+                team_counts[team] = team_counts.get(team, 0) + 1
+
+        # Check end conditions from config
+        end_conditions = env._config.get("end_conditions", [])
+        for condition in end_conditions:
+            cond_type = condition.get("type")
+
+            if cond_type == "team_eliminated":
+                team = condition.get("team", "")
+                if team_counts.get(team, 0) == 0:
+                    winner = condition.get("winner", "")
+                    msg = condition.get("message", f"{winner} wins!")
+                    env.recv_message("Environment", SimpleMessage(message=msg))
+                    return True, msg
+
+            elif cond_type == "parity":
+                team1 = condition.get("team", "")
+                team2 = condition.get("other", "")
+                if team_counts.get(team1, 0) >= team_counts.get(team2, 0):
+                    winner = condition.get("winner", "")
+                    msg = condition.get("message", f"{winner} wins!")
+                    env.recv_message("Environment", SimpleMessage(message=msg))
+                    return True, msg
+
+        return False, ""
 
 
-# for god roles (seer, witch), their roles can be revealed to other players
+# ============================================================================
+# Werewolf-specific game logic
+# ============================================================================
 
 
-def ensure_agent(player: Dict[str, Any]) -> AgentProfile:
+class WerewolfEnv(SocialGameEnv):
+    """Werewolf game with voting, kills, and special roles."""
+
+    def _process_actions(self, actions: Dict[str, AgentAction]) -> None:
+        """Collect votes, kills, inspections, etc. based on current state."""
+
+        if self.current_state == "Day_vote":
+            # Collect votes for elimination
+            if "votes" not in self.internal_state:
+                self.internal_state["votes"] = {}
+
+            for agent_name, action in actions.items():
+                if action.action_type == "action" and "vote" in action.argument.lower():
+                    # Parse target from "vote Aurora" or "I vote for Aurora"
+                    words = action.argument.split()
+                    # Try to find a name (capitalized word)
+                    target = next(
+                        (w for w in words if w[0].isupper() and w in self.agents), None
+                    )
+                    if target:
+                        self.internal_state["votes"][agent_name] = target
+
+        elif self.current_state == "Night_werewolf":
+            # Werewolves choose kill target
+            for agent_name, action in actions.items():
+                role = self.agent_to_role.get(agent_name, "")
+                if role == "Werewolf" and action.action_type == "action":
+                    if "kill" in action.argument.lower():
+                        words = action.argument.split()
+                        target = next(
+                            (w for w in words if w[0].isupper() and w in self.agents),
+                            None,
+                        )
+                        if target:
+                            self.internal_state["kill_target"] = target
+
+        elif self.current_state == "Night_seer":
+            # Seer inspects someone
+            for agent_name, action in actions.items():
+                role = self.agent_to_role.get(agent_name, "")
+                if role == "Seer" and action.action_type == "action":
+                    if "inspect" in action.argument.lower():
+                        words = action.argument.split()
+                        target = next(
+                            (w for w in words if w[0].isupper() and w in self.agents),
+                            None,
+                        )
+                        if target:
+                            # Reveal target's role to seer
+                            target_role = self.agent_to_role.get(target, "Unknown")
+                            target_team = self.role_to_team.get(target_role, "Unknown")
+                            self.recv_message(
+                                "Environment",
+                                SimpleMessage(
+                                    message=f"[Private to {agent_name}] {target} is on team: {target_team}"
+                                ),
+                            )
+
+    def _check_eliminations(self) -> None:
+        """Apply eliminations based on collected actions."""
+
+        if self.current_state == "Day_vote":
+            # Tally votes and eliminate most voted player
+            votes = self.internal_state.get("votes", {})
+            if votes:
+                vote_counts: Dict[str, int] = {}
+                for target in votes.values():
+                    vote_counts[target] = vote_counts.get(target, 0) + 1
+
+                if vote_counts:
+                    # Find player with most votes
+                    eliminated = max(vote_counts, key=vote_counts.get)  # type: ignore
+                    self.agent_alive[eliminated] = False
+                    self.recv_message(
+                        "Environment",
+                        SimpleMessage(
+                            message=f"[Game] {eliminated} was voted out! They were a {self.agent_to_role[eliminated]}."
+                        ),
+                    )
+                # Clear votes
+                self.internal_state["votes"] = {}
+
+        elif self.current_state == "Night_werewolf":
+            # Apply werewolf kill
+            target = self.internal_state.get("kill_target")
+            if target and self.agent_alive.get(target, False):
+                # Check if witch saves them (would be in Night_witch state)
+                saved = self.internal_state.get("saved_target")
+                if target != saved:
+                    self.agent_alive[target] = False
+                    self.recv_message(
+                        "Environment",
+                        SimpleMessage(
+                            message=f"[Game] {target} was killed by werewolves!"
+                        ),
+                    )
+                else:
+                    self.recv_message(
+                        "Environment",
+                        SimpleMessage(message="[Game] An attack was prevented!"),
+                    )
+            # Clear kill target
+            self.internal_state.pop("kill_target", None)
+
+
+# ============================================================================
+# Setup helpers
+# ============================================================================
+
+
+def load_config() -> Dict[str, Any]:
+    """Load game configuration."""
+    return cast(Dict[str, Any], json.loads(CONFIG_PATH.read_text()))
+
+
+def ensure_agent_profile(name: str, role: str, config: Dict[str, Any]) -> AgentProfile:
+    """Create or retrieve agent profile."""
+    first_name, _, last_name = name.partition(" ")
+    if not last_name:
+        last_name = ""
+
+    # Try to find existing
     try:
         existing = AgentProfile.find(
-            (AgentProfile.first_name == player["first_name"])
-            & (AgentProfile.last_name == player["last_name"])  # combine predicates
+            (AgentProfile.first_name == first_name)
+            & (AgentProfile.last_name == last_name)
         ).all()
+        if existing:
+            return AgentProfile.get(existing[0].pk)
     except Exception:
-        existing = []
-    if existing:
-        prof = AgentProfile.get(existing[0].pk)
-        return prof
+        pass
 
+    # Create new
+    role_secret = config.get("role_secrets", {}).get(role, "")
     profile = AgentProfile(
-        first_name=player["first_name"],
-        last_name=player["last_name"],
-        age=player.get("age", ""),
-        occupation=player.get("occupation", ""),
-        gender=player.get("gender", ""),
-        gender_pronoun=player.get("pronouns", ""),
-        public_info=player.get("public_info", ""),
-        personality_and_values=player.get("personality_and_values", ""),
-        decision_making_style=player.get("decision_making_style", ""),
-        secret=player.get("secret", ""),
+        first_name=first_name,
+        last_name=last_name,
+        age=30,
+        secret=role_secret,
     )
     profile.save()
     return profile
 
 
-def prepare_scenario() -> tuple[EnvironmentProfile, List[AgentProfile], Dict[str, str]]:
-    assert CONFIG_PATH.exists(), f"config.json not found at {CONFIG_PATH}"
-    cfg = load_json(CONFIG_PATH)
-    agents: List[AgentProfile] = []
-    role_assignments: Dict[str, str] = {}
-
-    for entry in cfg.get("agents", []):
-        full_name = cast(str, entry.get("name", "Unknown Name"))
-        role = cast(str, entry.get("role", "Unknown Role"))
-        first_name, last_name = split_name(full_name)
-        role_goal = cfg.get("role_goals", {}).get(role, "")
-        role_secret = cfg.get("role_secrets", {}).get(role, "")
-        # Build a complete player payload for profile creation/update
-        player: Dict[str, Any] = {
-            "first_name": first_name,
-            "last_name": last_name,
-            "pronouns": entry.get("pronouns", ""),
-            "age": entry.get("age", ""),
-            "gender": entry.get("gender", ""),
-            "occupation": entry.get("occupation", ""),
-            "public_info": entry.get("public_info", ""),
-            "personality_and_values": entry.get("personality_and_values", ""),
-            "decision_making_style": entry.get("decision_making_style", ""),
-            "goal": role_goal,
-            "secret": role_secret,
-        }
-        profile = ensure_agent(player)
-        agents.append(profile)
-        role_assignments[full_name] = role
-
-    scenario_text = cast(
-        str, cfg.get("description") or cfg.get("scenario") or "Werewolves game"
-    )
-    env_profile = EnvironmentProfile(
-        scenario=scenario_text,
-        relationship=RelationshipType.acquaintance,
-        game_metadata={
-            "mode": "social_game",
-            "config_path": str(CONFIG_PATH),
-        },
-        tag="werewolves",
-    )
-    env_profile.save()
-    return env_profile, agents, role_assignments
-
-
-def build_environment(
-    env_profile: EnvironmentProfile,
-    role_assignments: Dict[str, str],
-    model_name: str,
-) -> SocialGameEnv:
-    return SocialGameEnv(
+def create_environment(env_profile: EnvironmentProfile, model_name: str) -> WerewolfEnv:
+    """Create werewolf game environment."""
+    return WerewolfEnv(
         env_profile=env_profile,
         config_path=str(CONFIG_PATH),
         model_name=model_name,
         action_order="round-robin",
-        evaluators=[RuleBasedTerminatedEvaluator(max_turn_number=40, max_stale_turn=2)],
-        terminal_evaluators=[
-            EpisodeLLMEvaluator(
-                model_name,
-                EvaluationForAgents[SotopiaDimensions],
-            )
-        ],
+        evaluators=[WerewolfGameEndEvaluator(max_turn_number=40)],
+        terminal_evaluators=[],
     )
 
 
 def create_agents(
     agent_profiles: List[AgentProfile],
     env_profile: EnvironmentProfile,
-    model_names: List[str],
-    default_model: str,
+    model_name: str,
 ) -> List[LLMAgent]:
-    cfg = load_json(CONFIG_PATH)
-    cfg_agents = cfg.get("agents", [])
-    agents: List[LLMAgent] = []
+    """Create LLM agents."""
+    agents = []
     for idx, profile in enumerate(agent_profiles):
-        # priority: explicit model_names list > per-agent config override > default_model
-        if idx < len(model_names) and model_names[idx]:
-            model_name = model_names[idx]
-        elif idx < len(cfg_agents) and cfg_agents[idx].get("model"):
-            model_name = cast(str, cfg_agents[idx]["model"])
-        else:
-            model_name = default_model
         agent = LLMAgent(agent_profile=profile, model_name=model_name)
         agent.goal = env_profile.agent_goals[idx]
         agents.append(agent)
     return agents
 
 
-def print_roster(role_assignments: Dict[str, str]) -> None:
+def prepare_scenario(
+    env_model_name: str, agent_model_name: str
+) -> tuple[SocialGameEnv, List[LLMAgent]]:
+    """Load config and create profiles."""
+    config = load_config()
+
+    # Create agent profiles
+    agent_profiles = []
+    agent_goals = []
+    for entry in config.get("agents", []):
+        name = entry.get("name", "Unknown")
+        role = entry.get("role", "Villager")
+
+        profile = ensure_agent_profile(name, role, config)
+        agent_profiles.append(profile)
+
+        role_goal = config.get("role_goals", {}).get(role, "")
+        agent_goals.append(role_goal)
+
+    # Create environment profile
+    scenario = config.get("description", "Werewolves game")
+    env_profile = EnvironmentProfile(
+        scenario=scenario,
+        relationship=RelationshipType.acquaintance,
+        agent_goals=agent_goals,
+        tag="werewolves",
+    )
+    env_profile.save()
+
+    env = create_environment(env_profile, env_model_name)
+    agents = create_agents(agent_profiles, env_profile, agent_model_name)
+    return env, agents
+
+
+def print_roster(config: Dict[str, Any]) -> None:
+    """Print game roster."""
     print("Participants & roles:")
-    for name, role in role_assignments.items():
+    for entry in config.get("agents", []):
+        name = entry.get("name", "Unknown")
+        role = entry.get("role", "Unknown")
         print(f" - {name}: {role}")
 
 
+# ============================================================================
+# Main
+# ============================================================================
+
+
 async def main() -> None:
-    env_profile, agent_profiles, role_assignments = prepare_scenario()
-    env_model = "gpt-5"
-    agent_model_list = [
-        "gpt-5",
-        "gpt-5",
-        "gpt-5",
-        "gpt-5",
-        "gpt-5",
-        "gpt-5",
-    ]
+    """Run werewolf game."""
+    # Configuration
+    env_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
+    agent_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
 
-    env = build_environment(env_profile, role_assignments, env_model)
-    agents = create_agents(agent_profiles, env_profile, agent_model_list, env_model)
+    # Setup
+    env, agents = prepare_scenario(env_model_name, agent_model_name)
 
+    # Display roster
+    config = load_config()
     print("🌕 Duskmire Werewolves")
     print("=" * 60)
-    print_roster(role_assignments)
+    print_roster(config)
     print("=" * 60)
 
+    # Run game
     await arun_one_episode(
         env=env,
         agent_list=agents,
         omniscient=False,
-        script_like=False,
+        script_like=True,  # Required for action_mask to work
         json_in_script=False,
         tag=None,
         push_to_db=False,
