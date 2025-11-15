@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from dataclasses import dataclass
 from litellm import acompletion
 from litellm.exceptions import BadRequestError
@@ -80,7 +81,6 @@ async def format_bad_output(
     model_name: str,
     use_fixed_model_version: bool = True,
     base_url: str | None = None,
-    api_key: str | None = None,
 ) -> str:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
@@ -103,19 +103,29 @@ async def format_bad_output(
         "messages": [{"role": "user", "content": content}],
     }
 
-    # Only add response_format if not using custom base_url
-    # Custom servers may not support this parameter
-    if base_url is None:
+    # Parse format_instructions to get the schema
+    try:
+        schema = json.loads(format_instructions)
+        # Build proper json_schema response_format
+        completion_kwargs["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "reformatted_output",
+                "schema": schema,
+                "strict": True,
+            },
+        }
+    except json.JSONDecodeError:
+        # Fallback to json_object if schema parsing fails
         completion_kwargs["response_format"] = {"type": "json_object"}
-    else:
+
+    # Add base_url if provided
+    if base_url is not None:
         completion_kwargs["base_url"] = base_url
-        completion_kwargs["api_key"] = api_key
 
     response = await acompletion(**completion_kwargs)
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
-    log.debug(f"Model: {model_name}")
-    log.debug(f"Prompt: {content}")
     log.info(f"Reformated output: {reformatted_output}")
     return reformatted_output
 
@@ -255,8 +265,6 @@ async def agenerate(
         # Include agent name in logs if available
         agent_name = input_values.get("agent", "")
         log_prefix = f" [{agent_name}]" if agent_name else ""
-        log.debug(f"Model: {model_name}")
-        log.debug(f"Prompt: {messages}")
         log.info(f"Generated result{log_prefix}: {result}")
         assert isinstance(result, str)
         return cast(OutputType, output_parser.parse(result))
@@ -279,7 +287,7 @@ async def agenerate(
         if isinstance(output_parser, ScriptOutputParser):
             raise e
         log.debug(
-            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
+            f"Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
             extra={"markup": True},
         )
         # Handle bad output reformatting
@@ -289,15 +297,12 @@ async def agenerate(
             bad_output_process_model or model_name,
             use_fixed_model_version,
             base_url=base_url,
-            api_key=api_key,
         )
         parsed_result = output_parser.parse(reformat_result)
 
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")
     log_prefix = f" [{agent_name}]" if agent_name else ""
-    log.debug(f"Model: {model_name}")
-    log.debug(f"Prompt: {messages}")
     log.info(f"Generated result{log_prefix}: {parsed_result}")
     return parsed_result
 
