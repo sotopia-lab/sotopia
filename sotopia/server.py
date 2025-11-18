@@ -174,7 +174,6 @@ async def arun_one_episode(
                     else:
                         pass
 
-            # actions = cast(list[AgentAction], actions)
             for idx, agent_name in enumerate(env.agents):
                 agent_messages[agent_name] = actions[idx]
 
@@ -307,7 +306,7 @@ async def run_async_server(
             ],
             "terminal_evaluators": [
                 EpisodeLLMEvaluator(
-                    model_dict["env"],
+                    model_dict.get("evaluator", model_dict["env"]),
                     EvaluationForAgents[SotopiaDimensions],
                 ),
             ],
@@ -399,7 +398,7 @@ async def arun_one_script(
     agent_messages = env_message + agent_messages
 
     evaluator: EpisodeLLMEvaluator[SotopiaDimensions] = EpisodeLLMEvaluator(
-        model_name="gpt-4",
+        model_name=model_dict.get("evaluator", model_dict["env"]),
         response_format_class=EvaluationForAgents[SotopiaDimensions],
     )
     response = unweighted_aggregate_evaluate(

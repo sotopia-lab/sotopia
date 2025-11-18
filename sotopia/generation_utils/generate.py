@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from dataclasses import dataclass
 from litellm import acompletion
 from litellm.exceptions import BadRequestError
@@ -79,6 +80,7 @@ async def format_bad_output(
     format_instructions: str,
     model_name: str,
     use_fixed_model_version: bool = True,
+    base_url: str | None = None,
 ) -> str:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
@@ -94,11 +96,34 @@ async def format_bad_output(
         "format_instructions": format_instructions,
     }
     content = template.format(**input_values)
-    response = await acompletion(
-        model=model_name,
-        response_format={"type": "json_object"},
-        messages=[{"role": "user", "content": content}],
-    )
+
+    # Build completion kwargs
+    completion_kwargs: dict[str, Any] = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": content}],
+    }
+
+    # Parse format_instructions to get the schema
+    try:
+        schema = json.loads(format_instructions)
+        # Build proper json_schema response_format
+        completion_kwargs["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "reformatted_output",
+                "schema": schema,
+                "strict": True,
+            },
+        }
+    except json.JSONDecodeError:
+        # Fallback to json_object if schema parsing fails
+        completion_kwargs["response_format"] = {"type": "json_object"}
+
+    # Add base_url if provided
+    if base_url is not None:
+        completion_kwargs["base_url"] = base_url
+
+    response = await acompletion(**completion_kwargs)
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
     log.info(f"Reformated output: {reformatted_output}")
@@ -250,7 +275,7 @@ async def agenerate(
         model=model_name,
         messages=messages,
         drop_params=True,
-        api_base=base_url,
+        base_url=base_url,
         api_key=api_key,
     )
     response = await _call_with_retry(completion_kwargs)
@@ -262,7 +287,7 @@ async def agenerate(
         if isinstance(output_parser, ScriptOutputParser):
             raise e
         log.debug(
-            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
+            f"Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
             extra={"markup": True},
         )
         # Handle bad output reformatting
@@ -271,6 +296,7 @@ async def agenerate(
             output_parser.get_format_instructions(),
             bad_output_process_model or model_name,
             use_fixed_model_version,
+            base_url=base_url,
         )
         parsed_result = output_parser.parse(reformat_result)
 
