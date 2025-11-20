@@ -111,7 +111,7 @@ JsonModel.all = classmethod(_json_model_all)  # type: ignore[assignment,method-a
 logger = Logger("sotopia.database")
 
 # Initialize storage backend based on environment variable
-storage_backend_type = os.getenv("SOTOPIA_STORAGE_BACKEND", "redis").lower()
+storage_backend_type = os.getenv("SOTOPIA_STORAGE_BACKEND", "local").lower()
 
 if is_redis_backend():
     # Test Redis connection before proceeding with any database operations
