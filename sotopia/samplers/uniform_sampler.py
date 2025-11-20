@@ -65,8 +65,21 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
             env_profile = random.choice(self.env_candidates)
             if isinstance(env_profile, str):
                 env_profile = EnvironmentProfile.get(env_profile)
-            logger.info("Creating ParallelSotopiaEnv with %s agents", n_agent)
-            env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
+            logger.info("Creating environment with %s agents", n_agent)
+            game_meta = getattr(env_profile, "game_metadata", None) or {}
+            env: ParallelSotopiaEnv
+            if game_meta.get("mode") == "social_game":
+                from sotopia.envs import SocialGameEnv
+
+                config_path = game_meta.get("config_path")
+                assert (
+                    config_path
+                ), "game_metadata.config_path is required for social_game"
+                env = SocialGameEnv(
+                    env_profile=env_profile, config_path=config_path, **env_params
+                )
+            else:
+                env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
             agent_profile_candidates = self.agent_candidates
             if len(agent_profile_candidates) == n_agent:

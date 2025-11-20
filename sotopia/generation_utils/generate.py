@@ -126,6 +126,8 @@ async def format_bad_output(
     response = await acompletion(**completion_kwargs)
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
+    log.debug(f"Model: {model_name}")
+    log.debug(f"Prompt: {content}")
     log.info(f"Reformated output: {reformatted_output}")
     return reformatted_output
 
@@ -265,6 +267,8 @@ async def agenerate(
         # Include agent name in logs if available
         agent_name = input_values.get("agent", "")
         log_prefix = f" [{agent_name}]" if agent_name else ""
+        log.debug(f"Model: {model_name}")
+        log.debug(f"Prompt: {messages}")
         log.info(f"Generated result{log_prefix}: {result}")
         assert isinstance(result, str)
         return cast(OutputType, output_parser.parse(result))
@@ -303,6 +307,8 @@ async def agenerate(
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")
     log_prefix = f" [{agent_name}]" if agent_name else ""
+    log.debug(f"Model: {model_name}")
+    log.debug(f"Prompt: {messages}")
     log.info(f"Generated result{log_prefix}: {parsed_result}")
     return parsed_result
 

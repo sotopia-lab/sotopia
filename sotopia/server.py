@@ -159,20 +159,43 @@ async def arun_one_episode(
         while not done:
             # gather agent messages
             agent_messages: dict[str, AgentAction] = dict()
-            actions = await asyncio.gather(
-                *[
-                    agents[agent_name].aact(environment_messages[agent_name])
-                    for agent_name in env.agents
-                ]
-            )
+
             if script_like:
-                # manually mask one message
+                # Only call agents where action_mask is True
                 agent_mask = env.action_mask
-                for idx in range(len(agent_mask)):
-                    if agent_mask[idx] == 0:
-                        actions[idx] = AgentAction(action_type="none", argument="")
+                actions_to_gather = []
+                acting_indices = []
+
+                for idx, agent_name in enumerate(env.agents):
+                    if agent_mask[idx]:
+                        actions_to_gather.append(
+                            agents[agent_name].aact(environment_messages[agent_name])
+                        )
+                        acting_indices.append(idx)
+
+                # Gather only acting agents' responses
+                if actions_to_gather:
+                    acting_actions = await asyncio.gather(*actions_to_gather)
+                else:
+                    acting_actions = []
+
+                # Build full actions list with "none" for non-acting agents
+                actions = []
+                acting_idx = 0
+                for idx in range(len(env.agents)):
+                    if agent_mask[idx]:
+                        actions.append(acting_actions[acting_idx])
+                        acting_idx += 1
                     else:
-                        pass
+                        actions.append(AgentAction(action_type="none", argument=""))
+            else:
+                # Original behavior: gather all agents
+                actions = await asyncio.gather(
+                    *[
+                        agents[agent_name].aact(environment_messages[agent_name])
+                        for agent_name in env.agents
+                    ]
+                )
 
             for idx, agent_name in enumerate(env.agents):
                 agent_messages[agent_name] = actions[idx]
