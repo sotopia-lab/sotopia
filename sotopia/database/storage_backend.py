@@ -332,7 +332,7 @@ def get_storage_backend() -> StorageBackend:
     if _storage_backend is not None:
         return _storage_backend
 
-    backend_type = os.environ.get("SOTOPIA_STORAGE_BACKEND", "redis").lower()
+    backend_type = os.environ.get("SOTOPIA_STORAGE_BACKEND", "local").lower()
 
     if backend_type == "redis":
         _storage_backend = RedisBackend()
