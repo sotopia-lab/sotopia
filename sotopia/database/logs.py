@@ -10,11 +10,23 @@ from redis_om import JsonModel
 from redis_om.model.model import Field
 from typing import Literal
 from sotopia.database.persistent_profile import AgentProfile
+from .base_models import patch_model_for_local_storage
+from .storage_backend import is_local_backend
 
 
-class NonStreamingSimulationStatus(JsonModel):
+class BaseNonStreamingSimulationStatus(BaseModel):
     episode_pk: str = Field(index=True)
     status: Literal["Started", "Error", "Completed"]
+
+
+if is_local_backend():
+
+    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus):  # type: ignore[no-redef]
+        pass
+else:
+
+    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus, JsonModel):  # type: ignore[no-redef]
+        pass
 
 
 class BaseEpisodeLog(BaseModel):
@@ -81,12 +93,36 @@ class BaseEpisodeLog(BaseModel):
         return agent_profiles, messages_and_rewards
 
 
-class EpisodeLog(BaseEpisodeLog, JsonModel):
-    pass
+if is_local_backend():
+
+    class EpisodeLog(BaseEpisodeLog):  # type: ignore[no-redef]
+        pass
+else:
+
+    class EpisodeLog(BaseEpisodeLog, JsonModel):
+        pass
 
 
-class AnnotationForEpisode(JsonModel):
+class BaseAnnotationForEpisode(BaseModel):
     episode: str = Field(index=True, description="the pk id of episode log")
     annotator_id: str = Field(index=True, full_text_search=True)
     rewards: list[tuple[float, dict[str, float]] | float]
     reasoning: str
+
+
+if is_local_backend():
+
+    class AnnotationForEpisode(BaseAnnotationForEpisode):  # type: ignore[no-redef]
+        pass
+else:
+
+    class AnnotationForEpisode(BaseAnnotationForEpisode, JsonModel):
+        pass
+
+
+# Patch model classes for local storage support
+NonStreamingSimulationStatus = patch_model_for_local_storage(
+    NonStreamingSimulationStatus
+)
+EpisodeLog = patch_model_for_local_storage(EpisodeLog)
+AnnotationForEpisode = patch_model_for_local_storage(AnnotationForEpisode)

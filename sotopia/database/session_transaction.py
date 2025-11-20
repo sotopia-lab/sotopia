@@ -1,8 +1,10 @@
-from pydantic import field_validator
+from pydantic import field_validator, BaseModel
 from redis_om import EmbeddedJsonModel, JsonModel
 from redis_om.model.model import Field
 
 from .auto_expires_mixin import AutoExpireMixin
+from .base_models import patch_model_for_local_storage
+from .storage_backend import is_local_backend
 
 
 class MessageTransaction(EmbeddedJsonModel):
@@ -18,7 +20,7 @@ class MessageTransaction(EmbeddedJsonModel):
         )
 
 
-class SessionTransaction(AutoExpireMixin, JsonModel):
+class BaseSessionTransaction(BaseModel):
     session_id: str = Field(index=True)
     client_id: str = Field(index=True)
     server_id: str = Field(index=True)
@@ -42,3 +44,18 @@ class SessionTransaction(AutoExpireMixin, JsonModel):
 
         assert _is_sorted(v), "Message list should be sorted by timestamp"
         return v
+
+
+if is_local_backend():
+    # For local backend, inherit only from BaseSessionTransaction (no TTL support)
+    class SessionTransaction(BaseSessionTransaction):  # type: ignore[no-redef]
+        pass
+else:
+    # For Redis backend, inherit from AutoExpireMixin and JsonModel
+    class SessionTransaction(AutoExpireMixin, BaseSessionTransaction, JsonModel):  # type: ignore[no-redef]
+        pass
+
+
+# Patch model class for local storage support
+# Note: TTL/expiration is not supported in local storage mode
+SessionTransaction = patch_model_for_local_storage(SessionTransaction)

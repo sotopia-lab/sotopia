@@ -8,6 +8,7 @@ import logging
 from rich import print
 import os  # Add import for os module
 from rich.logging import RichHandler
+from sotopia.database.storage_backend import is_redis_backend
 
 # Configure logger
 logger = logging.getLogger("sotopia.experimental.server")
@@ -36,7 +37,17 @@ async def arun_one_episode(
 
     Returns:
         AsyncGenerator yielding simulation messages
+
+    Raises:
+        RuntimeError: If not using Redis backend (experimental framework requires Redis)
     """
+    # Check that we're using Redis backend
+    if not is_redis_backend():
+        raise RuntimeError(
+            "Experimental framework requires Redis for pub/sub communication. "
+            "Please set SOTOPIA_STORAGE_BACKEND=redis or use the core Sotopia API instead."
+        )
+
     episode_config["connection_id"] = connection_id
     episode_config["agents"] += [
         {

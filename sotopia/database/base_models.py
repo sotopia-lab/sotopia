@@ -1,0 +1,190 @@
+"""Base model classes that support both Redis and local storage backends.
+
+This module provides wrapper classes that delegate to either redis-om JsonModel
+or a local JSON file storage backend, depending on the SOTOPIA_STORAGE_BACKEND
+environment variable.
+
+The approach uses monkey-patching of model classes at import time to add
+storage methods that work with the selected backend.
+"""
+
+import sys
+from typing import Any, Type, TypeVar
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
+from redis_om.model.model import NotFoundError
+
+from .storage_backend import get_storage_backend, is_local_backend
+
+T = TypeVar("T")
+
+
+class LocalQueryResult:
+    """A query result object that mimics redis-om's query interface for local storage."""
+
+    def __init__(self, model_class: Type[T], data_list: list[dict[str, Any]]) -> None:
+        """Initialize a query result.
+
+        Args:
+            model_class: The model class being queried
+            data_list: List of dictionaries representing matching records
+        """
+        self.model_class = model_class
+        self.data_list = data_list
+
+    def all(self) -> list[T]:
+        """Execute the query and return all matching results.
+
+        Returns:
+            List of model instances matching the filters
+        """
+        # Convert dictionaries back to model instances
+        return [self.model_class(**data) for data in self.data_list]
+
+
+class SimpleFieldDescriptor:
+    """Simple field descriptor for local backend to mimic redis-om field access."""
+
+    def __init__(self, field_name: str):
+        self.name = field_name
+
+    def __eq__(self, other: Any) -> "SimpleFieldExpression":  # type: ignore[override]
+        return SimpleFieldExpression(self.name, other)
+
+
+class SimpleFieldExpression:
+    """Simple expression object for local backend queries."""
+
+    def __init__(self, field_name: str, value: Any):
+        self._left = SimpleFieldDescriptor(field_name)
+        self._right = value
+
+
+def add_local_storage_methods(model_class: Type[T]) -> None:
+    """Add local storage methods to a model class.
+
+    This function monkey-patches a model class to add save(), get(), delete(),
+    find(), and all() methods that work with the local JSON storage backend.
+    It also adds field descriptors to enable the Model.field == value syntax.
+
+    Args:
+        model_class: The model class to patch
+    """
+
+    # Add field descriptors for all model fields
+    if hasattr(model_class, "model_fields"):
+        for field_name in model_class.model_fields.keys():
+            if not hasattr(model_class, field_name) or field_name == "pk":
+                setattr(model_class, field_name, SimpleFieldDescriptor(field_name))
+
+    def save(self: Any) -> None:
+        """Save this model instance to local storage."""
+        backend = get_storage_backend()
+        if not self.pk:
+            self.pk = backend.generate_pk()
+
+        # Convert model to dict for storage
+        # Use mode='python' and exclude_unset=False to handle all types
+        try:
+            data = self.model_dump(mode="json")
+        except Exception:
+            # Fallback to dict() for models with complex types
+            import json
+
+            data = json.loads(self.model_dump_json())
+
+        backend.save(self.__class__, self.pk, data)
+
+    @classmethod
+    def get(cls: Type[Self], pk: str) -> Self:
+        """Retrieve a model instance by primary key from local storage."""
+        backend = get_storage_backend()
+        data = backend.get(cls, pk)
+        return cls(**data)
+
+    @classmethod
+    def delete(cls: Type[Self], pk: str) -> None:
+        """Delete a model instance by primary key from local storage."""
+        backend = get_storage_backend()
+        backend.delete(cls, pk)
+
+    @classmethod
+    def find(cls: Type[Self], *conditions: Any, **kwargs: Any) -> LocalQueryResult:
+        """Find model instances matching the given conditions in local storage.
+
+        For local backend, this attempts to parse redis-om style expressions
+        into simple field:value filters.
+
+        Args:
+            *conditions: Filter expressions (attempts to parse redis-om style)
+            **kwargs: Additional keyword argument filters
+
+        Returns:
+            LocalQueryResult object with .all() method
+        """
+        backend = get_storage_backend()
+        filters = {}
+
+        # Handle keyword arguments
+        filters.update(kwargs)
+
+        # Handle redis-om style conditions (Model.field == value)
+        for condition in conditions:
+            # redis-om expressions have _left (field) and _right (value) attributes
+            if hasattr(condition, "_left") and hasattr(condition, "_right"):
+                # _left is usually a FieldInfo object with a 'name' attribute
+                field_name = getattr(condition._left, "name", None)
+                # _right is the comparison value
+                value = condition._right
+
+                if field_name and value is not None:
+                    filters[field_name] = value
+
+        # Get all matching records
+        results_data = backend.find(cls, filters)
+        return LocalQueryResult(cls, results_data)
+
+    @classmethod
+    def all(cls: Type[Self]) -> list[Self]:
+        """Retrieve all instances of this model from local storage."""
+        backend = get_storage_backend()
+        results_data = backend.all(cls)
+        return [cls(**data) for data in results_data]
+
+    # Add the methods to the class
+    model_class.save = save  # type: ignore[attr-defined, method-assign]
+    model_class.get = get  # type: ignore[attr-defined]
+    model_class.delete = delete  # type: ignore[attr-defined]
+    model_class.find = find  # type: ignore[attr-defined]
+    model_class.all = all  # type: ignore[attr-defined]
+
+
+def patch_model_for_local_storage(model_class: Type[T]) -> Type[T]:
+    """Patch a model class to use local storage if the backend is local.
+
+    This function should be called on redis-om JsonModel classes to add
+    local storage support when SOTOPIA_STORAGE_BACKEND=local.
+
+    Args:
+        model_class: The model class to patch (should inherit from JsonModel)
+
+    Returns:
+        The same model class, potentially with added methods
+    """
+    if is_local_backend():
+        add_local_storage_methods(model_class)
+
+    return model_class
+
+
+# Re-export for convenience
+__all__ = [
+    "NotFoundError",
+    "LocalQueryResult",
+    "add_local_storage_methods",
+    "patch_model_for_local_storage",
+]

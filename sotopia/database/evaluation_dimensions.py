@@ -3,6 +3,9 @@ from redis_om.model.model import Field
 from pydantic import create_model, BaseModel, AfterValidator
 from typing import Type, Callable, Tuple, Annotated, Union, cast, Any
 
+from .base_models import patch_model_for_local_storage
+from .storage_backend import is_local_backend
+
 
 def zero_to_ten(v: int) -> int:
     if v < 0 or v > 10:
@@ -170,8 +173,14 @@ class BaseCustomEvaluationDimension(BaseModel):
     range_low: int = Field(index=True)
 
 
-class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
-    pass
+if is_local_backend():
+
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension):  # type: ignore[no-redef]
+        pass
+else:
+
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
+        pass
 
 
 class BaseCustomEvaluationDimensionList(BaseModel):
@@ -179,8 +188,14 @@ class BaseCustomEvaluationDimensionList(BaseModel):
     dimension_pks: list[str] = Field(default_factory=lambda: [], index=True)
 
 
-class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
-    pass
+if is_local_backend():
+
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList):  # type: ignore[no-redef]
+        pass
+else:
+
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
+        pass
 
 
 class EvaluationDimensionBuilder:
@@ -315,3 +330,10 @@ class EvaluationDimensionBuilder:
         dimension_ids = dimension_list.dimension_pks
         model = EvaluationDimensionBuilder.build_dimension_model(dimension_ids)
         return model
+
+
+# Patch model classes for local storage support
+CustomEvaluationDimension = patch_model_for_local_storage(CustomEvaluationDimension)
+CustomEvaluationDimensionList = patch_model_for_local_storage(
+    CustomEvaluationDimensionList
+)
