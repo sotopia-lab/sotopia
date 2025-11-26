@@ -430,7 +430,7 @@ async def agenerate_action(
         if strict_action_constraint and action_types:
             # Create a dynamic Literal for the allowed action types
             # Use __getitem__ to dynamically create Literal from list of strings
-            DynamicActionType = Literal.__getitem__(tuple(action_types))  # type: ignore
+            DynamicActionType = Literal.__getitem__(tuple(action_types))
 
             # Create a dynamic Pydantic model
             from pydantic import create_model, Field
@@ -454,7 +454,9 @@ async def agenerate_action(
                 __base__=AgentAction,
             )
 
-            output_parser_obj = PydanticOutputParser(pydantic_object=DynamicAgentAction)
+            output_parser_obj: PydanticOutputParser[Any] = PydanticOutputParser(
+                pydantic_object=DynamicAgentAction
+            )
         else:
             output_parser_obj = PydanticOutputParser(pydantic_object=AgentAction)
 

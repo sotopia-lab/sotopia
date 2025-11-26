@@ -5,6 +5,7 @@ from typing import Any, Generator, Type, TypeVar
 from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import AgentProfile, EnvironmentProfile
 from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.envs import SocialDeductionGame
 
 from .base_sampler import BaseSampler, EnvAgentCombo
 
@@ -69,13 +70,11 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
             game_meta = getattr(env_profile, "game_metadata", None) or {}
             env: ParallelSotopiaEnv
             if game_meta.get("mode") == "social_game":
-                from sotopia.envs import SocialGameEnv
-
                 config_path = game_meta.get("config_path")
                 assert (
                     config_path
                 ), "game_metadata.config_path is required for social_game"
-                env = SocialGameEnv(
+                env = SocialDeductionGame(
                     env_profile=env_profile, config_path=config_path, **env_params
                 )
             else:
