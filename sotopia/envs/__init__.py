@@ -1,4 +1,4 @@
 from .parallel import ParallelSotopiaEnv
-from .social_game import SocialGameEnv
+from .social_game import SocialDeductionGame, SocialGame, ActionHandler
 
-__all__ = ["ParallelSotopiaEnv", "SocialGameEnv"]
+__all__ = ["ParallelSotopiaEnv", "SocialDeductionGame", "SocialGame", "ActionHandler"]

@@ -136,6 +136,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         uuid_str: str | None = None,
         env_profile: EnvironmentProfile | None = None,
         background_class: Optional[Type[TBackground]] = None,
+        hide_unknown: bool = False,
     ) -> None:
         """A sotopia environment for parallel agents.
 
@@ -149,6 +150,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.background_class = ScriptBackground
         else:
             self.background_class = background_class
+        self.hide_unknown = hide_unknown
         self.background = self.background_class(
             scenario="",
             agent_names=[],
@@ -288,6 +290,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                     agent_goals=[
                         render_text_for_agent(goal, i) for goal in hidden_goals
                     ],
+                    hide_unknown=self.hide_unknown,
                 )
                 agent_backgrounds.append(agent_background)
 
@@ -325,20 +328,11 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         return observations
 
-    @validate_call
-    def step(
+    def _process_incoming_actions(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
-    ) -> tuple[
-        dict[str, Observation],
-        dict[str, float],
-        dict[str, bool],
-        dict[str, bool],
-        dict[str, dict[Any, Any]],
-    ]:
-        # Time step ++
-        self.turn_number += 1
-
-        # For action sampled from action space, it needs to be converted into AgentAction
+    ) -> dict[str, AgentAction]:
+        """Normalize actions, apply mask, and record to history."""
+        # Normalize actions to AgentAction objects
         complied_actions: dict[str, AgentAction] = {}
         for key in actions.keys():
             action = actions[key]
@@ -361,6 +355,42 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
 
+        return complied_actions
+
+    async def _run_evaluators(self, evaluators: list[Evaluator]) -> Any:
+        """Run evaluators and aggregate results."""
+        return unweighted_aggregate_evaluate(
+            list(
+                itertools.chain(
+                    *await asyncio.gather(
+                        *[
+                            evaluator.__acall__(
+                                turn_number=self.turn_number,
+                                messages=self.inbox,
+                            )
+                            for evaluator in evaluators
+                        ]
+                    )
+                )
+            )
+        )
+
+    @validate_call
+    def step(
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+    ) -> tuple[
+        dict[str, Observation],
+        dict[str, float],
+        dict[str, bool],
+        dict[str, bool],
+        dict[str, dict[Any, Any]],
+    ]:
+        # Time step ++
+        self.turn_number += 1
+
+        complied_actions = self._process_incoming_actions(actions)
+
+        # Sync evaluation (not refactored to helper as it's sync vs async)
         response = unweighted_aggregate_evaluate(
             list(
                 itertools.chain(
@@ -422,61 +452,12 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, it needs to be converted into AgentAction
-        complied_actions: dict[str, AgentAction] = {}
-        for key in actions.keys():
-            action = actions[key]
-            if isinstance(action, AgentAction):
-                complied_actions[key] = action
-            else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
-                ]
-                complied_actions[key] = AgentAction.parse_obj(action)
+        complied_actions = self._process_incoming_actions(actions)
 
-        # Masking actions from agent that are in turn
-        for idx, agent in enumerate(self.agents):
-            if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(action_type="none", argument="")
-
-        self.recv_message(
-            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
-        )
-        for agent, action in complied_actions.items():
-            self.recv_message(agent, action)
-
-        response = unweighted_aggregate_evaluate(
-            list(
-                itertools.chain(
-                    *await asyncio.gather(
-                        *[
-                            evaluator.__acall__(
-                                turn_number=self.turn_number,
-                                messages=self.inbox,
-                            )
-                            for evaluator in self.evaluators
-                        ]
-                    )
-                )
-            )
-        )
+        response = await self._run_evaluators(self.evaluators)
 
         if response.terminated:
-            terminal_response = unweighted_aggregate_evaluate(
-                list(
-                    itertools.chain(
-                        *await asyncio.gather(
-                            *[
-                                evaluator.__acall__(
-                                    turn_number=self.turn_number,
-                                    messages=self.inbox,
-                                )
-                                for evaluator in self.terminal_evaluators
-                            ]
-                        )
-                    )
-                )
-            )
+            terminal_response = await self._run_evaluators(self.terminal_evaluators)
             # incorporate terminal response into response
             response.p1_rate = response.p1_rate or terminal_response.p1_rate
             response.p2_rate = response.p2_rate or terminal_response.p2_rate

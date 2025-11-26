@@ -21,7 +21,7 @@
     { "name": "Elise", "role": "Witch" , "team": "Villagers"},
     { "name": "Finn", "role": "Villager" , "team": "Villagers"}
   ],
-  "initial_state": "Day_discussion",
+  "initial_state": "Night_werewolf",
   "state_transition": {
     "Night_werewolf": "Night_seer",
     "Night_seer": "Night_witch",
@@ -32,7 +32,7 @@
   "state_properties": {
     "Night_werewolf": {
       "acting_roles": ["Werewolf"],
-      "actions": ["speak", "action"],
+      "actions": ["action"],
       "visibility": "team"
     },
     "Night_seer": {

@@ -8,7 +8,7 @@ from litellm.utils import supports_response_schema
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
 )
-from typing import Any, cast
+from typing import Any, cast, Literal
 
 import gin
 
@@ -386,6 +386,7 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    strict_action_constraint: bool = False,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -424,6 +425,39 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
+
+        # Create dynamic AgentAction model with restricted ActionType
+        if strict_action_constraint and action_types:
+            # Create a dynamic Literal for the allowed action types
+            # Use __getitem__ to dynamically create Literal from list of strings
+            DynamicActionType = Literal.__getitem__(tuple(action_types))  # type: ignore
+
+            # Create a dynamic Pydantic model
+            from pydantic import create_model, Field
+
+            DynamicAgentAction = create_model(
+                "AgentAction",
+                action_type=(
+                    DynamicActionType,
+                    Field(
+                        ...,
+                        description="whether to speak at this turn or choose to not do anything",
+                    ),
+                ),
+                argument=(
+                    str,
+                    Field(
+                        ...,
+                        description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action",
+                    ),
+                ),
+                __base__=AgentAction,
+            )
+
+            output_parser_obj = PydanticOutputParser(pydantic_object=DynamicAgentAction)
+        else:
+            output_parser_obj = PydanticOutputParser(pydantic_object=AgentAction)
+
         return await agenerate(
             model_name=model_name,
             template=template,
@@ -433,7 +467,7 @@ async def agenerate_action(
                 history=history,
                 action_list=" ".join(action_types),
             ),
-            output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+            output_parser=output_parser_obj,
             temperature=temperature,
             structured_output=True,
             bad_output_process_model=bad_output_process_model,
