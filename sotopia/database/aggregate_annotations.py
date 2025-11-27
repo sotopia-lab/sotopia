@@ -81,9 +81,17 @@ def map_human_annotations_to_episode_logs(
             # Collect rewards for each agent across all episodes
             if all_human_rewards:
                 # Collect all agent 1 rewards (index 0) and agent 2 rewards (index 1)
-                agent1_rewards = [reward_list[0] for reward_list in all_human_rewards if len(reward_list) > 0]
-                agent2_rewards = [reward_list[1] for reward_list in all_human_rewards if len(reward_list) > 1]
-                
+                agent1_rewards = [
+                    reward_list[0]
+                    for reward_list in all_human_rewards
+                    if len(reward_list) > 0
+                ]
+                agent2_rewards = [
+                    reward_list[1]
+                    for reward_list in all_human_rewards
+                    if len(reward_list) > 1
+                ]
+
                 human_rewards = []
                 if agent1_rewards:
                     human_rewards.append(aggregate_rewards(agent1_rewards))

@@ -12,9 +12,9 @@ import sys
 from typing import Any, Type, TypeVar
 
 if sys.version_info >= (3, 11):
-    from typing import Self
+    pass
 else:
-    from typing_extensions import Self
+    pass
 
 from redis_om.model.model import NotFoundError
 
