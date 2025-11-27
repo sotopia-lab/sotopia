@@ -72,7 +72,9 @@ class SimpleFieldExpression:
 class CompoundExpression:
     """Compound expression for combining multiple field expressions."""
 
-    def __init__(self, left: SimpleFieldExpression, right: SimpleFieldExpression, operator: str):
+    def __init__(
+        self, left: SimpleFieldExpression, right: SimpleFieldExpression, operator: str
+    ):
         self._left = left
         self._right = right
         self.operator = operator
@@ -152,7 +154,9 @@ def add_local_storage_methods(model_class: Type[T]) -> None:
                 parse_condition(condition._right)
             elif hasattr(condition, "_left") and hasattr(condition, "_right"):
                 # Check if this is a compound expression (e.g., expr1 & expr2)
-                if hasattr(condition._left, "_left") or hasattr(condition._right, "_left"):
+                if hasattr(condition._left, "_left") or hasattr(
+                    condition._right, "_left"
+                ):
                     # This is a compound expression, parse both sides
                     parse_condition(condition._left)
                     parse_condition(condition._right)
