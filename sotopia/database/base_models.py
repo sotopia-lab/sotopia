@@ -64,6 +64,19 @@ class SimpleFieldExpression:
         self._left = SimpleFieldDescriptor(field_name)
         self._right = value
 
+    def __and__(self, other: "SimpleFieldExpression") -> "CompoundExpression":
+        """Support combining expressions with & operator."""
+        return CompoundExpression(self, other, "and")
+
+
+class CompoundExpression:
+    """Compound expression for combining multiple field expressions."""
+
+    def __init__(self, left: SimpleFieldExpression, right: SimpleFieldExpression, operator: str):
+        self._left = left
+        self._right = right
+        self.operator = operator
+
 
 def add_local_storage_methods(model_class: Type[T]) -> None:
     """Add local storage methods to a model class.
@@ -111,7 +124,7 @@ def add_local_storage_methods(model_class: Type[T]) -> None:
         backend = get_storage_backend()
         backend.delete(cls, pk)  # type: ignore[type-var]
 
-    def find(cls: Type[T], *conditions: Any, **kwargs: Any) -> "LocalQueryResult":
+    def find(cls: Type[T], /, *conditions: Any, **kwargs: Any) -> "LocalQueryResult":
         """Find model instances matching the given conditions in local storage.
 
         For local backend, this attempts to parse redis-om style expressions
@@ -131,16 +144,27 @@ def add_local_storage_methods(model_class: Type[T]) -> None:
         filters.update(kwargs)
 
         # Handle redis-om style conditions (Model.field == value)
-        for condition in conditions:
-            # redis-om expressions have _left (field) and _right (value) attributes
-            if hasattr(condition, "_left") and hasattr(condition, "_right"):
-                # _left is usually a FieldInfo object with a 'name' attribute
-                field_name = getattr(condition._left, "name", None)
-                # _right is the comparison value
-                value = condition._right
+        def parse_condition(condition: Any) -> None:
+            """Recursively parse redis-om style conditions."""
+            if isinstance(condition, CompoundExpression):
+                # This is a compound expression, parse both sides
+                parse_condition(condition._left)
+                parse_condition(condition._right)
+            elif hasattr(condition, "_left") and hasattr(condition, "_right"):
+                # Check if this is a compound expression (e.g., expr1 & expr2)
+                if hasattr(condition._left, "_left") or hasattr(condition._right, "_left"):
+                    # This is a compound expression, parse both sides
+                    parse_condition(condition._left)
+                    parse_condition(condition._right)
+                else:
+                    # This is a simple field expression
+                    field_name = getattr(condition._left, "name", None)
+                    value = condition._right
+                    if field_name and value is not None:
+                        filters[field_name] = value
 
-                if field_name and value is not None:
-                    filters[field_name] = value
+        for condition in conditions:
+            parse_condition(condition)
 
         # Get all matching records
         results_data = backend.find(cls, filters)  # type: ignore[type-var]
