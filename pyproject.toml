@@ -55,7 +55,7 @@ dev-dependencies = [
     "lxml-stubs",
     "pandas-stubs",
     "ruff",
-    "mypy"
+    "mypy",
 ]
 
 [tool.mypy]

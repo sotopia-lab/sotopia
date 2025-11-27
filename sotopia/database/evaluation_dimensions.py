@@ -1,7 +1,7 @@
+from typing import TYPE_CHECKING, Type, Callable, Tuple, Annotated, Union, cast, Any
 from redis_om import JsonModel
 from redis_om.model.model import Field
 from pydantic import create_model, BaseModel, AfterValidator
-from typing import Type, Callable, Tuple, Annotated, Union, cast, Any
 
 from .base_models import patch_model_for_local_storage
 from .storage_backend import is_local_backend
@@ -167,34 +167,44 @@ class GoalDimension(BaseModel):
 
 
 class BaseCustomEvaluationDimension(BaseModel):
+    pk: str | None = Field(default="")
     name: str = Field(index=True)
     description: str = Field(index=True)
     range_high: int = Field(index=True)
     range_low: int = Field(index=True)
 
 
-if is_local_backend():
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
+        pass
+elif is_local_backend():
 
-    class CustomEvaluationDimension(BaseCustomEvaluationDimension):  # type: ignore[no-redef]
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension):
         pass
 else:
 
-    class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):  # type: ignore[no-redef]
         pass
 
 
 class BaseCustomEvaluationDimensionList(BaseModel):
+    pk: str | None = Field(default="")
     name: str = Field(index=True)
-    dimension_pks: list[str] = Field(default_factory=lambda: [], index=True)
+    dimension_pks: list[str] = Field(default_factory=list, index=True)
 
 
-if is_local_backend():
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
+        pass
+elif is_local_backend():
 
-    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList):  # type: ignore[no-redef]
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList):
         pass
 else:
 
-    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):  # type: ignore[no-redef]
         pass
 
 
@@ -333,7 +343,7 @@ class EvaluationDimensionBuilder:
 
 
 # Patch model classes for local storage support
-CustomEvaluationDimension = patch_model_for_local_storage(CustomEvaluationDimension)
-CustomEvaluationDimensionList = patch_model_for_local_storage(
+CustomEvaluationDimension = patch_model_for_local_storage(CustomEvaluationDimension)  # type: ignore[misc]
+CustomEvaluationDimensionList = patch_model_for_local_storage(  # type: ignore[misc]
     CustomEvaluationDimensionList
 )

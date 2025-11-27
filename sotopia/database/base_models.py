@@ -36,14 +36,15 @@ class LocalQueryResult:
         self.model_class = model_class
         self.data_list = data_list
 
-    def all(self) -> list[T]:
+    def all(self) -> list[Any]:
         """Execute the query and return all matching results.
 
         Returns:
             List of model instances matching the filters
         """
         # Convert dictionaries back to model instances
-        return [self.model_class(**data) for data in self.data_list]
+        result = [self.model_class(**data) for data in self.data_list]
+        return result
 
 
 class SimpleFieldDescriptor:
@@ -77,8 +78,8 @@ def add_local_storage_methods(model_class: Type[T]) -> None:
 
     # Add field descriptors for all model fields
     if hasattr(model_class, "model_fields"):
-        for field_name in model_class.model_fields.keys():
-            if not hasattr(model_class, field_name) or field_name == "pk":
+        for field_name in model_class.model_fields.keys():  # type: ignore[attr-defined]
+            if field_name != "pk" and not hasattr(model_class, field_name):
                 setattr(model_class, field_name, SimpleFieldDescriptor(field_name))
 
     def save(self: Any) -> None:
@@ -99,21 +100,18 @@ def add_local_storage_methods(model_class: Type[T]) -> None:
 
         backend.save(self.__class__, self.pk, data)
 
-    @classmethod
-    def get(cls: Type[Self], pk: str) -> Self:
+    def get(cls: Type[T], pk: str) -> T | None:
         """Retrieve a model instance by primary key from local storage."""
         backend = get_storage_backend()
-        data = backend.get(cls, pk)
-        return cls(**data)
+        data = backend.get(cls, pk)  # type: ignore[type-var]
+        return cls(**data) if data else None
 
-    @classmethod
-    def delete(cls: Type[Self], pk: str) -> None:
+    def delete(cls: Type[T], pk: str) -> None:
         """Delete a model instance by primary key from local storage."""
         backend = get_storage_backend()
-        backend.delete(cls, pk)
+        backend.delete(cls, pk)  # type: ignore[type-var]
 
-    @classmethod
-    def find(cls: Type[Self], *conditions: Any, **kwargs: Any) -> LocalQueryResult:
+    def find(cls: Type[T], *conditions: Any, **kwargs: Any) -> "LocalQueryResult":
         """Find model instances matching the given conditions in local storage.
 
         For local backend, this attempts to parse redis-om style expressions
@@ -145,22 +143,28 @@ def add_local_storage_methods(model_class: Type[T]) -> None:
                     filters[field_name] = value
 
         # Get all matching records
-        results_data = backend.find(cls, filters)
+        results_data = backend.find(cls, filters)  # type: ignore[type-var]
         return LocalQueryResult(cls, results_data)
 
-    @classmethod
-    def all(cls: Type[Self]) -> list[Self]:
+    def all(cls: Type[T]) -> list[T]:
         """Retrieve all instances of this model from local storage."""
         backend = get_storage_backend()
-        results_data = backend.all(cls)
+        results_data = backend.all(cls)  # type: ignore[type-var]
         return [cls(**data) for data in results_data]
 
+    def all_pks(cls: Type[T]) -> list[str]:
+        """Retrieve all primary keys for this model from local storage."""
+        backend = get_storage_backend()
+        results_data = backend.all(cls)  # type: ignore[type-var]
+        return [data.get("pk", "") for data in results_data if data.get("pk")]
+
     # Add the methods to the class
-    model_class.save = save  # type: ignore[attr-defined, method-assign]
-    model_class.get = get  # type: ignore[attr-defined]
-    model_class.delete = delete  # type: ignore[attr-defined]
-    model_class.find = find  # type: ignore[attr-defined]
-    model_class.all = all  # type: ignore[attr-defined]
+    model_class.save = save  # type: ignore[attr-defined]
+    model_class.get = classmethod(get)  # type: ignore[attr-defined]
+    model_class.delete = classmethod(delete)  # type: ignore[attr-defined]
+    model_class.find = classmethod(find)  # type: ignore[attr-defined]
+    model_class.all = classmethod(all)  # type: ignore[attr-defined]
+    model_class.all_pks = classmethod(all_pks)  # type: ignore[attr-defined]
 
 
 def patch_model_for_local_storage(model_class: Type[T]) -> Type[T]:

@@ -10,6 +10,7 @@ from sotopia.database import (
     EpisodeLog,
     CustomEvaluationDimension,
 )
+from redis_om.model.model import NotFoundError
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.messages import SimpleMessage
 
@@ -69,9 +70,18 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None
     AgentProfile(first_name="John", last_name="Doe", pk="tmppk_agent1").save()
     AgentProfile(first_name="Jane", last_name="Doe", pk="tmppk_agent2").save()
     yield
-    AgentProfile.delete("tmppk_agent1")
-    AgentProfile.delete("tmppk_agent2")
-    EpisodeLog.delete("tmppk_episode_log")
+    try:
+        AgentProfile.delete("tmppk_agent1")
+    except NotFoundError:
+        pass
+    try:
+        AgentProfile.delete("tmppk_agent2")
+    except NotFoundError:
+        pass
+    try:
+        EpisodeLog.delete("tmppk_episode_log")
+    except NotFoundError:
+        pass
 
 
 def create_dummy_episode_log() -> EpisodeLog:

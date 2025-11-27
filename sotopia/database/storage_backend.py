@@ -229,7 +229,8 @@ class LocalJSONBackend(StorageBackend):
             raise NotFoundError(f"{model_class.__name__} with pk={pk} not found")
 
         with open(file_path, "r") as f:
-            return json.load(f)
+            data: dict[str, Any] = json.load(f)
+            return data
 
     def delete(self, model_class: Type[T], pk: str) -> None:
         """Delete a model instance's JSON file.
@@ -332,7 +333,7 @@ def get_storage_backend() -> StorageBackend:
     if _storage_backend is not None:
         return _storage_backend
 
-    backend_type = os.environ.get("SOTOPIA_STORAGE_BACKEND", "local").lower()
+    backend_type = os.environ.get("SOTOPIA_STORAGE_BACKEND", "redis").lower()
 
     if backend_type == "redis":
         _storage_backend = RedisBackend()

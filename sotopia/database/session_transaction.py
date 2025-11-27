@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from pydantic import field_validator, BaseModel
 from redis_om import EmbeddedJsonModel, JsonModel
 from redis_om.model.model import Field
@@ -21,6 +22,7 @@ class MessageTransaction(EmbeddedJsonModel):
 
 
 class BaseSessionTransaction(BaseModel):
+    pk: str | None = Field(default="")
     session_id: str = Field(index=True)
     client_id: str = Field(index=True)
     server_id: str = Field(index=True)
@@ -46,9 +48,13 @@ class BaseSessionTransaction(BaseModel):
         return v
 
 
-if is_local_backend():
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class SessionTransaction(AutoExpireMixin, BaseSessionTransaction, JsonModel):
+        pass
+elif is_local_backend():
     # For local backend, inherit only from BaseSessionTransaction (no TTL support)
-    class SessionTransaction(BaseSessionTransaction):  # type: ignore[no-redef]
+    class SessionTransaction(BaseSessionTransaction):
         pass
 else:
     # For Redis backend, inherit from AutoExpireMixin and JsonModel
@@ -58,4 +64,4 @@ else:
 
 # Patch model class for local storage support
 # Note: TTL/expiration is not supported in local storage mode
-SessionTransaction = patch_model_for_local_storage(SessionTransaction)
+SessionTransaction = patch_model_for_local_storage(SessionTransaction)  # type: ignore[misc]

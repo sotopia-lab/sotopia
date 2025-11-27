@@ -1,4 +1,5 @@
 import sys
+from typing import TYPE_CHECKING
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -15,13 +16,18 @@ from .storage_backend import is_local_backend
 
 
 class BaseNonStreamingSimulationStatus(BaseModel):
+    pk: str | None = Field(default="")
     episode_pk: str = Field(index=True)
     status: Literal["Started", "Error", "Completed"]
 
 
-if is_local_backend():
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus, JsonModel):
+        pass
+elif is_local_backend():
 
-    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus):  # type: ignore[no-redef]
+    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus):
         pass
 else:
 
@@ -34,6 +40,7 @@ class BaseEpisodeLog(BaseModel):
     # 1. The number of turns in messages and rewards should be the same or off by 1
     # 2. The agents in the messages are the same as the agetns
 
+    pk: str | None = Field(default="")
     environment: str = Field(index=True)
     agents: list[str] = Field(index=True)
     tag: str | None = Field(index=True, default="")
@@ -93,36 +100,45 @@ class BaseEpisodeLog(BaseModel):
         return agent_profiles, messages_and_rewards
 
 
-if is_local_backend():
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class EpisodeLog(BaseEpisodeLog, JsonModel):
+        pass
+elif is_local_backend():
 
-    class EpisodeLog(BaseEpisodeLog):  # type: ignore[no-redef]
+    class EpisodeLog(BaseEpisodeLog):
         pass
 else:
 
-    class EpisodeLog(BaseEpisodeLog, JsonModel):
+    class EpisodeLog(BaseEpisodeLog, JsonModel):  # type: ignore[no-redef]
         pass
 
 
 class BaseAnnotationForEpisode(BaseModel):
+    pk: str | None = Field(default="")
     episode: str = Field(index=True, description="the pk id of episode log")
     annotator_id: str = Field(index=True, full_text_search=True)
     rewards: list[tuple[float, dict[str, float]] | float]
     reasoning: str
 
 
-if is_local_backend():
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class AnnotationForEpisode(BaseAnnotationForEpisode, JsonModel):
+        pass
+elif is_local_backend():
 
-    class AnnotationForEpisode(BaseAnnotationForEpisode):  # type: ignore[no-redef]
+    class AnnotationForEpisode(BaseAnnotationForEpisode):
         pass
 else:
 
-    class AnnotationForEpisode(BaseAnnotationForEpisode, JsonModel):
+    class AnnotationForEpisode(BaseAnnotationForEpisode, JsonModel):  # type: ignore[no-redef]
         pass
 
 
 # Patch model classes for local storage support
-NonStreamingSimulationStatus = patch_model_for_local_storage(
+NonStreamingSimulationStatus = patch_model_for_local_storage(  # type: ignore[misc]
     NonStreamingSimulationStatus
 )
-EpisodeLog = patch_model_for_local_storage(EpisodeLog)
-AnnotationForEpisode = patch_model_for_local_storage(AnnotationForEpisode)
+EpisodeLog = patch_model_for_local_storage(EpisodeLog)  # type: ignore[misc]
+AnnotationForEpisode = patch_model_for_local_storage(AnnotationForEpisode)  # type: ignore[misc]

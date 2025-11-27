@@ -54,7 +54,7 @@ def map_human_annotations_to_episode_logs(
 
     if aggregate:
         for model_episode_pk, human_episode_pks in model_human_pk_mapping.items():
-            all_human_rewards = []
+            all_human_rewards: List[List[Tuple[float, Dict[str, float]]]] = []
             all_human_reasonings = []
 
             for human_episode_pk in human_episode_pks:
@@ -68,17 +68,29 @@ def map_human_annotations_to_episode_logs(
                     print(human_rewards)
                     continue
 
-                all_human_rewards.append(human_rewards)
+                # After the float check, we know all rewards are tuples
+                # Cast to the expected type since mypy can't infer this
+                typed_rewards = [r for r in human_rewards if isinstance(r, tuple)]
+                all_human_rewards.append(typed_rewards)
                 all_human_reasonings.append(human_reasoning)
 
             episode = EpisodeLog.get(pk=model_episode_pk)
             human_episode = deepcopy(episode)
             human_reasoning = aggregate_reasoning(all_human_reasonings)
 
-            human_rewards = [
-                aggregate_rewards([r[0] for r in all_human_rewards]),  # type: ignore
-                aggregate_rewards([r[1] for r in all_human_rewards]),  # type: ignore
-            ]
+            # Collect rewards for each agent across all episodes
+            if all_human_rewards:
+                # Collect all agent 1 rewards (index 0) and agent 2 rewards (index 1)
+                agent1_rewards = [reward_list[0] for reward_list in all_human_rewards if len(reward_list) > 0]
+                agent2_rewards = [reward_list[1] for reward_list in all_human_rewards if len(reward_list) > 1]
+                
+                human_rewards = []
+                if agent1_rewards:
+                    human_rewards.append(aggregate_rewards(agent1_rewards))
+                if agent2_rewards:
+                    human_rewards.append(aggregate_rewards(agent2_rewards))
+            else:
+                human_rewards = []
             if human_reasoning:
                 human_episode.reasoning = human_reasoning
             if human_rewards:
