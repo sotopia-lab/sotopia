@@ -1,7 +1,9 @@
-from sotopia.database import EpisodeLog, AnnotationForEpisode
-from typing import List, Tuple, Dict
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
+from typing import TYPE_CHECKING, Dict, List, Tuple
+
+if TYPE_CHECKING:
+    from sotopia.database.logs import AnnotationForEpisode, EpisodeLog
 
 
 def aggregate_reasoning(reasonings: List[str]) -> str:
@@ -26,10 +28,10 @@ def aggregate_rewards(
 
 
 def map_human_annotations_to_episode_logs(
-    human_annotation: list[AnnotationForEpisode],
+    human_annotation: "list[AnnotationForEpisode]",
     return_model_episodes: bool = False,
     aggregate: bool = False,
-) -> dict[str, EpisodeLog | tuple[EpisodeLog, EpisodeLog]]:
+) -> "dict[str, EpisodeLog | tuple[EpisodeLog, EpisodeLog]]":
     """
     Map human annotations to corresponding episode logs.
 
@@ -42,6 +44,7 @@ def map_human_annotations_to_episode_logs(
         Dict[str, Union[EpisodeLog, Tuple[EpisodeLog, EpisodeLog]]]: A dictionary mapping episode primary keys to EpisodeLog objects or tuples of (human_episode, model_episode) depending on
         return_model_episodes and aggregate flags.
     """
+    from sotopia.database.logs import AnnotationForEpisode, EpisodeLog
 
     model_human_pk_mapping: Dict[str, List[str]] = defaultdict(list)
     for annotation in human_annotation:
@@ -53,7 +56,10 @@ def map_human_annotations_to_episode_logs(
     ep_dict: Dict[str, EpisodeLog | Tuple[EpisodeLog, EpisodeLog]] = {}
 
     if aggregate:
-        for model_episode_pk, human_episode_pks in model_human_pk_mapping.items():
+        for (
+            model_episode_pk,
+            human_episode_pks,
+        ) in model_human_pk_mapping.items():
             all_human_rewards: List[List[Tuple[float, Dict[str, float]]]] = []
             all_human_reasonings = []
 
