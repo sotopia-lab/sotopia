@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
-from pydantic import field_validator, BaseModel
+
+from pydantic import BaseModel, field_validator
 from redis_om import EmbeddedJsonModel, JsonModel
 from redis_om.model.model import Field
 
@@ -22,7 +23,6 @@ class MessageTransaction(EmbeddedJsonModel):
 
 
 class BaseSessionTransaction(BaseModel):
-    pk: str | None = Field(default=None)
     session_id: str = Field(index=True)
     client_id: str = Field(index=True)
     server_id: str = Field(index=True)

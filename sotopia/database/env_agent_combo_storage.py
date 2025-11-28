@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from pydantic import BaseModel
 from redis_om import JsonModel
 from redis_om.model.model import Field
@@ -8,7 +9,6 @@ from .storage_backend import is_local_backend
 
 
 class BaseEnvAgentComboStorage(BaseModel):
-    pk: str | None = Field(default=None)
     env_id: str = Field(default="", index=True)
     agent_ids: list[str] = Field(default_factory=list, index=True)
 

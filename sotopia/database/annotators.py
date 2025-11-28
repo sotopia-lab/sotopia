@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING
+
 from pydantic import BaseModel
-from redis_om.model.model import Field
 from redis_om import JsonModel
+from redis_om.model.model import Field
 
 from .base_models import patch_model_for_local_storage
 from .storage_backend import is_local_backend
 
 
 class BaseAnnotator(BaseModel):
-    pk: str | None = Field(default=None)
     name: str = Field(index=True)
     email: str = Field(index=True)
 

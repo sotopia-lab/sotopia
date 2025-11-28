@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from pydantic import BaseModel
 from redis_om import JsonModel
 from redis_om.model.model import Field
@@ -9,7 +10,6 @@ from .storage_backend import is_local_backend
 
 
 class BaseMatchingInWaitingRoom(BaseModel):
-    pk: str | None = Field(default=None)
     timestamp: float = Field()
     client_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)
