@@ -1,13 +1,13 @@
 import sys
 from enum import IntEnum
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
-from pydantic import BaseModel, model_validator, Field
+from pydantic import BaseModel, Field, model_validator
 from redis_om import JsonModel
 
 from .base_models import patch_model_for_local_storage
@@ -68,7 +68,7 @@ else:
 
 
 class BaseEnvironmentProfile(BaseModel):
-    pk: str | None = Field(default=None)
+    pk: str | None = Field(default_factory=lambda: "")
     codename: str = Field(
         default="",
         description="The codename of the environment",
@@ -129,7 +129,7 @@ else:
 
 
 class BaseRelationshipProfile(BaseModel):
-    pk: str | None = Field(default=None)
+    pk: str | None = Field(default_factory=lambda: "")
     agent_1_id: str
     agent_2_id: str
     relationship: RelationshipType = Field(
@@ -166,7 +166,7 @@ else:
 
 
 class BaseEnvironmentList(BaseModel):
-    pk: str | None = Field(default=None)
+    pk: str | None = Field(default_factory=lambda: "")
     name: str
     environments: list[str] = Field(default_factory=list)
     agent_index: list[str] | None = Field(default=None)
