@@ -9,6 +9,7 @@ from .storage_backend import is_local_backend
 
 
 class BaseAnnotator(BaseModel):
+    pk: str | None = Field(default="")
     name: str = Field(index=True)
     email: str = Field(index=True)
 

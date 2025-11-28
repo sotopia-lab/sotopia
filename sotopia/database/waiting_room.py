@@ -10,6 +10,7 @@ from .storage_backend import is_local_backend
 
 
 class BaseMatchingInWaitingRoom(BaseModel):
+    pk: str | None = Field(default="")
     timestamp: float = Field()
     client_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)
