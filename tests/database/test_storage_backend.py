@@ -6,29 +6,34 @@ import tempfile
 import pytest
 
 
-def test_storage_backend_environment_variable():
+def test_storage_backend_environment_variable() -> None:
     """Test that storage backend is selected based on environment variable."""
     # Test default (redis)
     os.environ.pop("SOTOPIA_STORAGE_BACKEND", None)
 
     # Need to reload modules to pick up environment changes
     import importlib
+
     import sotopia.database.storage_backend as sb_module
 
     importlib.reload(sb_module)
 
-    from sotopia.database.storage_backend import get_storage_backend, RedisBackend
+    from sotopia.database.storage_backend import (
+        RedisBackend,
+        get_storage_backend,
+    )
 
     backend = get_storage_backend()
     assert isinstance(backend, RedisBackend)
 
 
-def test_local_backend_initialization():
+def test_local_backend_initialization() -> None:
     """Test local backend initialization with environment variable."""
     os.environ["SOTOPIA_STORAGE_BACKEND"] = "local"
 
     # Reload modules
     import importlib
+
     import sotopia.database.storage_backend as sb_module
 
     importlib.reload(sb_module)
@@ -47,12 +52,13 @@ def test_local_backend_initialization():
     os.environ.pop("SOTOPIA_STORAGE_BACKEND", None)
 
 
-def test_invalid_backend_raises_error():
+def test_invalid_backend_raises_error() -> None:
     """Test that invalid backend name raises error."""
     os.environ["SOTOPIA_STORAGE_BACKEND"] = "invalid_backend"
 
     # Reload modules
     import importlib
+
     import sotopia.database.storage_backend as sb_module
 
     importlib.reload(sb_module)
@@ -66,7 +72,7 @@ def test_invalid_backend_raises_error():
     os.environ.pop("SOTOPIA_STORAGE_BACKEND", None)
 
 
-def test_local_backend_base_path():
+def test_local_backend_base_path() -> None:
     """Test that local backend uses correct base path."""
     with tempfile.TemporaryDirectory() as tmpdir:
         os.environ["SOTOPIA_STORAGE_BACKEND"] = "local"
@@ -80,12 +86,13 @@ def test_local_backend_base_path():
         os.environ.pop("SOTOPIA_STORAGE_BACKEND", None)
 
 
-def test_experimental_framework_requires_redis():
+def test_experimental_framework_requires_redis() -> None:
     """Test that experimental framework raises error without Redis."""
     os.environ["SOTOPIA_STORAGE_BACKEND"] = "local"
 
     # Reload modules
     import importlib
+
     import sotopia.database.storage_backend as sb_module
 
     importlib.reload(sb_module)

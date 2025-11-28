@@ -3,6 +3,7 @@
 import os
 import tempfile
 from pathlib import Path
+from typing import Iterator
 
 import pytest
 from redis_om.model.model import NotFoundError
@@ -21,7 +22,7 @@ from sotopia.database.storage_backend import LocalJSONBackend  # noqa: E402
 
 
 @pytest.fixture
-def temp_storage_dir():
+def temp_storage_dir() -> Iterator[Path]:
     """Create a temporary directory for storage tests."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Override the storage backend to use our temp directory
@@ -38,7 +39,7 @@ def temp_storage_dir():
         sb_module._storage_backend = original_backend
 
 
-def test_local_backend_save_and_get(temp_storage_dir):
+def test_local_backend_save_and_get(temp_storage_dir: Path) -> None:
     """Test basic save and get operations."""
     agent = AgentProfile(
         first_name="John",
@@ -66,7 +67,7 @@ def test_local_backend_save_and_get(temp_storage_dir):
     assert retrieved.occupation == "Engineer"
 
 
-def test_local_backend_delete(temp_storage_dir):
+def test_local_backend_delete(temp_storage_dir: Path) -> None:
     """Test delete operation."""
     agent = AgentProfile(
         first_name="Jane",
@@ -93,7 +94,7 @@ def test_local_backend_delete(temp_storage_dir):
         AgentProfile.get(pk)
 
 
-def test_local_backend_find(temp_storage_dir):
+def test_local_backend_find(temp_storage_dir: Path) -> None:
     """Test find operation with filters."""
     # Create multiple agents
     agent1 = AgentProfile(
@@ -129,19 +130,19 @@ def test_local_backend_find(temp_storage_dir):
     # Find by age
     results = AgentProfile.find(AgentProfile.age == 28).all()
     assert len(results) == 2
-    assert all(r.age == 28 for r in results)
+    assert all(r.age == 28 for r in results)  # type: ignore[attr-defined]
 
     # Find by occupation
     results = AgentProfile.find(AgentProfile.occupation == "Engineer").all()
     assert len(results) == 1
-    assert results[0].first_name == "Bob"
+    assert results[0].first_name == "Bob"  # type: ignore[attr-defined]
 
     # Find by gender
     results = AgentProfile.find(AgentProfile.gender == "Man").all()
     assert len(results) == 2
 
 
-def test_local_backend_all(temp_storage_dir):
+def test_local_backend_all(temp_storage_dir: Path) -> None:
     """Test retrieving all instances."""
     # Create multiple agents
     for i in range(5):
@@ -160,7 +161,7 @@ def test_local_backend_all(temp_storage_dir):
     assert len(all_agents) >= 5  # May have more from previous tests
 
 
-def test_environment_profile_save_and_get(temp_storage_dir):
+def test_environment_profile_save_and_get(temp_storage_dir: Path) -> None:
     """Test environment profile with local storage."""
     env = EnvironmentProfile(
         codename="test_env",
@@ -179,7 +180,7 @@ def test_environment_profile_save_and_get(temp_storage_dir):
     assert retrieved.relationship == RelationshipType.stranger
 
 
-def test_relationship_profile_save_and_get(temp_storage_dir):
+def test_relationship_profile_save_and_get(temp_storage_dir: Path) -> None:
     """Test relationship profile with local storage."""
     # Create two agents first
     agent1 = AgentProfile(
@@ -200,20 +201,20 @@ def test_relationship_profile_save_and_get(temp_storage_dir):
 
     # Create relationship
     rel = RelationshipProfile(
-        agent_1_id=agent1.pk,  # type: ignore[arg-type]
-        agent_2_id=agent2.pk,  # type: ignore[arg-type]
+        agent_1_id=agent1.pk,
+        agent_2_id=agent2.pk,
         relationship=RelationshipType.friend,
         background_story="They met in college",
     )
     rel.save()
 
     # Retrieve relationship
-    retrieved = RelationshipProfile.get(rel.pk)  # type: ignore[arg-type]
+    retrieved = RelationshipProfile.get(rel.pk)
     assert retrieved.relationship == RelationshipType.friend
     assert retrieved.background_story == "They met in college"
 
 
-def test_episode_log_save_and_get(temp_storage_dir):
+def test_episode_log_save_and_get(temp_storage_dir: Path) -> None:
     """Test episode log with local storage."""
     # Create agents and environment first
     agent1 = AgentProfile(first_name="Agent1", last_name="Test")
@@ -231,8 +232,8 @@ def test_episode_log_save_and_get(temp_storage_dir):
 
     # Create episode log
     episode = EpisodeLog(
-        environment=env.pk,  # type: ignore[arg-type]
-        agents=[agent1.pk, agent2.pk],  # type: ignore[list-item]
+        environment=env.pk,
+        agents=[agent1.pk, agent2.pk],
         tag="test",
         models=["gpt-4", "gpt-4"],
         messages=[
@@ -246,13 +247,14 @@ def test_episode_log_save_and_get(temp_storage_dir):
     episode.save()
 
     # Retrieve episode
-    retrieved = EpisodeLog.get(episode.pk)  # type: ignore[arg-type]
+    retrieved = EpisodeLog.get(episode.pk)
     assert retrieved.tag == "test"
     assert len(retrieved.agents) == 2
-    assert len(retrieved.models) == 2  # type: ignore[arg-type]
+    assert retrieved.models is not None
+    assert len(retrieved.models) == 2
 
 
-def test_local_backend_pk_generation(temp_storage_dir):
+def test_local_backend_pk_generation(temp_storage_dir: Path) -> None:
     """Test that primary keys are automatically generated."""
     agent1 = AgentProfile(first_name="Test1", last_name="User")
     agent1.save()
@@ -266,7 +268,7 @@ def test_local_backend_pk_generation(temp_storage_dir):
     assert agent2.pk is not None
 
 
-def test_local_backend_update(temp_storage_dir):
+def test_local_backend_update(temp_storage_dir: Path) -> None:
     """Test updating an existing record."""
     agent = AgentProfile(
         first_name="Original",
@@ -283,20 +285,20 @@ def test_local_backend_update(temp_storage_dir):
     agent.save()
 
     # Retrieve and verify
-    retrieved = AgentProfile.get(pk)  # type: ignore[arg-type]
+    retrieved = AgentProfile.get(pk)
     assert retrieved.first_name == "Updated"
     assert retrieved.age == 26
     assert retrieved.pk == pk  # PK should remain the same
 
 
-def test_local_backend_with_defaults(temp_storage_dir):
+def test_local_backend_with_defaults(temp_storage_dir: Path) -> None:
     """Test that default values work correctly."""
     # Create agent with minimal fields
     agent = AgentProfile(first_name="Min", last_name="Imal")
     agent.save()
 
     # Retrieve and check defaults
-    retrieved = AgentProfile.get(agent.pk)  # type: ignore[arg-type]
+    retrieved = AgentProfile.get(agent.pk)
     assert retrieved.age == 0
     assert retrieved.occupation == ""
     assert retrieved.gender == ""
