@@ -167,7 +167,7 @@ class GoalDimension(BaseModel):
 
 
 class BaseCustomEvaluationDimension(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     name: str = Field(index=True)
     description: str = Field(index=True)
     range_high: int = Field(index=True)
@@ -189,7 +189,7 @@ else:
 
 
 class BaseCustomEvaluationDimensionList(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     name: str = Field(index=True)
     dimension_pks: list[str] = Field(default_factory=list, index=True)
 

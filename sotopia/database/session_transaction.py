@@ -22,7 +22,7 @@ class MessageTransaction(EmbeddedJsonModel):
 
 
 class BaseSessionTransaction(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     session_id: str = Field(index=True)
     client_id: str = Field(index=True)
     server_id: str = Field(index=True)

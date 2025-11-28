@@ -8,7 +8,7 @@ from .storage_backend import is_local_backend
 
 
 class BaseEnvAgentComboStorage(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     env_id: str = Field(default="", index=True)
     agent_ids: list[str] = Field(default_factory=list, index=True)
 

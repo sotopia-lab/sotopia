@@ -68,7 +68,7 @@ else:
 
 
 class BaseEnvironmentProfile(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     codename: str = Field(
         default="",
         description="The codename of the environment",
@@ -129,7 +129,7 @@ else:
 
 
 class BaseRelationshipProfile(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     agent_1_id: str
     agent_2_id: str
     relationship: RelationshipType = Field(
@@ -166,7 +166,7 @@ else:
 
 
 class BaseEnvironmentList(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     name: str
     environments: list[str] = Field(default_factory=list)
     agent_index: list[str] | None = Field(default=None)

@@ -1,24 +1,36 @@
-from typing import TypeVar
-from logging import Logger
-from rich import print as rprint
-import redis
 import os
+from logging import Logger
+from typing import TypeVar
+
+import redis
 from redis_om import JsonModel, Migrator
-from .storage_backend import get_storage_backend, is_redis_backend, is_local_backend
+from rich import print as rprint
+
+from .aggregate_annotations import map_human_annotations_to_episode_logs
 from .annotators import Annotator
 from .env_agent_combo_storage import EnvAgentComboStorage
+from .evaluation_dimensions import (
+    BaseCustomEvaluationDimension,
+    BaseCustomEvaluationDimensionList,
+    CustomEvaluationDimension,
+    CustomEvaluationDimensionList,
+    EvaluationDimensionBuilder,
+    GoalDimension,
+    SotopiaDimensions,
+    SotopiaDimensionsPlus,
+)
 from .logs import (
     AnnotationForEpisode,
     BaseEpisodeLog,
-    NonStreamingSimulationStatus,
     EpisodeLog,
+    NonStreamingSimulationStatus,
 )
 from .persistent_profile import (
     AgentProfile,
     BaseAgentProfile,
-    EnvironmentProfile,
     BaseEnvironmentProfile,
     BaseRelationshipProfile,
+    EnvironmentProfile,
     RelationshipProfile,
     RelationshipType,
 )
@@ -41,18 +53,12 @@ from .serialization import (
     relationshipprofiles_to_jsonl,
 )
 from .session_transaction import MessageTransaction, SessionTransaction
-from .waiting_room import MatchingInWaitingRoom
-from .aggregate_annotations import map_human_annotations_to_episode_logs
-from .evaluation_dimensions import (
-    EvaluationDimensionBuilder,
-    CustomEvaluationDimension,
-    BaseCustomEvaluationDimension,
-    CustomEvaluationDimensionList,
-    BaseCustomEvaluationDimensionList,
-    GoalDimension,
-    SotopiaDimensions,
-    SotopiaDimensionsPlus,
+from .storage_backend import (
+    get_storage_backend,
+    is_local_backend,
+    is_redis_backend,
 )
+from .waiting_room import MatchingInWaitingRoom
 
 __all__ = [
     "AgentProfile",
@@ -68,7 +74,6 @@ __all__ = [
     "BaseRelationshipProfile",
     "RelationshipProfile",
     "RelationshipType",
-    "RedisCommunicationMixin",
     "SessionTransaction",
     "MessageTransaction",
     "MatchingInWaitingRoom",

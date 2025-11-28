@@ -16,7 +16,7 @@ from .storage_backend import is_local_backend
 
 
 class BaseNonStreamingSimulationStatus(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     episode_pk: str = Field(index=True)
     status: Literal["Started", "Error", "Completed"]
 
@@ -40,7 +40,7 @@ class BaseEpisodeLog(BaseModel):
     # 1. The number of turns in messages and rewards should be the same or off by 1
     # 2. The agents in the messages are the same as the agetns
 
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     environment: str = Field(index=True)
     agents: list[str] = Field(index=True)
     tag: str | None = Field(index=True, default="")
@@ -115,7 +115,7 @@ else:
 
 
 class BaseAnnotationForEpisode(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default=None)
     episode: str = Field(index=True, description="the pk id of episode log")
     annotator_id: str = Field(index=True, full_text_search=True)
     rewards: list[tuple[float, dict[str, float]] | float]

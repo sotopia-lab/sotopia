@@ -73,7 +73,10 @@ class CompoundExpression:
     """Compound expression for combining multiple field expressions."""
 
     def __init__(
-        self, left: SimpleFieldExpression, right: SimpleFieldExpression, operator: str
+        self,
+        left: SimpleFieldExpression,
+        right: SimpleFieldExpression,
+        operator: str,
     ):
         self._left = left
         self._right = right
@@ -107,8 +110,8 @@ def add_local_storage_methods(model_class: Type[T]) -> None:
         # Use mode='python' and exclude_unset=False to handle all types
         try:
             data = self.model_dump(mode="json")
-        except Exception:
-            # Fallback to dict() for models with complex types
+        except (TypeError, ValueError):
+            # Fallback for models with complex types that can't be serialized with mode="json"
             import json
 
             data = json.loads(self.model_dump_json())
