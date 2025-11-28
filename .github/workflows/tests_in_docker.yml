@@ -28,7 +28,7 @@ jobs:
       - name: Docker Compose
         run: docker compose -f .devcontainer/docker-compose.yml up -d
       - name: Run tests with Redis backend
-        run: docker compose -f .devcontainer/docker-compose.yml run --rm -u root -v /home/runner/work/sotopia/sotopia:/workspaces/sotopia devcontainer /bin/sh -c "cd /workspaces/sotopia; ls; uv sync --extra test --extra api; uv run pytest --ignore tests/cli --cov=. --cov-report=xml"
+        run: docker compose -f .devcontainer/docker-compose.yml run --rm -u root -v /home/runner/work/sotopia/sotopia:/workspaces/sotopia devcontainer /bin/sh -c "cd /workspaces/sotopia; ls; uv sync --extra test --extra api; SOTOPIA_STORAGE_BACKEND=redis uv run pytest --ignore tests/cli --cov=. --cov-report=xml"
       - name: Run database tests with local backend
         run: docker compose -f .devcontainer/docker-compose.yml run --rm -u root -v /home/runner/work/sotopia/sotopia:/workspaces/sotopia devcontainer /bin/sh -c "cd /workspaces/sotopia; SOTOPIA_STORAGE_BACKEND=local uv run pytest tests/database/ -v"
       - name: Upload coverage report to Codecov
