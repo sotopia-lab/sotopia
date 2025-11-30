@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 from pathlib import Path
 import logging
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List
 
 import redis
 
@@ -17,7 +16,12 @@ from sotopia.database.persistent_profile import (
     EnvironmentProfile,
     RelationshipType,
 )
-from sotopia.envs import SocialDeductionGame, ActionHandler
+from sotopia.envs import SocialDeductionGame
+from sotopia.envs.social_game import (
+    ActionHandler,
+    load_config,
+    SOCIAL_GAME_PROMPT_TEMPLATE,
+)
 from sotopia.envs.evaluators import SocialGameEndEvaluator
 from sotopia.server import arun_one_episode
 from sotopia.messages import AgentAction, SimpleMessage, Message
@@ -256,13 +260,11 @@ class WerewolfEnv(SocialDeductionGame):
 # ============================================================================
 
 
-def load_config() -> Dict[str, Any]:
-    """Load game configuration."""
-    return cast(Dict[str, Any], json.loads(CONFIG_PATH.read_text()))
-
-
-def ensure_agent_profile(name: str, role: str, config: Dict[str, Any]) -> AgentProfile:
+def ensure_agent_profile(config: Dict[str, Any]) -> AgentProfile:
     """Create or retrieve agent profile."""
+    name = config.get("name", "")
+    role = config.get("role", "")
+
     first_name, _, last_name = name.partition(" ")
     if not last_name:
         last_name = ""
@@ -283,18 +285,19 @@ def ensure_agent_profile(name: str, role: str, config: Dict[str, Any]) -> AgentP
     profile = AgentProfile(
         first_name=first_name,
         last_name=last_name,
-        age=30,
         secret=role_secret,
     )
     profile.save()
     return profile
 
 
-def create_environment(env_profile: EnvironmentProfile, model_name: str) -> WerewolfEnv:
+def create_environment(
+    env_profile: EnvironmentProfile, model_name: str, config: Dict[str, Any]
+) -> WerewolfEnv:
     """Create werewolf game environment."""
     return WerewolfEnv(
         env_profile=env_profile,
-        config_path=str(CONFIG_PATH),
+        config=config,
         model_name=model_name,
         action_order="round-robin",
         evaluators=[WerewolfGameEndEvaluator(max_turn_number=40)],
@@ -310,11 +313,20 @@ def create_agents(
 ) -> List[LLMAgent]:
     """Create LLM agents."""
     agents = []
+    # Pre-fill the rules in the template
+    description = env_profile.scenario
+    filled_template = SOCIAL_GAME_PROMPT_TEMPLATE.replace("{description}", description)
+
     for idx, profile in enumerate(agent_profiles):
+        filled_template = filled_template.replace(
+            "{goals}", env_profile.agent_goals[idx]
+        )
         agent = LLMAgent(
+            agent_name=f"{profile.first_name}{' ' + profile.last_name if profile.last_name else ''}",
             agent_profile=profile,
             model_name=model_name,
             strict_action_constraint=True,
+            custom_template=filled_template,
         )
         agent.goal = env_profile.agent_goals[idx]
         agents.append(agent)
@@ -325,19 +337,16 @@ def prepare_scenario(
     env_model_name: str, agent_model_name: str
 ) -> tuple[SocialDeductionGame, List[LLMAgent]]:
     """Load config and create profiles."""
-    config = load_config()
+    config = load_config(CONFIG_PATH)
 
     # Create agent profiles
     agent_profiles = []
     agent_goals = []
     for entry in config.get("agents", []):
-        name = entry.get("name", "Unknown")
-        role = entry.get("role", "Villager")
-
-        profile = ensure_agent_profile(name, role, config)
+        profile = ensure_agent_profile(entry)
         agent_profiles.append(profile)
 
-        role_goal = config.get("role_goals", {}).get(role, "")
+        role_goal = config.get("role_goals", {}).get(entry.get("role", ""), "")
         agent_goals.append(role_goal)
 
     # Create environment profile
@@ -350,7 +359,7 @@ def prepare_scenario(
     )
     env_profile.save()
 
-    env = create_environment(env_profile, env_model_name)
+    env = create_environment(env_profile, env_model_name, config)
     agents = create_agents(agent_profiles, env_profile, agent_model_name)
     return env, agents
 
@@ -372,16 +381,16 @@ def print_roster(config: Dict[str, Any]) -> None:
 async def main() -> None:
     """Run werewolf game."""
     # Configuration
-    # env_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
-    # agent_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
-    env_model_name = "gpt-4o-mini"
-    agent_model_name = "gpt-4o-mini"
+    env_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
+    agent_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
+    # env_model_name = "gpt-4o-mini"
+    # agent_model_name = "gpt-4o-mini"
 
     # Setup
     env, agents = prepare_scenario(env_model_name, agent_model_name)
 
     # Display roster
-    config = load_config()
+    config = load_config(CONFIG_PATH)
     print("🌕 Duskmire Werewolves")
     print("=" * 60)
     print_roster(config)

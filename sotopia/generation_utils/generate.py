@@ -387,6 +387,7 @@ async def agenerate_action(
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
     strict_action_constraint: bool = False,
+    custom_template: str | None = None,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -408,6 +409,8 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
+        elif custom_template:
+            template = custom_template
         else:
             # Normal case, model as agent
             template = """

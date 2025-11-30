@@ -29,6 +29,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         model_name: str = "gpt-4o-mini",
         script_like: bool = False,
         strict_action_constraint: bool = False,
+        custom_template: str | None = None,
     ) -> None:
         super().__init__(
             agent_name=agent_name,
@@ -38,6 +39,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.model_name = model_name
         self.script_like = script_like
         self.strict_action_constraint = strict_action_constraint
+        self.custom_template = custom_template
 
     @property
     def goal(self) -> str:
@@ -79,6 +81,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 goal=self.goal,
                 script_like=self.script_like,
                 strict_action_constraint=self.strict_action_constraint,
+                custom_template=self.custom_template,
             )
             # Temporary fix for mixtral-moe model for incorrect generation format
             if "Mixtral-8x7B-Instruct-v0.1" in self.model_name:

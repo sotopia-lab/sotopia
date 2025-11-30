@@ -8,10 +8,7 @@
     "Witch": "Use save/poison potions strategically to aid villagers."
   },
   "role_secrets": {
-    "Villager": "",
-    "Werewolf": "I am a werewolf.",
-    "Seer": "",
-    "Witch": ""
+    "Werewolf": "I am a werewolf."
   },
   "agents": [
     { "name": "Aurora", "role": "Villager" , "team": "Villagers"},
