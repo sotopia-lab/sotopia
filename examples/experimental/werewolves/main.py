@@ -42,6 +42,10 @@ _gen_logger = logging.getLogger("sotopia.generation")
 _gen_logger.setLevel(logging.DEBUG)
 _gen_logger.addHandler(_fh)
 
+_env_logger = logging.getLogger("sotopia.envs.social_game")
+_env_logger.setLevel(logging.DEBUG)
+_env_logger.addHandler(_fh)
+
 
 # ============================================================================
 # Werewolf game-end evaluator
@@ -177,30 +181,6 @@ class WerewolfActionHandler(ActionHandler):
 
         return ""
 
-    def enrich_backgrounds(self, env: SocialDeductionGame) -> None:
-        """Enrich agent backgrounds with game-specific information."""
-        # Find all werewolves
-        werewolves = [
-            name for name, role in env.agent_to_role.items() if role == "Werewolf"
-        ]
-
-        # Update backgrounds for werewolves
-        for werewolf in werewolves:
-            partners = [w for w in werewolves if w != werewolf]
-            if partners:
-                partner_str = ", ".join(partners)
-                # Find index of this agent in env.agents
-                try:
-                    idx = env.agents.index(werewolf)
-                    # Append to background
-                    # Note: env.background.agent_backgrounds is a list of strings
-                    current_bg = env.background.agent_backgrounds[idx]
-                    env.background.agent_backgrounds[idx] = (
-                        f"{current_bg} Your partner(s) are: {partner_str}."
-                    )
-                except ValueError:
-                    continue
-
 
 class WerewolfEnv(SocialDeductionGame):
     """Werewolf game with voting, kills, and special roles."""
@@ -310,16 +290,47 @@ def create_agents(
     agent_profiles: List[AgentProfile],
     env_profile: EnvironmentProfile,
     model_name: str,
+    config: Dict[str, Any],  # Added config here
 ) -> List[LLMAgent]:
     """Create LLM agents."""
-    agents = []
-    # Pre-fill the rules in the template
-    description = env_profile.scenario
-    filled_template = SOCIAL_GAME_PROMPT_TEMPLATE.replace("{description}", description)
+    # Define Werewolf-specific template with secrets
+    WEREWOLF_PROMPT_TEMPLATE = SOCIAL_GAME_PROMPT_TEMPLATE.replace(
+        "{goal}", "{goal}\n{secrets}"
+    )
 
+    # Identify werewolves for partner info
+    werewolf_goal_str = config.get("role_goals", {}).get("Werewolf", "")
+    werewolves = [
+        p.first_name + (" " + p.last_name if p.last_name else "")
+        for p in agent_profiles
+        if env_profile.agent_goals[agent_profiles.index(p)] == werewolf_goal_str
+    ]
+
+    agents = []
     for idx, profile in enumerate(agent_profiles):
-        filled_template = filled_template.replace(
-            "{goals}", env_profile.agent_goals[idx]
+        # Calculate secrets
+        agent_name = f"{profile.first_name}{' ' + profile.last_name if profile.last_name else ''}"
+        role_goal = env_profile.agent_goals[idx]
+        secrets = ""
+
+        # Check if agent is a werewolf
+        is_werewolf = env_profile.agent_goals[idx] == "Werewolf"
+
+        if is_werewolf:
+            partners = [w for w in werewolves if w != agent_name]
+            if partners:
+                secrets = f"Your secret: You are a werewolf. Your partner(s) are: {', '.join(partners)}."
+            else:
+                secrets = "Your secret: You are a werewolf. You have no partners."
+
+        # Fill template
+        filled_template = (
+            WEREWOLF_PROMPT_TEMPLATE.replace("{description}", env_profile.scenario)
+            .replace("{secrets}", secrets)
+            .replace(
+                "{goal}",
+                role_goal,  # Also replace the goal here
+            )
         )
         agent = LLMAgent(
             agent_name=f"{profile.first_name}{' ' + profile.last_name if profile.last_name else ''}",
@@ -350,7 +361,10 @@ def prepare_scenario(
         agent_goals.append(role_goal)
 
     # Create environment profile
-    scenario = config.get("description", "Werewolves game")
+    agent_names = [entry.get("name", "") for entry in config.get("agents", [])]
+    scenario = config.get("description", "Werewolves game").format(
+        agent_names=", ".join(agent_names)
+    )
     env_profile = EnvironmentProfile(
         scenario=scenario,
         relationship=RelationshipType.acquaintance,
@@ -360,7 +374,7 @@ def prepare_scenario(
     env_profile.save()
 
     env = create_environment(env_profile, env_model_name, config)
-    agents = create_agents(agent_profiles, env_profile, agent_model_name)
+    agents = create_agents(agent_profiles, env_profile, agent_model_name, config)
     return env, agents
 
 
@@ -381,10 +395,10 @@ def print_roster(config: Dict[str, Any]) -> None:
 async def main() -> None:
     """Run werewolf game."""
     # Configuration
-    env_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
-    agent_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
-    # env_model_name = "gpt-4o-mini"
-    # agent_model_name = "gpt-4o-mini"
+    # env_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
+    # agent_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
+    env_model_name = "gpt-4o-mini"
+    agent_model_name = "gpt-4o-mini"
 
     # Setup
     env, agents = prepare_scenario(env_model_name, agent_model_name)

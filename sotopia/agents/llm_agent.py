@@ -8,6 +8,7 @@ from sotopia.generation_utils.generate import (
     agenerate_action,
     agenerate_goal,
     agenerate_script,
+    fill_template,
 )
 from sotopia.messages import AgentAction, Observation
 from sotopia.messages.message_classes import ScriptBackground
@@ -72,6 +73,12 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="")
         else:
+            custom_template = self.custom_template
+            if custom_template:
+                custom_template = fill_template(
+                    custom_template, action_instructions=obs.action_instruction
+                )
+
             action = await agenerate_action(
                 self.model_name,
                 history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
@@ -81,7 +88,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 goal=self.goal,
                 script_like=self.script_like,
                 strict_action_constraint=self.strict_action_constraint,
-                custom_template=self.custom_template,
+                custom_template=custom_template,
             )
             # Temporary fix for mixtral-moe model for incorrect generation format
             if "Mixtral-8x7B-Instruct-v0.1" in self.model_name:

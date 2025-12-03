@@ -137,6 +137,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         env_profile: EnvironmentProfile | None = None,
         background_class: Optional[Type[TBackground]] = None,
         hide_unknown: bool = False,
+        include_turn_marker: bool = True,
     ) -> None:
         """A sotopia environment for parallel agents.
 
@@ -151,6 +152,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.background_class = background_class
         self.hide_unknown = hide_unknown
+        self.include_turn_marker = include_turn_marker
         self.background = self.background_class(
             scenario="",
             agent_names=[],
@@ -188,6 +190,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         agents: Agents | None = None,
         omniscient: bool = False,
         lite: bool = False,
+        include_background_observations: bool = True,
     ) -> dict[str, Observation]:
         """Starting a new episode. Must be called before step().
 
@@ -197,6 +200,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 "partial_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound can be incompleted ("unknown" for missing parts), and the missing parts will be filled in by the environment.
                 "full_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound must be completed (no "unknown" for missing parts).
             omniscient (bool, optional): Whether the agents know the other agent's goal. Defaults to False.
+            include_background_observations (bool, optional): Whether to include the background (Environment's message) in the observation. Defaults to True.
         """
         super().__init__()
         MessengerMixin.reset_inbox(self)
@@ -248,7 +252,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 # Lite mode - clear backgrounds
                 raw_background.agent_backgrounds = [""] * num_agents
 
-            # Create final rendered background (works for 2+ agents)
+            # Create final rendered background
             self.background = self.background_class(
                 scenario=render_text_for_environment(raw_background.scenario),
                 agent_names=raw_background.agent_names,
@@ -312,19 +316,28 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
 
-        self.recv_message("Environment", self.background)
-
         # Create observations for each agent
         observations = {}
-        for i, agent_name in enumerate(self.agents):
-            agent_bg = agent_backgrounds[i]
-            observations[agent_name] = Observation(
-                last_turn=agent_bg.to_natural_language(),
-                turn_number=0,
-                available_actions=list(self.available_action_types)
-                if self.action_mask[i]
-                else ["none"],
-            )
+        if include_background_observations:
+            self.recv_message("Environment", self.background)
+            for i, agent_name in enumerate(self.agents):
+                agent_bg = agent_backgrounds[i]
+                observations[agent_name] = Observation(
+                    last_turn=agent_bg.to_natural_language(),
+                    turn_number=0,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[i]
+                    else ["none"],
+                )
+        else:
+            for i, agent_name in enumerate(self.agents):
+                observations[agent_name] = Observation(
+                    last_turn="",
+                    turn_number=0,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[i]
+                    else ["none"],
+                )
 
         return observations
 
@@ -349,11 +362,15 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             if not self.action_mask[idx]:
                 complied_actions[agent] = AgentAction(action_type="none", argument="")
 
-        self.recv_message(
-            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
-        )
+        if self.include_turn_marker:
+            self.recv_message(
+                "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
+            )
         for agent, action in complied_actions.items():
-            self.recv_message(agent, action)
+            # Only record actions from agents that are in turn
+            idx = self.agents.index(agent)
+            if self.action_mask[idx]:
+                self.recv_message(agent, action)
 
         return complied_actions
 

@@ -48,6 +48,14 @@ formatter = logging.Formatter(
 )
 console_handler.setFormatter(formatter)
 
+
+def fill_template(template: str, **kwargs: str) -> str:
+    """Fill template with kwargs, ignoring missing keys."""
+    for k, v in kwargs.items():
+        template = template.replace(f"{{{k}}}", v)
+    return template
+
+
 # Add handler to logger
 log.addHandler(console_handler)
 
@@ -393,7 +401,13 @@ async def agenerate_action(
     Using langchain to generate an example episode
     """
     try:
-        if script_like:
+        if custom_template:
+            if script_like:
+                raise ValueError(
+                    "script_like and custom_template are mutually exclusive"
+                )
+            template = custom_template
+        elif script_like:
             # model as playwright
             template = """
                 Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
@@ -409,8 +423,6 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
-        elif custom_template:
-            template = custom_template
         else:
             # Normal case, model as agent
             template = """
@@ -471,6 +483,7 @@ async def agenerate_action(
                 turn_number=str(turn_number),
                 history=history,
                 action_list=" ".join(action_types),
+                goal=goal,
             ),
             output_parser=output_parser_obj,
             temperature=temperature,

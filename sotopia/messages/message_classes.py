@@ -33,6 +33,9 @@ class Observation(Message):
     last_turn: str = Field(description="the last turn of the conversation")
     turn_number: int = Field(description="the turn number of the conversation")
     available_actions: list[ActionType] = Field(description="the available actions")
+    action_instruction: str = Field(
+        default="", description="instruction for the action"
+    )
 
     def to_natural_language(self) -> str:
         if self.turn_number == 0:
