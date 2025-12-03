@@ -25,22 +25,22 @@ class RelationshipType(IntEnum):
 
 class BaseAgentProfile(BaseModel):
     pk: str | None = ""
-    first_name: str
-    last_name: str
-    age: int = 0
-    occupation: str = ""
-    gender: str = ""
-    gender_pronoun: str = ""
-    public_info: str = ""
-    big_five: str = ""
-    moral_values: list[str] = []
-    schwartz_personal_values: list[str] = []
-    personality_and_values: str = ""
-    decision_making_style: str = ""
-    secret: str = ""
-    model_id: str = ""
-    mbti: str = ""
-    tag: str = ""
+    first_name: str = Field(..., index=True)
+    last_name: str = Field(..., index=True)
+    age: int = Field(default=0, index=True)
+    occupation: str = Field(default="", index=True)
+    gender: str = Field(default="", index=True)
+    gender_pronoun: str = Field(default="")
+    public_info: str = Field(default="")
+    big_five: str = Field(default="")
+    moral_values: list[str] = Field(default_factory=list)
+    schwartz_personal_values: list[str] = Field(default_factory=list)
+    personality_and_values: str = Field(default="")
+    decision_making_style: str = Field(default="")
+    secret: str = Field(default="")
+    model_id: str = Field(default="", index=True)
+    mbti: str = Field(default="")
+    tag: str = Field(default="", index=True)
 
 
 # Define AgentProfile conditionally based on backend
