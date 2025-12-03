@@ -7,8 +7,9 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 from redis_om import JsonModel
+from redis_om.model.model import Field
 
 from .base_models import patch_model_for_local_storage
 from .storage_backend import is_local_backend
