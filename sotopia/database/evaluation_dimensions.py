@@ -185,7 +185,7 @@ class GoalDimension(BaseModel):
 
 
 class BaseCustomEvaluationDimension(BaseModel):
-    pk: str | None = Field(default_factory=lambda: "")
+    pk: str | None = ""
     name: str = Field(index=True)
     description: str = Field(index=True)
     range_high: int = Field(index=True)
@@ -195,19 +195,28 @@ class BaseCustomEvaluationDimension(BaseModel):
 if TYPE_CHECKING:
     # For type checking, always assume Redis backend to get proper method signatures
     class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
-        pass
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 elif is_local_backend():
 
     class CustomEvaluationDimension(BaseCustomEvaluationDimension):
-        pass
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 else:
 
     class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):  # type: ignore[no-redef]
-        pass
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 
 
 class BaseCustomEvaluationDimensionList(BaseModel):
-    pk: str | None = Field(default_factory=lambda: "")
+    pk: str | None = ""
     name: str = Field(index=True)
     dimension_pks: list[str] = Field(default_factory=list, index=True)
 
@@ -215,15 +224,24 @@ class BaseCustomEvaluationDimensionList(BaseModel):
 if TYPE_CHECKING:
     # For type checking, always assume Redis backend to get proper method signatures
     class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
-        pass
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 elif is_local_backend():
 
     class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList):
-        pass
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 else:
 
     class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):  # type: ignore[no-redef]
-        pass
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 
 
 class EvaluationDimensionBuilder:
