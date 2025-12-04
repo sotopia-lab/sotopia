@@ -57,7 +57,7 @@
     }
   },
   "end_conditions": [
-    { "type": "team_eliminated", "team": "Werewolves", "winner": "Villagers", "message": "[Game] Villagers win; no werewolves remain." },
-    { "type": "parity", "team": "Werewolves", "other": "Villagers", "winner": "Werewolves", "message": "[Game] Werewolves win; they now match the village." }
+    { "type": "team_eliminated", "team": "Werewolves", "winner": "Villagers", "message": "Villagers win; no werewolves remain." },
+    { "type": "parity", "team": "Werewolves", "other": "Villagers", "winner": "Werewolves", "message": "Werewolves win; they now match the village." }
   ]
 }

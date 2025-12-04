@@ -7,7 +7,10 @@ import os
 from pathlib import Path
 import logging
 from typing import Any, Dict, List
+import random
+from collections import Counter
 
+from rich.logging import RichHandler
 import redis
 
 from sotopia.agents import LLMAgent
@@ -24,7 +27,7 @@ from sotopia.envs.social_game import (
 )
 from sotopia.envs.evaluators import SocialGameEndEvaluator
 from sotopia.server import arun_one_episode
-from sotopia.messages import AgentAction, SimpleMessage, Message
+from sotopia.messages import AgentAction, SimpleMessage, Message, Observation
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -43,8 +46,9 @@ _gen_logger.setLevel(logging.DEBUG)
 _gen_logger.addHandler(_fh)
 
 _env_logger = logging.getLogger("sotopia.envs.social_game")
-_env_logger.setLevel(logging.DEBUG)
+_env_logger.setLevel(logging.INFO)
 _env_logger.addHandler(_fh)
+_env_logger.addHandler(RichHandler())
 
 
 # ============================================================================
@@ -131,7 +135,25 @@ class WerewolfActionHandler(ActionHandler):
                         None,
                     )
                     if target:
-                        env.internal_state["kill_target"] = target
+                        if "kill_target_proposals" not in env.internal_state:
+                            env.internal_state["kill_target_proposals"] = {}
+                        env.internal_state["kill_target_proposals"][agent_name] = target
+                        # Update the werewolf kill result
+                        kill_votes = env.internal_state.get("kill_target_proposals", {})
+                        if kill_votes:
+                            # Count votes
+                            vote_counts = Counter(kill_votes.values())
+                            if vote_counts:
+                                # Find max votes
+                                max_votes = max(vote_counts.values())
+                                # Get all targets with max votes
+                                candidates = [
+                                    t for t, c in vote_counts.items() if c == max_votes
+                                ]
+                                # Break tie randomly
+                                env.internal_state["kill_target"] = random.choice(
+                                    candidates
+                                )
 
         elif env.current_state == "Night_seer":
             # Seer inspects someone
@@ -152,7 +174,31 @@ class WerewolfActionHandler(ActionHandler):
                             SimpleMessage(
                                 message=f"[Private to {agent_name}] {target} is on team: {target_team}"
                             ),
+                            receivers=[agent_name],
                         )
+
+        elif env.current_state == "Night_witch":
+            # Witch uses potions
+            role = env.agent_to_role.get(agent_name, "")
+            if role == "Witch" and action.action_type == "action":
+                if "save" in action.argument.lower():
+                    env.internal_state["witch_have_save"] = False
+                    words = action.argument.split()
+                    target = next(
+                        (w for w in words if w[0].isupper() and w in env.agents),
+                        None,
+                    )
+                    if target:
+                        env.internal_state["saved_target"] = target
+                elif "poison" in action.argument.lower():
+                    env.internal_state["witch_have_posion"] = False
+                    words = action.argument.split()
+                    target = next(
+                        (w for w in words if w[0].isupper() and w in env.agents),
+                        None,
+                    )
+                    if target:
+                        env.internal_state["poison_target"] = target
 
     def get_action_instruction(self, env: SocialDeductionGame, agent_name: str) -> str:
         """Get specific action instructions for an agent based on current state."""
@@ -175,7 +221,22 @@ class WerewolfActionHandler(ActionHandler):
 
         elif env.current_state == "Night_witch":
             if role == "Witch":
-                return "It is Night. You are the Witch. You can use 'save NAME' or 'poison NAME'. If you don't want to use potions, you can 'action none'."
+                if env.internal_state.get(
+                    "witch_have_posion", True
+                ) and env.internal_state.get("witch_have_save", True):
+                    use_potion_guide = "You can use 'save NAME' or 'poison NAME'. If you don't want to use potions, you can put 'skip' in the argument of action."
+                elif env.internal_state.get("witch_have_posion", True):
+                    use_potion_guide = "You can use 'poison NAME'. If you don't want to use potions, you can put 'skip' in the argument of action."
+                elif env.internal_state.get("witch_have_save", True):
+                    use_potion_guide = "You can use 'save NAME'. If you don't want to use potions, you can put 'skip' in the argument of action."
+                else:
+                    use_potion_guide = (
+                        "You can't use any potions as you don't have any left."
+                    )
+                killed_message = ""
+                if kill_target := env.internal_state.get("kill_target", None):
+                    killed_message = f"{kill_target} is killed by werewolves."
+                return f"It is Night. You are the Witch. {use_potion_guide} {killed_message}"
             else:
                 return "It is Night. You are sleeping."
 
@@ -188,8 +249,20 @@ class WerewolfEnv(SocialDeductionGame):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(action_handler=WerewolfActionHandler(), **kwargs)
 
+    def reset(self, **kwargs: Any) -> Dict[str, Observation]:
+        obs = super().reset(**kwargs)
+        # Witch has potions
+        self.internal_state["witch_have_posion"] = True
+        self.internal_state["witch_have_save"] = True
+        # Werewolves have kill targets
+        self.internal_state["kill_target_proposals"] = {}
+        return obs
+
     def _check_eliminations(self) -> None:
         """Apply eliminations based on collected actions."""
+        # Only apply eliminations if we are about to transition state
+        if not self._should_transition_state():
+            return
 
         if self.current_state == "Day_vote":
             # Tally votes and eliminate most voted player
@@ -211,28 +284,56 @@ class WerewolfEnv(SocialDeductionGame):
                     )
                 # Clear votes
                 self.internal_state["votes"] = {}
+                # log elimination
+                _gen_logger.info(
+                    f"{eliminated} was voted out! They were a {self.agent_to_role[eliminated]}."
+                )
+                _gen_logger.info(f"Remaining players: {self.agent_alive}")
 
-        elif self.current_state == "Night_werewolf":
-            # Apply werewolf kill
-            target = self.internal_state.get("kill_target")
-            if target and self.agent_alive.get(target, False):
-                # Check if witch saves them (would be in Night_witch state)
-                saved = self.internal_state.get("saved_target")
-                if target != saved:
-                    self.agent_alive[target] = False
+        elif self.current_state == "Night_witch":
+            # Resolve Night actions (Werewolf kill + Witch save/poison)
+
+            kill_target = self.internal_state.get("kill_target")
+            saved_target = self.internal_state.get("saved_target")
+            poison_target = self.internal_state.get("poison_target")
+
+            # Check kill
+            if kill_target and self.agent_alive.get(kill_target, False):
+                if kill_target != saved_target:
+                    self.agent_alive[kill_target] = False
                     self.recv_message(
                         "Environment",
                         SimpleMessage(
-                            message=f"[Game] {target} was killed by werewolves!"
+                            message=f"[Game] {kill_target} was killed by werewolves!"
                         ),
                     )
+                    _gen_logger.info(f"{kill_target} was killed by werewolves!")
+                    _gen_logger.info(f"Remaining players: {self.agent_alive}")
                 else:
                     self.recv_message(
                         "Environment",
                         SimpleMessage(message="[Game] An attack was prevented!"),
                     )
-            # Clear kill target
+                    _gen_logger.info(f"An attack to {kill_target} was prevented!")
+                    _gen_logger.info(f"Remaining players: {self.agent_alive}")
+
+            # 2. Witch Poison
+            if poison_target and self.agent_alive.get(poison_target, False):
+                self.agent_alive[poison_target] = False
+                self.recv_message(
+                    "Environment",
+                    SimpleMessage(
+                        message=f"[Game] {poison_target} died by witch's poison!"
+                    ),
+                )
+                _gen_logger.info(f"{poison_target} died by witch's poison!")
+                _gen_logger.info(f"Remaining players: {self.agent_alive}")
+
+            # Clear night states
+            self.internal_state.pop("kill_target_proposals", None)
             self.internal_state.pop("kill_target", None)
+            self.internal_state.pop("saved_target", None)
+            self.internal_state.pop("poison_target", None)
 
 
 # ============================================================================
@@ -395,8 +496,6 @@ def print_roster(config: Dict[str, Any]) -> None:
 async def main() -> None:
     """Run werewolf game."""
     # Configuration
-    # env_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
-    # agent_model_name = "custom/google/gemma-3n-e4b@http://127.0.0.1:1234/v1"
     env_model_name = "gpt-4o-mini"
     agent_model_name = "gpt-4o-mini"
 
@@ -415,7 +514,7 @@ async def main() -> None:
         env=env,
         agent_list=agents,
         omniscient=False,
-        script_like=True,  # Required for action_mask to work
+        script_like=True,
         json_in_script=False,
         tag=None,
         push_to_db=False,
