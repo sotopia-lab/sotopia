@@ -6,8 +6,8 @@ from typing import Any, Literal, Optional, Type, TypeVar
 
 from gin import configurable
 from gymnasium.spaces.dict import Dict
-from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
+from gymnasium.spaces import Space
 from pettingzoo.utils.env import ParallelEnv
 from pydantic import validate_call
 from redis_om.model.model import NotFoundError
@@ -31,6 +31,23 @@ from sotopia.renderers import RenderContext, XMLRenderer
 from .evaluators import Evaluator, unweighted_aggregate_evaluate
 
 TBackground = TypeVar("TBackground", bound=ScriptBackground)
+
+
+class LiteralSpace(Space[Any]):
+    """Space that samples randomly from list values"""
+
+    def __init__(self, values: list[Any], seed: int | None = None):
+        super().__init__((), None, seed)
+        self._values = values
+
+    def sample(self, mask: Any = None) -> Any:
+        return self.np_random.choice(self._values)
+
+    def contains(self, x: Any) -> bool:
+        return isinstance(x, str) and x in self._values
+
+    def __repr__(self) -> str:
+        return f"LiteralSpace({self._values})"
 
 
 def _actions_to_natural_language_for_viewer(
@@ -307,7 +324,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.action_spaces = {
             agent: Dict(
                 dict(
-                    action_type=Discrete(len(self.available_action_types)),
+                    action_type=LiteralSpace(self.available_action_types),
                     argument=Text(256),
                 )
             )
