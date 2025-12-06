@@ -51,14 +51,8 @@ async def test_parallel_sotopia_env() -> None:
         max_steps -= 1
         actions = {
             agent: env.action_space(agent).sample() for agent in env.agents
-        }  # this is where you would insert your policy
-        (
-            observations,
-            rewards,
-            terminations,
-            truncations,
-            infos,
-        ) = await env.astep(actions)
+        }
+        await env.astep(actions)
         if not max_steps:
             break
 
@@ -108,14 +102,8 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
         max_steps -= 1
         actions = {
             agent: env.action_space(agent).sample() for agent in env.agents
-        }  # this is where you would insert your policy
-        (
-            observations,
-            rewards,
-            terminations,
-            truncations,
-            infos,
-        ) = await env.astep(actions)
+        }
+        await env.astep(actions)
         if not max_steps:
             break
 
