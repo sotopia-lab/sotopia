@@ -110,10 +110,16 @@ class RuleBasedTerminatedEvaluator(Evaluator):
                 latest_action_by_agent[speaker] = msg.action_type
 
         # If we haven't observed any agent messages yet, do not terminate early
-        if observed_agents:
+        env = kwargs.get("env")
+        if env:
+            all_agents = set(env.agents)
+        else:
+            all_agents = observed_agents
+
+        if all_agents:
             num_active_agents = sum(
                 1
-                for agent in observed_agents
+                for agent in all_agents
                 if latest_action_by_agent.get(agent, "speak") != "leave"
             )
         else:

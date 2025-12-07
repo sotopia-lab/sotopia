@@ -114,13 +114,43 @@ async def format_bad_output(
     # Parse format_instructions to get the schema
     try:
         schema = json.loads(format_instructions)
+
+        def _fix_schema(s: dict[str, Any]) -> None:
+            if s.get("type") == "array":
+                if "prefixItems" in s:
+                    # OpenAI doesn't support prefixItems (tuple validation).
+                    # Convert to items: {anyOf: [...]} to satisfy "items must be a schema object"
+                    # This allows valid tuple elements but loses positional validation.
+                    prefix_items = s.pop("prefixItems")
+                    s["items"] = {"anyOf": prefix_items}
+
+                if "items" in s and isinstance(s["items"], dict):
+                    _fix_schema(s["items"])
+                elif "items" in s and isinstance(s["items"], list):
+                    # Should not happen after the fix above, but handle legacy cases if any
+                    for item in s["items"]:
+                        _fix_schema(item)
+            elif s.get("type") == "object":
+                if "properties" in s:
+                    for prop in s["properties"].values():
+                        _fix_schema(prop)
+                if "additionalProperties" in s and isinstance(
+                    s["additionalProperties"], dict
+                ):
+                    _fix_schema(s["additionalProperties"])
+                if "$defs" in s:
+                    for def_schema in s["$defs"].values():
+                        _fix_schema(def_schema)
+
+        _fix_schema(schema)
+
         # Build proper json_schema response_format
         completion_kwargs["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "reformatted_output",
                 "schema": schema,
-                "strict": True,
+                "strict": False,
             },
         }
     except json.JSONDecodeError:

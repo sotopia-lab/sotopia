@@ -384,6 +384,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                             evaluator.__acall__(
                                 turn_number=self.turn_number,
                                 messages=self.inbox,
+                                env=self,
                             )
                             for evaluator in evaluators
                         ]
