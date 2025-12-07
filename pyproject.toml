@@ -1,6 +1,6 @@
 [project]
 name = "sotopia"
-version = "0.1.4"
+version = "0.1.5"
 description = "A platform for simulating and evaluating social interaction."
 authors = [
     { name = "Hao Zhu", email = "prokilchu@gmail.com" },
