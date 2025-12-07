@@ -31,7 +31,6 @@
 Sotopia is an open-ended social learning environment that allows agents to interact with each other and the environment. The environment is designed to be a platform for evaluating and faciliating social intelligence in language agents. The environment is designed to be open-ended, meaning that the environment can be easily extended to include new environments and new agents. The environment is also designed to be scalable, meaning that the environment can be easily scaled to include a large number of agents and environments.
 
 
-
 ```bibtex
 @inproceedings{zhou2024sotopia,
   title = {SOTOPIA: Interactive Evaluation for Social Intelligence in Language Agents},
@@ -42,11 +41,7 @@ Sotopia is an open-ended social learning environment that allows agents to inter
 }
 ```
 
-## Help
-See [documentation](https://docs.sotopia.world) for more details.
 
-> [!IMPORTANT]
-> If you are trying to develop on top of Sotopia, we highly recommend to follow the [development guide](https://docs.sotopia.world/contribution/contribution).
 
 ## Get started
 
@@ -60,15 +55,67 @@ We recommend using a virtual environment, e.g. with uv: `pip install uv; uv sync
 Then:
 `uv run sotopia install`
 
+### Storage Backend Options
+
+Sotopia supports two storage backends:
+
+1. **Redis (default)** - Recommended for production use
+   - Requires Redis server running
+   - We recommend using Docker: `docker run -d -p 6379:6379 redis/redis-stack-server:latest`
+   - Set via: `export SOTOPIA_STORAGE_BACKEND=redis` (or leave unset)
+
+2. **Local JSON** - Simpler setup for development/testing
+   - No external dependencies required
+   - Stores data in `~/.sotopia/data/`
+   - Set via: `export SOTOPIA_STORAGE_BACKEND=local`
+   - **Note**: Experimental framework features require Redis
+
 > [!WARNING]
-> We recommend you using docker for setting up the redis server. Other installation methods have been shown to be error-prone.
+> For Redis setup, we recommend using Docker. Other installation methods have been shown to be error-prone.
 
-This will setup the necessary environment variables and download the necessary data.
+### Environment Variables
 
-OpenAI key is required to run the code. Please set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:
+Sotopia uses environment variables for configuration. The recommended way to set them is using a `.env` file in the project root:
+
 ```bash
-conda env config vars set OPENAI_API_KEY=your_key
+# Create a .env file
+cat > .env << EOF
+# Required: OpenAI API key
+OPENAI_API_KEY=your_openai_key_here
+
+# Storage backend: "redis" (default) or "local"
+SOTOPIA_STORAGE_BACKEND=local
+
+# Redis connection (only needed if using Redis backend)
+# REDIS_OM_URL=redis://localhost:6379
+EOF
 ```
+
+**Environment Variables:**
+- `OPENAI_API_KEY` (required): Your OpenAI API key for running LLM-based simulations
+- `SOTOPIA_STORAGE_BACKEND` (optional): Storage backend - `"redis"` (default) or `"local"`
+- `REDIS_OM_URL` (optional): Redis connection string (default: `"redis://localhost:6379"`)
+
+**Loading Environment Variables:**
+
+With `uv`:
+```bash
+# Option 1: Use --env-file flag
+uv run --env-file .env python examples/minimalist_demo.py
+
+# Option 2: Export manually
+export $(cat .env | xargs) && uv run python examples/minimalist_demo.py
+```
+
+With other tools (pip, conda):
+```bash
+# Export variables before running
+export $(cat .env | xargs)
+python examples/minimalist_demo.py
+```
+
+> [!NOTE]
+> `uv` does not automatically load `.env` files. Use the `--env-file` flag or export variables manually.
 
 ## Easy Sample Server
 You can view an episode demo with default parameters with the following:
@@ -95,3 +142,8 @@ or run
 ```bash
 python examples/minimalist_demo.py
 ```
+
+## Help
+
+> [!IMPORTANT]
+> If you are trying to develop on top of Sotopia, we highly recommend to follow the [development guide](https://docs.sotopia.world/contribution/contribution), but cross-reference with this README for latest changes as the documentation may be outdated.
