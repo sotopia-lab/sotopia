@@ -525,7 +525,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
 
-        # create info dictionary for all agent
+        # Create info dictionary for all agents
         info = {
             agent_name: {
                 "comments": response.comments or "",
@@ -538,7 +538,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 "overall_prompt": self.terminal_evaluators[0].prompt  # type: ignore
             }
 
-        # build per-viewer observation
+        # Create observations for all agents dynamically
         observations: dict[str, Observation] = {}
         for i, agent_name in enumerate(self.agents):
             obs_for_viewer = _actions_to_natural_language_for_viewer(
