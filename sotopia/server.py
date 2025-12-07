@@ -18,7 +18,7 @@ from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import EpisodeLog, NonStreamingSimulationStatus, SotopiaDimensions
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
+    EvaluationForAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
@@ -300,7 +300,7 @@ async def run_async_server(
             "terminal_evaluators": [
                 EpisodeLLMEvaluator(
                     model_dict["env"],
-                    EvaluationForTwoAgents[SotopiaDimensions],
+                    EvaluationForAgents[SotopiaDimensions],
                 ),
             ],
         }
@@ -380,7 +380,7 @@ async def arun_one_script(
 
     evaluator = EpisodeLLMEvaluator(
         model_name="gpt-4",
-        response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
+        response_format_class=EvaluationForAgents[SotopiaDimensions],
     )
     response = unweighted_aggregate_evaluate(
         list(
@@ -449,7 +449,7 @@ async def aevaluate_one_episode(
     history = "\n".join(episode.render_for_humans()[1][:-2])
     evaluator = EpisodeLLMEvaluator(
         model_name=model,
-        response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
+        response_format_class=EvaluationForAgents[SotopiaDimensions],
     )
     response = unweighted_aggregate_evaluate(
         list(

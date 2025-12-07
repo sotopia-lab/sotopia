@@ -22,6 +22,7 @@ SOCIAL_GAME_PROMPT_TEMPLATE = """
 Imagine you are playing the game as {agent}.
 
 Here is the description of the game: {description}
+Note: Player actions in the nights are not seen by players of other roles (e.g. only wolves can see other wolves' actions).
 
 Your ({agent}'s) goal: {goal}
 {secret}
