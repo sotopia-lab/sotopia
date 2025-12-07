@@ -14,6 +14,7 @@ from rich.logging import RichHandler
 import redis
 
 from sotopia.agents import LLMAgent
+from sotopia.agents.llm_agent import Agents
 from sotopia.database.persistent_profile import (
     AgentProfile,
     EnvironmentProfile,
@@ -249,8 +250,23 @@ class WerewolfEnv(SocialDeductionGame):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(action_handler=WerewolfActionHandler(), **kwargs)
 
-    def reset(self, **kwargs: Any) -> Dict[str, Observation]:
-        obs = super().reset(**kwargs)
+    def reset(
+        self,
+        seed: int | None = None,
+        options: dict[str, str] | None = None,
+        agents: Agents | None = None,
+        omniscient: bool = False,
+        lite: bool = False,
+        include_background_observations: bool = True,
+    ) -> Dict[str, Observation]:
+        obs = super().reset(
+            seed=seed,
+            options=options,
+            agents=agents,
+            omniscient=omniscient,
+            lite=lite,
+            include_background_observations=include_background_observations,
+        )
         # Witch has potions
         self.internal_state["witch_have_posion"] = True
         self.internal_state["witch_have_save"] = True
@@ -278,9 +294,7 @@ class WerewolfEnv(SocialDeductionGame):
                     self.agent_alive[eliminated] = False
                     self.recv_message(
                         "Environment",
-                        SimpleMessage(
-                            message=f"[Game] {eliminated} was voted out! They were a {self.agent_to_role[eliminated]}."
-                        ),
+                        SimpleMessage(message=f"[Game] {eliminated} was voted out!"),
                     )
                 # Clear votes
                 self.internal_state["votes"] = {}
@@ -514,7 +528,7 @@ async def main() -> None:
         env=env,
         agent_list=agents,
         omniscient=False,
-        script_like=True,
+        script_like=False,
         json_in_script=False,
         tag=None,
         push_to_db=False,

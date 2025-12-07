@@ -11,12 +11,36 @@
     "Werewolf": "I am a werewolf."
   },
   "agents": [
-    { "name": "Aurora", "role": "Villager" , "team": "Villagers"},
-    { "name": "Bram", "role": "Werewolf" , "team": "Werewolves"},
-    { "name": "Celeste", "role": "Seer" , "team": "Villagers"},
-    { "name": "Dorian", "role": "Werewolf" , "team": "Werewolves"},
-    { "name": "Elise", "role": "Witch" , "team": "Villagers"},
-    { "name": "Finn", "role": "Villager" , "team": "Villagers"}
+    {
+      "name": "Aurora",
+      "role": "Villager",
+      "team": "Villagers"
+    },
+    {
+      "name": "Bram",
+      "role": "Werewolf",
+      "team": "Werewolves"
+    },
+    {
+      "name": "Celeste",
+      "role": "Seer",
+      "team": "Villagers"
+    },
+    {
+      "name": "Dorian",
+      "role": "Werewolf",
+      "team": "Werewolves"
+    },
+    {
+      "name": "Elise",
+      "role": "Witch",
+      "team": "Villagers"
+    },
+    {
+      "name": "Finn",
+      "role": "Villager",
+      "team": "Villagers"
+    }
   ],
   "initial_state": "Night_werewolf",
   "state_transition": {
@@ -28,18 +52,30 @@
   },
   "state_properties": {
     "Night_werewolf": {
-      "acting_roles": ["Werewolf"],
-      "actions": ["action"],
+      "acting_roles": [
+        "Werewolf"
+      ],
+      "actions": [
+        "action"
+      ],
       "visibility": "team"
     },
     "Night_seer": {
-      "acting_roles": ["Seer"],
-      "actions": ["action"],
+      "acting_roles": [
+        "Seer"
+      ],
+      "actions": [
+        "action"
+      ],
       "visibility": "private"
     },
     "Night_witch": {
-      "acting_roles": ["Witch"],
-      "actions": ["action"],
+      "acting_roles": [
+        "Witch"
+      ],
+      "actions": [
+        "action"
+      ],
       "visibility": "private",
       "internal_state": {
         "save_available": true,
@@ -47,17 +83,33 @@
       }
     },
     "Day_discussion": {
-      "actions": ["speak"],
+      "actions": [
+        "speak"
+      ],
+      "action_order": "round-robin",
       "visibility": "public"
     },
     "Day_vote": {
-      "actions": ["action"],
+      "actions": [
+        "action"
+      ],
       "action_order": "simultaneous",
       "visibility": "public"
     }
   },
   "end_conditions": [
-    { "type": "team_eliminated", "team": "Werewolves", "winner": "Villagers", "message": "Villagers win; no werewolves remain." },
-    { "type": "parity", "team": "Werewolves", "other": "Villagers", "winner": "Werewolves", "message": "Werewolves win; they now match the village." }
+    {
+      "type": "team_eliminated",
+      "team": "Werewolves",
+      "winner": "Villagers",
+      "message": "Villagers win; no werewolves remain."
+    },
+    {
+      "type": "parity",
+      "team": "Werewolves",
+      "other": "Villagers",
+      "winner": "Werewolves",
+      "message": "Werewolves win; they now match the village."
+    }
   ]
 }
