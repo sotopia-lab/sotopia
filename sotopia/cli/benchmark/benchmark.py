@@ -1,18 +1,19 @@
-from datetime import datetime
-import requests
-import rich
-from sotopia.database.persistent_profile import EnvironmentList
 import asyncio
-import logging
 import json
+import logging
 import math
-import numpy as np
-from itertools import chain
+import os
 from collections import defaultdict
+from datetime import datetime
+from itertools import chain
+from pathlib import Path
 from typing import OrderedDict
 
+import numpy as np
+import requests
+import rich
+import typer
 from rich.logging import RichHandler
-
 from tqdm import tqdm
 
 from sotopia.agents import LLMAgent
@@ -23,25 +24,23 @@ from sotopia.database import (
     EpisodeLog,
     SotopiaDimensions,
 )
+from sotopia.database.persistent_profile import EnvironmentList
 from sotopia.database.serialization import get_rewards_from_episode
 from sotopia.envs.evaluators import (
-    EvaluationForAgents,
     EpisodeLLMEvaluator,
+    EvaluationForAgents,
     RuleBasedTerminatedEvaluator,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
+from sotopia.logging import FileHandler
 from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import (
     BaseSampler,
     EnvAgentCombo,
 )
 from sotopia.server import run_async_server
-from sotopia.logging import FileHandler
 
-import typer
-from pathlib import Path
 from ..app import app
-import os
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -95,7 +94,9 @@ def get_avg_reward(
             rewards_dict[f"{episode.environment}_1"].append(reward)
     dimensions = list(rewards_dict.values())[0][0].keys()
 
-    def calc_variance(local_rewards_list: list[dict[str, float]]) -> dict[str, float]:
+    def calc_variance(
+        local_rewards_list: list[dict[str, float]],
+    ) -> dict[str, float]:
         # get the variance within a list, discarded
         local_var_reward_dict = {}
         local_dimensions = local_rewards_list[0].keys()
@@ -286,8 +287,8 @@ def run_async_benchmark_in_batch(
         for valid, episode in zip(valid_episodes, simulated_episodes):
             if not valid:
                 pk = episode.pk
-                assert isinstance(pk, str)
-                EpisodeLog.delete(pk)
+                if pk is not None:
+                    EpisodeLog.delete(pk)
 
 
 def benchmark_display(
@@ -453,7 +454,12 @@ def benchmark(
 ) -> None:
     if only_show_performance:
         benchmark_display(
-            models, partner_model, evaluator_model, task, output_to_jsonl, save_dir
+            models,
+            partner_model,
+            evaluator_model,
+            task,
+            output_to_jsonl,
+            save_dir,
         )
         return
 
@@ -517,5 +523,9 @@ def benchmark(
                 return
 
     benchmark_display(
-        models, partner_model, evaluator_model, task, output_to_jsonl=output_to_jsonl
+        models,
+        partner_model,
+        evaluator_model,
+        task,
+        output_to_jsonl=output_to_jsonl,
     )

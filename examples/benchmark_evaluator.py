@@ -1,14 +1,14 @@
-from evaluate_existing_episode import run_async_server_in_batch_aevaluate
-from sotopia.database import (
-    map_human_annotations_to_episode_logs,
-    AnnotationForEpisode,
-    EpisodeLog,
-)
-from typer import Typer
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+from evaluate_existing_episode import run_async_server_in_batch_aevaluate
+from typer import Typer
 
+from sotopia.database import (
+    AnnotationForEpisode,
+    EpisodeLog,
+    map_human_annotations_to_episode_logs,
+)
 from sotopia.database.serialization import get_rewards_from_episode
 
 app = Typer()
@@ -158,8 +158,8 @@ def evaluate_evaluator(
             for valid, episode in zip(valid_episodes, re_evaluated_episodes):
                 if not valid:
                     pk = episode.pk  # type: ignore
-                    assert isinstance(pk, str)
-                    to_re_evaluate_list.append(pk)
+                    if pk is not None:
+                        to_re_evaluate_list.append(pk)
 
     correlation_list = []
     ordered_re_eval_episodes = []
