@@ -8,7 +8,7 @@ from litellm.utils import supports_response_schema
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
 )
-from typing import Any, cast
+from typing import Any, cast, Literal
 
 import gin
 
@@ -47,6 +47,14 @@ formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 console_handler.setFormatter(formatter)
+
+
+def fill_template(template: str, **kwargs: str) -> str:
+    """Fill template with kwargs, ignoring missing keys."""
+    for k, v in kwargs.items():
+        template = template.replace(f"{{{k}}}", v)
+    return template
+
 
 # Add handler to logger
 log.addHandler(console_handler)
@@ -106,13 +114,43 @@ async def format_bad_output(
     # Parse format_instructions to get the schema
     try:
         schema = json.loads(format_instructions)
+
+        def _fix_schema(s: dict[str, Any]) -> None:
+            if s.get("type") == "array":
+                if "prefixItems" in s:
+                    # OpenAI doesn't support prefixItems (tuple validation).
+                    # Convert to items: {anyOf: [...]} to satisfy "items must be a schema object"
+                    # This allows valid tuple elements but loses positional validation.
+                    prefix_items = s.pop("prefixItems")
+                    s["items"] = {"anyOf": prefix_items}
+
+                if "items" in s and isinstance(s["items"], dict):
+                    _fix_schema(s["items"])
+                elif "items" in s and isinstance(s["items"], list):
+                    # Should not happen after the fix above, but handle legacy cases if any
+                    for item in s["items"]:
+                        _fix_schema(item)
+            elif s.get("type") == "object":
+                if "properties" in s:
+                    for prop in s["properties"].values():
+                        _fix_schema(prop)
+                if "additionalProperties" in s and isinstance(
+                    s["additionalProperties"], dict
+                ):
+                    _fix_schema(s["additionalProperties"])
+                if "$defs" in s:
+                    for def_schema in s["$defs"].values():
+                        _fix_schema(def_schema)
+
+        _fix_schema(schema)
+
         # Build proper json_schema response_format
         completion_kwargs["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "reformatted_output",
                 "schema": schema,
-                "strict": True,
+                "strict": False,
             },
         }
     except json.JSONDecodeError:
@@ -126,6 +164,8 @@ async def format_bad_output(
     response = await acompletion(**completion_kwargs)
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
+    log.debug(f"Model: {model_name}")
+    log.debug(f"Prompt: {content}")
     log.info(f"Reformated output: {reformatted_output}")
     return reformatted_output
 
@@ -265,6 +305,8 @@ async def agenerate(
         # Include agent name in logs if available
         agent_name = input_values.get("agent", "")
         log_prefix = f" [{agent_name}]" if agent_name else ""
+        log.debug(f"Model: {model_name}")
+        log.debug(f"Prompt: {messages}")
         log.info(f"Generated result{log_prefix}: {result}")
         assert isinstance(result, str)
         return cast(OutputType, output_parser.parse(result))
@@ -303,6 +345,8 @@ async def agenerate(
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")
     log_prefix = f" [{agent_name}]" if agent_name else ""
+    log.debug(f"Model: {model_name}")
+    log.debug(f"Prompt: {messages}")
     log.info(f"Generated result{log_prefix}: {parsed_result}")
     return parsed_result
 
@@ -380,12 +424,20 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    strict_action_constraint: bool = False,
+    custom_template: str | None = None,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
     """
     try:
-        if script_like:
+        if custom_template:
+            if script_like:
+                raise ValueError(
+                    "script_like and custom_template are mutually exclusive"
+                )
+            template = custom_template
+        elif script_like:
             # model as playwright
             template = """
                 Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
@@ -418,6 +470,41 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
+
+        # Create dynamic AgentAction model with restricted ActionType
+        if strict_action_constraint and action_types:
+            # Create a dynamic Literal for the allowed action types
+            # Use __getitem__ to dynamically create Literal from list of strings
+            DynamicActionType = Literal.__getitem__(tuple(action_types))
+
+            # Create a dynamic Pydantic model
+            from pydantic import create_model, Field
+
+            DynamicAgentAction = create_model(
+                "AgentAction",
+                action_type=(
+                    DynamicActionType,
+                    Field(
+                        ...,
+                        description="whether to speak at this turn or choose to not do anything",
+                    ),
+                ),
+                argument=(
+                    str,
+                    Field(
+                        ...,
+                        description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action",
+                    ),
+                ),
+                __base__=AgentAction,
+            )
+
+            output_parser_obj: PydanticOutputParser[Any] = PydanticOutputParser(
+                pydantic_object=DynamicAgentAction
+            )
+        else:
+            output_parser_obj = PydanticOutputParser(pydantic_object=AgentAction)
+
         return await agenerate(
             model_name=model_name,
             template=template,
@@ -426,8 +513,9 @@ async def agenerate_action(
                 turn_number=str(turn_number),
                 history=history,
                 action_list=" ".join(action_types),
+                goal=goal,
             ),
-            output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+            output_parser=output_parser_obj,
             temperature=temperature,
             structured_output=True,
             bad_output_process_model=bad_output_process_model,
