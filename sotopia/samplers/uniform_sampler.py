@@ -1,15 +1,17 @@
 import random
+import logging
 from typing import Any, Generator, Type, TypeVar
 
 from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import AgentProfile, EnvironmentProfile
 from sotopia.envs.parallel import ParallelSotopiaEnv
 
-
 from .base_sampler import BaseSampler, EnvAgentCombo
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
+
+logger = logging.getLogger(__name__)
 
 
 class UniformSampler(BaseSampler[ObsType, ActType]):
@@ -63,7 +65,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
             env_profile = random.choice(self.env_candidates)
             if isinstance(env_profile, str):
                 env_profile = EnvironmentProfile.get(env_profile)
-            print(f"Creating ParallelSotopiaEnv with {n_agent} agents")
+            logger.info("Creating ParallelSotopiaEnv with %s agents", n_agent)
             env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
             agent_profile_candidates = self.agent_candidates
