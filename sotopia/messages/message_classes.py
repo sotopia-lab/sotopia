@@ -2,6 +2,7 @@ import re
 from typing import Literal, cast
 
 from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from pydantic_core import PydanticCustomError
 
 from sotopia.utils import format_docstring
 
@@ -150,13 +151,15 @@ class AgentAction(Message):
 
     @field_validator("to", mode="before")
     @classmethod
-    def filter_to(cls, to: list[str] | None, info: ValidationInfo) -> list[str] | None:
+    def validate_to(
+        cls, to: list[str] | None, info: ValidationInfo
+    ) -> list[str] | None:
         """
-        Normalize and validate the `to` recipients.
+        Validate the `to` recipients.
 
         - If `to` is None or empty list or no context is provided, return unchanged.
         - If `info.context["agent_names"]` is provided (via `model_validate(..., context=...)`),
-          remove any recipients not in that set (those are invalid recipient names).
+          raise a validation error if any recipients are not in that set or if a sender targets themselves.
         """
         if not to:
             return to
@@ -167,7 +170,20 @@ class AgentAction(Message):
         if not agent_names:
             return to
 
-        return list(agent_names & set(to))
+        sender = info.context.get("sender") if info.context else None
+        invalid = [
+            r
+            for r in to
+            if r not in agent_names or (sender is not None and r == sender)
+        ]
+        if invalid:
+            allowed = sorted(n for n in agent_names if n != sender)
+            raise PydanticCustomError(
+                "invalid_to",
+                "Invalid recipient(s) in 'to': {invalid}. Allowed: {allowed}. Regenerate with `to` subset of allowed, or omit `to` for public.",
+                {"invalid": invalid, "allowed": allowed},
+            )
+        return to
 
 
 ScriptInteractionReturnType = tuple[
