@@ -185,7 +185,10 @@ async def arun_one_episode(
                     )
                 except ValueError as e:
                     agents[agent_name].recv_message(
-                        "Environment", SimpleMessage(message=f"Invalid action: {e}. Regenerate according to provided error message")
+                        "Environment",
+                        SimpleMessage(
+                            message=f"Invalid action: {e}. Regenerate according to provided error message"
+                        ),
                     )
                     # Retry once
                     action = await agents[agent_name].aact(
