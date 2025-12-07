@@ -1,18 +1,15 @@
-import logging
 import random
 from typing import Any, Generator, Type, TypeVar
 
 from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import AgentProfile, EnvironmentProfile
 from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.envs import SocialDeductionGame
+from sotopia.envs.multi_agent_parallel import MultiAgentSotopiaEnv
 
 from .base_sampler import BaseSampler, EnvAgentCombo
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
-
-logger = logging.getLogger(__name__)
 
 
 class UniformSampler(BaseSampler[ObsType, ActType]):
@@ -66,18 +63,14 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
             env_profile = random.choice(self.env_candidates)
             if isinstance(env_profile, str):
                 env_profile = EnvironmentProfile.get(env_profile)
-            logger.info("Creating environment with %s agents", n_agent)
-            game_meta = getattr(env_profile, "game_metadata", None) or {}
-            env: ParallelSotopiaEnv
-            if game_meta.get("mode") == "social_game":
-                config_path = game_meta.get("config_path")
-                assert (
-                    config_path
-                ), "game_metadata.config_path is required for social_game"
-                env = SocialDeductionGame(
-                    env_profile=env_profile, config_path=config_path, **env_params
+            # Use MultiAgentSotopiaEnv for more than 2 agents
+            if n_agent > 2:
+                print(f"Creating MultiAgentSotopiaEnv with {n_agent} agents")
+                env: ParallelSotopiaEnv = MultiAgentSotopiaEnv(
+                    env_profile=env_profile, **env_params
                 )
             else:
+                print(f"Creating ParallelSotopiaEnv with {n_agent} agents")
                 env = ParallelSotopiaEnv(env_profile=env_profile, **env_params)
 
             agent_profile_candidates = self.agent_candidates

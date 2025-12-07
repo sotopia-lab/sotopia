@@ -1,7 +1,6 @@
 import asyncio
 import itertools
 import logging
-import re
 from typing import Literal, Sequence, Type, AsyncGenerator, Union
 
 import gin
@@ -19,7 +18,7 @@ from sotopia.agents.base_agent import BaseAgent
 from sotopia.database import EpisodeLog, NonStreamingSimulationStatus, SotopiaDimensions
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
-    EvaluationForAgents,
+    EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     unweighted_aggregate_evaluate,
@@ -63,13 +62,7 @@ def run_sync_server(
     else:
         environment_messages = env.reset()
     agents = Agents()
-    # agents_model_names = [model_name_dict["agent1"], model_name_dict["agent2"]]
-    # derive agent keys like agent1, agent2, … agentN
-    agent_keys = sorted(k for k in model_name_dict if re.fullmatch(r"agent\d+", k))
-    agents_model_names = [model_name_dict[k] for k in agent_keys]
-    if len(agents_model_names) != len(env.agents):
-        raise ValueError("Number of agent models must match number of env agents")
-
+    agents_model_names = [model_name_dict["agent1"], model_name_dict["agent2"]]
     for agent_name, agent_model in zip(env.agents, agents_model_names):
         if agent_model == "human":
             agents[agent_name] = HumanAgent(agent_name)
@@ -159,44 +152,22 @@ async def arun_one_episode(
         while not done:
             # gather agent messages
             agent_messages: dict[str, AgentAction] = dict()
-
+            actions = await asyncio.gather(
+                *[
+                    agents[agent_name].aact(environment_messages[agent_name])
+                    for agent_name in env.agents
+                ]
+            )
             if script_like:
-                # Only call agents where action_mask is True
+                # manually mask one message
                 agent_mask = env.action_mask
-                actions_to_gather = []
-                acting_indices = []
-
-                for idx, agent_name in enumerate(env.agents):
-                    if agent_mask[idx]:
-                        actions_to_gather.append(
-                            agents[agent_name].aact(environment_messages[agent_name])
-                        )
-                        acting_indices.append(idx)
-
-                # Gather only acting agents' responses
-                if actions_to_gather:
-                    acting_actions = await asyncio.gather(*actions_to_gather)
-                else:
-                    acting_actions = []
-
-                # Build full actions list with "none" for non-acting agents
-                actions = []
-                acting_idx = 0
-                for idx in range(len(env.agents)):
-                    if agent_mask[idx]:
-                        actions.append(acting_actions[acting_idx])
-                        acting_idx += 1
+                for idx in range(len(agent_mask)):
+                    if agent_mask[idx] == 0:
+                        actions[idx] = AgentAction(action_type="none", argument="")
                     else:
-                        actions.append(AgentAction(action_type="none", argument=""))
-            else:
-                # Original behavior: gather all agents
-                actions = await asyncio.gather(
-                    *[
-                        agents[agent_name].aact(environment_messages[agent_name])
-                        for agent_name in env.agents
-                    ]
-                )
+                        pass
 
+            # actions = cast(list[AgentAction], actions)
             for idx, agent_name in enumerate(env.agents):
                 agent_messages[agent_name] = actions[idx]
 
@@ -229,8 +200,7 @@ async def arun_one_episode(
             environment=env.profile.pk,
             agents=[agent.profile.pk for agent in agent_list],
             tag=tag,
-            # models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
-            models=[env.model_name] + [agent.model_name for agent in agent_list],
+            models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
             messages=[
                 [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
                 for messages_in_turn in messages
@@ -273,7 +243,7 @@ async def arun_one_episode(
 @gin.configurable
 async def run_async_server(
     sampler: BaseSampler[Observation, AgentAction] = BaseSampler(),
-    action_order: Literal["simultaneous", "round-robin", "random"] = "round-robin",
+    action_order: Literal["simutaneous", "round-robin", "random"] = "round-robin",
     model_dict: dict[str, str] = {},
     env_agent_combo_list: list[EnvAgentCombo[Observation, AgentAction]] = [],
     omniscient: bool = False,
@@ -329,24 +299,15 @@ async def run_async_server(
             ],
             "terminal_evaluators": [
                 EpisodeLLMEvaluator(
-                    model_dict.get("evaluator", model_dict["env"]),
-                    EvaluationForAgents[SotopiaDimensions],
+                    model_dict["env"],
+                    EvaluationForTwoAgents[SotopiaDimensions],
                 ),
             ],
         }
-        # agents_model_dict = {
-        #     agent_name: model_name
-        #     for agent_name, model_name in model_dict.items()
-        #     if agent_name.startswith("agent")
-        # }
-
-        agent_keys = sorted(k for k in model_dict if re.fullmatch(r"agent\d+", k))
-        agent_models = [model_dict[k] for k in agent_keys]
-
         agents_model_dict = {
-            f"agent{i+1}": model_name for i, model_name in enumerate(agent_models)
+            "agent1": model_dict["agent1"],
+            "agent2": model_dict["agent2"],
         }
-
         env_agent_combo_iter = sampler.sample(
             agent_classes=[
                 get_agent_class(model_name) for model_name in agents_model_dict.values()
@@ -404,10 +365,7 @@ async def arun_one_script(
     env.reset(agents=agents, omniscient=omniscient)
 
     agent_names = [agent.agent_name for agent in agent_list]
-    # assert len(agent_names) == 2, f"only support 2 agents, current: {agent_names}"
-    assert (
-        agents and len(agents) >= 2
-    ), "At least two agents required, current: {agent_names}"
+    assert len(agent_names) == 2, f"only support 2 agents, current: {agent_names}"
 
     script_background = env.inbox[0][1]
     assert isinstance(script_background, ScriptBackground)
@@ -420,9 +378,9 @@ async def arun_one_script(
     env_message = [("Environment", script_background)]
     agent_messages = env_message + agent_messages
 
-    evaluator: EpisodeLLMEvaluator[SotopiaDimensions] = EpisodeLLMEvaluator(
-        model_name=model_dict.get("evaluator", model_dict["env"]),
-        response_format_class=EvaluationForAgents[SotopiaDimensions],
+    evaluator = EpisodeLLMEvaluator(
+        model_name="gpt-4",
+        response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
     )
     response = unweighted_aggregate_evaluate(
         list(
@@ -440,11 +398,11 @@ async def arun_one_script(
         )
     )
     info: dict[str, dict[str, str | ScriptEnvironmentResponse | float | None]] = {
-        script_background.agent_names[0]: {
+        script_background.p1_name: {
             "comments": response.comments or "",
             "complete_rating": response.p1_rate or 0,  # type: ignore
         },
-        script_background.agent_names[1]: {
+        script_background.p2_name: {
             "comments": response.comments or "",
             "complete_rating": response.p2_rate or 0,  # type: ignore
         },
@@ -454,18 +412,13 @@ async def arun_one_script(
         environment=env.profile.pk,
         agents=[agent.profile.pk for agent in agent_list],
         tag=tag,
-        models=[model_dict["env"]]
-        + [
-            model_dict.get(f"agent{i+1}", model_dict.get("agent1", ""))
-            for i in range(len(agent_list))
-        ],
+        models=[model_dict["env"], model_dict["agent1"], model_dict["agent2"]],
         messages=[
             [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
             for messages_in_turn in messages
         ],
-        reasoning="".join(
-            [str(info[agent]["comments"]) for agent in env.agents[:2]]
-        ),  # Keep first 2 for compatibility
+        reasoning=str(info[env.agents[0]]["comments"])
+        + str(info[env.agents[1]]["comments"]),
         rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
         rewards_prompt=info["rewards_prompt"]["overall_prompt"],
     )
@@ -494,9 +447,9 @@ async def aevaluate_one_episode(
     push_to_db: bool = False,
 ) -> None:
     history = "\n".join(episode.render_for_humans()[1][:-2])
-    evaluator: EpisodeLLMEvaluator[SotopiaDimensions] = EpisodeLLMEvaluator(
+    evaluator = EpisodeLLMEvaluator(
         model_name=model,
-        response_format_class=EvaluationForAgents[SotopiaDimensions],
+        response_format_class=EvaluationForTwoAgents[SotopiaDimensions],
     )
     response = unweighted_aggregate_evaluate(
         list(
@@ -507,6 +460,7 @@ async def aevaluate_one_episode(
                             turn_number=-1,
                             history=history,
                             messages=None,
+                            temperature=0.0,
                         )
                         for single_evaluator in [evaluator]
                     ]
