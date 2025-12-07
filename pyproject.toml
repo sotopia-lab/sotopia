@@ -11,7 +11,7 @@ license = { text = "MIT License" }
 readme = "README.md"
 
 dependencies = [
-    "lxml>=4.9.3,<6.0.0",
+    "lxml>=4.9.3,<7.0.0",
     "openai>=1.11.0,<2.0.0",
     "rich>=13.6.0,<15.0.0",
     "PettingZoo==1.25.0",
