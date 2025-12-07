@@ -1,0 +1,42 @@
+# Social Game Engine
+
+The Social Game Engine is a new experimental module in Sotopia designed for creating complex, multi-agent social simulations with structured phases, roles, and secret information.
+
+## Overview
+
+Unlike standard dyadic interactions, social games often involve:
+- **Multiple Agents**: More than 2 agents interacting simultaneously.
+- **Roles & Teams**: Agents have distinct roles (e.g., Villager, Werewolf) and conflicting goals.
+- **Dynamic Eras/Phases**: Games progress through distinct states (e.g., Day Discussion, Night Action).
+- **Private Information**: Agents have secrets and limited visibility of others' actions.
+
+## Key Classes
+
+### `SocialGame`
+The abstract base class for any multiplayer social game. It handles:
+- **Turn Management**: Supports `round-robin` (sequential) or `simultaneous` (parallel) actions.
+- **State Transitions**: Manages the flow of the game through defined states.
+
+### `SocialDeductionGame`
+A subclass specialized for games like Werewolves, Undercover, or Spyfall.
+- **Action Masking**: Enforces who can act in which phase.
+- **Visibility System**: Controls who sees what messages (Public, Team-only, Private).
+- **Environment Notifications**: Automatically broadcasts state changes to all agents, ensuring valid context even during private phases.
+
+## Example: Duskmire Werewolves
+
+We have implemented a full working example of a 6-player Werewolves game using this engine.
+
+<Callout type="info">
+You can find the code and run the example at `examples/experimental/werewolves`.
+See the [README](https://github.com/sotopia-lab/sotopia/tree/main/examples/experimental/werewolves/README.md) in that directory for details.
+</Callout>
+
+### Key Features Demonstrated
+- **Sequential Discussion**: Agents speak one-by-one during the day, referencing previous speakers.
+- **Hidden Roles**: Role information is concealed upon elimination.
+- **Complex Logic**: Seer inspections, Witch potions, and Werewolf voting integration.
+
+## Usage
+
+To use the Social Game engine, you typically subclass `SocialDeductionGame`, define your states in `config.json`, and implement custom `EnvironmentProfile`s.

@@ -173,6 +173,8 @@ class SocialDeductionGame(SocialGame):
     - Alive/dead status
     - Private information visibility
     - State transitions
+    - Turn management (round-robin vs simultaneous)
+    - Global Environment notifications (bypassing visibility filters)
     """
 
     def __init__(
