@@ -164,10 +164,16 @@ if __name__ == "__main__":
     import argparse
 
     # Reconfigure logging to suppress sotopia's verbose output
+    # Must be done here to override any import-time configurations
+
+    # 1. Root Logger
     logging.basicConfig(level=logging.ERROR)
-    logging.getLogger("sotopia").setLevel(logging.ERROR)
-    logging.getLogger("sotopia.generation").setLevel(logging.ERROR)
-    logging.getLogger("httpx").setLevel(logging.ERROR)
+
+    # 2. Silence sotopia experimental server and generation
+    server_logger = logging.getLogger("sotopia.experimental.server")
+    server_logger.setLevel(logging.ERROR)
+    generation_logger = logging.getLogger("sotopia.generation")
+    generation_logger.setLevel(logging.ERROR)
 
     os.environ.setdefault("REDIS_OM_URL", "redis://:@localhost:6379")
 

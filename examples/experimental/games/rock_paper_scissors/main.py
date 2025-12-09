@@ -34,20 +34,9 @@ CONFIG_PATH = BASE_DIR / "config.json"
 os.environ.setdefault("REDIS_OM_URL", "redis://:@localhost:6379")
 redis.Redis(host="localhost", port=6379)
 
-# Configure logging
-LOG_FILE = BASE_DIR / "rps_game_debug.log"
-_fh = logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8")
-_fh.setFormatter(
-    logging.Formatter("%(asctime)s %(levelname)-7s %(name)s - %(message)s")
-)
+# Loggers (configured in main if running standalone)
 _gen_logger = logging.getLogger("sotopia.generation")
-_gen_logger.setLevel(logging.DEBUG)
-_gen_logger.addHandler(_fh)
-
 _env_logger = logging.getLogger("sotopia.envs.social_game")
-_env_logger.setLevel(logging.INFO)
-_env_logger.addHandler(_fh)
-_env_logger.addHandler(RichHandler())
 
 
 # ============================================================================
@@ -394,4 +383,18 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    # Configure logging for standalone execution
+    LOG_FILE = BASE_DIR / "rps_game_debug.log"
+    _fh = logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8")
+    _fh.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)-7s %(name)s - %(message)s")
+    )
+
+    _gen_logger.setLevel(logging.DEBUG)
+    _gen_logger.addHandler(_fh)
+
+    _env_logger.setLevel(logging.INFO)
+    _env_logger.addHandler(_fh)
+    _env_logger.addHandler(RichHandler())
+
     asyncio.run(main())
