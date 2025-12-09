@@ -164,8 +164,6 @@ if __name__ == "__main__":
     import argparse
 
     # Reconfigure logging to suppress sotopia's verbose output
-    # Must be done here to override any import-time configurations
-
     # 1. Root Logger
     logging.basicConfig(level=logging.ERROR)
 
