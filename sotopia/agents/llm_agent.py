@@ -1,6 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import cast
+from typing import Any, cast
 
 from sotopia.agents import BaseAgent
 from sotopia.database import AgentProfile
@@ -41,6 +41,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self.script_like = script_like
         self.strict_action_constraint = strict_action_constraint
         self.custom_template = custom_template
+        self.generation_history: list[dict[str, Any]] = []
 
     @property
     def goal(self) -> str:
@@ -79,7 +80,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     custom_template, action_instructions=obs.action_instruction
                 )
 
-            action = await agenerate_action(
+            action, prompt, raw_response = await agenerate_action(
                 self.model_name,
                 history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
                 turn_number=obs.turn_number,
@@ -89,6 +90,16 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 script_like=self.script_like,
                 strict_action_constraint=self.strict_action_constraint,
                 custom_template=custom_template,
+                return_prompt_and_response=True,
+            )
+            self.generation_history.append(
+                {
+                    "turn_number": obs.turn_number,
+                    "prompt": prompt,
+                    "response": raw_response,
+                    "parsed_action": action.model_dump(),
+                    "agent_name": self.agent_name,
+                }
             )
             # Temporary fix for mixtral-moe model for incorrect generation format
             if "Mixtral-8x7B-Instruct-v0.1" in self.model_name:

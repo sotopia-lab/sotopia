@@ -1,0 +1,14 @@
+{
+    "agents": [
+        {
+            "name": "Alice",
+            "role": "Player",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Bob",
+            "role": "Player",
+            "agent_model": "gpt-4o-mini"
+        }
+    ]
+}

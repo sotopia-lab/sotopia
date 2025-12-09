@@ -1,0 +1,45 @@
+{
+    "scenario": "Prisoner's Dilemma",
+    "description": "Two players must secretly choose to Cooperate or Defect. You play exactly 5 rounds. You cannot speak to the other player. You can only choose your action. The payoffs depend on the combination of choices. COOPERATE/COOPERATE: 3 points each. DEFECT/COOPERATE: Defector gets 5, Cooperator gets 0. DEFECT/DEFECT: 1 point each. GOAL: Maximize your own score over the 5 rounds. IMPORTANT: If both players score less than 10 points in total, it is a DRAW (0 points). Otherwise, the player with the higher score wins (+1) and the loser gets (-1).",
+    "role_goals": {
+        "Player": "Maximize your own score."
+    },
+    "role_secrets": {
+        "Player": "You can choose to Cooperate or Defect."
+    },
+    "payoff_matrix": {
+        "Cooperate": {
+            "Cooperate": [
+                3,
+                3
+            ],
+            "Defect": [
+                0,
+                5
+            ]
+        },
+        "Defect": {
+            "Cooperate": [
+                5,
+                0
+            ],
+            "Defect": [
+                1,
+                1
+            ]
+        }
+    },
+    "initial_state": "Next Round",
+    "state_transition": {
+        "Next Round": "Next Round"
+    },
+    "state_properties": {
+        "Next Round": {
+            "actions": [
+                "action"
+            ],
+            "action_order": "simultaneous",
+            "visibility": "public"
+        }
+    }
+}

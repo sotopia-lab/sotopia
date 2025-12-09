@@ -1,0 +1,47 @@
+{
+    "scenario": "Spyfall",
+    "description": "A social deduction game where players are at a specific location, but one player is a Spy who doesn't know where they are. GAME STRUCTURE: One Spy, multiple Non-Spies. WIN CONDITIONS: Non-Spies win by identifying the Spy. The Spy wins by guessing the location or avoiding detection. PHASES: (1) Questioning: Players take turns asking questions to each other to prove they know the location without giving it away to the Spy. (2) Voting: Players vote to eliminate the suspected Spy. STRATEGY: Non-Spies must be subtle; Spies must listen and blend in. \n\n The players in this game are: {agent_names}.",
+    "role_goals": {
+        "Non-Spy": "Identify the Spy without revealing the location too clearly.",
+        "Spy": "Figure out the location and blend in as a Non-Spy."
+    },
+    "role_secrets": {
+        "Non-Spy": "The location is: Space Station.",
+        "Spy": "You are the Spy. You do NOT know the location."
+    },
+    "initial_state": "Round_questioning",
+    "state_transition": {
+        "Round_questioning": "Round_vote",
+        "Round_vote": "Round_questioning"
+    },
+    "state_properties": {
+        "Round_questioning": {
+            "actions": [
+                "speak"
+            ],
+            "visibility": "public"
+        },
+        "Round_vote": {
+            "actions": [
+                "action"
+            ],
+            "action_order": "simultaneous",
+            "visibility": "public"
+        }
+    },
+    "end_conditions": [
+        {
+            "type": "team_eliminated",
+            "team": "Spy",
+            "winner": "Non-Spies",
+            "message": "[Game] The Spy has been caught! Non-Spies win."
+        },
+        {
+            "type": "parity",
+            "team": "Spy",
+            "other": "Non-Spies",
+            "winner": "Spy",
+            "message": "[Game] The Spy has evaded capture! Spy wins."
+        }
+    ]
+}

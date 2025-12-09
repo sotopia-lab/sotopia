@@ -1,4 +1,5 @@
 import asyncio
+import json
 import itertools
 import logging
 import re
@@ -127,6 +128,7 @@ async def arun_one_episode(
     episode_pk: str | None = None,
     streaming: bool = False,
     simulation_status: NonStreamingSimulationStatus | None = None,
+    output_path: str | None = None,
 ) -> Union[
     list[tuple[str, str, Message]],
     AsyncGenerator[list[list[tuple[str, str, Message]]], None],
@@ -237,6 +239,52 @@ async def arun_one_episode(
                     simulation_status.save()
             except Exception as e:
                 logging.error(f"Failed to save episode log: {e}")
+
+        if output_path:
+            try:
+                # Construct simplified log
+                model_mapping = {}
+                for agent_name, agent in agents.items():
+                    model_mapping[agent_name] = agent.model_name
+
+                turns_list = []
+                for agent_name, agent in agents.items():
+                    if hasattr(agent, "generation_history"):
+                        for entry in agent.generation_history:
+                            # Flatten and clean up entry
+                            clean_entry = {
+                                "turn_number": entry.get("turn_number"),
+                                "agent_name": agent_name,
+                                "model_name": model_mapping.get(agent_name, "Unknown"),
+                                "prompt": entry.get("prompt"),
+                                "response": entry.get("response"),
+                            }
+                            turns_list.append(clean_entry)
+
+                # Sort by turn number
+                turns_list.sort(
+                    key=lambda x: int(x["turn_number"])
+                    if x["turn_number"] is not None
+                    else -1
+                )
+
+                custom_log = {
+                    "pk": epilog.pk,
+                    "tag": tag,
+                    "model_mapping": model_mapping,
+                    "rewards": epilog.rewards,
+                    "turns": turns_list,
+                }
+
+                with open(output_path, "w") as f:
+                    # Use json.dumps with indent for readability
+                    f.write(json.dumps(custom_log, indent=4))
+            except Exception as e:
+                import traceback
+
+                logging.error(
+                    f"Failed to save episode log to file: {e}\n{traceback.format_exc()}"
+                )
 
     if streaming:
         return generate_messages()
@@ -485,25 +533,44 @@ async def aevaluate_one_episode(
             )
         )
     )
-    info: dict[str, dict[str, str | ScriptEnvironmentResponse | float | None]] = {
-        episode.agents[0]: {
+    info: dict[str, dict[str, str | ScriptEnvironmentResponse | float | None]] = {}
+    for i, agent_name in enumerate(episode.agents):
+        # Try to find reward in various possible locations
+        rating: float | tuple[float, dict[str, float]] | None = 0
+        if response.rewards:
+            # Check for direct name match or numeric index match (agent_1, agent_2...)
+            if agent_name in response.rewards:
+                rating = response.rewards[agent_name]
+            elif f"agent_{i+1}" in response.rewards:
+                rating = response.rewards[f"agent_{i+1}"]
+
+        # Fallback to legacy p1_rate/p2_rate for 2-agent cases if rewards missing
+        if rating == 0 or rating is None:
+            if i == 0 and response.p1_rate is not None:
+                rating = response.p1_rate
+            elif i == 1 and response.p2_rate is not None:
+                rating = response.p2_rate
+
+        # Unpack tuple if necessary (value, metadata)
+        if isinstance(rating, tuple):
+            rating = rating[0]
+
+        info[agent_name] = {
             "comments": response.comments or "",
-            "complete_rating": response.p1_rate or 0,  # type: ignore
-        },
-        episode.agents[1]: {
-            "comments": response.comments or "",
-            "complete_rating": response.p2_rate or 0,  # type: ignore
-        },
-    }
+            "complete_rating": rating or 0,
+        }
+
     assert isinstance(episode.models, list)
+    # Generic model list: [env_model, agent1_model, agent2_model...]
+    log_models = [model] + episode.models[1:] if episode.models else [model]
+
     epilog = EpisodeLog(
         environment=episode.environment,
         agents=episode.agents,
         tag=tag,
-        models=[model, episode.models[1], episode.models[2]],
+        models=log_models,
         messages=episode.messages,
-        reasoning=str(info[episode.agents[0]]["comments"])
-        + str(info[episode.agents[1]]["comments"]),
+        reasoning="\n".join([str(info[agent]["comments"]) for agent in episode.agents]),
         rewards=[info[agent_name]["complete_rating"] for agent_name in episode.agents],
         rewards_prompt="TBD",
     )

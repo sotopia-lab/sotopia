@@ -110,10 +110,16 @@ class RuleBasedTerminatedEvaluator(Evaluator):
                 latest_action_by_agent[speaker] = msg.action_type
 
         # If we haven't observed any agent messages yet, do not terminate early
-        if observed_agents:
+        env = kwargs.get("env")
+        if env:
+            all_agents = set(env.agents)
+        else:
+            all_agents = observed_agents
+
+        if all_agents:
             num_active_agents = sum(
                 1
-                for agent in observed_agents
+                for agent in all_agents
                 if latest_action_by_agent.get(agent, "speak") != "leave"
             )
         else:
@@ -288,7 +294,7 @@ def _reduce(
     if len(scores) and "overall_score" not in responses_dict:
         scores = [x for x in scores if x is not None]
         reduced_dict["overall_score"] = sum(scores) / len(scores)
-    comments = "\n".join([f"{k}: {v}" for k, v in comments_dict.items()])
+    comments = "\n".join([f"{k}: {v}" for k, v in comments_dict.items() if v])
     return reduced_dict, comments
 
 
@@ -307,7 +313,8 @@ def unweighted_aggregate_evaluate(
         defaultdict(list)
     )
     for response in responses:
-        assert response[0] == "environment" or response[0].startswith("agent")
+        # Relaxed assertion: allow any key for agents, not just "agent_X"
+        # assert response[0] == "environment" or response[0].startswith("agent")
         responses_dict[response[0]].append(response[1])
 
     environment_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
@@ -362,4 +369,8 @@ def unweighted_aggregate_evaluate(
         if agent_2_responses != ({}, "")
         else None,
         comments=comments,
+        rewards={
+            k: (v[0]["overall_score"] if "overall_score" in v[0] else 0, v[0])
+            for k, v in agent_responses.items()
+        },
     )

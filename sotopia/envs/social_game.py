@@ -109,8 +109,15 @@ class SocialGame(ParallelSotopiaEnv, ABC):
         rewards = {agent: 0.0 for agent in self.agents}
         truncations = {agent: False for agent in self.agents}
         info = {
-            agent: {"comments": evaluator_response.comments or "", "complete_rating": 0}
-            for agent in self.agents
+            agent: {
+                "comments": evaluator_response.comments or "",
+                "complete_rating": (
+                    evaluator_response.rewards.get(f"agent_{i+1}", (0, {}))[0]
+                    if evaluator_response.rewards
+                    else 0
+                ),
+            }
+            for i, agent in enumerate(self.agents)
         }
 
         return observations, rewards, terminated, truncations, info
@@ -256,8 +263,11 @@ class SocialDeductionGame(SocialGame):
             first_agent = list(self.agents)[0]
             reason = info.get(first_agent, {}).get("comments", "Unknown reason")
 
-            # Try to extract winner from reason if possible, otherwise just print reason
-            logger.info(f"Game Ends: {reason}")
+            log_msg = f"Game Ends:\n{reason}\n"
+            for agent_name in self.agents:
+                agent_rating = info.get(agent_name, {}).get("complete_rating", 0)
+                log_msg += f"{agent_name}: {agent_rating}\n"
+            logger.info(log_msg)
 
         return observations, rewards, terminated, truncations, info
 

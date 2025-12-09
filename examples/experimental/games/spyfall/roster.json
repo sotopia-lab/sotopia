@@ -1,0 +1,28 @@
+{
+    "agents": [
+        {
+            "name": "Alice",
+            "role": "Non-Spy",
+            "team": "Non-Spies",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Bob",
+            "role": "Spy",
+            "team": "Spy",
+            "agent_model": "gpt-5"
+        },
+        {
+            "name": "Charlie",
+            "role": "Non-Spy",
+            "team": "Non-Spies",
+            "agent_model": "gpt-4o"
+        },
+        {
+            "name": "David",
+            "role": "Non-Spy",
+            "team": "Non-Spies",
+            "agent_model": "gpt-4o"
+        }
+    ]
+}

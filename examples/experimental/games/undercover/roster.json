@@ -1,0 +1,40 @@
+{
+    "agents": [
+        {
+            "name": "Alice",
+            "role": "Civilian",
+            "team": "Civilians",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Bob",
+            "role": "Undercover",
+            "team": "Undercover",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Charlie",
+            "role": "Civilian",
+            "team": "Civilians",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "David",
+            "role": "Civilian",
+            "team": "Civilians",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Eve",
+            "role": "Undercover",
+            "team": "Undercover",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Frank",
+            "role": "Civilian",
+            "team": "Civilians",
+            "agent_model": "gpt-4o-mini"
+        }
+    ]
+}

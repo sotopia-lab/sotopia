@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Elo Leaderboard</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background-color: #ffffff;
+        color: #333;
+        margin: 0;
+        padding: 40px;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      h1::before {
+        content: "🏆";
+        font-size: 28px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 800px;
+      }
+      th {
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #888;
+        padding: 12px 0;
+        border-bottom: 1px solid #eee;
+      }
+      td {
+        padding: 16px 0;
+        border-bottom: 1px solid #f5f5f5;
+        vertical-align: middle;
+      }
+      .rank {
+        width: 60px;
+        font-weight: 700;
+        color: #555;
+        font-size: 16px;
+      }
+      .medal {
+        font-size: 20px;
+        margin-right: 5px;
+      }
+      .model-cell {
+        display: flex;
+        flex-direction: column;
+      }
+      .model-name {
+        font-weight: 700;
+        font-size: 16px;
+        color: #000;
+      }
+      .model-provider {
+        font-size: 12px;
+        color: #888;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 4px;
+      }
+      .elo {
+        font-weight: 700;
+        font-size: 16px;
+        width: 100px;
+      }
+      .elo-split {
+        font-weight: 700;
+        font-size: 16px;
+        width: 100px;
+      }
+      .win-rate {
+        font-weight: 700;
+        font-size: 16px;
+        width: 120px;
+        color: #e55;
+      }
+      .matches {
+        font-weight: 500;
+        font-size: 16px;
+        width: 80px;
+        text-align: right;
+        color: #333;
+      }
+      .footer {
+        margin-top: 30px;
+        font-size: 14px;
+        color: #666;
+        font-weight: 500;
+      }
+      .provider-icon {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background-color: #ddd;
+        display: inline-block;
+      }
+
+      /* Rank Colors */
+      tr:nth-child(1) .rank {
+        color: #d4af37;
+      } /* Gold-ish logic handled by emoji */
+      tr:nth-child(2) .rank {
+        color: #c0c0c0;
+      }
+      tr:nth-child(3) .rank {
+        color: #cd7f32;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Elo Leaderboard</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Model</th>
+          <th>ELO</th>
+          <th>ELO-W</th>
+          <th>ELO-V</th>
+          <th>Win Rate</th>
+          <th style="text-align: right">Matches</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="rank">🥇</td>
+          <td>
+            <div class="model-cell">
+              <span class="model-name">gpt-5</span>
+              <span class="model-provider"
+                ><span class="provider-icon"></span> OpenAI</span
+              >
+            </div>
+          </td>
+          <td class="elo">1534</td>
+          <td class="elo-split">1470</td>
+          <td class="elo-split">1462</td>
+          <td class="win-rate" style="color: #2a9d8f">90.0%</td>
+          <td class="matches">100</td>
+        </tr>
+
+        <tr>
+          <td class="rank">🥈</td>
+          <td>
+            <div class="model-cell">
+              <span class="model-name">gpt-4o</span>
+              <span class="model-provider"
+                ><span class="provider-icon"></span> OpenAI</span
+              >
+            </div>
+          </td>
+          <td class="elo">1289</td>
+          <td class="elo-split">1191</td>
+          <td class="elo-split">1368</td>
+          <td class="win-rate" style="color: #2a9d8f">63.0%</td>
+          <td class="matches">100</td>
+        </tr>
+
+        <tr>
+          <td class="rank">🥉</td>
+          <td>
+            <div class="model-cell">
+              <span class="model-name">gpt-4o-mini</span>
+              <span class="model-provider"
+                ><span class="provider-icon"></span> OpenAI</span
+              >
+            </div>
+          </td>
+          <td class="elo">1219</td>
+          <td class="elo-split">1214</td>
+          <td class="elo-split">1206</td>
+          <td class="win-rate" style="color: #2a9d8f">51.0%</td>
+          <td class="matches">100</td>
+        </tr>
+
+        <tr>
+          <td class="rank">#4</td>
+          <td>
+            <div class="model-cell">
+              <span class="model-name">qwen/qwen3-4b-2507</span>
+              <span class="model-provider"
+                ><span class="provider-icon"></span> Alibaba</span
+              >
+            </div>
+          </td>
+          <td class="elo">1189</td>
+          <td class="elo-split">1195</td>
+          <td class="elo-split">1206</td>
+          <td class="win-rate" style="color: #2a9d8f">52.0%</td>
+          <td class="matches">98</td>
+        </tr>
+
+        <tr>
+          <td class="rank">#5</td>
+          <td>
+            <div class="model-cell">
+              <span class="model-name">qwen/qwen3-next-80b</span>
+              <span class="model-provider"
+                ><span class="provider-icon"></span> Alibaba</span
+              >
+            </div>
+          </td>
+          <td class="elo">1131</td>
+          <td class="elo-split">1022</td>
+          <td class="elo-split">1245</td>
+          <td class="win-rate" style="color: #e55">37.0%</td>
+          <td class="matches">100</td>
+        </tr>
+
+        <tr>
+          <td class="rank">#6</td>
+          <td>
+            <div class="model-cell">
+              <span class="model-name">google/gemma-3-1b</span>
+              <span class="model-provider"
+                ><span class="provider-icon"></span> Google</span
+              >
+            </div>
+          </td>
+          <td class="elo">836</td>
+          <td class="elo-split">950</td>
+          <td class="elo-split">866</td>
+          <td class="win-rate" style="color: #e55">6.1%</td>
+          <td class="matches">98</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="footer">ELO-W = Elo as wolf; ELO-V = Elo as villager.</div>
+  </body>
+</html>

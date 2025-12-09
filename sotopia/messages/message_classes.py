@@ -119,6 +119,9 @@ class ScriptEnvironmentResponse(Message):
     comments: str | None = Field(
         description="All of the comments supporting the termination and rating"
     )
+    rewards: dict[str, float | tuple[float, dict[str, float]]] | None = Field(
+        description="dictionary of rewards for all agents", default=None
+    )
 
     def to_natural_language(self) -> str:
         reason_to_stop = format_docstring(

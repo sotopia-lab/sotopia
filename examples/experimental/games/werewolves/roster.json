@@ -1,0 +1,40 @@
+{
+    "agents": [
+        {
+            "name": "Aurora",
+            "role": "Villager",
+            "team": "Villagers",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Bram",
+            "role": "Werewolf",
+            "team": "Werewolves",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Celeste",
+            "role": "Seer",
+            "team": "Villagers",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Dorian",
+            "role": "Werewolf",
+            "team": "Werewolves",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Elise",
+            "role": "Witch",
+            "team": "Villagers",
+            "agent_model": "gpt-4o-mini"
+        },
+        {
+            "name": "Finn",
+            "role": "Villager",
+            "team": "Villagers",
+            "agent_model": "gpt-4o-mini"
+        }
+    ]
+}

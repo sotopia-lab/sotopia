@@ -384,6 +384,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                             evaluator.__acall__(
                                 turn_number=self.turn_number,
                                 messages=self.inbox,
+                                env=self,
                             )
                             for evaluator in evaluators
                         ]
@@ -451,9 +452,26 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             {
                 agent_name: {
                     "comments": response.comments or "",
-                    "complete_rating": 0,
+                    "complete_rating": (
+                        response.rewards.get(f"agent_{i+1}", (0, {}))[0]  # type: ignore[index]
+                        if response.rewards
+                        else (
+                            (response.p1_rate if i == 0 else response.p2_rate)
+                            if isinstance(response.p1_rate, (int, float))
+                            and isinstance(response.p2_rate, (int, float))
+                            else (
+                                response.p1_rate[0]
+                                if i == 0 and isinstance(response.p1_rate, tuple)
+                                else (
+                                    response.p2_rate[0]
+                                    if i == 1 and isinstance(response.p2_rate, tuple)
+                                    else 0
+                                )
+                            )
+                        )
+                    ),
                 }
-                for agent_name in self.agents
+                for i, agent_name in enumerate(self.agents)
             },
         )
 
@@ -492,12 +510,32 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
         # Create info dictionary for all agents
+        if response.terminated:
+            pass
+
         info = {
             agent_name: {
                 "comments": response.comments or "",
-                "complete_rating": 0,
+                "complete_rating": (
+                    response.rewards.get(f"agent_{i+1}", (0, {}))[0]
+                    if response.rewards
+                    else (
+                        (response.p1_rate if i == 0 else response.p2_rate)
+                        if isinstance(response.p1_rate, (int, float))
+                        and isinstance(response.p2_rate, (int, float))
+                        else (
+                            response.p1_rate[0]
+                            if i == 0 and isinstance(response.p1_rate, tuple)
+                            else (
+                                response.p2_rate[0]
+                                if i == 1 and isinstance(response.p2_rate, tuple)
+                                else 0
+                            )
+                        )
+                    )
+                ),
             }
-            for agent_name in self.agents
+            for i, agent_name in enumerate(self.agents)
         }
         if response.terminated:
             info["rewards_prompt"] = {

@@ -1,0 +1,47 @@
+{
+    "scenario": "Undercover",
+    "description": "A social deduction game where players describe a secret word. Most players (Civilians) have the same word, but two players (Undercovers) have a different but related word. GAME STRUCTURE: two Undercovers, four Civilians. WIN CONDITIONS: Civilians win by eliminating Undercovers. The Undercovers win if they survive until only two players remain (or parity). PHASES: (1) Description: Players take turns describing their word using one sentence, without revealing the word itself. (2) Voting: Players vote to eliminate  suspected Undercovers. STRATEGY: Civilians must be vague enough to not help the Undercover but specific enough to prove their identity. The Undercover must infer the Civilians' word and blend in. \n\n The players in this game are: {agent_names}.",
+    "role_goals": {
+        "Civilian": "Describe your word subtly and identify the player with the different word.",
+        "Undercover": "Infer the Civilians' word and blend in without being caught."
+    },
+    "role_secrets": {
+        "Civilian": "Your secret word is: Cat.",
+        "Undercover": "Your secret word is: Dog."
+    },
+    "initial_state": "Round_description",
+    "state_transition": {
+        "Round_description": "Round_vote",
+        "Round_vote": "Round_description"
+    },
+    "state_properties": {
+        "Round_description": {
+            "actions": [
+                "speak"
+            ],
+            "visibility": "public"
+        },
+        "Round_vote": {
+            "actions": [
+                "action"
+            ],
+            "action_order": "simultaneous",
+            "visibility": "public"
+        }
+    },
+    "end_conditions": [
+        {
+            "type": "team_eliminated",
+            "team": "Undercover",
+            "winner": "Civilians",
+            "message": "[Game] The Undercover has been eliminated! Civilians win."
+        },
+        {
+            "type": "parity",
+            "team": "Undercover",
+            "other": "Civilians",
+            "winner": "Undercover",
+            "message": "[Game] The Undercover has survived! Undercover wins."
+        }
+    ]
+}

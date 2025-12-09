@@ -8,7 +8,7 @@ from litellm.utils import supports_response_schema
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
 )
-from typing import Any, cast, Literal
+from typing import Any, cast, Literal, overload
 
 import gin
 
@@ -114,13 +114,43 @@ async def format_bad_output(
     # Parse format_instructions to get the schema
     try:
         schema = json.loads(format_instructions)
+
+        def _fix_schema(s: dict[str, Any]) -> None:
+            if s.get("type") == "array":
+                if "prefixItems" in s:
+                    # OpenAI doesn't support prefixItems (tuple validation).
+                    # Convert to items: {anyOf: [...]} to satisfy "items must be a schema object"
+                    # This allows valid tuple elements but loses positional validation, which is acceptable for strict=False.
+                    prefix_items = s.pop("prefixItems")
+                    s["items"] = {"anyOf": prefix_items}
+
+                if "items" in s and isinstance(s["items"], dict):
+                    _fix_schema(s["items"])
+                elif "items" in s and isinstance(s["items"], list):
+                    # Should not happen after the fix above, but handle legacy cases if any
+                    for item in s["items"]:
+                        _fix_schema(item)
+            elif s.get("type") == "object":
+                if "properties" in s:
+                    for prop in s["properties"].values():
+                        _fix_schema(prop)
+                if "additionalProperties" in s and isinstance(
+                    s["additionalProperties"], dict
+                ):
+                    _fix_schema(s["additionalProperties"])
+                if "$defs" in s:
+                    for def_schema in s["$defs"].values():
+                        _fix_schema(def_schema)
+
+        _fix_schema(schema)
+
         # Build proper json_schema response_format
         completion_kwargs["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "reformatted_output",
                 "schema": schema,
-                "strict": True,
+                "strict": False,
             },
         }
     except json.JSONDecodeError:
@@ -140,6 +170,34 @@ async def format_bad_output(
     return reformatted_output
 
 
+@overload
+async def agenerate(
+    model_name: str,
+    template: str,
+    input_values: dict[str, str],
+    output_parser: OutputParser[OutputType],
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
+    structured_output: bool = False,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    return_prompt_and_response: Literal[False] = False,
+) -> OutputType: ...
+
+
+@overload
+async def agenerate(
+    model_name: str,
+    template: str,
+    input_values: dict[str, str],
+    output_parser: OutputParser[OutputType],
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
+    structured_output: bool = False,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    return_prompt_and_response: Literal[True] = ...,
+) -> tuple[OutputType, list[dict[str, str]], str]: ...
+
+
 @gin.configurable
 @validate_call
 async def agenerate(
@@ -151,7 +209,8 @@ async def agenerate(
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
-) -> OutputType:
+    return_prompt_and_response: bool = False,
+) -> OutputType | tuple[OutputType, list[dict[str, str]], str]:
     """Generate text using LiteLLM instead of Langchain."""
     # Format template with input values
     if "format_instructions" not in input_values:
@@ -279,7 +338,10 @@ async def agenerate(
         log.debug(f"Prompt: {messages}")
         log.info(f"Generated result{log_prefix}: {result}")
         assert isinstance(result, str)
-        return cast(OutputType, output_parser.parse(result))
+        parsed = cast(OutputType, output_parser.parse(result))
+        if return_prompt_and_response:
+            return parsed, messages, result
+        return parsed
 
     messages = [{"role": "user", "content": template}]
 
@@ -318,7 +380,33 @@ async def agenerate(
     log.debug(f"Model: {model_name}")
     log.debug(f"Prompt: {messages}")
     log.info(f"Generated result{log_prefix}: {parsed_result}")
+    if return_prompt_and_response:
+        return parsed_result, messages, result
     return parsed_result
+
+
+@overload
+async def agenerate_env_profile(
+    model_name: str,
+    inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
+    examples: str = "",
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    return_prompt_and_response: Literal[False] = False,
+) -> EnvironmentProfile: ...
+
+
+@overload
+async def agenerate_env_profile(
+    model_name: str,
+    inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
+    examples: str = "",
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    return_prompt_and_response: Literal[True] = ...,
+) -> tuple[EnvironmentProfile, list[dict[str, str]], str]: ...
 
 
 @gin.configurable
@@ -330,28 +418,71 @@ async def agenerate_env_profile(
     temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
-) -> EnvironmentProfile:
+    return_prompt_and_response: bool = False,
+) -> EnvironmentProfile | tuple[EnvironmentProfile, list[dict[str, str]], str]:
     """
     Using langchain to generate the background
     """
-    return await agenerate(
-        model_name=model_name,
-        template="""Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
-        Examples:
-        {examples}
-        Inspirational prompt: {inspiration_prompt}
-        Please use the following format:
-        {format_instructions}
-        """,
-        input_values=dict(
-            inspiration_prompt=inspiration_prompt,
-            examples=examples,
-        ),
-        output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
-        temperature=temperature,
-        bad_output_process_model=bad_output_process_model,
-        use_fixed_model_version=use_fixed_model_version,
-    )
+    if return_prompt_and_response:
+        return await agenerate(
+            model_name=model_name,
+            template="""Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
+            Examples:
+            {examples}
+            Inspirational prompt: {inspiration_prompt}
+            Please use the following format:
+            {format_instructions}
+            """,
+            input_values=dict(
+                inspiration_prompt=inspiration_prompt,
+                examples=examples,
+            ),
+            output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
+            temperature=temperature,
+            bad_output_process_model=bad_output_process_model,
+            use_fixed_model_version=use_fixed_model_version,
+            return_prompt_and_response=True,
+        )
+    else:
+        return await agenerate(
+            model_name=model_name,
+            template="""Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
+            Examples:
+            {examples}
+            Inspirational prompt: {inspiration_prompt}
+            Please use the following format:
+            {format_instructions}
+            """,
+            input_values=dict(
+                inspiration_prompt=inspiration_prompt,
+                examples=examples,
+            ),
+            output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
+            temperature=temperature,
+            bad_output_process_model=bad_output_process_model,
+            use_fixed_model_version=use_fixed_model_version,
+            return_prompt_and_response=False,
+        )
+
+
+@overload
+async def agenerate_relationship_profile(
+    model_name: str,
+    agents_profiles: list[str],
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    return_prompt_and_response: Literal[False] = False,
+) -> RelationshipProfile: ...
+
+
+@overload
+async def agenerate_relationship_profile(
+    model_name: str,
+    agents_profiles: list[str],
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    return_prompt_and_response: Literal[True] = ...,
+) -> tuple[RelationshipProfile, list[dict[str, str]], str]: ...
 
 
 @validate_call
@@ -360,25 +491,80 @@ async def agenerate_relationship_profile(
     agents_profiles: list[str],
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
-) -> tuple[RelationshipProfile, str]:
+    return_prompt_and_response: bool = False,
+) -> RelationshipProfile | tuple[RelationshipProfile, list[dict[str, str]], str]:
     """
     Using langchain to generate the background
     """
     agent_profile = "\n".join(agents_profiles)
-    return await agenerate(
-        model_name=model_name,
-        template="""Please generate relationship between two agents based on the agents' profiles below. Note that you generate
-        {agent_profile}
-        Please use the following format:
-        {format_instructions}
-        """,
-        input_values=dict(
-            agent_profile=agent_profile,
-        ),
-        output_parser=PydanticOutputParser(pydantic_object=RelationshipProfile),
-        bad_output_process_model=bad_output_process_model,
-        use_fixed_model_version=use_fixed_model_version,
-    )
+    if return_prompt_and_response:
+        return await agenerate(
+            model_name=model_name,
+            template="""Please generate relationship between two agents based on the agents' profiles below. Note that you generate
+            {agent_profile}
+            Please use the following format:
+            {format_instructions}
+            """,
+            input_values=dict(
+                agent_profile=agent_profile,
+            ),
+            output_parser=PydanticOutputParser(pydantic_object=RelationshipProfile),
+            bad_output_process_model=bad_output_process_model,
+            use_fixed_model_version=use_fixed_model_version,
+            return_prompt_and_response=True,
+        )
+    else:
+        return await agenerate(
+            model_name=model_name,
+            template="""Please generate relationship between two agents based on the agents' profiles below. Note that you generate
+            {agent_profile}
+            Please use the following format:
+            {format_instructions}
+            """,
+            input_values=dict(
+                agent_profile=agent_profile,
+            ),
+            output_parser=PydanticOutputParser(pydantic_object=RelationshipProfile),
+            bad_output_process_model=bad_output_process_model,
+            use_fixed_model_version=use_fixed_model_version,
+            return_prompt_and_response=False,
+        )
+
+
+@overload
+async def agenerate_action(
+    model_name: str,
+    history: str,
+    turn_number: int,
+    action_types: list[ActionType],
+    agent: str,
+    goal: str,
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
+    script_like: bool = False,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    strict_action_constraint: bool = False,
+    custom_template: str | None = None,
+    return_prompt_and_response: Literal[False] = False,
+) -> AgentAction: ...
+
+
+@overload
+async def agenerate_action(
+    model_name: str,
+    history: str,
+    turn_number: int,
+    action_types: list[ActionType],
+    agent: str,
+    goal: str,
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
+    script_like: bool = False,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    strict_action_constraint: bool = False,
+    custom_template: str | None = None,
+    return_prompt_and_response: Literal[True] = ...,
+) -> tuple[AgentAction, list[dict[str, str]], str]: ...
 
 
 @gin.configurable
@@ -396,7 +582,8 @@ async def agenerate_action(
     use_fixed_model_version: bool = True,
     strict_action_constraint: bool = False,
     custom_template: str | None = None,
-) -> AgentAction:
+    return_prompt_and_response: bool = False,
+) -> AgentAction | tuple[AgentAction, list[dict[str, str]], str]:
     """
     Using langchain to generate an example episode
     """
@@ -475,25 +662,48 @@ async def agenerate_action(
         else:
             output_parser_obj = PydanticOutputParser(pydantic_object=AgentAction)
 
-        return await agenerate(
-            model_name=model_name,
-            template=template,
-            input_values=dict(
-                agent=agent,
-                turn_number=str(turn_number),
-                history=history,
-                action_list=" ".join(action_types),
-                goal=goal,
-            ),
-            output_parser=output_parser_obj,
-            temperature=temperature,
-            structured_output=True,
-            bad_output_process_model=bad_output_process_model,
-            use_fixed_model_version=use_fixed_model_version,
-        )
+        if return_prompt_and_response:
+            return await agenerate(
+                model_name=model_name,
+                template=template,
+                input_values=dict(
+                    agent=agent,
+                    turn_number=str(turn_number),
+                    history=history,
+                    action_list=" ".join(action_types),
+                    goal=goal,
+                ),
+                output_parser=output_parser_obj,
+                temperature=temperature,
+                structured_output=True,
+                bad_output_process_model=bad_output_process_model,
+                use_fixed_model_version=use_fixed_model_version,
+                return_prompt_and_response=True,
+            )
+        else:
+            return await agenerate(
+                model_name=model_name,
+                template=template,
+                input_values=dict(
+                    agent=agent,
+                    turn_number=str(turn_number),
+                    history=history,
+                    action_list=" ".join(action_types),
+                    goal=goal,
+                ),
+                output_parser=output_parser_obj,
+                temperature=temperature,
+                structured_output=True,
+                bad_output_process_model=bad_output_process_model,
+                use_fixed_model_version=use_fixed_model_version,
+                return_prompt_and_response=False,
+            )
     except Exception as e:
         log.warning(f"Failed to generate action due to {e}")
-        return AgentAction(action_type="none", argument="")
+        action = AgentAction(action_type="none", argument="")
+        if return_prompt_and_response:
+            return action, [], str(e)
+        return action
 
 
 @gin.configurable
@@ -517,7 +727,7 @@ async def agenerate_script(
     """
     try:
         if single_step:
-            return await agenerate(
+            result = await agenerate(
                 model_name=model_name,
                 template="""Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
 
@@ -535,7 +745,7 @@ async def agenerate_script(
                     history=history,
                     agent=agent_name,
                 ),
-                output_parser=ScriptOutputParser(  # type: ignore[arg-type]
+                output_parser=ScriptOutputParser(
                     agent_names=agent_names,
                     background=background.to_natural_language(),
                     single_turn=True,
@@ -544,9 +754,10 @@ async def agenerate_script(
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
             )
+            return cast(tuple[ScriptInteractionReturnType, str], result)
 
         else:
-            return await agenerate(
+            result = await agenerate(
                 model_name=model_name,
                 template="""
                 Please write the script between two characters based on their social goals with a maximum of 20 turns.
@@ -559,7 +770,7 @@ async def agenerate_script(
                 input_values=dict(
                     background=background.to_natural_language(),
                 ),
-                output_parser=ScriptOutputParser(  # type: ignore[arg-type]
+                output_parser=ScriptOutputParser(
                     agent_names=agent_names,
                     background=background.to_natural_language(),
                     single_turn=False,
@@ -568,6 +779,7 @@ async def agenerate_script(
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
             )
+            return cast(tuple[ScriptInteractionReturnType, str], result)
     except Exception as e:
         # TODO raise(e) # Maybe we do not want to return anything?
         print(f"Exception in agenerate {e}")
