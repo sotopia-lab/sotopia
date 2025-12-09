@@ -1,0 +1,484 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Duskmire Werewolves - Aurora Harper</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+        background: #1a1a2e;
+        color: #eee;
+        margin: 0;
+      }
+      .sidebar {
+        width: 250px;
+        flex-shrink: 0;
+      }
+      .main-content {
+        flex: 1;
+        max-width: 900px;
+      }
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      .header h1 {
+        margin: 0 0 10px 0;
+        color: white;
+        font-size: 24px;
+      }
+      .header .info {
+        color: #f0f0f0;
+        font-size: 14px;
+      }
+      .players-box {
+        background: #16213e;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      .players-box h3 {
+        margin-top: 0;
+        color: #667eea;
+        font-size: 16px;
+      }
+      .players-box ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .players-box li {
+        padding: 8px;
+        margin: 5px 0;
+        background: #1a1a2e;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+      .input-box {
+        background: #16213e;
+        padding: 20px;
+        border-radius: 10px;
+        position: sticky;
+        top: 20px;
+      }
+      .input-box h3 {
+        margin-top: 0;
+        color: #667eea;
+        font-size: 16px;
+      }
+      .input-box.waiting {
+        background: #27ae60;
+        animation: pulse 2s infinite;
+      }
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+      .action-btn {
+        flex: 1;
+        min-width: 80px;
+        padding: 10px;
+        border: 2px solid #667eea;
+        background: #1a1a2e;
+        color: #eee;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+      .action-btn:hover {
+        background: #667eea;
+      }
+      .action-btn.selected {
+        background: #667eea;
+        border-color: #764ba2;
+      }
+      textarea {
+        width: 100%;
+        padding: 10px;
+        background: #1a1a2e;
+        border: 2px solid #667eea;
+        border-radius: 5px;
+        color: #eee;
+        font-family: inherit;
+        font-size: 14px;
+        resize: vertical;
+        min-height: 80px;
+        box-sizing: border-box;
+      }
+      .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background: #27ae60;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      .submit-btn:hover {
+        background: #2ecc71;
+      }
+      .event {
+        background: #16213e;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+      }
+      .event.phase {
+        border-left-color: #f39c12;
+        background: #2c3e50;
+      }
+      .event.death {
+        border-left-color: #e74c3c;
+        background: #341a1a;
+      }
+      .event.speak {
+        border-left-color: #3498db;
+      }
+      .event.action {
+        border-left-color: #e67e22;
+      }
+      .timestamp {
+        color: #95a5a6;
+        font-size: 12px;
+        margin-bottom: 5px;
+      }
+      .speaker {
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 5px;
+      }
+      .content {
+        line-height: 1.6;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <div class="players-box">
+        <h3>👥 Players</h3>
+        <ul>
+          <li>Aurora Harper</li>
+          <li>Bram Nightshade</li>
+          <li>Celeste Moonseer</li>
+          <li>Dorian Blackwood</li>
+          <li>Elise Farrow</li>
+          <li>Finn Alder</li>
+        </ul>
+      </div>
+
+      <div class="input-box" id="inputBox">
+        <h3>🎮 Your Action</h3>
+        <div id="status">Waiting for your turn...</div>
+        <div id="inputControls" style="display: none">
+          <div class="action-buttons" id="actionButtons"></div>
+          <textarea
+            id="argument"
+            placeholder="Enter your message or action..."
+            style="display: none"
+          ></textarea>
+          <button class="submit-btn" onclick="submitAction()">
+            Submit Action
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="header">
+        <h1>🌕 Duskmire Werewolves</h1>
+        <div class="info">
+          <strong>You are:</strong> Aurora Harper |
+          <strong>Role:</strong> Villager
+        </div>
+      </div>
+      <div id="events">
+        <div class="event death">
+          <div class="timestamp">23:31:46</div>
+
+          <div class="content">Elise Farrow was found dead at dawn.</div>
+        </div>
+
+        <div class="event phase">
+          <div class="timestamp">23:31:46</div>
+
+          <div class="content">☀️ Day breaks. Time to discuss!</div>
+        </div>
+
+        <div class="event speak">
+          <div class="timestamp">23:32:15</div>
+          <div class="speaker">Bram Nightshade</div>
+          <div class="content">
+            Well, this is unfortunate. Elise was a valuable member of our group,
+            and her loss leaves us in a precarious position. I think we should
+            carefully consider who we suspect might be behind this. I honestly
+            didn't notice anything suspicious from Elise last night. She seemed
+            pretty much like herself, but perhaps one of us had a keen eye on
+            her? What do you all think?
+          </div>
+        </div>
+
+        <div class="event speak">
+          <div class="timestamp">23:32:17</div>
+          <div class="speaker">Celeste Moonseer</div>
+          <div class="content">
+            It's truly tragic to lose Elise so early in the game. We must be
+            vigilant. I sensed tension among some players last night, but it's
+            hard to identify without more clues. Let's pool our observations and
+            see if we can deduce who the werewolves might be. Any thoughts on
+            who looked suspicious to you all?
+          </div>
+        </div>
+
+        <div class="event speak">
+          <div class="timestamp">23:32:19</div>
+          <div class="speaker">Dorian Blackwood</div>
+          <div class="content">
+            I agree with both Bram and Celeste. We need to be cautious and
+            analyze the behavior of each player. It's always puzzling when
+            someone like Elise is taken out early. I didn't notice anything
+            suspicious about her either, but I did find that Finn seemed a bit
+            uneasy during our previous discussions. Perhaps we should keep an
+            eye on him as we continue the game. What does everyone else think?
+          </div>
+        </div>
+
+        <div class="event phase">
+          <div class="timestamp">23:32:21</div>
+
+          <div class="content">🗳️ Voting phase. Time to make your choice.</div>
+        </div>
+
+        <div class="event speak">
+          <div class="timestamp">23:32:21</div>
+          <div class="speaker">Finn Alder</div>
+          <div class="content">
+            I agree with Dorian about needing more observation. While my unease
+            may have been noted, I think we should really focus on those who
+            might benefit from Elise's death. We need to consider the dynamics
+            of our interactions last night. Has anyone noticed any patterns in
+            the way people reacted or spoke? It might give us clues about
+            possible werewolves.
+          </div>
+        </div>
+
+        <div class="event action">
+          <div class="timestamp">23:32:26</div>
+
+          <div class="content">
+            🗳️ Majority condemns Dorian Blackwood. Execution at twilight.
+          </div>
+        </div>
+
+        <div class="event phase">
+          <div class="timestamp">23:32:26</div>
+
+          <div class="content">🗳️ Votes are tallied.</div>
+        </div>
+
+        <div class="event phase">
+          <div class="timestamp">23:32:26</div>
+
+          <div class="content">⚖️ Twilight execution results.</div>
+        </div>
+
+        <div class="event death">
+          <div class="timestamp">23:32:26</div>
+
+          <div class="content">
+            Dorian Blackwood was executed. They belonged to team Werewolves.
+          </div>
+        </div>
+
+        <div class="event phase">
+          <div class="timestamp">23:32:26</div>
+
+          <div class="content">🌙 Night returns.</div>
+        </div>
+
+        <div class="event action">
+          <div class="timestamp">23:32:26</div>
+
+          <div class="content">🗳️ Dorian Blackwood voted for Finn</div>
+        </div>
+
+        <div class="event phase">
+          <div class="timestamp">23:32:26</div>
+
+          <div class="content">🗳️ Vote summary: Finn: 1</div>
+        </div>
+
+        <div class="event death">
+          <div class="timestamp">23:32:27</div>
+
+          <div class="content">Finn Alder was found dead at dawn.</div>
+        </div>
+
+        <div class="event speak">
+          <div class="timestamp">23:32:34</div>
+          <div class="speaker">Bram Nightshade</div>
+          <div class="content">
+            It’s shocking to face another loss. Finn's death is quite
+            distressing. I saw potential in both Dorian and Finn; they seemed so
+            invested in the game. Now, without them, we must question who
+            benefits from their departures. I can't help but feel that we have
+            to scrutinize those who remained. Perhaps a focus on how they
+            interacted could shed some light on our next move. What are your
+            thoughts, Aurora and Celeste?
+          </div>
+        </div>
+
+        <div class="event speak">
+          <div class="timestamp">23:32:37</div>
+          <div class="speaker">Celeste Moonseer</div>
+          <div class="content">
+            I share your shock, Bram. Losing Finn so soon is disheartening. We
+            must look closely at the dynamics among the remaining players. I
+            noticed a certain eagerness from both you and Aurora defending
+            Dorian—could that have been protective instincts or mere gameplay
+            strategy? Let's not let emotion cloud our judgement; we need to
+            ensure we identify any hidden threats before they eliminate us. What
+            do you think?
+          </div>
+        </div>
+
+        <div class="event death">
+          <div class="timestamp">23:32:45</div>
+
+          <div class="content">Aurora Harper was found dead at dawn.</div>
+        </div>
+
+        <div class="event phase">
+          <div class="timestamp">23:32:45</div>
+
+          <div class="content">
+            🎮 Game Over! Winner: Werewolves. Reason: [God] Werewolves win; they
+            now match the village.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let selectedAction = null;
+      let lastEventCount = 0;
+
+      function selectAction(button, action) {
+        selectedAction = action;
+        document.querySelectorAll(".action-btn").forEach((btn) => {
+          btn.classList.remove("selected");
+        });
+        if (button) {
+          button.classList.add("selected");
+        }
+
+        // Show/hide textarea based on action type
+        const textarea = document.getElementById("argument");
+        if (action === "none") {
+          textarea.style.display = "none";
+          textarea.value = "";
+        } else {
+          textarea.style.display = "block";
+          textarea.focus();
+        }
+      }
+
+      function submitAction() {
+        if (!selectedAction) {
+          alert("Please select an action first");
+          return;
+        }
+
+        const argument = document.getElementById("argument").value;
+        const data = {
+          action_type: selectedAction,
+          argument: argument,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Try to write file via fetch
+        fetch("save_action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        })
+          .then(() => {
+            // Disable controls
+            document.getElementById("inputControls").style.display = "none";
+            document.getElementById("status").textContent =
+              "Action submitted! Waiting for next turn...";
+            document.getElementById("inputBox").classList.remove("waiting");
+            selectedAction = null;
+            document.getElementById("argument").value = "";
+          })
+          .catch((err) => {
+            console.error("Failed to save action:", err);
+            alert("Failed to submit action. Please try again.");
+          });
+      }
+
+      // Poll for updates without full page reload
+      function checkForUpdates() {
+        const inputBox = document.getElementById("inputBox");
+        const isWaiting = inputBox.classList.contains("waiting");
+
+        fetch(window.location.href + "?t=" + Date.now())
+          .then((r) => r.text())
+          .then((html) => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            const newInputBox = doc.getElementById("inputBox");
+            const newEvents = doc.getElementById("events");
+
+            // Always update events area (even while waiting) without reloading
+            if (newEvents) {
+              document.getElementById("events").innerHTML = newEvents.innerHTML;
+              scrollToBottom();
+            }
+
+            // Only reload when transitioning from not waiting -> waiting
+            if (
+              !isWaiting &&
+              newInputBox &&
+              newInputBox.classList.contains("waiting")
+            ) {
+              location.reload();
+            }
+          })
+          .catch(() => {});
+      }
+
+      // Auto-scroll to bottom
+      function scrollToBottom() {
+        const mainContent = document.querySelector(".main-content");
+        if (mainContent) {
+          mainContent.scrollTop = mainContent.scrollHeight;
+        }
+      }
+
+      scrollToBottom();
+      // Check for updates every 2 seconds
+      setInterval(checkForUpdates, 2000);
+    </script>
+  </body>
+</html>

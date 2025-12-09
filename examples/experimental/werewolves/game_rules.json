@@ -1,0 +1,216 @@
+{
+  "initial_phase": "night_werewolves",
+  "phases": [
+    {
+      "name": "night_werewolves",
+      "kind": "team_target",
+      "turn_mode": "simultaneous",
+      "acting_roles": [
+        "Werewolf"
+      ],
+      "acting_teams": [
+        "Werewolves"
+      ],
+      "speech_visibility": "team",
+      "action_visibility": "team",
+      "resolution": {
+        "operation": "store_target",
+        "state_key": "night_target",
+        "visibility": "team"
+      },
+      "entry_messages": [
+        "Night phase: werewolves pick a target."
+      ],
+      "exit_messages": [
+        "Werewolves have chosen their move."
+      ],
+      "group": "night",
+      "instructions": [
+        "Secret night phase. Only werewolves act here."
+      ],
+      "role_instructions": {
+        "Werewolf": [
+          "Coordinate quietly with packmates and issue 'kill NAME'."
+        ]
+      }
+    },
+    {
+      "name": "night_seer",
+      "kind": "single_target",
+      "turn_mode": "single",
+      "acting_roles": [
+        "Seer"
+      ],
+      "speech_visibility": "private",
+      "action_visibility": "private",
+      "resolution": {
+        "operation": "seer_inspect",
+        "visibility": "private"
+      },
+      "entry_messages": [
+        "Seer, choose someone to inspect."
+      ],
+      "exit_messages": [
+        "Seer's vision is complete."
+      ],
+      "group": "night",
+      "instructions": [
+        "Seer takes a private action."
+      ],
+      "role_instructions": {
+        "Seer": [
+          "Use 'inspect NAME' to learn their alignment."
+        ]
+      }
+    },
+    {
+      "name": "night_witch",
+      "kind": "single_target",
+      "turn_mode": "single",
+      "acting_roles": [
+        "Witch"
+      ],
+      "speech_visibility": "private",
+      "action_visibility": "private",
+      "resolution": {
+        "operation": "witch_phase",
+        "visibility": "private"
+      },
+      "entry_messages": [
+        "Witch, decide to save, poison, or pass."
+      ],
+      "exit_messages": [
+        "Witch phase ends."
+      ],
+      "group": "night",
+      "instructions": [
+        "Witch decides whether to intervene."
+      ],
+      "role_instructions": {
+        "Witch": [
+          "Choose 'save NAME', 'poison NAME', or 'pass'. Each potion may be used once."
+        ]
+      }
+    },
+    {
+      "name": "dawn_report",
+      "kind": "announcement",
+      "turn_mode": "simultaneous",
+      "resolution": {
+        "operation": "resolve_night",
+        "visibility": "public"
+      },
+      "entry_messages": [
+        "Dawn report:"
+      ],
+      "exit_messages": [],
+      "group": "night",
+      "instructions": [
+        "Public summary of night outcomes."
+      ],
+      "role_instructions": {}
+    },
+    {
+      "name": "day_discussion",
+      "kind": "discussion",
+      "turn_mode": "round-robin",
+      "acting_roles": [
+        "Villager",
+        "Seer",
+        "Witch",
+        "Werewolf"
+      ],
+      "max_cycles": 1,
+      "max_turns": null,
+      "speech_visibility": "public",
+      "action_visibility": "public",
+      "resolution": {
+        "operation": "noop"
+      },
+      "entry_messages": [
+        "Day discussion starts. Speak in turn."
+      ],
+      "exit_messages": [
+        "Discussion ends."
+      ],
+      "group": "day",
+      "instructions": [
+        "Each villager speaks once in turn. Share concise reasoning tied to observations."
+      ],
+      "role_instructions": {}
+    },
+    {
+      "name": "day_vote",
+      "kind": "vote",
+      "turn_mode": "simultaneous",
+      "acting_roles": [
+        "Villager",
+        "Seer",
+        "Witch",
+        "Werewolf"
+      ],
+      "speech_visibility": "hidden",
+      "action_visibility": "public",
+      "resolution": {
+        "operation": "vote",
+        "visibility": "public"
+      },
+      "entry_messages": [
+        "Voting phase: respond with action 'vote NAME' or 'vote none'. Do not speak."
+      ],
+      "max_turns": 1,
+      "exit_messages": [
+        "Votes are tallied."
+      ],
+      "group": "day",
+      "instructions": [
+        "Voting phase: respond with action 'vote NAME' or 'vote none'. Do not speak."
+      ],
+      "role_instructions": {}
+    },
+    {
+      "name": "twilight_execution",
+      "kind": "announcement",
+      "turn_mode": "simultaneous",
+      "resolution": {
+        "operation": "post_vote_cleanup",
+        "visibility": "public"
+      },
+      "entry_messages": [
+        "Execution results:"
+      ],
+      "exit_messages": [
+        "Night returns."
+      ],
+      "group": "day",
+      "instructions": [
+        "Resolve the vote and announce results."
+      ],
+      "role_instructions": {}
+    }
+  ],
+  "phase_transitions": {
+    "night_werewolves": "night_seer",
+    "night_seer": "night_witch",
+    "night_witch": "dawn_report",
+    "dawn_report": "day_discussion",
+    "day_discussion": "day_vote",
+    "day_vote": "twilight_execution",
+    "twilight_execution": "night_werewolves"
+  },
+  "end_conditions": [
+    {
+      "operation": "team_eliminated",
+      "team": "Werewolves",
+      "winner": "Villagers",
+      "message": "[God] Villagers win; no werewolves remain."
+    },
+    {
+      "operation": "parity",
+      "team": "Werewolves",
+      "other_team": "Villagers",
+      "winner": "Werewolves",
+      "message": "[God] Werewolves win; they now match the village."
+    }
+  ]
+}
