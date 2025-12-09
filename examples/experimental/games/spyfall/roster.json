@@ -4,13 +4,13 @@
             "name": "Alice",
             "role": "Non-Spy",
             "team": "Non-Spies",
-            "agent_model": "gpt-4o-mini"
+            "agent_model": "gpt-4o"
         },
         {
             "name": "Bob",
             "role": "Spy",
             "team": "Spy",
-            "agent_model": "gpt-5"
+            "agent_model": "gpt-4o"
         },
         {
             "name": "Charlie",

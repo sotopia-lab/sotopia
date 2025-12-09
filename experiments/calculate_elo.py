@@ -2,7 +2,7 @@ import json
 import glob
 import os
 from collections import defaultdict
-from typing import Any
+from typing import Any, Tuple, Optional
 
 # Simple ELO implementation
 K_FACTOR = 32
@@ -59,8 +59,8 @@ def generate_html_report(stats: list[dict[str, Any]]) -> str:
                     <th>Rank</th>
                     <th>Model</th>
                     <th>ELO</th>
-                    <th>ELO-W</th>
-                    <th>ELO-V</th>
+                    <th>ELO-Alt (Wolf/Spy)</th>
+                    <th>ELO-Main (Vil/Civ)</th>
                     <th>Win Rate</th>
                     <th style="text-align: right;">Matches</th>
                 </tr>
@@ -70,7 +70,9 @@ def generate_html_report(stats: list[dict[str, Any]]) -> str:
             </tbody>
         </table>
         <div class="footer">
-            ELO-W = Elo as wolf; ELO-V = Elo as villager.
+            ELO-Alt: ELO as Werewolf (Werewolves) or Spy (Spyfall).<br>
+            ELO-Main: ELO as Villager (Werewolves) or Non-Spy (Spyfall).<br>
+            Symmetric games (RPS, PD) only affect Overall ELO.
         </div>
     </body>
     </html>
@@ -126,6 +128,112 @@ def generate_html_report(stats: list[dict[str, Any]]) -> str:
     return html_template.replace("{rows}", rows_html)
 
 
+def _get_result_werewolf(
+    model_mapping: dict[str, str], agent_rewards: dict[str, float]
+) -> Optional[Tuple[str, str, bool]]:
+    """Return (WolfModel, VillagerModel, WolfWon)"""
+    # Wolves = group of 2 agents with same reward.
+    # Villagers = group of 4 agents with same reward.
+    if len(model_mapping) != 6:
+        return None
+
+    reward_groups = defaultdict(list)
+    for agent, r in agent_rewards.items():
+        reward_groups[r].append(agent)
+
+    wolf_agents = []
+    villager_agents = []
+    found_wolves = False
+
+    for r, agents in reward_groups.items():
+        if len(agents) == 2:
+            wolf_agents = agents
+            found_wolves = True
+        else:
+            villager_agents.extend(agents)
+
+    if not found_wolves or len(wolf_agents) != 2 or len(villager_agents) != 4:
+        return None
+
+    wolf_reward = agent_rewards[wolf_agents[0]]
+    villager_reward = agent_rewards[villager_agents[0]]
+
+    wolf_won = wolf_reward > villager_reward
+
+    return model_mapping[wolf_agents[0]], model_mapping[villager_agents[0]], wolf_won
+
+
+def _get_result_spyfall(
+    model_mapping: dict[str, str], agent_rewards: dict[str, float]
+) -> Optional[Tuple[str, str, bool]]:
+    """Return (SpyModel, NonSpyModel, SpyWon)"""
+    # Spy = 1 agent, Non-Spy = 3 agents
+    if len(model_mapping) != 4:
+        # Assuming 4 player Spyfall based on standard/roster
+        return None
+
+    # Finding the unique reward isn't always reliable if everyone loses or wins,
+    # but typically Spy logic: Spy wins -> High reward, Civs -> Low, or vice versa.
+    # Actually, simpler: we need to know WHO is who.
+    # Log doesn't explicitly store roles in parsed form easily without parsing messages or 'role' fields if available.
+    # But we can infer from uniqueness if rewards differ.
+
+    # Heuristic: Spy is the minority (size 1).
+    reward_groups = defaultdict(list)
+    for agent, r in agent_rewards.items():
+        reward_groups[r].append(agent)
+
+    spy_agent = None
+    non_spy_agents = []
+
+    # This relies on Spy getting a different reward OR being distinguishable.
+    # If rewards are identical (e.g. Draw), we can't tell easily without roles.
+    # For now, let's assume strict reward difference or we skip.
+
+    for r, agents in reward_groups.items():
+        if len(agents) == 1:
+            spy_agent = agents[0]
+        else:
+            non_spy_agents.extend(agents)
+
+    if not spy_agent or len(non_spy_agents) != 3:
+        return None
+
+    spy_reward = agent_rewards[spy_agent]
+    non_spy_reward = agent_rewards[non_spy_agents[0]]
+
+    spy_won = spy_reward > non_spy_reward
+
+    return model_mapping[spy_agent], model_mapping[non_spy_agents[0]], spy_won
+
+
+def _get_result_symmetric(
+    model_mapping: dict[str, str], agent_rewards: dict[str, float]
+) -> Optional[Tuple[str, str, float, float]]:
+    """Return (ModelA, ModelB, ScoreA, ScoreB) for symmetric games."""
+    agents = list(model_mapping.keys())
+    # Should be 2 players usually
+    if len(agents) < 2:
+        return None
+
+    # Just take first two
+    a1, a2 = agents[0], agents[1]
+    m1, m2 = model_mapping[a1], model_mapping[a2]
+    r1, r2 = agent_rewards[a1], agent_rewards[a2]
+
+    # Normalize scores? ELO usually expects 0-1.
+    # RPS/PD might have arbitrary points (e.g. 3, 5, 0).
+    # Simple binary win/loss/draw check
+    if r1 > r2:
+        s1, s2 = 1.0, 0.0
+    elif r2 > r1:
+        s1, s2 = 0.0, 1.0
+    else:
+        s1, s2 = 0.5, 0.5
+
+    return m1, m2, s1, s2
+
+
 def calculate_elo(log_dir: str = "logs") -> None:
     print(f"Calculating ELO from logs in: {log_dir}")
 
@@ -135,8 +243,10 @@ def calculate_elo(log_dir: str = "logs") -> None:
 
     # Ratings
     elo_overall: dict[str, float] = defaultdict(lambda: STARTING_ELO)
-    elo_wolf: dict[str, float] = defaultdict(lambda: STARTING_ELO)
-    elo_villager: dict[str, float] = defaultdict(lambda: STARTING_ELO)
+    elo_wolf: dict[str, float] = defaultdict(lambda: STARTING_ELO)  # Also used for Spy
+    elo_villager: dict[str, float] = defaultdict(
+        lambda: STARTING_ELO
+    )  # Also used for Non-Spy
 
     wins: dict[str, int] = defaultdict(int)
     total_games: dict[str, int] = defaultdict(int)
@@ -150,101 +260,134 @@ def calculate_elo(log_dir: str = "logs") -> None:
 
             # 2. Extract Data
             model_mapping = data.get("model_mapping", {})
-            rewards = data.get("rewards", [])
+            rewards = data.get(
+                "rewards", []
+            )  # This might be list of floats or list of tuples
+            environment = data.get("environment", "")
+            metadata = data.get("metadata", {})
+            game_name = metadata.get("game_name", "")
 
             if not model_mapping or not rewards:
                 continue
 
-            if len(model_mapping) != len(rewards):
-                continue
+            # Parse rewards: flatten if tuples (reward, info) -> reward
+            parsed_rewards = []
+            for r in rewards:
+                if isinstance(r, list) or isinstance(r, tuple):
+                    parsed_rewards.append(float(r[0]))
+                else:
+                    parsed_rewards.append(float(r))
 
-            # 3. Identify Roles and Winner
-            # Robust logic: "There are only two wolves".
-            # Wolves = group of 2 agents with same reward.
-            # Villagers = group of 4 agents with same reward.
-
-            if len(model_mapping) != 6:
-                # If not 6 player game, skip
+            if len(model_mapping) != len(parsed_rewards):
                 continue
 
             agent_rewards = {}
             for i, agent_name in enumerate(model_mapping.keys()):
-                agent_rewards[agent_name] = rewards[i]
+                agent_rewards[agent_name] = parsed_rewards[i]
 
-            # Group agents by reward value
-            reward_groups = defaultdict(list)
-            for agent, r in agent_rewards.items():
-                reward_groups[r].append(agent)
+            # 3. Dispatch Logic
 
-            wolf_agents = []
-            villager_agents = []
+            # Cases: Werewolf, Spyfall (Asymmetric) vs RPS, PD (Symmetric)
+            if (
+                "werewolves" in game_name.lower()
+                or "Werewolf" in environment
+                or len(model_mapping) == 6
+            ):
+                # Asymmetric: Wolf vs Villager
+                res = _get_result_werewolf(model_mapping, agent_rewards)
+                if not res:
+                    continue
 
-            found_wolves = False
-            for r, agents in reward_groups.items():
-                if len(agents) == 2:
-                    wolf_agents = agents
-                    found_wolves = True
-                else:
-                    villager_agents.extend(
-                        agents
-                    )  # Collect all others as villagers (usually 4)
+                m_alt, m_main, alt_won = res
 
-            if not found_wolves or len(wolf_agents) != 2 or len(villager_agents) != 4:
-                # Unexpected structure (e.g. 3v3 or equal split)
-                continue
+                # Update Overall
+                score_alt = 1.0 if alt_won else 0.0
+                score_main = 1.0 - score_alt
 
-            # Determine Winner
-            # Assuming strictly positive reward = win, negative = loss?
-            # Or just highest reward wins?
-            # In log provided: Villagers got 1.0, Wolves got -1.0. 1.0 > -1.0 -> Villagers Win.
+                # Overall Update
+                elo_overall[m_alt] += K_FACTOR * (
+                    score_alt - expected_score(elo_overall[m_alt], elo_overall[m_main])
+                )
+                elo_overall[m_main] += K_FACTOR * (
+                    score_main - expected_score(elo_overall[m_main], elo_overall[m_alt])
+                )
 
-            wolf_reward = agent_rewards[wolf_agents[0]]
-            villager_reward = agent_rewards[villager_agents[0]]
+                # Split Update (Wolf vs Villager)
+                elo_wolf[m_alt] += K_FACTOR * (
+                    score_alt - expected_score(elo_wolf[m_alt], elo_villager[m_main])
+                )
+                elo_villager[m_main] += K_FACTOR * (
+                    score_main - expected_score(elo_villager[m_main], elo_wolf[m_alt])
+                )
 
-            wolf_won = False
-            if wolf_reward > villager_reward:
-                wolf_won = True
+                # Stats
+                winner = m_alt if alt_won else m_main
+                wins[winner] += 1
+                total_games[m_alt] += 1
+                if m_alt != m_main:
+                    total_games[m_main] += 1
 
-            # Identify Models (Representative for 1v1 ELO update)
-            # Tournament is 1 model type vs 1 model type
-            w_model = model_mapping[wolf_agents[0]]
-            v_model = model_mapping[villager_agents[0]]
+            elif "spyfall" in game_name.lower() or "Spyfall" in environment:
+                # Asymmetric: Spy vs Non-Spy
+                res = _get_result_spyfall(model_mapping, agent_rewards)
+                if not res:
+                    continue
 
-            # (If mixed models on same team, this takes just one, but based on user context it's usually model A vs model B)
+                m_alt, m_main, alt_won = res  # Spy, Non-Spy
+
+                # Update Overall
+                score_alt = 1.0 if alt_won else 0.0
+                score_main = 1.0 - score_alt
+
+                elo_overall[m_alt] += K_FACTOR * (
+                    score_alt - expected_score(elo_overall[m_alt], elo_overall[m_main])
+                )
+                elo_overall[m_main] += K_FACTOR * (
+                    score_main - expected_score(elo_overall[m_main], elo_overall[m_alt])
+                )
+
+                # Split Update (Spy -> Wolf bin, Non-Spy -> Villager bin)
+                elo_wolf[m_alt] += K_FACTOR * (
+                    score_alt - expected_score(elo_wolf[m_alt], elo_villager[m_main])
+                )
+                elo_villager[m_main] += K_FACTOR * (
+                    score_main - expected_score(elo_villager[m_main], elo_wolf[m_alt])
+                )
+
+                winner = m_alt if alt_won else m_main
+                wins[winner] += 1
+                total_games[m_alt] += 1
+                if m_alt != m_main:
+                    total_games[m_main] += 1
+
+            else:
+                # Symmetric (RPS, Prisoners Dilemma)
+                res_sym = _get_result_symmetric(model_mapping, agent_rewards)
+                if not res_sym:
+                    continue
+
+                m1, m2, s1, s2 = res_sym
+
+                # Update Overall Only
+                elo_overall[m1] += K_FACTOR * (
+                    s1 - expected_score(elo_overall[m1], elo_overall[m2])
+                )
+                elo_overall[m2] += K_FACTOR * (
+                    s2 - expected_score(elo_overall[m2], elo_overall[m1])
+                )
+
+                # For stats, assume s1 > 0.5 is win? Or detect draw?
+                if s1 > s2:
+                    wins[m1] += 1
+                elif s2 > s1:
+                    wins[m2] += 1
+                # Draws don't inc wins
+
+                total_games[m1] += 1
+                if m1 != m2:
+                    total_games[m2] += 1
 
             processed_count += 1
-
-            # 4. Update ELO
-            # Score for Wolf Team
-            score_w = 1.0 if wolf_won else 0.0
-            score_v = 1.0 - score_w
-
-            # -- Overall ELO --
-            rating_w_overall = elo_overall[w_model]
-            rating_v_overall = elo_overall[v_model]
-            exp_w_overall = expected_score(rating_w_overall, rating_v_overall)
-
-            elo_overall[w_model] += K_FACTOR * (score_w - exp_w_overall)
-            elo_overall[v_model] += K_FACTOR * (score_v - (1.0 - exp_w_overall))
-
-            # -- Split ELO --
-            rat_w_split = elo_wolf[w_model]
-            rat_v_split = elo_villager[v_model]
-
-            exp_w_split = expected_score(rat_w_split, rat_v_split)
-
-            elo_wolf[w_model] += K_FACTOR * (score_w - exp_w_split)
-            elo_villager[v_model] += K_FACTOR * (score_v - (1.0 - exp_w_split))
-
-            # Updates Stats
-            if wolf_won:
-                wins[w_model] += 1
-            else:
-                wins[v_model] += 1
-
-            total_games[w_model] += 1
-            if w_model != v_model:
-                total_games[v_model] += 1
 
         except Exception:
             # print(f"Error processing {filepath}: {e}")
@@ -260,7 +403,7 @@ def calculate_elo(log_dir: str = "logs") -> None:
 
     print("\n" + "=" * 115)
     print(
-        f"{'Rank':<5} {'Model':<40} {'ELO':<8} {'ELO-W':<8} {'ELO-V':<8} {'Win Rate':<10} {'Matches'}"
+        f"{'Rank':<5} {'Model':<40} {'ELO':<8} {'ELO-Alt':<8} {'ELO-Main':<8} {'Win Rate':<10} {'Matches'}"
     )
     print("-" * 115)
 

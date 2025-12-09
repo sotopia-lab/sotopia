@@ -8,7 +8,7 @@ else:
 from pydantic import model_validator, BaseModel
 from redis_om import JsonModel
 from redis_om.model.model import Field
-from typing import Literal
+from typing import Literal, Any
 from sotopia.database.persistent_profile import AgentProfile
 
 
@@ -30,6 +30,7 @@ class BaseEpisodeLog(BaseModel):
     reasoning: str = Field(default="")
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
     rewards_prompt: str = Field(default="")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def agent_number_message_number_reward_number_turn_number_match(self) -> Self:

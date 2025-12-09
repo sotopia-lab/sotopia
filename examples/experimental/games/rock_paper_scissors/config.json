@@ -1,6 +1,6 @@
 {
     "scenario": "Rock Paper Scissors",
-    "description": "A classic zero-sum game. Rock beats Scissors, Scissors beats Paper, Paper beats Rock. You play exactly 10 rounds. You cannot speak. You can only choose your action. GOAL: Win as many rounds as possible. The player with the most wins after 10 rounds gets +1, loser gets -1. Draw is 0.",
+    "description": "A classic game. Rock beats Scissors, Scissors beats Paper, Paper beats Rock. However in this game you play exactly 10 rounds. GOAL: Win as many rounds as possible. Each turn the turn winner gets a point. The player with the most points at the end wins. You cannot speak. You can only choose your action. \n\n The players in this game are: {agent_names}.",
     "role_goals": {
         "Player": "Win against the opponent."
     },

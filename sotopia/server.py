@@ -3,7 +3,7 @@ import json
 import itertools
 import logging
 import re
-from typing import Literal, Sequence, Type, AsyncGenerator, Union
+from typing import Literal, Sequence, Type, AsyncGenerator, Union, Any
 
 import gin
 from pydantic import validate_call
@@ -129,6 +129,7 @@ async def arun_one_episode(
     streaming: bool = False,
     simulation_status: NonStreamingSimulationStatus | None = None,
     output_path: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> Union[
     list[tuple[str, str, Message]],
     AsyncGenerator[list[list[tuple[str, str, Message]]], None],
@@ -215,6 +216,7 @@ async def arun_one_episode(
             ],
             reasoning=info[env.agents[0]]["comments"],
             rewards=[info[agent_name]["complete_rating"] for agent_name in env.agents],
+            metadata=metadata or {},
         )
 
         if streaming:
@@ -271,6 +273,7 @@ async def arun_one_episode(
                 custom_log = {
                     "pk": epilog.pk,
                     "tag": tag,
+                    "metadata": metadata or {},
                     "model_mapping": model_mapping,
                     "rewards": epilog.rewards,
                     "turns": turns_list,

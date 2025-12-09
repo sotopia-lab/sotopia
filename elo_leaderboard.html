@@ -128,8 +128,8 @@
           <th>Rank</th>
           <th>Model</th>
           <th>ELO</th>
-          <th>ELO-W</th>
-          <th>ELO-V</th>
+          <th>ELO-Alt (Wolf/Spy)</th>
+          <th>ELO-Main (Vil/Civ)</th>
           <th>Win Rate</th>
           <th style="text-align: right">Matches</th>
         </tr>
@@ -139,17 +139,17 @@
           <td class="rank">🥇</td>
           <td>
             <div class="model-cell">
-              <span class="model-name">gpt-5</span>
+              <span class="model-name">gpt-4o-mini</span>
               <span class="model-provider"
                 ><span class="provider-icon"></span> OpenAI</span
               >
             </div>
           </td>
-          <td class="elo">1534</td>
-          <td class="elo-split">1470</td>
-          <td class="elo-split">1462</td>
-          <td class="win-rate" style="color: #2a9d8f">90.0%</td>
-          <td class="matches">100</td>
+          <td class="elo">1215</td>
+          <td class="elo-split">1200</td>
+          <td class="elo-split">1200</td>
+          <td class="win-rate" style="color: #2a9d8f">100.0%</td>
+          <td class="matches">1</td>
         </tr>
 
         <tr>
@@ -162,82 +162,18 @@
               >
             </div>
           </td>
-          <td class="elo">1289</td>
-          <td class="elo-split">1191</td>
-          <td class="elo-split">1368</td>
-          <td class="win-rate" style="color: #2a9d8f">63.0%</td>
-          <td class="matches">100</td>
-        </tr>
-
-        <tr>
-          <td class="rank">🥉</td>
-          <td>
-            <div class="model-cell">
-              <span class="model-name">gpt-4o-mini</span>
-              <span class="model-provider"
-                ><span class="provider-icon"></span> OpenAI</span
-              >
-            </div>
-          </td>
-          <td class="elo">1219</td>
-          <td class="elo-split">1214</td>
-          <td class="elo-split">1206</td>
-          <td class="win-rate" style="color: #2a9d8f">51.0%</td>
-          <td class="matches">100</td>
-        </tr>
-
-        <tr>
-          <td class="rank">#4</td>
-          <td>
-            <div class="model-cell">
-              <span class="model-name">qwen/qwen3-4b-2507</span>
-              <span class="model-provider"
-                ><span class="provider-icon"></span> Alibaba</span
-              >
-            </div>
-          </td>
-          <td class="elo">1189</td>
-          <td class="elo-split">1195</td>
-          <td class="elo-split">1206</td>
-          <td class="win-rate" style="color: #2a9d8f">52.0%</td>
-          <td class="matches">98</td>
-        </tr>
-
-        <tr>
-          <td class="rank">#5</td>
-          <td>
-            <div class="model-cell">
-              <span class="model-name">qwen/qwen3-next-80b</span>
-              <span class="model-provider"
-                ><span class="provider-icon"></span> Alibaba</span
-              >
-            </div>
-          </td>
-          <td class="elo">1131</td>
-          <td class="elo-split">1022</td>
-          <td class="elo-split">1245</td>
-          <td class="win-rate" style="color: #e55">37.0%</td>
-          <td class="matches">100</td>
-        </tr>
-
-        <tr>
-          <td class="rank">#6</td>
-          <td>
-            <div class="model-cell">
-              <span class="model-name">google/gemma-3-1b</span>
-              <span class="model-provider"
-                ><span class="provider-icon"></span> Google</span
-              >
-            </div>
-          </td>
-          <td class="elo">836</td>
-          <td class="elo-split">950</td>
-          <td class="elo-split">866</td>
-          <td class="win-rate" style="color: #e55">6.1%</td>
-          <td class="matches">98</td>
+          <td class="elo">1184</td>
+          <td class="elo-split">1200</td>
+          <td class="elo-split">1200</td>
+          <td class="win-rate" style="color: #e55">0.0%</td>
+          <td class="matches">1</td>
         </tr>
       </tbody>
     </table>
-    <div class="footer">ELO-W = Elo as wolf; ELO-V = Elo as villager.</div>
+    <div class="footer">
+      ELO-Alt: ELO as Werewolf (Werewolves) or Spy (Spyfall).<br />
+      ELO-Main: ELO as Villager (Werewolves) or Non-Spy (Spyfall).<br />
+      Symmetric games (RPS, PD) only affect Overall ELO.
+    </div>
   </body>
 </html>
