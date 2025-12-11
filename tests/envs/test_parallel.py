@@ -179,6 +179,9 @@ async def test_parallel_sotopia_env_multi_agents_private_messages() -> None:
     assert 'agent3 said: "psst only for agent1"' in observations["agent1"].last_turn
     assert 'agent3 said: "psst only for agent1"' in observations["agent3"].last_turn
 
+    assert 'agent1 said: "psst only for agent2"' not in observations["agent3"].last_turn
+    assert 'agent3 said: "psst only for agent1"' not in observations["agent2"].last_turn
+
     # Public content is visible to everyone
     assert 'agent2 said: "hi all"' in observations["agent1"].last_turn
     assert 'agent2 said: "hi all"' in observations["agent2"].last_turn
