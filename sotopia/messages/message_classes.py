@@ -137,17 +137,22 @@ class AgentAction(Message):
     )
 
     def to_natural_language(self) -> str:
+        recipients_prefix = "" if not self.to else f"[private to {self.to}] "
+
+        action_str = ""
         match self.action_type:
             case "none":
-                return "did nothing"
+                action_str = "did nothing"
             case "speak":
-                return f'said: "{self.argument}"'
+                action_str = f'said: "{self.argument}"'
             case "non-verbal communication":
-                return f"[{self.action_type}] {self.argument}"
+                action_str = f"[{self.action_type}] {self.argument}"
             case "action":
-                return f"[{self.action_type}] {self.argument}"
+                action_str = f"[{self.action_type}] {self.argument}"
             case "leave":
-                return "left the conversation"
+                action_str = "left the conversation"
+
+        return f"{recipients_prefix} {action_str}"
 
     @field_validator("to", mode="before")
     @classmethod
@@ -288,26 +293,29 @@ class ScriptInteraction(Message):
                 agent_names[0] if name == agent_names[1] else agent_names[1]
             )
             results.append(
-                [
-                    (
-                        "Environment",
-                        name,
-                        Observation(
-                            last_turn="environment is the agent",
-                            turn_number=line_idx + 1,
-                            available_actions=["none"],
+                cast(
+                    list[tuple[str, str, Message]],
+                    [
+                        *[
+                            (
+                                "Environment",
+                                name,
+                                Observation(
+                                    last_turn="environment is the agent",
+                                    turn_number=line_idx + 1,
+                                    available_actions=["none"],
+                                ),
+                            )
+                            for name in agent_names
+                        ],
+                        (name, "Environment", parsed_action),
+                        (
+                            inactive_agent_name,
+                            "Environment",
+                            AgentAction(action_type="none", argument="did nothing"),
                         ),
-                    )
-                    for name in agent_names
-                ]
-                + [
-                    (name, "Environment", parsed_action),
-                    (
-                        inactive_agent_name,
-                        "Environment",
-                        AgentAction(action_type="none", argument="did nothing"),
-                    ),
-                ]
+                    ],
+                )
             )
 
             agent_results.append((name, parsed_action))
