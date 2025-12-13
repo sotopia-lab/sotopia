@@ -50,7 +50,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     def act(
         self,
-        _obs: Observation,
+        obs: Observation,
     ) -> AgentAction:
         raise Exception("Sync act method is deprecated. Use aact instead.")
 

@@ -175,11 +175,35 @@ async def arun_one_episode(
                         pass
 
             for idx, agent_name in enumerate(env.agents):
-                agent_messages[agent_name] = actions[idx]
+                # Validate action recipients; retry once on failure
+                action = actions[idx]
+                try:
+                    AgentAction.model_validate(
+                        action.model_dump(),
+                        context={"agent_names": env.agents, "sender": agent_name},
+                    )
+                except ValueError as e:
+                    agents[agent_name].recv_message(
+                        "Environment",
+                        SimpleMessage(
+                            message=f"Invalid action: {e}. Regenerate according to provided error message"
+                        ),
+                    )
+                    # Retry once
+                    action = await agents[agent_name].aact(
+                        environment_messages[agent_name]
+                    )
+                    AgentAction.model_validate(
+                        action.model_dump(),
+                        context={
+                            "agent_names": env.agents,
+                            "sender": agent_name,
+                        },
+                    )
 
-                messages[-1].append(
-                    (agent_name, "Environment", agent_messages[agent_name])
-                )
+                agent_messages[agent_name] = action
+
+                messages[-1].append((agent_name, "Environment", action))
 
             # send agent messages to environment
             (

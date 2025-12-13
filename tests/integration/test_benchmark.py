@@ -235,17 +235,21 @@ def test_run_async_benchmark_in_batch() -> None:
 
     env, agents = get_mock_env_agents_profile()
 
-    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
-        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
-    ), patch("sotopia.database.EpisodeLog.all", return_value=return_value), patch(
-        "sotopia.database.AgentProfile.find", return_value=AgentProfile
-    ), patch("sotopia.database.AgentProfile.all", return_value=agents), patch(
-        "sotopia.database.AgentProfile.get",
-        return_value=lambda pk: agents[0] if pk == agents[0].pk else agents[1],
-    ), patch(
-        "sotopia.database.EnvironmentProfile.find", return_value=EnvironmentProfile
-    ), patch("sotopia.database.EnvironmentProfile.all", return_value=[env]), patch(
-        "sotopia.database.EnvironmentProfile.get", return_value=lambda pk: env
+    with (
+        patch("sotopia.database.EpisodeLog.delete", mock_delete_function),
+        patch("sotopia.database.EpisodeLog.find", return_value=EpisodeLog),
+        patch("sotopia.database.EpisodeLog.all", return_value=return_value),
+        patch("sotopia.database.AgentProfile.find", return_value=AgentProfile),
+        patch("sotopia.database.AgentProfile.all", return_value=agents),
+        patch(
+            "sotopia.database.AgentProfile.get",
+            return_value=lambda pk: agents[0] if pk == agents[0].pk else agents[1],
+        ),
+        patch(
+            "sotopia.database.EnvironmentProfile.find", return_value=EnvironmentProfile
+        ),
+        patch("sotopia.database.EnvironmentProfile.all", return_value=[env]),
+        patch("sotopia.database.EnvironmentProfile.get", return_value=lambda pk: env),
     ):
         assert (
             len(EpisodeLog.find().all()) == 10
@@ -281,9 +285,11 @@ def test_sotopia_benchmark(
 ) -> None:
     # Mainly test the benchmark workflow; Assume the benchmark_combo is correct
 
-    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
-        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
-    ), patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()):
+    with (
+        patch("sotopia.database.EpisodeLog.delete", mock_delete_function),
+        patch("sotopia.database.EpisodeLog.find", return_value=EpisodeLog),
+        patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()),
+    ):
         assert (
             len(EpisodeLog.find().all()) == 20
         ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
@@ -315,9 +321,11 @@ def test_sotopia_benchmark(
 def test_sotopia_benchmark_display() -> None:
     # Mainly test the average reward calculation (similar to previous get_avg_rewards test)
 
-    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
-        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
-    ), patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()):
+    with (
+        patch("sotopia.database.EpisodeLog.delete", mock_delete_function),
+        patch("sotopia.database.EpisodeLog.find", return_value=EpisodeLog),
+        patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()),
+    ):
         assert (
             len(EpisodeLog.find().all()) == 20
         ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"

@@ -74,16 +74,32 @@ Represents the environment's response to the interaction.
 
 ### `AgentAction`
 
-Represents an action taken by an agent.
+Represents an action taken by an agent. Actions can be either public (visible to all agents) or private (visible only to specific recipients).
 
 #### Attributes
 
-- `action_type: ActionType`: The type of action.
-- `argument: str`: The argument associated with the action.
+- `action_type: ActionType`: The type of action. Can be one of: `"none"`, `"speak"`, `"non-verbal communication"`, `"action"`, or `"leave"`.
+- `argument: str`: The argument associated with the action (e.g., the utterance for `"speak"`, the description for `"action"`).
+- `to: list[str] | None`: (Optional) List of recipient agent names. When specified, the action is a private message visible only to the sender and the listed recipients. When `None` or empty, the action is public and visible to all agents. Defaults to `None`.
 
 #### Methods
 
-- `to_natural_language(self) -> str`: Returns a string describing the agent's action.
+- `to_natural_language(self) -> str`: Returns a string describing the agent's action. Private messages are prefixed with `[private to {recipients}]`.
+
+#### Private Messages
+
+Private messages allow agents to communicate privately with specific recipients. When an action has a `to` field specified:
+
+- The action is only visible to the sender and the agents listed in `to`
+- Other agents will not see the action in their observations
+- The `to` field is validated to ensure recipients are valid agent names and the sender cannot target themselves
+
+#### Validation
+
+The `to` field is validated when creating an `AgentAction` with context:
+- Recipients must be valid agent names in the environment
+- Senders cannot send private messages to themselves
+- Invalid recipients will raise a `ValueError` with details about allowed recipients
 
 ### `ScriptInteraction`
 
@@ -134,8 +150,19 @@ response = ScriptEnvironmentResponse(
 )
 print(response.to_natural_language())
 
+# Public action (visible to all agents)
 action = AgentAction(action_type="speak", argument="Hello, how can I help you?")
 print(action.to_natural_language())
+# Output: said: "Hello, how can I help you?"
+
+# Private action (visible only to sender and specified recipients)
+private_action = AgentAction(
+    action_type="speak",
+    argument="Psst, let's discuss this privately",
+    to=["agent2", "agent3"]
+)
+print(private_action.to_natural_language())
+# Output: [private to ['agent2', 'agent3']] said: "Psst, let's discuss this privately"
 
 interaction_script = """
 Turn #1

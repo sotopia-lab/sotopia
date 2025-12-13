@@ -11,7 +11,7 @@ from sotopia.messages import AgentAction, ScriptBackground, SimpleMessage
 from pydantic import BaseModel, Field
 
 
-def test_rule_based_teminated_evaluator() -> None:
+def test_rule_based_terminated_evaluator() -> None:
     evaluator = RuleBasedTerminatedEvaluator(2, 5)
     response = evaluator(1, [])
     assert len(response) == 1
@@ -85,7 +85,7 @@ def test_unweighted_aggregate_evaluate() -> None:
 
 # Async tests
 @pytest.mark.asyncio
-async def test_rule_based_teminated_evaluator_async() -> None:
+async def test_rule_based_terminated_evaluator_async() -> None:
     evaluator = RuleBasedTerminatedEvaluator(2, 5)
     response = await evaluator.__acall__(1, [])
     assert len(response) == 1
