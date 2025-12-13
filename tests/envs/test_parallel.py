@@ -174,18 +174,38 @@ async def test_parallel_sotopia_env_multi_agents_private_messages() -> None:
     observations, _, _, _, _ = await env.astep(actions)
 
     # Private content is visible to sender and recipient
-    assert 'agent1 said: "psst only for agent2"' in observations["agent1"].last_turn
-    assert 'agent1 said: "psst only for agent2"' in observations["agent2"].last_turn
-    assert 'agent3 said: "psst only for agent1"' in observations["agent1"].last_turn
-    assert 'agent3 said: "psst only for agent1"' in observations["agent3"].last_turn
+    # Note: private messages include the [private to ...] prefix
+    assert (
+        "agent1 [private to ['agent2']]  said: \"psst only for agent2\""
+        in observations["agent1"].last_turn
+    )
+    assert (
+        "agent1 [private to ['agent2']]  said: \"psst only for agent2\""
+        in observations["agent2"].last_turn
+    )
+    assert (
+        "agent3 [private to ['agent1']]  said: \"psst only for agent1\""
+        in observations["agent1"].last_turn
+    )
+    assert (
+        "agent3 [private to ['agent1']]  said: \"psst only for agent1\""
+        in observations["agent3"].last_turn
+    )
 
-    assert 'agent1 said: "psst only for agent2"' not in observations["agent3"].last_turn
-    assert 'agent3 said: "psst only for agent1"' not in observations["agent2"].last_turn
+    # Private messages should NOT be visible to non-recipients
+    assert (
+        "agent1 [private to ['agent2']]  said: \"psst only for agent2\""
+        not in observations["agent3"].last_turn
+    )
+    assert (
+        "agent3 [private to ['agent1']]  said: \"psst only for agent1\""
+        not in observations["agent2"].last_turn
+    )
 
     # Public content is visible to everyone
-    assert 'agent2 said: "hi all"' in observations["agent1"].last_turn
-    assert 'agent2 said: "hi all"' in observations["agent2"].last_turn
-    assert 'agent2 said: "hi all"' in observations["agent3"].last_turn
+    assert 'agent2  said: "hi all"' in observations["agent1"].last_turn
+    assert 'agent2  said: "hi all"' in observations["agent2"].last_turn
+    assert 'agent2  said: "hi all"' in observations["agent3"].last_turn
 
 
 @pytest.mark.asyncio
