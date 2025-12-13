@@ -3,9 +3,28 @@
 Agent is a concept in Sotopia to represent decision-making entities that can interact with each other in a social environment. Agents can be human participants, AI models, or other entities.  No matter which type of agent, they have the same interface to interact with the environment: the input is an [`Observation`](/python_API/messages/message_classes#observation) and the output is an [`AgentAction`](/python_API/messages/message_classes#agentaction), each of which is a subclass of [`Message`](/python_API/messages/message_classes#message). You can think of the environment and the agents are sending messages to each other, while the message from the environment is the observation for the agents, and the message from each of the agents is the action that they want to take in the environment. In Sotopia, we are simulating the interaction between agents with social roles, which includes both human characters and various AI assistants, which are defined as profiles [`AgentProfile`](/python_API/database/persistant_profile#agentprofile-class).
 
 ### Actions of agents
-The types of action is defined by the `ActionType` type alias, which is a literal type that can only take one of the following values: `none`, `speak`, `non-verbal communication`, `action`, `leave`. An agent can choose to n perform physical actions (`action`), use language (`speak`) or gestures or facial expressions (`non-verbal communication`) to communicate, or choose to do nothing (`none`), or leave the interaction (`leave`).
+The types of action is defined by the `ActionType` type alias, which is a literal type that can only take one of the following values: `none`, `speak`, `non-verbal communication`, `action`, `leave`. An agent can choose to perform physical actions (`action`), use language (`speak`) or gestures or facial expressions (`non-verbal communication`) to communicate, or choose to do nothing (`none`), or leave the interaction (`leave`).
 
 Apart from the type of action, the content of the action, e.g. the utterance, the concrete action, etc., is a free-form string in the `argument` attribute of the `AgentAction` class.
+
+#### Private Messages
+Agents can send private messages to specific recipients using the `to` field in `AgentAction`. When an action includes a `to` field with a list of recipient agent names:
+- The action is only visible to the sender and the specified recipients
+- Other agents will not see the private message in their observations
+- This enables private conversations, secret planning, and side-channel communication in multi-agent scenarios
+
+Example:
+```python
+# Public message (visible to all)
+action = AgentAction(action_type="speak", argument="Hello everyone!")
+
+# Private message (visible only to sender and "agent2")
+private_action = AgentAction(
+    action_type="speak",
+    argument="Psst, let's discuss this privately",
+    to=["agent2"]
+)
+```
 
 ### Profiles of agents
 The profiles of agents are passed in as either of two argument of [the constructor of agents](/python_API/agents/base_agent_api_docs#constructor): `uuid_str` or `agent_profile`. The `uuid_str` is used together with the Redis database to retrieve an agent profile, while the `agent_profile` is a Pydantic `AgentProfile` object.
@@ -28,5 +47,5 @@ from sotopia.messages.message_classes import AgentAction, Observation
 
 class HelloWorldAgent(BaseAgent):
     async def aact(self, observation: Observation) -> AgentAction:
-        return AgentAction(type="speak", argument="Hello, world!")
+        return AgentAction(action_type="speak", argument="Hello, world!")
 ```
