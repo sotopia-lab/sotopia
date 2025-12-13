@@ -3,7 +3,6 @@ import logging
 import os
 import subprocess
 from datetime import datetime
-from logging import FileHandler
 from typing import Any, Generator, cast
 
 import gin
@@ -17,15 +16,15 @@ from sotopia.database import (
     EnvAgentComboStorage,
     EnvironmentProfile,
     EpisodeLog,
-)
-from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
-    RuleBasedTerminatedEvaluator,
+    EvaluationDimensionBuilder,
     SotopiaDimensions,
 )
+from sotopia.envs.evaluators import (
+    EvaluationForAgents,
+    EpisodeLLMEvaluator,
+    RuleBasedTerminatedEvaluator,
+)
 from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import (
     BaseSampler,
@@ -33,7 +32,9 @@ from sotopia.samplers import (
     EnvAgentCombo,
 )
 from sotopia.server import run_async_server
+from sotopia.logging import FileHandler
 from sotopia_conf.gin_utils import parse_gin_flags, run
+# from sotopia.database import EvaluationDimensionBuilder
 
 _DEFAULT_GIN_SEARCH_PATHS = [
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -71,7 +72,7 @@ assert all(
 def check_existing_episodes(
     env_id: str,
     agent_ids: list[str],
-    models: dict[str, LLM_Name],
+    models: dict[str, str],
     tag: str | None = None,
 ) -> bool:
     if tag:
@@ -104,11 +105,23 @@ def _sample_env_agent_combo_and_push_to_db(env_id: str) -> None:
 
 @gin.configurable
 def _iterate_env_agent_combo_not_in_db(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     env_ids: list[str] = [],
     tag: str | None = None,
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
     """We iterate over each environment and return the **first** env-agent combo that is not in the database."""
+    # loading evaluation metric
+    try:
+        evaluation_dimensions = EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
+            "sotopia"
+        )  # Initialize your customized dimension, please refer to `examples/use_custom_dimensions.py`
+    except Exception as e:
+        print(
+            "No customized evaluation dimensions found, using default SotopiaDimensions",
+            e,
+        )
+        evaluation_dimensions = SotopiaDimensions
+
     if not env_ids:
         env_ids = list(EnvironmentProfile.all_pks())
     for env_id in env_ids:
@@ -123,6 +136,11 @@ def _iterate_env_agent_combo_not_in_db(
             )
             assert env_agent_combo_storage_list
         first_env_agent_combo_storage_to_run: EnvAgentComboStorage | None = None
+
+        env_agent_combo_storage_list = sorted(
+            env_agent_combo_storage_list, key=lambda x: str(x.pk)
+        )
+
         for env_agent_combo_storage in env_agent_combo_storage_list:
             env_agent_combo_storage = cast(
                 EnvAgentComboStorage, env_agent_combo_storage
@@ -145,9 +163,10 @@ def _iterate_env_agent_combo_not_in_db(
                     RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
                 ],
                 terminal_evaluators=[
-                    ReachGoalLLMEvaluator(
+                    EpisodeLLMEvaluator(
                         model_names["env"],
-                        EvaluationForTwoAgents[SotopiaDimensions],
+                        EvaluationForAgents[evaluation_dimensions],  # type: ignore
+                        # TODO check how to do type annotation
                     ),
                 ],
             )
@@ -168,7 +187,7 @@ def _iterate_env_agent_combo_not_in_db(
 def run_async_server_in_batch(
     *,
     batch_size: int = 1,
-    model_names: dict[str, LLM_Name] = {
+    model_names: dict[str, str] = {
         "env": "gpt-4",
         "agent1": "gpt-4o-mini",
         "agent2": "gpt-4o-mini",
@@ -183,10 +202,14 @@ def run_async_server_in_batch(
         logger.removeHandler(rich_handler)
 
     # we cannot get the exact length of the generator, we just give an estimate of the length
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+        model_names=model_names, tag=tag
+    )
     env_agent_combo_iter_length = sum(1 for _ in env_agent_combo_iter)
 
-    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(model_names=model_names)
+    env_agent_combo_iter = _iterate_env_agent_combo_not_in_db(
+        model_names=model_names, tag=tag
+    )
     env_agent_combo_batch: list[EnvAgentCombo[Observation, AgentAction]] = []
 
     while True:

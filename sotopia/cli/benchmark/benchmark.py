@@ -1,19 +1,19 @@
+import asyncio
+import json
+import logging
+import math
+import os
+from collections import defaultdict
 from datetime import datetime
+from itertools import chain
+from pathlib import Path
+from typing import OrderedDict
+
+import numpy as np
 import requests
 import rich
-from sotopia.database.persistent_profile import EnvironmentList
-import asyncio
-import logging
-import json
-import math
-import numpy as np
-from itertools import chain
-from collections import defaultdict
-from typing import cast, OrderedDict
-
-from logging import FileHandler
+import typer
 from rich.logging import RichHandler
-
 from tqdm import tqdm
 
 from sotopia.agents import LLMAgent
@@ -22,16 +22,17 @@ from sotopia.database import (
     EnvAgentComboStorage,
     EnvironmentProfile,
     EpisodeLog,
-)
-from sotopia.database.serialization import get_rewards_from_episode
-from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
-    RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
+from sotopia.database.persistent_profile import EnvironmentList
+from sotopia.database.serialization import get_rewards_from_episode
+from sotopia.envs.evaluators import (
+    EpisodeLLMEvaluator,
+    EvaluationForAgents,
+    RuleBasedTerminatedEvaluator,
+)
 from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name
+from sotopia.logging import FileHandler
 from sotopia.messages import AgentAction, Observation
 from sotopia.samplers import (
     BaseSampler,
@@ -39,10 +40,7 @@ from sotopia.samplers import (
 )
 from sotopia.server import run_async_server
 
-import typer
-from pathlib import Path
 from ..app import app
-import os
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -96,7 +94,9 @@ def get_avg_reward(
             rewards_dict[f"{episode.environment}_1"].append(reward)
     dimensions = list(rewards_dict.values())[0][0].keys()
 
-    def calc_variance(local_rewards_list: list[dict[str, float]]) -> dict[str, float]:
+    def calc_variance(
+        local_rewards_list: list[dict[str, float]],
+    ) -> dict[str, float]:
         # get the variance within a list, discarded
         local_var_reward_dict = {}
         local_dimensions = local_rewards_list[0].keys()
@@ -224,7 +224,7 @@ def preprocess_episode_data(
 def check_existing_episodes(
     env_id: str,
     agent_ids: list[str],
-    models: dict[str, LLM_Name],
+    models: dict[str, str],
     index: str,
     episode_dict: dict[tuple[str, tuple[str, ...], tuple[str, ...]], bool],
 ) -> bool:
@@ -287,8 +287,8 @@ def run_async_benchmark_in_batch(
         for valid, episode in zip(valid_episodes, simulated_episodes):
             if not valid:
                 pk = episode.pk
-                assert isinstance(pk, str)
-                EpisodeLog.delete(pk)
+                if pk is not None:
+                    EpisodeLog.delete(pk)
 
 
 def benchmark_display(
@@ -326,7 +326,7 @@ def benchmark_display(
 
 
 def _list_all_env_agent_combo_not_in_db(
-    model_names: dict[str, LLM_Name],
+    model_names: dict[str, str],
     env_agent_combo_storage_index_list: list[tuple[EnvAgentComboStorage, str]],
     tag: str = "",
     task: str = "",
@@ -357,15 +357,14 @@ def _list_all_env_agent_combo_not_in_db(
         env_profile = EnvironmentProfile.get(env_id)
         env = ParallelSotopiaEnv(
             env_profile=env_profile,
-            model_name=model_names["env"],
             action_order="round-robin",
             evaluators=[
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             terminal_evaluators=[
-                ReachGoalLLMEvaluator(
+                EpisodeLLMEvaluator(
                     model_names["env"],
-                    EvaluationForTwoAgents[SotopiaDimensions],
+                    EvaluationForAgents[SotopiaDimensions],
                 ),
             ],
         )
@@ -455,7 +454,12 @@ def benchmark(
 ) -> None:
     if only_show_performance:
         benchmark_display(
-            models, partner_model, evaluator_model, task, output_to_jsonl, save_dir
+            models,
+            partner_model,
+            evaluator_model,
+            task,
+            output_to_jsonl,
+            save_dir,
         )
         return
 
@@ -486,9 +490,6 @@ def benchmark(
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
         )
-        model = cast(LLM_Name, model)
-        partner_model = cast(LLM_Name, partner_model)
-        evaluator_model = cast(LLM_Name, evaluator_model)
         tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
         typer.echo(typer.style(f"Tag: {tag}", fg=typer.colors.GREEN, bold=True))
         model_names = {
@@ -522,5 +523,9 @@ def benchmark(
                 return
 
     benchmark_display(
-        models, partner_model, evaluator_model, task, output_to_jsonl=output_to_jsonl
+        models,
+        partner_model,
+        evaluator_model,
+        task,
+        output_to_jsonl=output_to_jsonl,
     )

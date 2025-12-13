@@ -4,12 +4,12 @@ import itertools
 import random
 from typing import Any, Literal, Optional, Type, TypeVar
 
-from beartype import beartype
 from gin import configurable
 from gymnasium.spaces.dict import Dict
-from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
+from gymnasium.spaces import Space
 from pettingzoo.utils.env import ParallelEnv
+from pydantic import validate_call
 from redis_om.model.model import NotFoundError
 
 from sotopia.agents.llm_agent import Agents
@@ -33,15 +33,45 @@ from .evaluators import Evaluator, unweighted_aggregate_evaluate
 TBackground = TypeVar("TBackground", bound=ScriptBackground)
 
 
-def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
-    action_str = ""
-    for agent, action in actions.items():
-        # Only record actions that did something
-        if action.action_type != "none":
-            if action_str != "":
-                action_str += ";"  # separate actions with semicolon
-            action_str += f"{agent} {action.to_natural_language()}"
-    return action_str
+class LiteralSpace(Space[Any]):
+    """Space that samples randomly from list values"""
+
+    def __init__(self, values: list[Any], seed: int | None = None):
+        super().__init__((), None, seed)
+        self._values = values
+
+    def sample(self, mask: Any = None) -> Any:
+        return self.np_random.choice(self._values)
+
+    def contains(self, x: Any) -> bool:
+        return isinstance(x, str) and x in self._values
+
+    def __repr__(self) -> str:
+        return f"LiteralSpace({self._values})"
+
+
+def _actions_to_natural_language_for_viewer(
+    actions: dict[str, AgentAction], viewer: str
+) -> str:
+    """
+    Per-viewer observation text:
+      - Public actions (no 'to'): visible to everyone
+      - Private actions (with 'to'): visible only to sender and recipients
+    """
+    parts: list[str] = []
+    for sender, action in actions.items():
+        if action.action_type == "none":
+            continue
+
+        to_list = action.to or []
+        is_public = len(to_list) == 0
+        can_see = is_public or (viewer in to_list) or (viewer == sender)
+
+        if not can_see:
+            continue
+
+        parts.append(f"{sender} {action.to_natural_language()}")
+    return ";".join(parts)
 
 
 def _map_gender_to_adj(gender: str) -> str:
@@ -51,7 +81,7 @@ def _map_gender_to_adj(gender: str) -> str:
         "Nonbinary": "nonbinary",
     }
     if gender:
-        return gender_to_adj[gender]
+        return gender_to_adj.get(gender, "")
     else:
         return ""
 
@@ -130,8 +160,8 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             ["none", "speak", "non-verbal communication", "action", "leave"]
         ),
         action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
-        model_name: str = "gpt-4o-mini",
         evaluators: list[Evaluator] = [],
+        model_name: str = "gpt-4o-mini",
         terminal_evaluators: list[Evaluator] = [],
         uuid_str: str | None = None,
         env_profile: EnvironmentProfile | None = None,
@@ -145,19 +175,15 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             model_name (str, optional): The name of the language model to use. Defaults to "gpt-3.5-turbo".
         """
         super().__init__()
-        self.model_name = model_name
         if background_class is None:
             self.background_class = ScriptBackground
         else:
             self.background_class = background_class
         self.background = self.background_class(
             scenario="",
-            p1_background="",
-            p2_background="",
-            p1_goal="",
-            p2_goal="",
-            p1_name="",
-            p2_name="",
+            agent_names=[],
+            agent_backgrounds=[],
+            agent_goals=[],
         )
 
         self.agents = []
@@ -167,7 +193,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.action_mask: list[bool] = []
         self.evaluators = evaluators
         self.terminal_evaluators = terminal_evaluators
-
+        self.model_name = model_name
         # if an environment profile is provided, use it
         assert (
             env_profile or uuid_str
@@ -209,78 +235,96 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         ), "partial_background_file and full_background_file are not supported anymore"
         if agents is not None:
             assert agents, "agents must be provided"
-            assert len(agents) == 2, "Only supporting two agents right now"
+            assert len(agents) >= 2, f"At least 2 agents required, got {len(agents)}"
             agent_names = list(agents.keys())
             agent_goals = self.profile.agent_goals
-            assert len(agent_goals) == 2, "Only supporting two agents right now"
+            assert (
+                len(agent_goals) >= 2
+            ), f"At least 2 agent goals required, got {len(agent_goals)}"
+
+            # Ensure we have enough goals for all agents
+            if len(agent_goals) < len(agents):
+                # Pad with generic goals if needed
+                while len(agent_goals) < len(agents):
+                    agent_goals.append(
+                        f"Participate effectively in this {len(agents)}-agent interaction"
+                    )
+
+            # Handle multi-agent scenarios
+            num_agents = len(agents)
+            raw_background: ScriptBackground
+            raw_agent_bios = []
+            for i, agent_name in enumerate(agent_names):
+                bg = get_bio(
+                    self.profile.relationship,
+                    agents[agent_name].profile,
+                    agent_id=i,
+                )
+                raw_agent_bios.append(bg)
 
             raw_background = self.background_class(
                 scenario=self.profile.scenario,
-                p1_background=get_bio(
-                    self.profile.relationship,
-                    agents[agent_names[0]].profile,
-                    agent_id=0,
-                ),
-                p2_background=get_bio(
-                    self.profile.relationship,
-                    agents[agent_names[1]].profile,
-                    agent_id=1,
-                ),
-                p1_goal=f"<root viewer='agent_0'>{agent_goals[0]}</root>",
-                p2_goal=f"<root viewer='agent_1'>{agent_goals[1]}</root>",
-                p1_name=agent_names[0],
-                p2_name=agent_names[1],
+                agent_names=agent_names,
+                agent_backgrounds=raw_agent_bios,
+                agent_goals=[
+                    f"<root viewer='agent_{i}'>{goal}</root>"
+                    for i, goal in enumerate(agent_goals[:num_agents])
+                ],
             )
 
             if lite:
-                raw_background.p1_background = ""
-                raw_background.p2_background = ""
+                # Lite mode - clear backgrounds
+                raw_background.agent_backgrounds = [""] * num_agents
 
+            # Create final rendered background (works for 2+ agents)
             self.background = self.background_class(
                 scenario=render_text_for_environment(raw_background.scenario),
-                p1_background=render_text_for_environment(raw_background.p1_background),
-                p2_background=render_text_for_environment(raw_background.p2_background),
-                p1_goal=render_text_for_environment(raw_background.p1_goal),
-                p2_goal=render_text_for_environment(raw_background.p2_goal),
-                p1_name=raw_background.p1_name,
-                p2_name=raw_background.p2_name,
+                agent_names=raw_background.agent_names,
+                agent_backgrounds=[
+                    render_text_for_environment(bg)
+                    for bg in raw_background.agent_backgrounds
+                ],
+                agent_goals=[
+                    render_text_for_environment(goal)
+                    for goal in raw_background.agent_goals
+                ],
             )
         else:
             raise ValueError("agents must be provided")
 
-        self.agents = [self.background.p1_name, self.background.p2_name]
-        agent_backgrounds = []
+        # Set agent list from background
+        self.agents = self.background.agent_names
+        # Create individual agent backgrounds
+        agent_backgrounds: list[ScriptBackground] = []
         if omniscient:
-            for i in range(self.num_agents):
+            for i in range(num_agents):
                 agent_backgrounds.append(copy.deepcopy(self.background))
         else:
-            for i in range(self.num_agents):
-                agent_backgrounds.append(
-                    self.background_class(
-                        scenario=render_text_for_agent(raw_background.scenario, i),
-                        p1_background=render_text_for_agent(
-                            raw_background.p1_background, i
-                        ),
-                        p2_background=render_text_for_agent(
-                            raw_background.p2_background, i
-                        ),
-                        p1_goal=render_text_for_agent(raw_background.p1_goal, i),
-                        p2_goal=render_text_for_agent(raw_background.p2_goal, i),
-                        p1_name=raw_background.p1_name,
-                        p2_name=raw_background.p2_name,
-                    )
-                )
-        background_for_a = agent_backgrounds[0]
-        background_for_b = agent_backgrounds[1]
+            # Non-omniscient backgrounds - each agent sees only their own goal
+            for i in range(num_agents):
+                # Each agent sees their own goal, others are hidden
+                hidden_goals = list(raw_background.agent_goals)
+                for j in range(len(hidden_goals)):
+                    if j != i:
+                        hidden_goals[j] = "Unknown"
 
-        if not omniscient:
-            background_for_a.p2_goal = "Unknown"
-            background_for_b.p1_goal = "Unknown"
+                agent_background = self.background_class(
+                    scenario=render_text_for_agent(raw_background.scenario, i),
+                    agent_names=raw_background.agent_names,
+                    agent_backgrounds=[
+                        render_text_for_agent(bg, i) if j == i else "Unknown"
+                        for j, bg in enumerate(raw_background.agent_backgrounds)
+                    ],
+                    agent_goals=[
+                        render_text_for_agent(goal, i) for goal in hidden_goals
+                    ],
+                )
+                agent_backgrounds.append(agent_background)
 
         self.action_spaces = {
             agent: Dict(
                 dict(
-                    action_type=Discrete(len(self.available_action_types)),
+                    action_type=LiteralSpace(self.available_action_types),
                     argument=Text(256),
                 )
             )
@@ -297,24 +341,21 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         self.recv_message("Environment", self.background)
 
-        return {
-            self.background.p1_name: Observation(
-                last_turn=background_for_a.to_natural_language(),
+        # Create observations for each agent
+        observations = {}
+        for i, agent_name in enumerate(self.agents):
+            agent_bg = agent_backgrounds[i]
+            observations[agent_name] = Observation(
+                last_turn=agent_bg.to_natural_language(),
                 turn_number=0,
                 available_actions=list(self.available_action_types)
-                if self.action_mask[0]
+                if self.action_mask[i]
                 else ["none"],
-            ),
-            self.background.p2_name: Observation(
-                last_turn=background_for_b.to_natural_language(),
-                turn_number=0,
-                available_actions=list(self.available_action_types)
-                if self.action_mask[1]
-                else ["none"],
-            ),
-        }
+            )
 
-    @beartype
+        return observations
+
+    @validate_call
     def step(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> tuple[
@@ -327,17 +368,17 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, it needs to be converted into AgentAction
+        # For action sampled from action space, convert and validate with context
+        # this checks and filters the `to` field in actions, see `AgentAction.filter_to()`
         complied_actions: dict[str, AgentAction] = {}
-        for key in actions.keys():
-            action = actions[key]
-            if isinstance(action, AgentAction):
-                complied_actions[key] = action
-            else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
-                ]
-                complied_actions[key] = AgentAction.parse_obj(action)
+        for sender, action in actions.items():
+            context = {"agent_names": self.agents, "sender": sender}
+            action_data: dict[str, int | str] = (
+                action.model_dump() if isinstance(action, AgentAction) else action
+            )
+            complied_actions[sender] = AgentAction.model_validate(
+                action_data, context=context
+            )
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
@@ -368,57 +409,36 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
-        obs = _actions_to_natural_language(complied_actions)
+
+        # Create observation for all agents dynamically
+        observations: dict[str, Observation] = {}
+        for i, agent_name in enumerate(self.agents):
+            obs_for_viewer = _actions_to_natural_language_for_viewer(
+                complied_actions, agent_name
+            )
+            observations[agent_name] = Observation(
+                last_turn=render_text_for_agent(obs_for_viewer, agent_id=i),
+                turn_number=self.turn_number,
+                available_actions=list(self.available_action_types)
+                if self.action_mask[i]
+                else ["none"],
+            )
+
         return (
+            observations,
+            # Create reward dictionary for all agents
+            {agent_name: 0 for agent_name in self.agents},
+            # Create info dictionary for all agents
+            {agent_name: response.terminated for agent_name in self.agents},
+            # Create done dictionary for all agents
+            {agent_name: False for agent_name in self.agents},
+            # Create info dictionary with comments and ratings for all agents
             {
-                self.background.p1_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=0),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[0]
-                    else ["none"],
-                ),
-                self.background.p2_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=1),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[1]
-                    else ["none"],
-                ),
-            },
-            {
-                self.background.p1_name: (
-                    response.p1_rate
-                    if isinstance(response.p1_rate, float)
-                    else response.p1_rate[0]
-                )
-                if response.p1_rate
-                else 0,
-                self.background.p2_name: (
-                    response.p2_rate
-                    if isinstance(response.p2_rate, float)
-                    else response.p2_rate[0]
-                )
-                if response.p2_rate
-                else 0,
-            },
-            {
-                self.background.p1_name: response.terminated,
-                self.background.p2_name: response.terminated,
-            },
-            {
-                self.background.p1_name: False,
-                self.background.p2_name: False,
-            },
-            {
-                self.background.p1_name: {
+                agent_name: {
                     "comments": response.comments or "",
-                    "complete_rating": response.p1_rate or 0,
-                },
-                self.background.p2_name: {
-                    "comments": response.comments or "",
-                    "complete_rating": response.p2_rate or 0,
-                },
+                    "complete_rating": 0,
+                }
+                for agent_name in self.agents
             },
         )
 
@@ -434,17 +454,17 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, it needs to be converted into AgentAction
+        # For action sampled from action space, convert and validate with context
+        # this checks and filters the `to` field in actions, see `AgentAction.filter_to()`
         complied_actions: dict[str, AgentAction] = {}
-        for key in actions.keys():
-            action = actions[key]
-            if isinstance(action, AgentAction):
-                complied_actions[key] = action
-            else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
-                ]
-                complied_actions[key] = AgentAction.parse_obj(action)
+        for sender, action in actions.items():
+            context = {"agent_names": self.agents, "sender": sender}
+            action_data: dict[str, int | str] = (
+                action.model_dump() if isinstance(action, AgentAction) else action
+            )
+            complied_actions[sender] = AgentAction.model_validate(
+                action_data, context=context
+            )
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
@@ -504,63 +524,42 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
-        obs = _actions_to_natural_language(complied_actions)
+
+        # Create info dictionary for all agents
         info = {
-            self.background.p1_name: {
+            agent_name: {
                 "comments": response.comments or "",
-                "complete_rating": response.p1_rate or 0,
-            },
-            self.background.p2_name: {
-                "comments": response.comments or "",
-                "complete_rating": response.p2_rate or 0,
-            },
+                "complete_rating": 0,
+            }
+            for agent_name in self.agents
         }
-        if response.terminated:
+        if response.terminated and self.terminal_evaluators:
             info["rewards_prompt"] = {
                 "overall_prompt": self.terminal_evaluators[0].prompt  # type: ignore
             }
 
+        # Create observations for all agents dynamically
+        observations: dict[str, Observation] = {}
+        for i, agent_name in enumerate(self.agents):
+            obs_for_viewer = _actions_to_natural_language_for_viewer(
+                complied_actions, agent_name
+            )
+            observations[agent_name] = Observation(
+                last_turn=render_text_for_agent(obs_for_viewer, agent_id=i),
+                turn_number=self.turn_number,
+                available_actions=list(self.available_action_types)
+                if self.action_mask[i]
+                else ["none"],
+            )
+
         return (
-            {
-                self.background.p1_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=0),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[0]
-                    else ["none"],
-                ),
-                self.background.p2_name: Observation(
-                    last_turn=render_text_for_agent(obs, agent_id=1),
-                    turn_number=self.turn_number,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[1]
-                    else ["none"],
-                ),
-            },
-            {
-                self.background.p1_name: (
-                    response.p1_rate
-                    if isinstance(response.p1_rate, float)
-                    else response.p1_rate[0]
-                )
-                if response.p1_rate
-                else 0,
-                self.background.p2_name: (
-                    response.p2_rate
-                    if isinstance(response.p2_rate, float)
-                    else response.p2_rate[0]
-                )
-                if response.p2_rate
-                else 0,
-            },
-            {
-                self.background.p1_name: response.terminated,
-                self.background.p2_name: response.terminated,
-            },
-            {
-                self.background.p1_name: False,
-                self.background.p2_name: False,
-            },
+            observations,
+            # Create reward dictionary for all agents
+            {agent_name: 0 for agent_name in self.agents},
+            # Create terminated dictionary for all agents
+            {agent_name: response.terminated for agent_name in self.agents},
+            # Create done dictionary for all agents
+            {agent_name: False for agent_name in self.agents},
             info,
         )
 

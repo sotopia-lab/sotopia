@@ -5,7 +5,6 @@ import subprocess
 from asyncio import gather
 from asyncio import run as aiorun
 from datetime import datetime
-from logging import FileHandler
 from typing import Literal, cast
 
 import redis.asyncio as redis
@@ -21,13 +20,14 @@ from sotopia.database.persistent_profile import (
     EnvironmentProfile,
 )
 from sotopia.envs.evaluators import (
-    ReachGoalLLMEvaluator,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
 from sotopia.server import arun_one_episode
-
-from sotopia.envs.evaluators import SotopiaDimensions, EvaluationForTwoAgents
+from sotopia.envs.evaluators import EvaluationForAgents
+from sotopia.database import SotopiaDimensions
+from sotopia.logging import FileHandler
 
 process = subprocess.Popen(
     ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
@@ -58,13 +58,12 @@ async def _start_server_with_two_session_ids_and_agent_env_combo(
     env_agent_combo_storage = EnvAgentComboStorage.get(agent_env_combo_pk)
     env = ParallelSotopiaEnv(
         env_profile=EnvironmentProfile.get(env_agent_combo_storage.env_id),
-        model_name="gpt-4",
         action_order="round-robin",
         evaluators=[
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
+            EpisodeLLMEvaluator("gpt-4", EvaluationForAgents[SotopiaDimensions]),
         ],
     )
     random.shuffle(session_ids)
@@ -91,13 +90,12 @@ async def _start_server_with_one_session_id_and_agent_env_combo(
     env_agent_combo_storage = EnvAgentComboStorage.get(agent_env_combo_pk)
     env = ParallelSotopiaEnv(
         env_profile=EnvironmentProfile.get(env_agent_combo_storage.env_id),
-        model_name="gpt-4",
         action_order="round-robin",
         evaluators=[
             RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
         ],
         terminal_evaluators=[
-            ReachGoalLLMEvaluator("gpt-4", EvaluationForTwoAgents[SotopiaDimensions]),
+            EpisodeLLMEvaluator("gpt-4", EvaluationForAgents[SotopiaDimensions]),
         ],
     )
 
@@ -222,8 +220,10 @@ async def async_start_server_with_session_ids(session_ids: list[str]) -> None:
         case 2:
             if await r.llen("chat_server_combos_double") == 0:
                 await gather(
-                    _assign_left_or_right_and_run(session_id)
-                    for session_id in session_ids
+                    *[
+                        _assign_left_or_right_and_run(session_id)
+                        for session_id in session_ids
+                    ]
                 )
             else:
                 agent_env_combo_pk: str = (

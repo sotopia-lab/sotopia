@@ -1,13 +1,13 @@
 import pytest
 from typing import Any
 
-from sotopia.generation_utils.generate import (
-    ListOfIntOutputParser,
-    agenerate,
-)
+from sotopia.generation_utils import agenerate
 
 from sotopia.messages import AgentAction
-from langchain.output_parsers import PydanticOutputParser
+from sotopia.generation_utils.output_parsers import (
+    PydanticOutputParser,
+    ListOfIntOutputParser,
+)
 
 
 @pytest.mark.asyncio
@@ -20,7 +20,7 @@ async def test_agenerate_list_integer() -> None:
         "custom/llama3.2:1b@http://localhost:8000/v1",
         "{format_instructions}",
         {},
-        ListOfIntOutputParser(length, (lower, upper)),
+        ListOfIntOutputParser(number_of_int=length, range_of_int=(lower, upper)),
         temperature=0.0,
     )
     assert isinstance(list_of_int, list)
@@ -53,11 +53,12 @@ async def test_agenerate_structured_output() -> None:
     """
     async version of test_generate_structured_output
     """
-    output = await agenerate(
+    output: AgentAction = await agenerate(
         "custom/llama3.2:1b@http://localhost:8000/v1",
         "{format_instructions}",
         {},
         PydanticOutputParser(pydantic_object=AgentAction),
+        temperature=0.0,
         structured_output=True,
     )
     assert isinstance(output, AgentAction)

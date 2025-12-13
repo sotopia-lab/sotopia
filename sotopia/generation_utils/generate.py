@@ -1,28 +1,20 @@
 import logging
 import os
-import re
-from typing import TypeVar, Any, cast
+import json
+from dataclasses import dataclass
+from litellm import acompletion
+from litellm.exceptions import BadRequestError
+from litellm.utils import supports_response_schema
+from litellm.litellm_core_utils.get_supported_openai_params import (
+    get_supported_openai_params,
+)
+from typing import Any, cast
 
 import gin
-from beartype import beartype
-from beartype.typing import Type
-from openai import OpenAI
 
-from langchain_core.runnables.base import RunnableSerializable
-from langchain_core.messages.base import BaseMessage
-from langchain.output_parsers import PydanticOutputParser
-from langchain.prompts import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    PromptTemplate,
-)
-from langchain_core.prompt_values import ChatPromptValue
-from langchain.schema import BaseOutputParser, OutputParserException
-from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from pydantic import BaseModel, Field
-from pydantic.v1 import SecretStr
+from pydantic import validate_call
 from rich import print
-from typing_extensions import Literal
+from rich.logging import RichHandler
 
 from sotopia.database import EnvironmentProfile, RelationshipProfile
 from sotopia.messages import ActionType, AgentAction, ScriptBackground
@@ -32,406 +24,64 @@ from sotopia.messages.message_classes import (
 )
 from sotopia.utils import format_docstring
 
-from .langchain_callback_handler import LoggingCallbackHandler
 
-log = logging.getLogger("generate")
-logging_handler = LoggingCallbackHandler("langchain")
+from sotopia.generation_utils.output_parsers import (
+    OutputParser,
+    PydanticOutputParser,
+    StrOutputParser,
+    OutputType,
+    EnvResponse,
+    ScriptOutputParser,
+)
 
-LLM_Name = Literal[
-    "together_ai/meta-llama/Llama-2-7b-chat-hf",
-    "together_ai/meta-llama/Llama-2-70b-chat-hf",
-    "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
-    "together_ai/meta-llama/Llama-3-8b-chat-hf",
-    "together_ai/meta-llama/Llama-3-70b-chat-hf",
-    "together_ai/meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-    "gpt-4o-mini",
-    "gpt-3.5-turbo-16k-0613",
-    "gpt-3.5-turbo-finetuned",
-    "gpt-3.5-turbo-ft-MF",
-    "gpt-4",
-    "gpt-4-turbo-2024-04-09",
-    "gpt-4o-2024-08-06",
-    "gpt-4o-mini-2024-07-18",
-    "human",
-    "redis",
-    "groq/llama3-70b-8192",
-]
+# Configure logger
+log = logging.getLogger("sotopia.generation")
+log.setLevel(logging.INFO)
+
+# Create console handler with rich formatting
+console_handler = RichHandler(rich_tracebacks=True)
+console_handler.setLevel(logging.INFO)
+
+# Create formatter
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+console_handler.setFormatter(formatter)
+
+# Add handler to logger
+log.addHandler(console_handler)
+
 # subject to future OpenAI changes
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
+DEFAULT_TEMPERATURE = 0.7
+_TEMPERATURE_SENTINEL = object()
 
-OutputType = TypeVar("OutputType", bound=object)
-
-
-class EnvResponse(BaseModel):
-    reasoning: str = Field(
-        description="first reiterate agents' social goals and then reason about what agents say/do and whether that aligns with their goals."
-    )
-    p1_rate: int = Field(description="rating of participant 1, on the scale of 0 to 9")
-    p2_rate: int = Field(description="rating of participant 2, on the scale of 0 to 9")
+# Cache temperature support per (model, base_url) to avoid repeated bad requests
+_TEMPERATURE_SUPPORT_CACHE: dict[tuple[str, str | None], bool] = {}
 
 
-class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
-    def __init__(self, pydantic_object: Type[EnvResponse] = EnvResponse) -> None:
-        super(EnvResponsePydanticOutputParser, self).__init__(
-            pydantic_object=pydantic_object
-        )
-
-    def parse(self, text: str) -> EnvResponse:
-        # remove trailing commas before ) or ] from text
-        text = re.sub(r",\s*(\)|\])", r"\1", text)
-        return super().parse(text)
-
-    def get_format_instructions(self) -> str:
-        format_instruction = super().get_format_instructions()
-        return format_instruction
+@dataclass(frozen=True)
+class TemperatureSetting:
+    value: float | None
+    treat_as_default: bool = False
 
 
-class ListOfIntOutputParser(BaseOutputParser[list[int]]):
-    number_of_int: int | None
-    range_of_int: tuple[int, int] | None
-
-    def __init__(
-        self,
-        number_of_int: int | None = None,
-        range_of_int: tuple[int, int] | None = None,
-    ):
-        """
-        Parse the output to a list of integers
-
-        Args:
-            number_of_int (int | None): The number of integers in the output. If None, the number of integers is not fixed.
-        """
-        super().__init__()
-        self.number_of_int = number_of_int
-        self.range_of_int = range_of_int
-
-    def _get_description_text(self) -> str:
-        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by spaces. Don't output anything else. Format example: 1 2 3 4 5"
-
-    def get_format_instructions(self) -> str:
-        return "Please output " + self._get_description_text()
-
-    def parse(self, output: str) -> list[int]:
-        try:
-            output_loaded = output.split(" ")
-            result = [int(x) for x in output_loaded]
-            if self.number_of_int and len(result) != self.number_of_int:
-                msg = f"Expect {self.number_of_int} integers, got {len(result)}"
-                raise OutputParserException(msg)
-            if self.range_of_int:
-                for x in result:
-                    if x < self.range_of_int[0] or x > self.range_of_int[1]:
-                        msg = f"Expect integers within the range of {self.range_of_int}, got {result}"
-                        raise OutputParserException(msg)
-            return result
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except Exception as e:
-            msg = f"Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}"
-            raise OutputParserException(msg)
-
-    @property
-    def _type(self) -> str:
-        """Return the type key."""
-        return "list[int]"
+def default_temperature(value: float | None) -> TemperatureSetting:
+    return TemperatureSetting(value=value, treat_as_default=True)
 
 
-class ListOfStrOutputParser(BaseOutputParser[list[str]]):
-    number_of_str: int | None
-
-    def __init__(
-        self,
-        number_of_str: int | None = None,
-    ):
-        """
-        Parse the output to a list of strings
-
-        Args:
-            number_of_str (int | None): The number of strings in the output. If None, the number of strings is not fixed.
-        """
-        super().__init__()
-        self.number_of_str = number_of_str
-
-    def _get_description_text(self) -> str:
-        return f"a list of{' ' + str(self.number_of_str) if self.number_of_str else ''} strings separated by space"
-
-    def get_format_instructions(self) -> str:
-        return "Please output " + self._get_description_text()
-
-    def parse(self, output: str) -> list[str]:
-        try:
-            result = output.split(" ")
-            if self.number_of_str and len(result) != self.number_of_str:
-                msg = f"Expect {self.number_of_str} strings, got {len(result)}"
-                raise OutputParserException(msg)
-            return result
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt
-        except Exception as e:
-            msg = f"Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}"
-            raise OutputParserException(msg)
-
-    @property
-    def _type(self) -> str:
-        """Return the type key."""
-        return "list[str]"
+def custom_temperature(value: float | None) -> TemperatureSetting:
+    return TemperatureSetting(value=value, treat_as_default=False)
 
 
-class StrOutputParser(BaseOutputParser[str]):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def get_format_instructions(self) -> str:
-        return "Please output a string"
-
-    def parse(self, output: str) -> str:
-        return output
-
-    @property
-    def _type(self) -> str:
-        """Return the type key."""
-        return "str"
-
-
-class ScriptOutputParser(BaseOutputParser[ScriptInteractionReturnType]):
-    agent_names: list[str] = Field(
-        description="The names of the two agents in the conversation"
-    )
-    background: str = Field(description="The background of the conversation")
-    single_turn: bool = Field(description="Whether the output is a single turn")
-
-    def get_format_instructions(self) -> str:
-        if self.single_turn:
-            return r"""For one turn, only write the next step of this agent. You should follow the structure. The format looks like this: Turn #0 \n[participant's name] [action].
-This means you can only generate two lines in one turn.
-
-You can use different types of actions in the [action] part, but PLEASE follows the rule STRICTLY. Remember to include the square brackets when doing an action as stated in the instructions.
-1. Use "did nothing" if the agent did nothing.
-2. Use "said: "{self.argument}" if the agent want to say, ask or inquire something.
-3. Use "[non-verbal communication] {self.argument}" if the agent did non-verbal communication.
-4. Use "[action] {self.argument}" if the agent did an action.
-5. Use "left the conversation" if the agent left the conversation. And you should stop generation
-Other than that, no other format are allowed.
-
-For example, the following outputs are valid:
-Turn #1
-Oliver Thompson said: "Hey Esmeralda, what's wrong? You seem upset."
-Turn #2
-Esmeralda Solis [action] moved closer
-Turn #3
-Oliver Thompson [non-verbal communication] smiled
-Turn #4
-Esmeralda Solis did nothing
-Turn #5
-Oliver Thompson left the conversation
-Remember to make it short and compact, as it should be less than 20 turns"""
-
-        else:
-            return r"""You should separate each turn by a newline. Each turn is separated by a newline, and should only describe one agent. Following the structure: Turn #x \n[participant's name] [action]
-
-You can use different types of actions in the [action] part, but PLEASE follows the rule STRICTLY. Remember to include the square brackets when doing an action as stated in the instructions.
-1. Use "did nothing" if the agent did nothing.
-2. Use "said: "{self.argument}" if the agent want to say, ask or inquire something.
-3. Use "[non-verbal communication] {self.argument}" if the agent did non-verbal communication.
-4. Use "[action] {self.argument}" if the agent did an action.
-5. Use "left the conversation" if the agent left the conversation. And you should stop generation
-
-For example, the following outputs are valid:
-a. Oliver Thompson said: "What's wrong? You seem upset."
-b. Esmeralda Solis [action] moved closer
-c. Oliver Thompson [non-verbal communication] smiled
-e. Esmeralda Solis did nothing
-f. Oliver Thompson left the conversation"""
-
-    def parse(self, output: str) -> ScriptInteractionReturnType:
-        """
-        Parse the loosely formatted output to AgentAction
-        We make the reformat in this function
-        """
-        print("Original output: ", output)
-        interaction = ScriptInteraction(interactions=output)
-        agent_names = self.agent_names
-        assert len(agent_names) == 2, "agent_names must have length 2"
-        try:
-            # try to parse the output
-            parsed_interaction = interaction.parse(
-                agent_names=agent_names, background=self.background
-            )
-            return parsed_interaction
-        except Exception as e:
-            raise OutputParserException(
-                f"Failed to parse the output: {output}. Encounter Exception {e}"
-            )
-
-    @property
-    def _type(self) -> str:
-        """Return the type key."""
-        return "str"
-
-
-def _return_fixed_model_version(model_name: str) -> str:
-    if model_name in [
-        "gpt-3.5-turbo",
-        "gpt-3.5-turbo-finetuned",
-        "gpt-3.5-turbo-ft-MF",
-        "gpt-4",
-        "gpt-4-turbo",
-    ]:
-        return {
-            "gpt-3.5-turbo": "gpt-3.5-turbo-0125",
-            "gpt-3.5-turbo-finetuned": "ft:gpt-3.5-turbo-0613:academicscmu::8nY2zgdt",
-            "gpt-3.5-turbo-ft-MF": "ft:gpt-3.5-turbo-0613:academicscmu::8nuER4bO",
-            "gpt-4": "gpt-4-0613",
-            "gpt-4-turbo": "gpt-4-1106-preview",
-        }[model_name]
-    else:
-        return model_name
-
-
-@gin.configurable
-@beartype
-def obtain_chain(
-    model_name: str,
-    template: str,
-    input_variables: list[str],
-    temperature: float = 0.7,
-    max_retries: int = 6,
-    use_fixed_model_version: bool = True,
-) -> RunnableSerializable[dict[Any, Any], BaseMessage]:
-    """
-    Using langchain to sample profiles for participants
-    """
-    human_message_prompt = HumanMessagePromptTemplate(
-        prompt=PromptTemplate(
-            template=template,
-            input_variables=input_variables,
-        )
-    )
-    chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-    if use_fixed_model_version:
-        model_name = _return_fixed_model_version(model_name)
-    if model_name.startswith("together_ai"):
-        model_name = "/".join(model_name.split("/")[1:])
-        assert (
-            TOGETHER_API_KEY := os.environ.get("TOGETHER_API_KEY")
-        ), "TOGETHER_API_KEY is not set"
-        chat_openai = ChatOpenAI(
-            name=model_name,
-            temperature=temperature,
-            max_retries=max_retries,
-            base_url="https://api.together.xyz/v1",
-            api_key=SecretStr(TOGETHER_API_KEY),
-        )
-        chain = chat_prompt_template | chat_openai
-        return chain
-    elif model_name.startswith("groq"):
-        model_name = "/".join(model_name.split("/")[1:])
-        assert (
-            GROQ_API_KEY := os.environ.get("GROQ_API_KEY")
-        ), "GROQ_API_KEY is not set"
-        chat_openai = ChatOpenAI(
-            name=model_name,
-            temperature=temperature,
-            max_retries=max_retries,
-            base_url="https://api.groq.com/openai/v1",
-            api_key=SecretStr(GROQ_API_KEY),
-        )
-        chain = chat_prompt_template | chat_openai
-        return chain
-    elif model_name.startswith("azure"):
-        # azure/resource_name/deployment_name/version
-        azure_credentials = model_name.split("/")[1:]
-        resource_name, deployment_name, azure_version = (
-            azure_credentials[0],
-            azure_credentials[1],
-            azure_credentials[2],
-        )
-        chat_azure_openai = AzureChatOpenAI(
-            azure_deployment=deployment_name,
-            api_version=azure_version,
-            azure_endpoint=f"https://{resource_name}.openai.azure.com",
-            temperature=temperature,
-            max_retries=max_retries,
-        )
-        chain = chat_prompt_template | chat_azure_openai
-        return chain
-    elif model_name.startswith("custom"):
-        custom_model_name, model_base_url = (
-            model_name.split("@")[0],
-            model_name.split("@")[1],
-        )
-        custom_model_name = "/".join(custom_model_name.split("/")[1:])
-        chat = ChatOpenAI(
-            model=custom_model_name,
-            temperature=temperature,
-            max_retries=max_retries,
-            api_key=SecretStr(
-                CUSTOM_API_KEY
-                if (CUSTOM_API_KEY := os.environ.get("CUSTOM_API_KEY"))
-                else "EMPTY"
-            ),
-            base_url=model_base_url,
-        )
-        human_message_prompt = HumanMessagePromptTemplate(
-            prompt=PromptTemplate(template=template, input_variables=input_variables)
-        )
-        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-        chain = chat_prompt_template | chat
-        return chain
-    else:
-        chat = ChatOpenAI(
-            model=model_name,
-            temperature=temperature,
-            max_retries=max_retries,
-        )
-        chain = chat_prompt_template | chat
-        return chain
-
-
-@beartype
-def format_bad_output_for_script(
+@validate_call
+async def format_bad_output(
     ill_formed_output: str,
     format_instructions: str,
-    agents: list[str],
     model_name: str,
     use_fixed_model_version: bool = True,
-) -> BaseMessage:
-    template = """
-    Given the string that can not be parsed by a parser, reformat it to a string that can be parsed by the parser which uses the following format instructions. Do not add or delete any information.
-    Small tip: for every round of conversation, first determine the name and the case, and whether this line contains errors. Correct it if necessary.
-
-    Format instructions: {format_instructions}
-
-    String to be corrected: {ill_formed_output}
-
-    The two agents are: {agents}
-
-    Please only generate the rewritten string:
-    """
-    print("ill_formed_output: ", ill_formed_output)
-    chain = obtain_chain(
-        model_name=model_name,
-        template=template,
-        input_variables=re.findall(r"{(.*?)}", template),
-        use_fixed_model_version=use_fixed_model_version,
-    )
-    input_values = {
-        "ill_formed_output": ill_formed_output,
-        "format_instructions": format_instructions,
-        "agents": agents,
-    }
-    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
-    log.info(f"Reformated output: {reformat}")
-    return reformat
-
-
-@beartype
-def format_bad_output(
-    ill_formed_output: BaseMessage,
-    format_instructions: str,
-    model_name: str,
-    use_fixed_model_version: bool = True,
-) -> BaseMessage:
+    base_url: str | None = None,
+) -> str:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
     Original string: {ill_formed_output}
@@ -440,120 +90,233 @@ def format_bad_output(
 
     Please only generate the JSON:
     """
-    chain = obtain_chain(
-        model_name=model_name,
-        template=template,
-        input_variables=re.findall(r"{(.*?)}", template),
-        use_fixed_model_version=use_fixed_model_version,
-    )
+
     input_values = {
-        "ill_formed_output": ill_formed_output.content,
+        "ill_formed_output": ill_formed_output,
         "format_instructions": format_instructions,
     }
-    reformat = chain.invoke(input_values, config={"callbacks": [logging_handler]})
-    log.info(f"Reformated output: {reformat}")
-    return reformat
+    content = template.format(**input_values)
+
+    # Build completion kwargs
+    completion_kwargs: dict[str, Any] = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": content}],
+    }
+
+    # Parse format_instructions to get the schema
+    try:
+        schema = json.loads(format_instructions)
+        # Build proper json_schema response_format
+        completion_kwargs["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "reformatted_output",
+                "schema": schema,
+                "strict": True,
+            },
+        }
+    except json.JSONDecodeError:
+        # Fallback to json_object if schema parsing fails
+        completion_kwargs["response_format"] = {"type": "json_object"}
+
+    # Add base_url if provided
+    if base_url is not None:
+        completion_kwargs["base_url"] = base_url
+
+    response = await acompletion(**completion_kwargs)
+    reformatted_output = response.choices[0].message.content
+    assert isinstance(reformatted_output, str)
+    log.info(f"Reformated output: {reformatted_output}")
+    return reformatted_output
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate(
     model_name: str,
     template: str,
     input_values: dict[str, str],
-    output_parser: BaseOutputParser[OutputType],
-    temperature: float = 0.7,
+    output_parser: OutputParser[OutputType],
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> OutputType:
-    input_variables = re.findall(
-        r"(?<!{){([^{}]+)}(?!})", template
-    )  # Add negative lookbehind and lookahead to avoid matching {{}}; note that {ab{ab}ab} will not be matched
-    assert (
-        set(input_variables) == set(list(input_values.keys()) + ["format_instructions"])
-        or set(input_variables) == set(list(input_values.keys()))
-    ), f"The variables in the template must match input_values except for format_instructions. Got {sorted(input_values.keys())}, expect {sorted(input_variables)}"
-    # process template
-    template = format_docstring(template)
-    chain = obtain_chain(
-        model_name=model_name,
-        template=template,
-        input_variables=input_variables,
-        temperature=temperature,
-        use_fixed_model_version=use_fixed_model_version,
-    )
-
+    """Generate text using LiteLLM instead of Langchain."""
+    # Format template with input values
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
 
+    # Process template
+    template = format_docstring(template)
+
+    # Replace template variables
+    for key, value in input_values.items():
+        template = template.replace(f"{{{key}}}", str(value))
+
+    if model_name.startswith("custom"):
+        base_url, api_key = (
+            model_name.split("@")[1],
+            os.environ.get("CUSTOM_API_KEY", "EMPTY"),
+        )
+        model_name = model_name.split("@")[0].replace("custom/", "openai/")
+    else:
+        base_url = None
+        api_key = None
+
+    cache_key = (model_name, base_url)
+
+    supported_params: list[str] | None = None
+    if base_url is None:
+        supported_params = get_supported_openai_params(model=model_name)
+
+    effective_temperature: float | None
+    treat_as_default: bool
+    user_provided_temperature: bool
+
+    if temperature is _TEMPERATURE_SENTINEL:
+        effective_temperature = DEFAULT_TEMPERATURE
+        treat_as_default = True
+        user_provided_temperature = False
+    elif isinstance(temperature, TemperatureSetting):
+        effective_temperature = temperature.value
+        treat_as_default = temperature.treat_as_default
+        user_provided_temperature = True
+    else:
+        effective_temperature = cast(float | None, temperature)
+        treat_as_default = False
+        user_provided_temperature = True
+
+    send_temperature = (
+        user_provided_temperature
+        and effective_temperature is not None
+        and not treat_as_default
+    )
+    non_default_requested = send_temperature and not treat_as_default
+
+    if send_temperature:
+        if cache_key in _TEMPERATURE_SUPPORT_CACHE:
+            if not _TEMPERATURE_SUPPORT_CACHE[cache_key]:
+                send_temperature = False
+                if non_default_requested:
+                    log.warning(
+                        "Model %s previously rejected temperature; ignoring temperature=%s",
+                        model_name,
+                        effective_temperature,
+                    )
+        elif supported_params is not None and "temperature" not in supported_params:
+            _TEMPERATURE_SUPPORT_CACHE[cache_key] = False
+            send_temperature = False
+            if non_default_requested:
+                log.warning(
+                    "Model %s does not support temperature; ignoring temperature=%s",
+                    model_name,
+                    effective_temperature,
+                )
+
+    async def _call_with_retry(completion_kwargs: dict[str, Any]) -> Any:
+        nonlocal send_temperature
+        call_kwargs = dict(completion_kwargs)
+        if send_temperature:
+            call_kwargs["temperature"] = effective_temperature
+        try:
+            response = await acompletion(**call_kwargs)
+            if send_temperature:
+                _TEMPERATURE_SUPPORT_CACHE[cache_key] = True
+            return response
+        except BadRequestError as exc:
+            if send_temperature and "temperature" in str(exc).lower():
+                send_temperature = False
+                _TEMPERATURE_SUPPORT_CACHE[cache_key] = False
+                if non_default_requested:
+                    log.warning(
+                        "Model %s does not support temperature; ignoring temperature=%s",
+                        model_name,
+                        effective_temperature,
+                    )
+                call_kwargs.pop("temperature", None)
+                return await acompletion(**call_kwargs)
+            raise
+
     if structured_output:
-        assert model_name == "gpt-4o-2024-08-06" or model_name.startswith(
-            "custom"
-        ), "Structured output is only supported in gpt-4o-2024-08-06 or custom models"
-        human_message_prompt = HumanMessagePromptTemplate(
-            prompt=PromptTemplate(
-                template=template,
-                input_variables=input_variables,
-            )
-        )
-        chat_prompt_template = ChatPromptTemplate.from_messages([human_message_prompt])
-        prompt_result = chat_prompt_template.invoke(input_values)
-        assert isinstance(prompt_result, ChatPromptValue)
-        instantiated_prompt = prompt_result.messages[0].content
-        assert isinstance(output_parser, PydanticOutputParser)
-        assert isinstance(instantiated_prompt, str)
-        if model_name.startswith("custom"):
-            client = OpenAI(
-                base_url=model_name.split("@")[1],
-                api_key=os.environ.get("CUSTOM_API_KEY") or "EMPTY",
-            )
-            model_name = model_name.split("@")[0].split("/")[1]
-        else:
-            client = OpenAI()
+        if not base_url:
+            assert supported_params is not None
+            assert (
+                "response_format" in supported_params
+            ), "response_format is not supported in this model"
+            assert supports_response_schema(
+                model=model_name
+            ), "response_schema is not supported in this model"
+        messages = [{"role": "user", "content": template}]
 
-        completion = client.beta.chat.completions.parse(
+        assert isinstance(
+            output_parser, PydanticOutputParser
+        ), "structured output only supported in PydanticOutputParser"
+        completion_kwargs = dict(
             model=model_name,
-            messages=[
-                {"role": "user", "content": instantiated_prompt},
-            ],
+            messages=messages,
             response_format=output_parser.pydantic_object,
+            drop_params=True,  # drop params to avoid model error if the model does not support it
+            base_url=base_url,
+            api_key=api_key,
         )
-        result = completion.choices[0].message.parsed
-        casted_result = cast(OutputType, result)
-        return casted_result
+        response = await _call_with_retry(completion_kwargs)
+        result = response.choices[0].message.content
+        # Include agent name in logs if available
+        agent_name = input_values.get("agent", "")
+        log_prefix = f" [{agent_name}]" if agent_name else ""
+        log.info(f"Generated result{log_prefix}: {result}")
+        assert isinstance(result, str)
+        return cast(OutputType, output_parser.parse(result))
 
-    result = await chain.ainvoke(input_values, config={"callbacks": [logging_handler]})
+    messages = [{"role": "user", "content": template}]
+
+    completion_kwargs = dict(
+        model=model_name,
+        messages=messages,
+        drop_params=True,
+        base_url=base_url,
+        api_key=api_key,
+    )
+    response = await _call_with_retry(completion_kwargs)
+    result = response.choices[0].message.content
+
     try:
-        parsed_result = output_parser.invoke(result)
+        parsed_result = output_parser.parse(result)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
-            raise e  # the problem has been handled in the parser
+            raise e
         log.debug(
-            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
+            f"Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
             extra={"markup": True},
         )
-        reformat_parsed_result = format_bad_output(
+        # Handle bad output reformatting
+        reformat_result = await format_bad_output(
             result,
-            format_instructions=output_parser.get_format_instructions(),
-            model_name=bad_output_process_model or model_name,
-            use_fixed_model_version=use_fixed_model_version,
+            output_parser.get_format_instructions(),
+            bad_output_process_model or model_name,
+            use_fixed_model_version,
+            base_url=base_url,
         )
-        parsed_result = output_parser.invoke(reformat_parsed_result)
-    log.info(f"Generated result: {parsed_result}")
+        parsed_result = output_parser.parse(reformat_result)
+
+    # Include agent name in logs if available
+    agent_name = input_values.get("agent", "")
+    log_prefix = f" [{agent_name}]" if agent_name else ""
+    log.info(f"Generated result{log_prefix}: {parsed_result}")
     return parsed_result
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate_env_profile(
     model_name: str,
     inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
     examples: str = "",
-    temperature: float = 0.7,
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
-) -> tuple[EnvironmentProfile, str]:
+) -> EnvironmentProfile:
     """
     Using langchain to generate the background
     """
@@ -577,7 +340,7 @@ async def agenerate_env_profile(
     )
 
 
-@beartype
+@validate_call
 async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
@@ -605,7 +368,7 @@ async def agenerate_relationship_profile(
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate_action(
     model_name: str,
     history: str,
@@ -613,7 +376,7 @@ async def agenerate_action(
     action_types: list[ActionType],
     agent: str,
     goal: str,
-    temperature: float = 0.7,
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -666,19 +429,21 @@ async def agenerate_action(
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
+            structured_output=True,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
         )
-    except Exception:
+    except Exception as e:
+        log.warning(f"Failed to generate action due to {e}")
         return AgentAction(action_type="none", argument="")
 
 
 @gin.configurable
-@beartype
+@validate_call
 async def agenerate_script(
     model_name: str,
     background: ScriptBackground,
-    temperature: float = 0.7,
+    temperature: TemperatureSetting | float | None | object = _TEMPERATURE_SENTINEL,
     agent_names: list[str] = [],
     agent_name: str = "",
     history: str = "",
@@ -754,7 +519,7 @@ async def agenerate_script(
         return (return_default_value, "")
 
 
-@beartype
+@validate_call
 def process_history(
     script: ScriptBackground | EnvResponse | dict[str, AgentAction],
 ) -> str:
@@ -771,7 +536,7 @@ def process_history(
     return result
 
 
-@beartype
+@validate_call
 async def agenerate_init_profile(
     model_name: str,
     basic_info: dict[str, str],
@@ -816,7 +581,7 @@ async def agenerate_init_profile(
     )
 
 
-@beartype
+@validate_call
 async def convert_narratives(
     model_name: str,
     narrative: str,
@@ -850,7 +615,7 @@ async def convert_narratives(
         raise ValueError(f"Narrative {narrative} is not supported.")
 
 
-@beartype
+@validate_call
 async def agenerate_goal(
     model_name: str,
     background: str,

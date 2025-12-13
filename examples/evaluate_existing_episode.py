@@ -1,9 +1,7 @@
 import asyncio
 import logging
 import subprocess
-import typing
 from datetime import datetime
-from logging import FileHandler
 
 import typer
 from rich.logging import RichHandler
@@ -11,8 +9,8 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 
 from sotopia.database.logs import AnnotationForEpisode, EpisodeLog
-from sotopia.generation_utils.generate import LLM_Name
 from sotopia.server import aevaluate_one_episode
+from sotopia.logging import FileHandler
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -40,7 +38,7 @@ app = typer.Typer()
 
 def run_async_server_in_batch_aevaluate(
     batch_size: int = 10,
-    model: LLM_Name = "gpt-4",
+    model: str = "gpt-4",
     reeval_list: list[str] = [],
     tag: str | None = None,
     push_to_db: bool = False,
@@ -100,7 +98,6 @@ def run_server(
 ) -> None:
     annotated_episodes_pks = [anno.episode for anno in AnnotationForEpisode.all()]
     annotated_episodes_pks = list(set(annotated_episodes_pks))
-    model = typing.cast(LLM_Name, model)
     # Call the function with the specified parameters
     run_async_server_in_batch_aevaluate(
         tag=tag,

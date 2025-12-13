@@ -1,3 +1,5 @@
+import os
+import shutil
 import subprocess
 from typing import Literal, Optional
 from pydantic import BaseModel
@@ -313,9 +315,14 @@ def install(
                     )
                     exit(0)
             else:
-                (Path(tmpdir) / "dump.rdb").rename(
-                    Path(directory) / "redis-data/dump.rdb"
+                # Don't use `Path.rename()`, it uses `os.rename` under the hood and throws error
+                # if source and destination are not on the same filesystem.
+                # See https://stackoverflow.com/questions/42392600/oserror-errno-18-invalid-cross-device-link
+                shutil.copy(
+                    str(Path(tmpdir) / "dump.rdb"),
+                    str(Path(directory) / "redis-data/dump.rdb"),
                 )
+                os.remove(str(Path(tmpdir) / "dump.rdb"))
         try:
             subprocess.run(
                 f"docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v {directory}/redis-data:/data/ redis/redis-stack:latest",
@@ -333,7 +340,9 @@ def install(
                 subprocess.run(
                     "brew tap redis-stack/redis-stack", shell=True, check=True
                 )
-                subprocess.run("brew install redis-stack", shell=True, check=True)
+                subprocess.run(
+                    "brew install redis-stack-server", shell=True, check=True
+                )
                 if load_database:
                     if Path("/opt/homebrew/var/db/redis-stack/dump.rdb").exists():
                         cover_existing = (
@@ -379,6 +388,16 @@ def install(
                 )
                 subprocess.run(
                     "tar -xvzf redis-stack-server.tar.gz", shell=True, check=True
+                )
+                subprocess.run(
+                    "wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb",
+                    shell=True,
+                    check=True,
+                )
+                subprocess.run(
+                    "sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb",
+                    shell=True,
+                    check=True,
                 )
                 if load_database:
                     Path("./redis-stack-server-7.2.0-v10/var/db/redis-stack").mkdir(

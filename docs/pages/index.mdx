@@ -51,7 +51,8 @@ with <Link href="https://sotopia.world/"><span className="font-display text-xl">
       <AccordionTrigger> Realistic social interaction </AccordionTrigger>
       <AccordionContent>
         <ul>
-          <li>Agents can talk, do non-verbal communication and performance physical actions.</li>
+          <li>Agents can talk, do non-verbal communication and perform physical actions.</li>
+          <li>Agents can send private messages to specific recipients, enabling secret conversations and side-channel communication.</li>
           <li>Characters have different personalities, backgrounds, and relationships.</li>
           <li>Agents can have different goals and motivations.</li>
         </ul>
@@ -89,6 +90,15 @@ export REDIS_OM_URL="redis://localhost:6379"
 
 <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="item-1">
+        <AccordionTrigger>Using uv? (recommended)</AccordionTrigger>
+        <AccordionContent>
+        We recommend using uv to install the package. You can install the package with the following command:
+        ```bash
+        uv pip install sotopia
+        ```
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="item-2">
         <AccordionTrigger>Using Conda?</AccordionTrigger>
         <AccordionContent>
         Create a new environment with conda and install the package with pip:
@@ -102,10 +112,9 @@ export REDIS_OM_URL="redis://localhost:6379"
         <AccordionTrigger>Where to put my OpenAI/TogetherAI/Groq/Replicate API keys?</AccordionTrigger>
         <AccordionContent>
           <p>Although API keys are not required for all the experiments, you need to use these keys when you use LLMs from these providers.
-          For example, set the environment variable `OPENAI_API_KEY` to your key. The recommend way is to add the key to the conda environment:</p>
-          ```bash
-          conda env config vars set OPENAI_API_KEY=your_key
-          ```
+          For example, set the environment variable `OPENAI_API_KEY` to your key.
+          E.g., setting env variable in the `.env` file and use `uv run --env-file .env` to run the command.
+          Or you could add the key to a conda environment: `conda env config vars set OPENAI_API_KEY=your_key`</p>
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-4">
@@ -117,7 +126,7 @@ export REDIS_OM_URL="redis://localhost:6379"
           ```
           if you are developing Sotopia using uv, you can sync your dependency with
           ```bash
-          uv sync --extra examples --extra chat
+          uv sync --extra examples --extra api
           ```
         </AccordionContent>
       </AccordionItem>
@@ -128,7 +137,8 @@ export REDIS_OM_URL="redis://localhost:6379"
 #### Clone the repo and install the package
 ```bash
 git clone git@github.com:sotopia-lab/sotopia.git;
-pip install -e .
+cd sotopia;
+uv sync --all-extras
 ```
 
 #### Set up Redis stack
@@ -144,16 +154,23 @@ or manual setup:
       <AccordionItem value="item-1">
         <AccordionTrigger>Docker is my thing.</AccordionTrigger>
         <AccordionContent>
-        Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. You can also check [Q&A](/docs/troubleshooting.md) to initiate the redis server with the Sotopia data.
+        Please follow the [instruction](https://redis.io/docs/stack/get-started/install/docker/) to start a redis-stack server or use an existing server. If you want to use the existing data in Sotopia, you can download the `dump.rdb` file from [here](https://cmu.box.com/shared/static/xiivc5z8rnmi1zr6vmk1ohxslylvynur). Feel free to check more datasets related to Sotopia [here](https://huggingface.co/collections/cmu-lti/sotopia-65f312c1bd04a8c4a9225e5b).
+
+        After downloading the `dump.rdb` file, make a `redis-data` folder in an desired `<your_path>` directory. And then you can start the server with the following command:
+        ```bash
+        docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v <your_path>/redis-data:/data/ redis/redis-stack:latest
+        ```
 
         The `REDIS_OM_URL` need to be set before loading and saving agents:
+        either set the env variable in the `.env` file and use `uv run --env-file .env` to run the command.
+        or set the env variable in the conda environment:
         ```bash
         conda env config vars set REDIS_OM_URL="redis://user:password@host:port"
         ```
-        </AccordionContent>
+      </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-2">
-        <AccordionTrigger>No, I don't want to use Docker.</AccordionTrigger>
+        <AccordionTrigger>No, I don't want to use Docker. (Okay, we don't recommend this)</AccordionTrigger>
         <AccordionContent>
         <Tabs defaultValue="linux" className="w-full">
         <TabsList>
@@ -171,8 +188,8 @@ or manual setup:
         tar -xvzf redis-stack-server.tar.gz
         export PATH=$(pwd)/redis-stack-server-7.2.0-v10/bin:$PATH
         # if you are using Ubunutu 22.04, please do an extra step
-        wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb
-        sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.22_amd64.deb
+        wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+        sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
         ```
 
         ### Start the server

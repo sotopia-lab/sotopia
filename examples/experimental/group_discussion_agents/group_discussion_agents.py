@@ -2,10 +2,9 @@ from typing import AsyncIterator
 from aact import Message, NodeFactory
 from aact.messages import Text, Tick, DataModel, DataModelFactory
 from sotopia.agents.llm_agent import ainput
-from sotopia.experimental.agents import BaseAgent
+from sotopia.experimental.agents.base_agent import BaseAgent
 
-from sotopia.generation_utils import agenerate
-from sotopia.generation_utils.generate import StrOutputParser
+from sotopia.generation_utils import agenerate, StrOutputParser
 from sotopia.messages import ActionType
 
 from pydantic import Field
@@ -103,8 +102,8 @@ class LLMAgent(BaseAgent[AgentAction | Tick, AgentAction]):
                             "goal": self.goal,
                             "agent_name": self.name,
                         },
-                        temperature=0.7,
                         output_parser=StrOutputParser(),
+                        temperature=0.7,
                     )
                     if agent_action != "none" and agent_action != "":
                         self.message_history.append((self.name, agent_action))

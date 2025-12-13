@@ -33,16 +33,24 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None
         age_constraint="[(18, 70), (18, 70)]",
     ).save()
     RelationshipProfile(
-        agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent2", relationship=2
+        agent_1_id="tmppk_agent1",
+        agent_2_id="tmppk_agent2",
+        relationship=2,
+        pk="tmppk_relationship1",
     ).save()
     RelationshipProfile(
-        agent_1_id="tmppk_agent1", agent_2_id="tmppk_agent3", relationship=2
+        agent_1_id="tmppk_agent1",
+        agent_2_id="tmppk_agent3",
+        relationship=2,
+        pk="tmppk_relationship2",
     ).save()
     yield
     AgentProfile.delete("tmppk_agent1")
     AgentProfile.delete("tmppk_agent2")
     AgentProfile.delete("tmppk_agent3")
     EnvironmentProfile.delete("tmppk_environment")
+    RelationshipProfile.delete("tmppk_relationship1")
+    RelationshipProfile.delete("tmppk_relationship2")
 
 
 def _generate_name() -> str:
@@ -100,14 +108,19 @@ def test_uniform_sampler() -> None:
     sampler = UniformSampler[Observation, AgentAction](
         env_candidates=[
             EnvironmentProfile(
+                pk="test_pk",
                 scenario=_generate_sentence(),
                 agent_goals=[_generate_sentence() for _ in range(n_agent)],
             )
             for _ in range(100)
         ],
         agent_candidates=[
-            AgentProfile(first_name=_generate_name(), last_name=_generate_name())
-            for _ in range(100)
+            AgentProfile(
+                pk=f"test_pk_agent_{i}",
+                first_name=_generate_name(),
+                last_name=_generate_name(),
+            )
+            for i in range(100)
         ],
     )
     env_params = {

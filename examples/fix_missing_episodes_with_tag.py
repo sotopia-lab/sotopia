@@ -29,19 +29,17 @@ from sotopia.agents.llm_agent import LLMAgent
 from sotopia.database.env_agent_combo_storage import (
     EnvAgentComboStorage,
 )
-from sotopia.database.logs import EpisodeLog
+from sotopia.database import EpisodeLog, SotopiaDimensions
 from sotopia.database.persistent_profile import (
     AgentProfile,
     EnvironmentProfile,
 )
 from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
+    EvaluationForAgents,
+    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
 )
 from sotopia.envs.parallel import ParallelSotopiaEnv
-from sotopia.generation_utils.generate import LLM_Name
 from sotopia.messages.message_classes import AgentAction, Observation
 from sotopia.samplers.base_sampler import BaseSampler, EnvAgentCombo
 from sotopia.server import arun_one_script, run_async_server
@@ -121,9 +119,9 @@ def find_combo_pk(
 def get_combo_model_map(
     all_episodes: List[Tuple[EpisodeLog, str]],
     all_combos_map: Dict[str, EnvAgentComboStorage],
-) -> Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]]:
-    combo_model_map: Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]] = (
-        defaultdict(Counter)
+) -> Dict[str, Counter[tuple[str, str, str, str]]]:
+    combo_model_map: Dict[str, Counter[tuple[str, str, str, str]]] = defaultdict(
+        Counter
     )
 
     bad_combos = []
@@ -195,9 +193,11 @@ def get_combo_model_map(
             combined = copy.deepcopy(curr_ep.models)
             combined.append(curr_tag)
 
-            model_pair: tuple[LLM_Name, LLM_Name, LLM_Name, str] = cast(
-                tuple[LLM_Name, LLM_Name, LLM_Name, str], tuple(combined)
-            )
+            # Add length check and explicit casting
+            if len(combined) != 4:
+                continue
+
+            model_pair = (combined[0], combined[1], combined[2], combined[3])
             combo_model_map[curr_combo_pk][model_pair] += 1
             valid_count += 1
         else:
@@ -226,8 +226,8 @@ def get_combo_model_map(
 
 
 def get_all_model_pairs(
-    combo_model_map: Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]],
-) -> Set[tuple[LLM_Name, LLM_Name, LLM_Name, str]]:
+    combo_model_map: Dict[str, Counter[tuple[str, str, str, str]]],
+) -> Set[tuple[str, str, str, str]]:
     all_model_pairs = set()
     for key in combo_model_map:
         for combo in combo_model_map[key]:
@@ -242,19 +242,19 @@ def get_all_model_pairs(
 
 
 def get_all_missing_model_pairs(
-    combo_model_map: Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]],
-    all_model_pairs: Set[tuple[LLM_Name, LLM_Name, LLM_Name, str]],
+    combo_model_map: Dict[str, Counter[tuple[str, str, str, str]]],
+    all_model_pairs: Set[tuple[str, str, str, str]],
     num_required: int,
     all_combos_map: Dict[str, EnvAgentComboStorage] = {},
     add_missing_env: bool = False,
-) -> Dict[str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]]:
+) -> Dict[str, Counter[tuple[str, str, str, str]]]:
     """
     all_combos_map: if add_missing_env is True, then we need to provide all combos map
     add_missing_env: if True, add missing env to the map, else just match the model pairs among selected tags
     """
-    combo_missing_model_map: Dict[
-        str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
-    ] = defaultdict(Counter)
+    combo_missing_model_map: Dict[str, Counter[tuple[str, str, str, str]]] = (
+        defaultdict(Counter)
+    )
 
     if add_missing_env:
         for combo_key in all_combos_map:
@@ -282,11 +282,9 @@ def get_all_missing_model_pairs(
 # temporally used for making sure unique (env, agents, models) setting; need to change
 # according to the Counter in the case needing to run multiple experiments for one setting
 def get_missing_model_combo_map(
-    combo_missing_model_map: Dict[
-        str, Counter[tuple[LLM_Name, LLM_Name, LLM_Name, str]]
-    ],
+    combo_missing_model_map: Dict[str, Counter[tuple[str, str, str, str]]],
     all_combos_map: Dict[str, EnvAgentComboStorage],
-) -> Dict[tuple[LLM_Name, LLM_Name, LLM_Name, str], List[tuple[str, str, str]]]:
+) -> Dict[tuple[str, str, str, str], List[tuple[str, str, str]]]:
     missing_model_combo_map = defaultdict(list)
     for combo_pk in combo_missing_model_map:
         model_counter = combo_missing_model_map[combo_pk]
@@ -314,22 +312,21 @@ def get_missing_model_combo_map(
 
 
 def yield_env_agent_combo(
-    combo_ids: list[tuple[str, str, str]], model_names: dict[str, LLM_Name]
+    combo_ids: list[tuple[str, str, str]], model_names: dict[str, str]
 ) -> Generator[EnvAgentCombo[Observation, AgentAction], None, None]:
     for combo_id in combo_ids:
         env_id, agent_id1, agent_id2 = combo_id
         env_profile = EnvironmentProfile.get(env_id)
         env = ParallelSotopiaEnv(
             env_profile=env_profile,
-            model_name=model_names["env"],
             action_order="round-robin",
             evaluators=[
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
             terminal_evaluators=[
-                ReachGoalLLMEvaluator(
+                EpisodeLLMEvaluator(
                     model_names["env"],
-                    EvaluationForTwoAgents[SotopiaDimensions],
+                    EvaluationForAgents[SotopiaDimensions],
                 ),
             ],
         )
@@ -348,7 +345,7 @@ def yield_env_agent_combo(
 @gin.configurable
 def re_run_missing_episodes(
     env_agent_ids: List[Tuple[str, str, str]] = [],
-    model_names: dict[str, LLM_Name] = {
+    model_names: dict[str, str] = {
         "env": "gpt-4",
         "agent1": "gpt-4o-mini",
         "agent2": "gpt-4o-mini",

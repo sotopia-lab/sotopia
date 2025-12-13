@@ -10,11 +10,10 @@ import copy
 import itertools
 import random
 from typing import Any, Literal, Optional, Type, TypeVar
-from beartype import beartype
 from gin import configurable
 from gymnasium.spaces.dict import Dict
-from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
+from gymnasium.spaces import Space
 from pettingzoo.utils.env import ParallelEnv
 from redis_om.model.model import NotFoundError
 from sotopia.agents.llm_agent import Agents
@@ -96,10 +95,13 @@ def step(
     dict[str, dict[Any, Any]]
 ]
 ```
-Executes actions and returns new states.
+Executes actions and returns new states. Observations are filtered per-agent based on private message visibility.
 
 ##### Parameters
-- `actions` (dict[str, AgentAction] | dict[str, dict[str, int | str]]): Actions taken by agents.
+- `actions` (dict[str, AgentAction] | dict[str, dict[str, int | str]]): Actions taken by agents. Each action can be:
+  - An `AgentAction` object
+  - A dictionary with `action_type` (string literal like `"speak"`, `"none"`, etc.) and `argument` (string)
+  - Optionally includes a `to` field (list of strings) for private messages
 
 ##### Returns
 - `tuple[
@@ -109,6 +111,11 @@ Executes actions and returns new states.
         dict[str, bool],
         dict[str, dict[Any, Any]]
     ]`: Next state information, including observations, rewards, terminals, truncations, and additional info.
+
+##### Private Message Visibility
+- **Public actions** (no `to` field or `to=None`): Visible to all agents in their observations
+- **Private actions** (with `to` field): Only visible to the sender and agents listed in `to`
+- Each agent receives a filtered observation containing only actions they can see
 
 #### Usage Example
 ```python
@@ -127,10 +134,13 @@ async def astep(
     dict[str, dict[Any, Any]]
 ]
 ```
-Asynchronous version of `step`.
+Asynchronous version of `step`. Observations are filtered per-agent based on private message visibility.
 
 ##### Parameters
-- `actions` (dict[str, AgentAction] | dict[str, dict[str, int | str]]): Actions taken by agents.
+- `actions` (dict[str, AgentAction] | dict[str, dict[str, int | str]]): Actions taken by agents. Each action can be:
+  - An `AgentAction` object
+  - A dictionary with `action_type` (string literal like `"speak"`, `"none"`, etc.) and `argument` (string)
+  - Optionally includes a `to` field (list of strings) for private messages
 
 ##### Returns
 - `tuple[
@@ -140,6 +150,11 @@ Asynchronous version of `step`.
         dict[str, bool],
         dict[str, dict[Any, Any]]
     ]`: Next state information, including observations, rewards, terminals, truncations, and additional info.
+
+##### Private Message Visibility
+- **Public actions** (no `to` field or `to=None`): Visible to all agents in their observations
+- **Private actions** (with `to` field): Only visible to the sender and agents listed in `to`
+- Each agent receives a filtered observation containing only actions they can see
 
 #### Usage Example
 ```python
@@ -162,11 +177,13 @@ Close the environment (not implemented).
 
 ## Utility Functions
 
-### `_actions_to_natural_language`
+### `_actions_to_natural_language_for_viewer`
 ```python
-def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str
+def _actions_to_natural_language_for_viewer(
+    actions: dict[str, AgentAction], viewer: str
+) -> str
 ```
-Converts agent actions to human-readable language.
+Converts agent actions to human-readable language, filtered for a specific viewer. Private messages are only included if the viewer is the sender or a recipient.
 
 ### `_map_gender_to_adj`
 ```python
@@ -207,6 +224,14 @@ Renders text viewable by a specific agent using XMLRenderer.
 
 ---
 
+## Action Space
+
+The action space for each agent is a `Dict` space with:
+- `action_type`: A `LiteralSpace` that samples string literals (e.g., `"speak"`, `"none"`, `"action"`) from `available_action_types`
+- `argument`: A `Text` space (max 256 characters) for the action content
+
+**Note**: The `action_type` is now a string literal, not an integer index. When sampling from the action space, you'll get strings like `"speak"` instead of integers like `0`.
+
 ## Usage Example
 Here's a typical usage example starting an episode in the environment:
 
@@ -222,15 +247,46 @@ observations = env.reset(
     seed=42,
     agents={
         "agent_1": Agent(...),
-        "agent_2": Agent(...)
+        "agent_2": Agent(...),
+        "agent_3": Agent(...)
     },
     omniscient=True
 )
 
-# Perform actions
+# Perform public actions (visible to all)
 actions = {
-    "agent_1": AgentAction(action_type="speak", argument="Hello!"),
+    "agent_1": AgentAction(action_type="speak", argument="Hello everyone!"),
     "agent_2": AgentAction(action_type="action", argument="waved"),
+    "agent_3": AgentAction(action_type="speak", argument="Hi there!"),
 }
 
 next_obs, rewards, done, truncations, info = env.step(actions)
+
+# Perform actions with private messages
+actions_with_private = {
+    "agent_1": AgentAction(
+        action_type="speak",
+        argument="Psst, agent_2, let's discuss this privately",
+        to=["agent_2"]  # Only visible to agent_1 and agent_2
+    ),
+    "agent_2": AgentAction(action_type="speak", argument="Hello everyone!"),  # Public
+    "agent_3": AgentAction(
+        action_type="speak",
+        argument="I'll talk to agent_1",
+        to=["agent_1"]  # Only visible to agent_1 and agent_3
+    ),
+}
+
+next_obs, rewards, done, truncations, info = env.step(actions_with_private)
+
+# Check observations - each agent sees different things
+print("Agent 1 sees:", next_obs["agent_1"].last_turn)
+# Includes both private messages (from agent_1 and agent_3) and public message from agent_2
+
+print("Agent 2 sees:", next_obs["agent_2"].last_turn)
+# Includes private message from agent_1 and public message from agent_2
+
+print("Agent 3 sees:", next_obs["agent_3"].last_turn)
+# Includes private message from agent_3 and public message from agent_2
+# Does NOT include the private message from agent_1 to agent_2
+```

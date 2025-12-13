@@ -1,1 +1,1 @@
-uv run --extra test --extra chat pytest --ignore tests/cli --cov=. --cov-report=xml
+uv run --extra test --extra api pytest --ignore tests/cli --cov=. --cov-report=xml

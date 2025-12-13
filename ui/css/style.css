@@ -1,0 +1,34 @@
+.truncate {
+    max-height: 2em;
+}
+
+.character-truncate {
+    max-height: 8em;
+}
+.truncate, .character-truncate{
+    margin-bottom: 12px;
+    cursor: pointer;
+    word-break: break-all;
+    overflow:hidden;
+    white-space: nowrap;
+    transition: max-height 1s, white-space 1s;
+}
+.truncate:hover, .character-truncate:hover{
+    overflow: auto;
+    overflow-y: scroll;
+    white-space: normal;
+    max-height: 200px;
+}
+
+/*
+[data-testid="stAppViewContainer"] {
+    background-image: url("https://images.unsplash.com/photo-1729096532452-50549f2bb63c");
+    background-size: 40%;
+    background-position: top right;
+    background-repeat: no-repeat;
+    background-attachment: local;
+} */
+
+[data-testid="stHeader"] {
+    background: rgba(0,0,0,0);
+}

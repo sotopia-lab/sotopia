@@ -1,22 +1,22 @@
-from evaluate_existing_episode import run_async_server_in_batch_aevaluate
-from sotopia.database import (
-    map_human_annotations_to_episode_logs,
-    AnnotationForEpisode,
-    EpisodeLog,
-)
-from typer import Typer
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+from evaluate_existing_episode import run_async_server_in_batch_aevaluate
+from typer import Typer
 
+from sotopia.database import (
+    AnnotationForEpisode,
+    EpisodeLog,
+    map_human_annotations_to_episode_logs,
+)
 from sotopia.database.serialization import get_rewards_from_episode
 
 app = Typer()
 
 target_model_patterns: list[list[str]] = [
     ["gpt-4", "gpt-4", "gpt-3.5-turbo"],
-    ["gpt-4", "gpt-4o-mini", "gpt-4"],
-    ["gpt-4", "gpt-4o-mini", "togethercomputer/llama-2-70b-chat"],
+    ["gpt-4", "gpt-3.5-turbo", "gpt-4"],
+    ["gpt-4", "gpt-3.5-turbo", "togethercomputer/llama-2-70b-chat"],
     ["gpt-4", "togethercomputer/llama-2-70b-chat", "gpt-3.5-turbo"],
 ]
 
@@ -113,7 +113,6 @@ def evaluate_evaluator(
     to_re_evaluate_list = list(human_annotation_dict.keys())
     aggregate_human_annotations: list[EpisodeLog] = list(human_annotation_dict.values())  # type: ignore
     # Call the function with the specified parameters
-
     re_evaluated_episodes: list[EpisodeLog] = EpisodeLog.find(
         EpisodeLog.tag == tag
     ).all()  # type: ignore
@@ -123,7 +122,7 @@ def evaluate_evaluator(
         )
         run_async_server_in_batch_aevaluate(
             tag=tag,
-            model=model,  # type: ignore
+            model=model,
             batch_size=batch_size,
             push_to_db=push_to_db,
             verbose=verbose,
@@ -142,7 +141,7 @@ def evaluate_evaluator(
         while to_re_evaluate_list:
             run_async_server_in_batch_aevaluate(
                 tag=tag,
-                model=model,  # type: ignore
+                model=model,
                 batch_size=batch_size,
                 push_to_db=push_to_db,
                 verbose=verbose,
@@ -159,12 +158,11 @@ def evaluate_evaluator(
             for valid, episode in zip(valid_episodes, re_evaluated_episodes):
                 if not valid:
                     pk = episode.pk  # type: ignore
-                    assert isinstance(pk, str)
-                    to_re_evaluate_list.append(pk)
+                    if pk is not None:
+                        to_re_evaluate_list.append(pk)
 
     correlation_list = []
     ordered_re_eval_episodes = []
-
     for human_annotated_episode in aggregate_human_annotations:
         for re_eval_episode in re_evaluated_episodes:
             assert isinstance(re_eval_episode, EpisodeLog)

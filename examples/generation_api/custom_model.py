@@ -10,7 +10,11 @@
 #        python examples/generation_api/custom_model.py
 # Expected output for 1: a bunch of logs and an output [[14, 7], [14, 7, 3], [14, 7, 3, 9], [14, 7, 3, 9, 6], [14, 7, 3, 9, 6, 8]]
 
-from sotopia.generation_utils.generate import ListOfIntOutputParser, agenerate
+from sotopia.generation_utils import (
+    ListOfIntOutputParser,
+    agenerate,
+    default_temperature,
+)
 import logging
 
 # Set logging to the lowest level to show all logs
@@ -22,8 +26,8 @@ async def generate_n_random_numbers(n: int) -> list[int]:
         model_name="custom/llama3.2:1b@http://localhost:8000/v1",
         template="Generate {n} random integer numbers. {format_instructions}",
         input_values={"n": str(n)},
-        temperature=0.0,
         output_parser=ListOfIntOutputParser(n),
+        temperature=default_temperature(0.0),
     )
 
 

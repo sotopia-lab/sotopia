@@ -1,4 +1,4 @@
-FROM ghcr.io/ggerganov/llama.cpp:server
+FROM ghcr.io/ggerganov/llama.cpp:server@sha256:5c1b29278f57c1887b63ea45affff1a19fef2e96f55c6b3fcb7b435d1de47437
 
 # Install curl and other necessary utilities
 RUN apt-get update && \

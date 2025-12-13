@@ -1,0 +1,81 @@
+redis_url = "redis://localhost:6379/0"
+extra_modules = [{% for ins in extra_modules %}
+    "{{ ins }}",{% endfor %}
+    "sotopia.experimental.envs.utility_nodes.chat_print_node",
+    "sotopia.experimental.agents.moderator",
+    "sotopia.experimental.agents.evaluators",
+    "sotopia.experimental.agents.redis_agent"
+]
+
+
+[[nodes]]
+node_name = "moderator"
+node_class = "moderator"
+[nodes.node_args]
+output_channels = [ {% for agent in agents %}
+    "moderator:{{ agent.name }}"{% if not loop.last %},{% endif %}{% endfor %}
+]
+input_channels = [{% for agent in agents %}
+    "{{ agent.name }}:moderator"{% if not loop.last %},{% endif %}{% endfor %}
+]
+evaluator_channels = [["evaluator:moderator","moderator:evaluator"]]
+agent_mapping = { {% for agent in agents %}"moderator:{{ agent.name }}" = "{{agent.name}}"{% if not loop.last %},{% endif %}{% endfor %}}
+scenario = "{{scenario}}"
+max_turns = {{max_turns}}
+push_to_db = {{push_to_db | render_bool }}
+evaluate_episode = {{evaluate_episode | render_bool}}
+use_pk_value = {{use_pk_value | render_bool}}
+
+{% for agent in agents if agent.name != "redis_agent" %}
+[[nodes]]
+node_name = "{{agent.name}}"
+node_class = "{{agent_node}}"
+
+[nodes.node_args]
+input_channels = ["moderator:{{agent.name}}"]
+output_channel = "{{agent.name}}:moderator"
+goal = "{{agent.goal}}"
+model_name = "{{agent.model_name if agent.model_name is defined else default_model}}"
+{% if agent.agent_pk is defined%}
+agent_pk = "{{agent.agent_pk}}"
+{% else %}
+agent_name = "{{agent.name}}"
+[nodes.node_args.background]
+{{render_dict(agent.background,"nodes.node_args.background")}}
+{% endif %}
+
+{% endfor %}
+
+[[nodes]]
+node_name = "chat_print"
+node_class = "chat_print"
+
+[nodes.node_args.print_channel_types]{% for agent in agents %}
+"{{agent.name}}:moderator" = "agent_action"{% endfor %}
+
+[nodes.node_args]
+env_agents = [{% for agent in agents %}
+    "{{ agent.name }}"{% if not loop.last %},{% endif %}{% endfor %}
+]
+
+[[nodes]]
+node_name = "evaluator"
+node_class = "evaluator"
+
+[nodes.node_args]
+input_channels = ["moderator:evaluator"]
+output_channels = ["evaluator:moderator"]
+model_name = "{{evaluator_model}}"
+
+[[nodes]]
+node_name = "redis_agent"
+node_class = "redis_agent"
+
+[nodes.node_args]
+input_channels = ["moderator:redis_agent"]
+output_channel = "redis_agent:moderator"
+pubsub_channel = "{{connection_id}}"
+
+[nodes.node_args.other_agent_status]
+{% for agent in agents %}
+"{{ agent.name }}" = true{% if not loop.last %}{% endif %}{% endfor %}

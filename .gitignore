@@ -163,3 +163,7 @@ docs/.next/*
 docs/node_modules/*
 
 redis-data/*
+
+sotopia/cli/install/redis-data/*
+redis-stack-server-*/
+examples/experimental/negotiation_arena/redis-data/*

@@ -22,6 +22,7 @@ from sotopia.database import (
     jsonl_to_envagnetcombostorage,
     jsonl_to_agentprofiles,
 )
+from redis_om.model.model import NotFoundError
 
 import csv
 
@@ -41,10 +42,22 @@ def _test_create_episode_log_setup_and_tear_down() -> Generator[None, None, None
         ],
     ).save()
     yield
-    AgentProfile.delete("tmppk_agent1")
-    AgentProfile.delete("tmppk_agent2")
-    EnvironmentProfile.delete("tmppk_environment")
-    EpisodeLog.delete("tmppk_episode_log")
+    try:
+        AgentProfile.delete("tmppk_agent1")
+    except NotFoundError:
+        pass
+    try:
+        AgentProfile.delete("tmppk_agent2")
+    except NotFoundError:
+        pass
+    try:
+        EnvironmentProfile.delete("tmppk_environment")
+    except NotFoundError:
+        pass
+    try:
+        EpisodeLog.delete("tmppk_episode_log")
+    except NotFoundError:
+        pass
 
 
 def test_episode_log_serialization(

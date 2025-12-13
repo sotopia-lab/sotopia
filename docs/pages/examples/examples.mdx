@@ -19,3 +19,35 @@ python examples/benchmark_evaluator.py --push-to-db --model=<the model used to b
 
 ## Example 2: Generate script-like episodes
 See `docs/simulation_modes.md` for more information.
+
+## Example 3: Multi-Agent Private Messages
+Sotopia supports private messaging between agents, allowing agents to send messages that are only visible to specific recipients. This enables private conversations, secret planning, and side-channel communication in multi-agent scenarios.
+
+See `examples/experimental/multi_agents_private_dm/README.md` for more information and example scripts.
+
+### Quick Example
+```python
+from sotopia.messages import AgentAction
+from sotopia.envs import ParallelSotopiaEnv
+
+# Create actions with private messages
+actions = {
+    "agent1": AgentAction(
+        action_type="speak",
+        argument="Psst, agent2, let's discuss this privately",
+        to=["agent2"]  # Only visible to agent1 and agent2
+    ),
+    "agent2": AgentAction(
+        action_type="speak",
+        argument="Hello everyone!"  # Public message, visible to all
+    ),
+    "agent3": AgentAction(
+        action_type="speak",
+        argument="I'll talk to agent1",
+        to=["agent1"]  # Only visible to agent1 and agent3
+    ),
+}
+
+# Each agent will see different observations based on message visibility
+observations, rewards, done, truncations, info = env.step(actions)
+```
