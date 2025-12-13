@@ -29,14 +29,16 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+
+    - name: Install Pyaudio
+      run: sudo apt-get install -y portaudio19-dev
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install uv
-        uv sync --extra test --extra api
     - name: Type-checking package with mypy
       run: |
         # Run this mypy instance against our main package.
-        uv run mypy --strict .
+        uv run --all-extras mypy --strict .
