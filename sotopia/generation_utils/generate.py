@@ -141,6 +141,7 @@ async def agenerate(
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    context: dict[str, Any] | None = None,
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
     # Format template with input values
@@ -267,7 +268,7 @@ async def agenerate(
         log_prefix = f" [{agent_name}]" if agent_name else ""
         log.info(f"Generated result{log_prefix}: {result}")
         assert isinstance(result, str)
-        return cast(OutputType, output_parser.parse(result))
+        return cast(OutputType, output_parser.parse(result, context=context))
 
     messages = [{"role": "user", "content": template}]
 
@@ -282,7 +283,7 @@ async def agenerate(
     result = response.choices[0].message.content
 
     try:
-        parsed_result = output_parser.parse(result)
+        parsed_result = output_parser.parse(result, context=context)
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e
@@ -298,7 +299,7 @@ async def agenerate(
             use_fixed_model_version,
             base_url=base_url,
         )
-        parsed_result = output_parser.parse(reformat_result)
+        parsed_result = output_parser.parse(reformat_result, context=context)
 
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")
@@ -380,6 +381,8 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    agent_names: list[str] | None = None,
+    sender: str | None = None,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -418,6 +421,16 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
+        # Build validation context if agent_names provided
+        validation_context = None
+        if agent_names is not None:
+            validation_context = {
+                "agent_names": agent_names,
+                "available_action_types": action_types,
+            }
+            if sender is not None:
+                validation_context["sender"] = sender
+
         return await agenerate(
             model_name=model_name,
             template=template,
@@ -432,6 +445,7 @@ async def agenerate_action(
             structured_output=True,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            context=validation_context,
         )
     except Exception as e:
         log.warning(f"Failed to generate action due to {e}")

@@ -341,10 +341,16 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
 
         self.recv_message("Environment", self.background)
 
-        # Create observations for each agent
+        # Set script_background on agents and create observations
         observations = {}
         for i, agent_name in enumerate(self.agents):
             agent_bg = agent_backgrounds[i]
+            # Set script_background on agent if it's an LLMAgent
+            if agent_name in agents:
+                from sotopia.agents.llm_agent import LLMAgent
+
+                if isinstance(agents[agent_name], LLMAgent):
+                    agents[agent_name].script_background = agent_bg
             observations[agent_name] = Observation(
                 last_turn=agent_bg.to_natural_language(),
                 turn_number=0,
@@ -368,17 +374,20 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, convert and validate with context
-        # this checks and filters the `to` field in actions, see `AgentAction.filter_to()`
+        # Actions from agents are already validated during generation, use directly
+        # Only validate dict inputs (from action space sampling)
         complied_actions: dict[str, AgentAction] = {}
+        context = {
+            "agent_names": self.agents,
+            "available_action_types": self.available_action_types,
+        }
         for sender, action in actions.items():
-            context = {"agent_names": self.agents, "sender": sender}
-            action_data: dict[str, int | str] = (
-                action.model_dump() if isinstance(action, AgentAction) else action
-            )
-            complied_actions[sender] = AgentAction.model_validate(
-                action_data, context=context
-            )
+            context["sender"] = sender
+            # Actions from agents are already validated during generation
+            assert isinstance(
+                action, AgentAction
+            ), f"Action must be AgentAction, got {type(action)}"
+            complied_actions[sender] = action
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
@@ -454,17 +463,20 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, convert and validate with context
-        # this checks and filters the `to` field in actions, see `AgentAction.filter_to()`
+        # Actions from agents are already validated during generation, use directly
+        # Only validate dict inputs (from action space sampling)
         complied_actions: dict[str, AgentAction] = {}
+        context = {
+            "agent_names": self.agents,
+            "available_action_types": self.available_action_types,
+        }
         for sender, action in actions.items():
-            context = {"agent_names": self.agents, "sender": sender}
-            action_data: dict[str, int | str] = (
-                action.model_dump() if isinstance(action, AgentAction) else action
-            )
-            complied_actions[sender] = AgentAction.model_validate(
-                action_data, context=context
-            )
+            context["sender"] = sender
+            # Actions from agents are already validated during generation
+            assert isinstance(
+                action, AgentAction
+            ), f"Action must be AgentAction, got {type(action)}"
+            complied_actions[sender] = action
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
