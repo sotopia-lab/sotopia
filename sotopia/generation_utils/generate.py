@@ -253,10 +253,106 @@ async def agenerate(
         assert isinstance(
             output_parser, PydanticOutputParser
         ), "structured output only supported in PydanticOutputParser"
+
+        # Get the JSON schema and sanitize the name to comply with OpenAI's pattern
+        schema = output_parser.pydantic_object.model_json_schema()
+
+        # Sanitize the schema name by removing invalid characters (e.g., brackets in generic types)
+        # OpenAI requires names to match: ^[a-zA-Z0-9_-]+$
+        original_name = schema.get("title", output_parser.pydantic_object.__name__)
+        sanitized_name = "".join(
+            c if c.isalnum() or c in ("_", "-") else "_" for c in original_name
+        )
+
+        # Check if schema is compatible with OpenAI strict mode and fix if needed
+        def check_and_fix_schema(
+            obj: Any, check_only: bool = False
+        ) -> tuple[bool, bool]:
+            """
+            Check if schema is compatible with OpenAI strict mode and apply fixes.
+
+            Args:
+                obj: The schema object to check/fix
+                check_only: If True, only check without modifying
+
+            Returns:
+                Tuple of (has_tuples, has_optional_fields)
+            """
+            has_tuples = False
+            has_optional = False
+
+            if isinstance(obj, dict):
+                # Check for arrays with prefixItems (tuples)
+                if obj.get("type") == "array" and "prefixItems" in obj:
+                    if not check_only and "items" not in obj:
+                        # OpenAI requires items field even with prefixItems
+                        obj["items"] = {}
+                    has_tuples = True
+
+                # Check for optional fields (properties not in required list)
+                if obj.get("type") == "object" and "properties" in obj:
+                    required = set(obj.get("required", []))
+                    properties = set(obj["properties"].keys())
+                    if properties != required:
+                        # Has optional fields - not compatible with strict mode
+                        has_optional = True
+
+                    # Add additionalProperties: false for strict mode compatibility
+                    if not check_only:
+                        if "additionalProperties" not in obj:
+                            obj["additionalProperties"] = False
+                        elif isinstance(obj.get("additionalProperties"), dict):
+                            # Recurse into dict-like objects
+                            t, o = check_and_fix_schema(
+                                obj["additionalProperties"], check_only
+                            )
+                            has_tuples = has_tuples or t
+                            has_optional = has_optional or o
+
+                # Recurse into nested structures
+                for value in obj.values():
+                    if isinstance(value, dict):
+                        t, o = check_and_fix_schema(value, check_only)
+                        has_tuples = has_tuples or t
+                        has_optional = has_optional or o
+                    elif isinstance(value, list):
+                        for item in value:
+                            if isinstance(item, dict):
+                                t, o = check_and_fix_schema(item, check_only)
+                                has_tuples = has_tuples or t
+                                has_optional = has_optional or o
+
+            elif isinstance(obj, list):
+                for item in obj:
+                    if isinstance(item, dict):
+                        t, o = check_and_fix_schema(item, check_only)
+                        has_tuples = has_tuples or t
+                        has_optional = has_optional or o
+
+            return has_tuples, has_optional
+
+        # Check if schema is compatible with strict mode
+        has_tuples, has_optional_fields = check_and_fix_schema(schema, check_only=True)
+
+        # Use strict mode only if:
+        # 1. Schema doesn't contain tuple types (prefixItems)
+        # 2. Schema doesn't have optional fields
+        use_strict = not (has_tuples or has_optional_fields)
+
+        # Apply fixes to the schema
+        check_and_fix_schema(schema, check_only=False)
+
         completion_kwargs = dict(
             model=model_name,
             messages=messages,
-            response_format=output_parser.pydantic_object,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": sanitized_name,
+                    "schema": schema,
+                    "strict": use_strict,
+                },
+            },
             drop_params=True,  # drop params to avoid model error if the model does not support it
             base_url=base_url,
             api_key=api_key,
