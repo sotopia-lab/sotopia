@@ -135,9 +135,6 @@ class _ReachGoal(BaseModel):
 async def test_reach_goal_llm_evaluator_async(
     structured_evaluator_model_name: str,
 ) -> None:
-    import litellm
-
-    litellm._turn_on_debug()
     background = ScriptBackground(
         scenario="Conversation between two friends at a trivia night",
         agent_names=["Samuel Anderson", "Giselle Rousseau"],
