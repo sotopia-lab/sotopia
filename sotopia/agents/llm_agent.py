@@ -140,6 +140,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         agent_name: str | None = None,
         uuid_str: str | None = None,
         agent_profile: AgentProfile | None = None,
+        available_agent_names: list[str] | None = None,
     ) -> None:
         super().__init__(
             agent_name=agent_name,
@@ -147,6 +148,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
             agent_profile=agent_profile,
         )
         self.model_name = "human"
+        self.available_agent_names = available_agent_names or []
 
     @property
     def goal(self) -> str:
@@ -171,14 +173,53 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
 
         return AgentAction(action_type=action_type, argument=argument)
 
+    def _find_matching_name(self, user_input: str) -> str | None:
+        """Find a matching agent name from partial input (case-insensitive)."""
+        user_input_lower = user_input.lower().strip()
+
+        # Try exact match first
+        for name in self.available_agent_names:
+            if name.lower() == user_input_lower:
+                return name
+
+        # Try partial match on first name or last name
+        matches = []
+        for name in self.available_agent_names:
+            name_parts = name.lower().split()
+            if any(part.startswith(user_input_lower) for part in name_parts):
+                matches.append(name)
+
+        if len(matches) == 1:
+            return matches[0]
+        elif len(matches) > 1:
+            print("Ambiguous name. Did you mean one of these?")
+            for i, match in enumerate(matches):
+                print(f"  {i}: {match}")
+            return None
+
+        return None
+
     async def aact(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
 
-        print("Available actions:")
-        for i, action in enumerate(obs.available_actions):
-            print(f"{i}: {action}")
+        # Only print if last_turn changed (avoid duplicate prompts)
+        should_prompt = True
+        if len(self.inbox) >= 2:
+            last_obs = self.inbox[-2][1]
+            if (
+                isinstance(last_obs, Observation)
+                and last_obs.last_turn == obs.last_turn
+            ):
+                should_prompt = False
 
         if obs.available_actions != ["none"]:
+            if should_prompt:
+                print("\n" + "=" * 60)
+                print("YOUR TURN")
+                print("=" * 60)
+                print("Available actions:")
+                for i, action in enumerate(obs.available_actions):
+                    print(f"{i}: {action}")
             action_type_number = await ainput(
                 "Action type (Please only input the number): "
             )
@@ -194,8 +235,38 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
             action_type = obs.available_actions[action_type_number]
         else:
             action_type = "none"
-        if action_type in ["speak", "non-verbal communication"]:
+
+        if action_type in ["speak", "non-verbal communication", "action"]:
             argument = await ainput("Argument: ")
+
+            # Enhanced voting support
+            if action_type == "action" and argument.lower().startswith("vote"):
+                # Extract the name part after "vote"
+                name_part = argument[4:].strip()
+                if name_part and self.available_agent_names:
+                    matched_name = self._find_matching_name(name_part)
+                    if matched_name:
+                        argument = f"vote {matched_name}"
+                        print(f"✓ Voting for: {matched_name}")
+                    else:
+                        print(f"⚠ Could not find player matching '{name_part}'")
+                        print("Available players:")
+                        for i, name in enumerate(self.available_agent_names):
+                            print(f"  {i}: {name}")
+                        retry = await ainput(
+                            "Enter player number or name to vote for: "
+                        )
+                        try:
+                            idx = int(retry)
+                            if 0 <= idx < len(self.available_agent_names):
+                                matched_name = self.available_agent_names[idx]
+                                argument = f"vote {matched_name}"
+                                print(f"✓ Voting for: {matched_name}")
+                        except ValueError:
+                            matched_name = self._find_matching_name(retry)
+                            if matched_name:
+                                argument = f"vote {matched_name}"
+                                print(f"✓ Voting for: {matched_name}")
         else:
             argument = ""
 

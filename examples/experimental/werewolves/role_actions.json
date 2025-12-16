@@ -1,0 +1,77 @@
+{
+  "game_name": "Werewolves",
+  "game_rule": "You are playing Werewolves (also known as Mafia), a social deduction game. GAME STRUCTURE: This game contains six players: two villagers, two werewolves, one seer, and one witch. Each cycle consists of Night phases followed by Day phases. WIN CONDITIONS: Villagers win by eliminating all Werewolves. Werewolves win when they equal or outnumber the Villagers. NIGHT PHASES: (1) Werewolves wake and privately choose one Villager to kill using 'kill NAME'. (2) The Seer wakes and inspects one player using 'inspect NAME' to learn if they are a Werewolf or Villager. (3) The Witch wakes and may use their one-time save potion with 'save NAME' (if someone died tonight) or their one-time poison potion with 'poison NAME' to kill someone. DAY PHASES: (1) Dawn: All players learn who died during the night (if any). (2) Discussion: All living players openly discuss and debate who might be a Werewolf. Use 'speak' to share your thoughts and suspicions. (3) Voting: Each player votes to eliminate one suspected Werewolf using 'vote NAME'. The player with the most votes is executed. (4) Twilight: The execution result is announced and night returns. COMMUNICATION RULES: All day discussions are public. Dead players cannot speak or act. STRATEGY: Villagers must use logic, observation, and deduction to identify Werewolves through their behavior and voting patterns. Werewolves must deceive others, blend in as Villagers, and create confusion. Special roles (Seer, Witch) should use their powers strategically without revealing themselves too early. Trust is earned through consistent behavior and alignment of words with actions.",
+  "roles": {
+    "Villager": {
+      "name": "Villager",
+      "team": "Villagers",
+      "description": "Ordinary resident with no night power but vital voice in daytime debates.",
+      "goal_prompt": "Keep sharp notes about player behaviour and vote to execute suspected werewolves each day.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["none"],
+        "night_seer": ["none"],
+        "night_witch": ["none"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {}
+    },
+    "Seer": {
+      "name": "Seer",
+      "team": "Villagers",
+      "description": "Mystic who divines alignments during the night.",
+      "goal_prompt": "Inspect one player each night using an action like 'inspect NAME'; leak findings strategically without exposing yourself too early.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["none"],
+        "night_seer": ["action"],
+        "night_witch": ["none"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {}
+    },
+    "Witch": {
+      "name": "Witch",
+      "team": "Villagers",
+      "description": "Potion expert who may save one player per game and poison one player per game during the night.",
+      "goal_prompt": "During your witch phase, decide whether to 'save NAME', 'poison NAME', or pass. Use your limited potions wisely to keep villagers alive and remove wolves when confident.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["none"],
+        "night_seer": ["none"],
+        "night_witch": ["action"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {
+        "save_available": true,
+        "poison_available": true
+      }
+    },
+    "Werewolf": {
+      "name": "Werewolf",
+      "team": "Werewolves",
+      "description": "Predator hiding among villagers, coordinating nightly kills and sowing mistrust by day.",
+      "goal_prompt": "Confer quietly with fellow wolves at night. Use actions like 'kill NAME' to propose a victim. During the day, blend in while pushing misdirection.",
+      "default_actions": ["speak"],
+      "phase_actions": {
+        "night_werewolves": ["action"],
+        "night_seer": ["none"],
+        "night_witch": ["none"],
+        "dawn_report": ["none"],
+        "day_discussion": ["speak"],
+        "day_vote": ["action"],
+        "twilight_execution": ["none"]
+      },
+      "initial_state": {}
+    }
+  }
+}
