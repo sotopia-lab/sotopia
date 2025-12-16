@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import json
 from dataclasses import dataclass
 from litellm import acompletion
@@ -336,7 +337,12 @@ async def agenerate(
         log_prefix = f" [{agent_name}]" if agent_name else ""
         log.debug(f"Model: {model_name}")
         log.debug(f"Prompt: {messages}")
-        log.info(f"Generated result{log_prefix}: {result}")
+        try:
+            clean_result = json.dumps(json.loads(result.strip()), ensure_ascii=False)
+        except Exception:
+            clean_result = result.replace("\n", "").strip()
+            clean_result = re.sub(r"\s+", " ", clean_result)
+        log.info(f"Generated result{log_prefix}: {clean_result}")
         assert isinstance(result, str)
         parsed = cast(OutputType, output_parser.parse(result))
         if return_prompt_and_response:
@@ -379,7 +385,12 @@ async def agenerate(
     log_prefix = f" [{agent_name}]" if agent_name else ""
     log.debug(f"Model: {model_name}")
     log.debug(f"Prompt: {messages}")
-    log.info(f"Generated result{log_prefix}: {parsed_result}")
+    try:
+        clean_result = json.dumps(json.loads(result.strip()), ensure_ascii=False)
+    except Exception:
+        clean_result = result.replace("\n", "").strip()
+        clean_result = re.sub(r"\s+", " ", clean_result)
+    log.info(f"Generated result{log_prefix}: {clean_result}")
     if return_prompt_and_response:
         return parsed_result, messages, result
     return parsed_result

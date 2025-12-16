@@ -4,6 +4,7 @@ import sys
 import itertools
 import json
 import argparse
+import glob
 
 # Add project root to path to allow imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -99,6 +100,7 @@ def generate_rosters(
     models: list[str],
     n_episodes: int = 6,
     overwrite: bool = False,
+    challenger: str | None = None,
 ) -> None:
     """
     Generate randomized roster files for ELO tournament.
@@ -132,30 +134,51 @@ def generate_rosters(
         os.makedirs(roster_output_dir, exist_ok=True)
         print(f"  Output directory: {roster_output_dir}")
 
-        # Safety Check: Warn/Stop if directory not empty
-        existing_files = [
-            f for f in os.listdir(roster_output_dir) if f.endswith(".json")
-        ]
-        if existing_files and not overwrite:
-            print(
-                f"  WARNING: Directory '{roster_output_dir}' contains existing rosters."
-            )
-            print(
-                "  Use --overwrite to proceed/ignore. Skipping generation for this game."
-            )
-            continue
+        # Removed directory-level safety check to allow incremental addition
 
         count = 0
         for pair_idx, (model_a, model_b) in enumerate(
             itertools.permutations(models, 2)
         ):
+            # Challenger Mode Filter
+            if challenger:
+                if challenger not in (model_a, model_b):
+                    continue
             for i in range(n_episodes):
-                # 1. Fixed Assignment (Permutations handle the swap)
+                # ... (Logic setup)
                 m1 = model_a
                 m2 = model_b
 
+                # Parse model name: take what's before '@', then take what's after the last '/'
+                sanitized_m1 = model_a.split("@")[0].split("/")[-1]
+                sanitized_m2 = model_b.split("@")[0].split("/")[-1]
+
+                filename = f"roster_{game_name}_match{pair_idx}_ep{i}_{sanitized_m1}_vs_{sanitized_m2}.json"
+                file_path = os.path.join(roster_output_dir, filename)
+
+                # Skip if exists and not overwrite
+                # IMPROVED: Check semantically (ignoring match index) to prevent duplicates if indices shift
+                # New filename pattern suffix: ep{i}_{m1}_vs_{m2}.json
+                semantic_suffix = f"ep{i}_{sanitized_m1}_vs_{sanitized_m2}.json"
+                existing_match = glob.glob(
+                    os.path.join(roster_output_dir, f"*{semantic_suffix}")
+                )
+
+                if existing_match and not overwrite:
+                    # found existing file for this pair+episode
+                    continue
+
+                # Double check specific path (though glob should cover it)
+                if os.path.exists(file_path) and not overwrite:
+                    continue
+
                 # 2. Assign Models
-                current_config = load_roster_template(game_name)
+                try:
+                    current_config = load_roster_template(game_name)
+                except Exception as e:
+                    print(f"Error loading template for '{game_name}': {e}")
+                    continue
+
                 agents = current_config["agents"]
 
                 # Check teams
@@ -193,21 +216,12 @@ def generate_rosters(
                     agent["name"] = name_pool[idx]
 
                 # 4. Save
-                # Parse model name: take what's before '@', then take what's after the last '/'
-                sanitized_m1 = model_a.split("@")[0].split("/")[-1]
-                sanitized_m2 = model_b.split("@")[0].split("/")[-1]
-
-                filename = f"roster_{game_name}_match{pair_idx}_ep{i}_{sanitized_m1}_vs_{sanitized_m2}.json"
-                file_path = os.path.join(roster_output_dir, filename)
-
                 with open(file_path, "w") as f:
                     json.dump(current_config, f, indent=4)
 
                 count += 1
 
-            print(
-                f"  Generated {n_episodes} rosters for Matchup {pair_idx}: {model_a} vs {model_b}"
-            )
+        print(f"  Generated {count} NEW rosters for {game_name}")
 
     print("\nGeneration Complete.")
 
@@ -236,6 +250,7 @@ if __name__ == "__main__":
             "custom/google/gemma-3-1b@http://127.0.0.1:1234/v1",
             "custom/qwen/qwen3-next-80b@http://127.0.0.1:1234/v1",
             "custom/qwen/qwen3-4b-2507@http://127.0.0.1:1234/v1",
+            "custom/Qwen/Qwen3-8B@http://127.0.0.1:1235/v1",
         ],
         help="List of models to compete",
     )
@@ -250,6 +265,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Allow generation even if output directory is not empty",
     )
+    parser.add_argument(
+        "--challenger",
+        type=str,
+        default=None,
+        help="If set, only generate rosters involving this model",
+    )
 
     args = parser.parse_args()
 
@@ -258,4 +279,5 @@ if __name__ == "__main__":
         models=args.models,
         n_episodes=args.episodes,
         overwrite=args.overwrite,
+        challenger=args.challenger,
     )

@@ -171,3 +171,4 @@ examples/experimental/negotiation_arena/redis-data/*
 *.dot
 logs/*
 experiments/rosters/*
+experiments/results/*

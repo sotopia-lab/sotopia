@@ -42,6 +42,31 @@ async def run_elo_tournament(
     for game_name in game_names:
         print(f"Scanning rosters for game: {game_name}")
 
+        # 1. Scan EXISTING LOGS to identify played rosters
+        # We look for metadata["roster_file"] in the logs
+        executed_rosters = set()
+        log_pattern = os.path.join("logs", "*.json")
+        existing_logs = glob.glob(log_pattern)
+
+        # Optimization: Only scan logs relevant to this game?
+        # But filename parsing is fast enough for <2000 files.
+        for log_file in existing_logs:
+            try:
+                with open(log_file, "r") as f:
+                    # Partial read might be faster but JSON load is safe
+                    data = json.load(f)
+                    meta = data.get("metadata", {})
+                    r_file = meta.get("roster_file")
+                    if r_file:
+                        executed_rosters.add(r_file)
+            except Exception as e:
+                print(f"Error reading log file {log_file}: {e}")
+                continue
+
+        print(
+            f"  Found {len(executed_rosters)} already executed rosters (across all games)."
+        )
+
         roster_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "rosters", game_name)
         )
@@ -51,7 +76,20 @@ async def run_elo_tournament(
             print(f"  No rosters found in {roster_dir}")
             continue
 
-        print(f"  Found {len(roster_files)} rosters to execute.")
+        print(f"  Found {len(roster_files)} total rosters.")
+
+        # Filter out executed rosters
+        rosters_to_run = []
+        for r_path in roster_files:
+            r_filename = os.path.basename(r_path)
+            if r_filename in executed_rosters:
+                continue
+            rosters_to_run.append(r_path)
+
+        print(f"  {len(rosters_to_run)} rosters remaining to execute.")
+
+        if not rosters_to_run:
+            continue
 
         # Load Game Module
         try:
@@ -64,6 +102,9 @@ async def run_elo_tournament(
         async def _worker(roster_path: str) -> None:
             async with semaphore:
                 filename = os.path.basename(roster_path)
+                # Double check to prevent race condition if logs updated mid-run?
+                # Not strictly necessary for this scale.
+
                 try:
                     with open(roster_path, "r") as f:
                         roster_config = json.load(f)
@@ -116,10 +157,6 @@ async def run_elo_tournament(
                                     "mixed"  # Should not happen
                                 )
 
-                    # We use a randomized index or hash for the 'i' in filename,
-                    # or just rely on timestamp to avoid collisions if we don't pass 'i'.
-                    # Or we can just use the roster filename as unique ID.
-
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                     log_filename = (
                         f"episode_{tag}_{game_name}_{match_str}_{timestamp}.json"
@@ -148,7 +185,7 @@ async def run_elo_tournament(
                     pass
 
         # Create tasks
-        tasks = [asyncio.create_task(_worker(p)) for p in roster_files]
+        tasks = [asyncio.create_task(_worker(p)) for p in rosters_to_run]
 
         # Use TQDM with asyncio
         print(f"  Queuing {len(tasks)} tasks...")
