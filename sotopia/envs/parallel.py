@@ -12,7 +12,7 @@ from pettingzoo.utils.env import ParallelEnv
 from pydantic import validate_call
 from redis_om.model.model import NotFoundError
 
-from sotopia.agents.llm_agent import Agents
+from sotopia.agents.llm_agent import Agents, LLMAgent
 from sotopia.database import EnvironmentProfile
 from sotopia.database.persistent_profile import (
     AgentProfile,
@@ -347,10 +347,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             agent_bg = agent_backgrounds[i]
             # Set script_background on agent if it's an LLMAgent
             if agent_name in agents:
-                from sotopia.agents.llm_agent import LLMAgent
-
-                if isinstance(agents[agent_name], LLMAgent):
-                    agents[agent_name].script_background = agent_bg
+                agent = agents[agent_name]
+                if isinstance(agent, LLMAgent):
+                    agent.script_background = agent_bg
             observations[agent_name] = Observation(
                 last_turn=agent_bg.to_natural_language(),
                 turn_number=0,

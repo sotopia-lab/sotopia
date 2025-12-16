@@ -66,6 +66,10 @@ dev-dependencies = [
 [tool.mypy]
 mypy_path = "stubs"
 strict = true
+exclude = [
+    "^ui/",
+    "^examples/experimental/"
+]
 plugins = [
     "pydantic.mypy",
     "pydantic.v1.mypy"

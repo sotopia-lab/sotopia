@@ -64,10 +64,10 @@ class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
             pydantic_object=pydantic_object
         )
 
-    def parse(self, text: str) -> EnvResponse:
+    def parse(self, text: str, context: dict[str, Any] | None = None) -> EnvResponse:
         # remove trailing commas before ) or ] from text
         text = re.sub(r",\s*(\)|\])", r"\1", text)
-        response = super().parse(text)
+        response = super().parse(text, context=context)
         if isinstance(response, EnvResponse):
             return response
         else:

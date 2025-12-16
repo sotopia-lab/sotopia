@@ -173,7 +173,7 @@ class AgentAction(Message):
             if available_action_types:
                 action_idx = action_type
                 if 0 <= action_idx < len(available_action_types):
-                    return list(available_action_types)[action_idx]
+                    return str(list(available_action_types)[action_idx])
                 else:
                     raise ValueError(
                         f"Invalid action_type index: {action_idx}. "
