@@ -106,13 +106,18 @@ async def format_bad_output(
     # Parse format_instructions to get the schema
     try:
         schema = json.loads(format_instructions)
+        # Apply schema fixes for OpenAI compatibility
+        has_tuples, has_optional_fields = _check_schema_compatibility(schema)
+        use_strict = not (has_tuples or has_optional_fields)
+        _apply_schema_fixes(schema)
+
         # Build proper json_schema response_format
         completion_kwargs["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "reformatted_output",
                 "schema": schema,
-                "strict": True,
+                "strict": use_strict,
             },
         }
     except json.JSONDecodeError:
@@ -584,8 +589,14 @@ async def agenerate(
         )
         response = await _call_with_retry(completion_kwargs)
     result = response.choices[0].message.content
+
+    # Only PydanticOutputParser supports context parameter
+    parse_kwargs = (
+        {"context": context} if isinstance(output_parser, PydanticOutputParser) else {}
+    )
+
     try:
-        parsed_result = output_parser.parse(result, context=context)
+        parsed_result = output_parser.parse(result, **parse_kwargs)
     except Exception:
         reformat_result = await format_bad_output(
             result,
@@ -594,7 +605,7 @@ async def agenerate(
             use_fixed_model_version,
             base_url=base_url,
         )
-        parsed_result = output_parser.parse(reformat_result, context=context)
+        parsed_result = output_parser.parse(reformat_result, **parse_kwargs)
 
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")

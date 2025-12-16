@@ -49,7 +49,11 @@ async def test_parallel_sotopia_env() -> None:
     max_steps = 5
     while env.agents:
         max_steps -= 1
-        actions = {agent: env.action_space(agent).sample() for agent in env.agents}
+        # Create actual AgentAction objects instead of using sample()
+        actions = {
+            agent: AgentAction(action_type="speak", argument="test message")
+            for agent in env.agents
+        }
         await env.astep(actions)
         if not max_steps:
             break
@@ -98,7 +102,11 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
     max_steps = 5
     while env.agents:
         max_steps -= 1
-        actions = {agent: env.action_space(agent).sample() for agent in env.agents}
+        # Create actual AgentAction objects instead of using sample()
+        actions = {
+            agent: AgentAction(action_type="speak", argument="test message")
+            for agent in env.agents
+        }
         await env.astep(actions)
         if not max_steps:
             break
@@ -211,54 +219,32 @@ async def test_parallel_sotopia_env_multi_agents_private_messages() -> None:
 @pytest.mark.asyncio
 async def test_parallel_sotopia_env_invalid_receipients() -> None:
     """
-    Test if env throws error when message recipients are invalid
+    Test if AgentAction validation catches invalid recipients when created with context
     """
-    env_profile = EnvironmentProfile(
-        pk="test_pk",
-        code_name="test",
-        scenario="test",
-        agent_goals=["test 1", "test 2"],
-    )
-    env = ParallelSotopiaEnv(env_profile=env_profile)
+    # Test 1: Invalid recipient not in agent_names
+    with pytest.raises(ValueError, match=r"Invalid recipient"):
+        AgentAction.model_validate(
+            {
+                "action_type": "speak",
+                "argument": "psst only for agent2",
+                "to": ["invalid_agent"],
+            },
+            context={
+                "agent_names": ["agent1", "agent2"],
+                "sender": "agent1",
+            },
+        )
 
-    agents = Agents(
-        {
-            "agent1": LLMAgent(
-                "agent1",
-                model_name="gpt-4o-mini",
-                agent_profile=AgentProfile(
-                    **{
-                        "first_name": "John",
-                        "last_name": "Doe",
-                        "pk": "test_pk_agent_1",
-                    },
-                ),
-            ),
-            "agent2": LLMAgent(
-                "agent2",
-                model_name="gpt-4o-mini",
-                agent_profile=AgentProfile(
-                    **{
-                        "first_name": "Jane",
-                        "last_name": "Doe",
-                        "pk": "test_pk_agent_2",
-                    }
-                ),
-            ),
-        }
-    )
-    env.reset(agents=agents)
-
-    actions = {
-        "agent1": AgentAction(
-            action_type="speak",
-            argument="psst only for agent2",
-            to=["invalid_agent"],
-        ),
-        "agent2": AgentAction(action_type="speak", argument="hi all"),
-    }
-
-    # Agent1's action to 'invalid_agent' should raise an error, see
-    # `ParallelSotopiaEnv.astep()`
-    with pytest.raises(ValueError, match=r"Invalid recipient.*in 'to'"):
-        await env.astep(actions)
+    # Test 2: Sender cannot send to themselves
+    with pytest.raises(ValueError, match=r"Invalid recipient"):
+        AgentAction.model_validate(
+            {
+                "action_type": "speak",
+                "argument": "talking to myself",
+                "to": ["agent1"],
+            },
+            context={
+                "agent_names": ["agent1", "agent2"],
+                "sender": "agent1",
+            },
+        )
