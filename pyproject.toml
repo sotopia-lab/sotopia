@@ -85,6 +85,10 @@ aact = { git = "https://github.com/ProKil/aact" , branch = "main" }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+markers = [
+    "real_llm: marks tests as requiring real LLM API calls (deselect with '-m \"not real_llm\"')",
+    "slow: marks tests as slow running (deselect with '-m \"not slow\"')",
+]
 
 [project.scripts]
 sotopia = "sotopia.cli:app"
