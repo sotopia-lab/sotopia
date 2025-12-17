@@ -95,8 +95,24 @@ def generate_mock_json_from_schema(schema: dict[str, Any]) -> str:
         JSON string matching the schema
     """
 
+    # Extract definitions for $ref resolution
+    definitions = schema.get("$defs", {})
+
+    def resolve_ref(ref_path: str) -> dict[str, Any]:
+        """Resolve a JSON schema $ref path."""
+        if ref_path.startswith("#/$defs/"):
+            def_name = ref_path.replace("#/$defs/", "")
+            result: dict[str, Any] = definitions.get(def_name, {})
+            return result
+        return {}
+
     def generate_value(type_info: dict[str, Any], property_name: str = "field") -> Any:
         """Recursively generate values matching schema types."""
+        # Handle $ref references
+        if "$ref" in type_info:
+            resolved = resolve_ref(type_info["$ref"])
+            return generate_value(resolved, property_name)
+
         type_name = type_info.get("type")
 
         if type_name == "string":
@@ -111,14 +127,39 @@ def generate_mock_json_from_schema(schema: dict[str, Any]) -> str:
         elif type_name == "boolean":
             return True
         elif type_name == "array":
-            items = type_info.get("items", {})
-            # Generate 2 items by default
-            return [generate_value(items, property_name) for _ in range(2)]
+            # Check if it's a tuple (has prefixItems)
+            if "prefixItems" in type_info:
+                # Generate tuple with specific types for each position
+                return [
+                    generate_value(item_schema, f"{property_name}_{i}")
+                    for i, item_schema in enumerate(type_info["prefixItems"])
+                ]
+            else:
+                # Regular array with same type for all items
+                items = type_info.get("items", {})
+                # Generate 2 items by default
+                return [generate_value(items, property_name) for _ in range(2)]
         elif type_name == "object":
             properties = type_info.get("properties", {})
             result = {}
+
+            # Handle regular properties
             for key, prop_info in properties.items():
                 result[key] = generate_value(prop_info, key)
+
+            # Handle additionalProperties (for dict[str, T] patterns)
+            if "additionalProperties" in type_info and isinstance(
+                type_info["additionalProperties"], dict
+            ):
+                # Generate at least 2 sample entries for dict types
+                # Use agent_1, agent_2 as keys (common pattern in sotopia tests)
+                for i in range(1, 3):
+                    key = f"agent_{i}"
+                    if key not in result:  # Don't override explicit properties
+                        result[key] = generate_value(
+                            type_info["additionalProperties"], key
+                        )
+
             return result
         elif type_name is None and "anyOf" in type_info:
             # Handle anyOf by using the first option
@@ -168,7 +209,11 @@ def mock_llm_calls(request: Any, monkeypatch: Any) -> Any:
 
         return create_mock_llm_response(content)
 
+    # Patch acompletion in all locations where it's imported
     monkeypatch.setattr("litellm.acompletion", mock_acompletion)
+    monkeypatch.setattr(
+        "sotopia.generation_utils.generate.acompletion", mock_acompletion
+    )
     yield
 
 
@@ -203,7 +248,11 @@ def mock_llm_response(monkeypatch: Any) -> Any:
             content = "default mock response"
         return create_mock_llm_response(content)
 
+    # Patch acompletion in all locations where it's imported
     monkeypatch.setattr("litellm.acompletion", mock_acompletion)
+    monkeypatch.setattr(
+        "sotopia.generation_utils.generate.acompletion", mock_acompletion
+    )
 
     def set_responses(*args: str) -> None:
         """Set the responses that should be returned by subsequent LLM calls."""
