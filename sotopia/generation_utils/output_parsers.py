@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Generic, Type, TypeVar, Optional
+from typing import Any, Generic, Type, TypeVar, Optional
 from pydantic import BaseModel, Field
 import json_repair
 
@@ -27,7 +27,7 @@ class OutputParser(BaseModel, Generic[OutputType]):
 class PydanticOutputParser(OutputParser[T], Generic[T]):
     pydantic_object: Type[T]
 
-    def parse(self, result: str) -> T:
+    def parse(self, result: str, context: dict[str, Any] | None = None) -> T:
         # Strip markdown code blocks if present
         result = result.strip()
         # Remove the ```json and ``` if both are present
@@ -35,13 +35,24 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
 
         json_result = json_repair.loads(result)
         assert isinstance(json_result, dict)
+
+        # Extract the data dict
         if "properties" in json_result:
-            return self.pydantic_object.model_validate_json(
-                json.dumps(json_result["properties"])
-            )
+            data = json_result["properties"]
         else:
-            parsed_result = self.pydantic_object.model_validate_json(result)
-            return parsed_result
+            data = json_result
+
+        # Use model_validate with context if provided, otherwise use model_validate_json for backward compatibility
+        if context is not None:
+            return self.pydantic_object.model_validate(data, context=context)
+        else:
+            # Fallback to JSON validation for backward compatibility
+            if "properties" in json_result:
+                return self.pydantic_object.model_validate_json(
+                    json.dumps(json_result["properties"])
+                )
+            else:
+                return self.pydantic_object.model_validate_json(result)
 
     def get_format_instructions(self) -> str:
         return json.dumps(self.pydantic_object.model_json_schema())
@@ -53,10 +64,10 @@ class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
             pydantic_object=pydantic_object
         )
 
-    def parse(self, text: str) -> EnvResponse:
+    def parse(self, text: str, context: dict[str, Any] | None = None) -> EnvResponse:
         # remove trailing commas before ) or ] from text
         text = re.sub(r",\s*(\)|\])", r"\1", text)
-        response = super().parse(text)
+        response = super().parse(text, context=context)
         if isinstance(response, EnvResponse):
             return response
         else:

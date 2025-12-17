@@ -12,7 +12,7 @@ from typing import Any, cast
 
 import gin
 
-from pydantic import validate_call
+from pydantic import BaseModel, validate_call
 from rich import print
 from rich.logging import RichHandler
 
@@ -106,13 +106,18 @@ async def format_bad_output(
     # Parse format_instructions to get the schema
     try:
         schema = json.loads(format_instructions)
+        # Apply schema fixes for OpenAI compatibility
+        has_tuples, has_optional_fields = _check_schema_compatibility(schema)
+        use_strict = not (has_tuples or has_optional_fields)
+        _apply_schema_fixes(schema)
+
         # Build proper json_schema response_format
         completion_kwargs["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "reformatted_output",
                 "schema": schema,
-                "strict": True,
+                "strict": use_strict,
             },
         }
     except json.JSONDecodeError:
@@ -130,6 +135,309 @@ async def format_bad_output(
     return reformatted_output
 
 
+def _sanitize_schema_name(name: str) -> str:
+    """
+    Sanitize schema title to match OpenAI's naming pattern.
+
+    OpenAI requires schema names to match: ^[a-zA-Z0-9_-]+$
+    Replaces invalid characters with underscores.
+
+    Args:
+        name: Original schema title (may contain brackets, spaces, etc.)
+
+    Returns:
+        Sanitized name with only alphanumeric, underscore, and hyphen
+
+    Example:
+        >>> _sanitize_schema_name("Response[AgentAction]")
+        'Response_AgentAction_'
+    """
+    return "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in name)
+
+
+def _check_schema_compatibility(schema: dict[str, Any]) -> tuple[bool, bool]:
+    """
+    Check if Pydantic schema is compatible with OpenAI strict mode.
+
+    Checks for:
+    - Tuple types (prefixItems) - not supported in strict mode
+    - Optional fields (properties not in required) - not supported in strict mode
+
+    Args:
+        schema: JSON schema from pydantic_object.model_json_schema()
+
+    Returns:
+        (has_tuples, has_optional_fields) - both must be False for strict mode
+    """
+    has_tuples = False
+    has_optional = False
+
+    def check_recursive(obj: Any) -> tuple[bool, bool]:
+        """Recursively check schema structure."""
+        nonlocal has_tuples, has_optional
+
+        if isinstance(obj, dict):
+            # Check for arrays with prefixItems (tuples)
+            if obj.get("type") == "array" and "prefixItems" in obj:
+                has_tuples = True
+
+            # Check for optional fields (properties not in required list)
+            if obj.get("type") == "object" and "properties" in obj:
+                required = set(obj.get("required", []))
+                properties = set(obj["properties"].keys())
+                if properties != required:
+                    has_optional = True
+
+            # Recurse into nested structures
+            for value in obj.values():
+                if isinstance(value, dict):
+                    check_recursive(value)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            check_recursive(item)
+
+        elif isinstance(obj, list):
+            for item in obj:
+                if isinstance(item, dict):
+                    check_recursive(item)
+
+        return has_tuples, has_optional
+
+    return check_recursive(schema)
+
+
+def _apply_schema_fixes(schema: dict[str, Any]) -> None:
+    """
+    Apply in-place fixes to make schema more OpenAI-compatible.
+
+    Fixes applied:
+    - Add 'items': {} to arrays with prefixItems (OpenAI requirement)
+    - Add 'additionalProperties': False to all objects (strict mode requirement)
+
+    Args:
+        schema: JSON schema to modify in-place
+
+    Side effects:
+        Modifies schema dict in-place
+    """
+
+    def fix_recursive(obj: Any) -> None:
+        """Recursively apply fixes to schema."""
+        if isinstance(obj, dict):
+            # Fix arrays with prefixItems
+            if (
+                obj.get("type") == "array"
+                and "prefixItems" in obj
+                and "items" not in obj
+            ):
+                # OpenAI requires items field even with prefixItems
+                # Empty object {} means no additional items allowed
+                obj["items"] = {}
+
+            # Fix objects - add additionalProperties
+            if obj.get("type") == "object":
+                if "additionalProperties" not in obj:
+                    obj["additionalProperties"] = False
+                elif isinstance(obj.get("additionalProperties"), dict):
+                    # Recurse into dict-like objects
+                    fix_recursive(obj["additionalProperties"])
+
+            # Recurse into nested structures
+            for value in obj.values():
+                if isinstance(value, dict):
+                    fix_recursive(value)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            fix_recursive(item)
+
+        elif isinstance(obj, list):
+            for item in obj:
+                if isinstance(item, dict):
+                    fix_recursive(item)
+
+    fix_recursive(schema)
+
+
+def _build_json_schema_response_format(
+    schema: dict[str, Any], pydantic_class: type[BaseModel]
+) -> dict[str, Any]:
+    """
+    Build complete OpenAI response_format dict for structured output.
+
+    Coordinates schema validation, fixing, and formatting into the
+    structure expected by litellm's acompletion with json_schema mode.
+
+    Args:
+        schema: Raw JSON schema from model_json_schema()
+        pydantic_class: Original Pydantic class (for name extraction)
+
+    Returns:
+        Complete response_format dict with type, json_schema, name, schema, strict
+    """
+    # Sanitize the schema name
+    original_name = schema.get("title", pydantic_class.__name__)
+    sanitized_name = _sanitize_schema_name(original_name)
+
+    # Check compatibility with strict mode
+    has_tuples, has_optional_fields = _check_schema_compatibility(schema)
+
+    # Use strict mode only if schema doesn't contain tuples or optional fields
+    use_strict = not (has_tuples or has_optional_fields)
+
+    # Apply schema fixes
+    _apply_schema_fixes(schema)
+
+    # Build response format
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": sanitized_name,
+            "schema": schema,
+            "strict": use_strict,
+        },
+    }
+
+
+def _resolve_temperature_setting(
+    temperature: TemperatureSetting | float | None | object,
+) -> tuple[float | None, bool, bool]:
+    """
+    Normalize temperature setting to effective value and flags.
+
+    Args:
+        temperature: Temperature setting (sentinel, TemperatureSetting, float, or None)
+
+    Returns:
+        Tuple of (effective_temperature, treat_as_default, user_provided):
+        - effective_temperature: The actual temperature value to use (None means no temp)
+        - treat_as_default: True if this should be treated as default (not sent to API)
+        - user_provided: True if user explicitly provided temperature
+    """
+    if temperature is _TEMPERATURE_SENTINEL:
+        return DEFAULT_TEMPERATURE, True, False
+    elif isinstance(temperature, TemperatureSetting):
+        return temperature.value, temperature.treat_as_default, True
+    else:
+        return cast(float | None, temperature), False, True
+
+
+def _should_send_temperature(
+    cache_key: tuple[str, str | None],
+    effective_temperature: float | None,
+    treat_as_default: bool,
+    user_provided: bool,
+    supported_params: list[str] | None,
+    model_name: str,
+) -> tuple[bool, bool]:
+    """
+    Determine if temperature should be sent to API and check model support.
+
+    Checks cache and model capabilities to decide if temperature parameter
+    should be included in the API call.
+
+    Args:
+        cache_key: (model_name, base_url) tuple for cache lookup
+        effective_temperature: The temperature value to potentially send
+        treat_as_default: Whether this is a default value (shouldn't be sent)
+        user_provided: Whether user explicitly provided temperature
+        supported_params: List of supported params for the model (None if unknown)
+        model_name: Model name for logging
+
+    Returns:
+        Tuple of (send_temperature, non_default_requested):
+        - send_temperature: Whether to include temperature in API call
+        - non_default_requested: Whether user requested non-default temp (for warnings)
+    """
+    # Initial check: only send if user provided and not treating as default
+    send_temperature = (
+        user_provided and effective_temperature is not None and not treat_as_default
+    )
+    non_default_requested = send_temperature and not treat_as_default
+
+    if send_temperature:
+        # Check cache first
+        if cache_key in _TEMPERATURE_SUPPORT_CACHE:
+            if not _TEMPERATURE_SUPPORT_CACHE[cache_key]:
+                send_temperature = False
+                if non_default_requested:
+                    log.warning(
+                        "Model %s previously rejected temperature; ignoring temperature=%s",
+                        model_name,
+                        effective_temperature,
+                    )
+        # Check model capabilities if cache miss and we have param info
+        elif supported_params is not None and "temperature" not in supported_params:
+            _TEMPERATURE_SUPPORT_CACHE[cache_key] = False
+            send_temperature = False
+            if non_default_requested:
+                log.warning(
+                    "Model %s does not support temperature; ignoring temperature=%s",
+                    model_name,
+                    effective_temperature,
+                )
+
+    return send_temperature, non_default_requested
+
+
+def _build_structured_completion_kwargs(
+    model_name: str,
+    messages: list[dict[str, str]],
+    response_format: dict[str, Any],
+    base_url: str | None,
+    api_key: str | None,
+) -> dict[str, Any]:
+    """
+    Build completion kwargs for structured output mode.
+
+    Args:
+        model_name: Model identifier
+        messages: List of message dicts for the API call
+        response_format: Response format dict with JSON schema
+        base_url: Optional base URL for custom models
+        api_key: Optional API key for custom models
+
+    Returns:
+        Dict of kwargs ready for litellm acompletion
+    """
+    return dict(
+        model=model_name,
+        messages=messages,
+        response_format=response_format,
+        drop_params=True,  # drop params to avoid model error if the model does not support it
+        base_url=base_url,
+        api_key=api_key,
+    )
+
+
+def _build_standard_completion_kwargs(
+    model_name: str,
+    messages: list[dict[str, str]],
+    base_url: str | None,
+    api_key: str | None,
+) -> dict[str, Any]:
+    """
+    Build completion kwargs for standard (non-structured) output mode.
+
+    Args:
+        model_name: Model identifier
+        messages: List of message dicts for the API call
+        base_url: Optional base URL for custom models
+        api_key: Optional API key for custom models
+
+    Returns:
+        Dict of kwargs ready for litellm acompletion
+    """
+    return dict(
+        model=model_name,
+        messages=messages,
+        drop_params=True,
+        base_url=base_url,
+        api_key=api_key,
+    )
+
+
 @gin.configurable
 @validate_call
 async def agenerate(
@@ -141,8 +449,42 @@ async def agenerate(
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    context: dict[str, Any] | None = None,
 ) -> OutputType:
-    """Generate text using LiteLLM instead of Langchain."""
+    """
+    Generate text using LiteLLM with optional structured output support.
+
+    This function handles template formatting, temperature management, schema validation,
+    and API calls with retry logic. It supports both structured (JSON schema) and
+    standard text generation modes.
+
+    Args:
+        model_name: Model identifier (e.g., "gpt-4o-mini" or "custom/model@http://...")
+        template: Template string with {variable} placeholders
+        input_values: Dict mapping template variables to their values
+        output_parser: Parser to convert raw output to desired type
+        temperature: Temperature setting (sentinel for default, TemperatureSetting, or float)
+        structured_output: If True, use JSON schema mode (requires PydanticOutputParser)
+        bad_output_process_model: Model to use for reformatting bad outputs (if needed)
+        use_fixed_model_version: Whether to use fixed model versioning
+        context: Optional context dict passed to output parser
+
+    Returns:
+        Parsed output of type OutputType
+
+    Example:
+        >>> from sotopia.generation_utils.output_parsers import PydanticOutputParser
+        >>> from pydantic import BaseModel
+        >>> class Response(BaseModel):
+        ...     text: str
+        >>> result = await agenerate(
+        ...     model_name="gpt-4o-mini",
+        ...     template="Say hello to {name}",
+        ...     input_values={"name": "Alice"},
+        ...     output_parser=PydanticOutputParser(pydantic_object=Response),
+        ...     structured_output=True,
+        ... )
+    """
     # Format template with input values
     if "format_instructions" not in input_values:
         input_values["format_instructions"] = output_parser.get_format_instructions()
@@ -170,49 +512,20 @@ async def agenerate(
     if base_url is None:
         supported_params = get_supported_openai_params(model=model_name)
 
-    effective_temperature: float | None
-    treat_as_default: bool
-    user_provided_temperature: bool
-
-    if temperature is _TEMPERATURE_SENTINEL:
-        effective_temperature = DEFAULT_TEMPERATURE
-        treat_as_default = True
-        user_provided_temperature = False
-    elif isinstance(temperature, TemperatureSetting):
-        effective_temperature = temperature.value
-        treat_as_default = temperature.treat_as_default
-        user_provided_temperature = True
-    else:
-        effective_temperature = cast(float | None, temperature)
-        treat_as_default = False
-        user_provided_temperature = True
-
-    send_temperature = (
-        user_provided_temperature
-        and effective_temperature is not None
-        and not treat_as_default
+    # Resolve temperature setting
+    effective_temperature, treat_as_default, user_provided = (
+        _resolve_temperature_setting(temperature)
     )
-    non_default_requested = send_temperature and not treat_as_default
 
-    if send_temperature:
-        if cache_key in _TEMPERATURE_SUPPORT_CACHE:
-            if not _TEMPERATURE_SUPPORT_CACHE[cache_key]:
-                send_temperature = False
-                if non_default_requested:
-                    log.warning(
-                        "Model %s previously rejected temperature; ignoring temperature=%s",
-                        model_name,
-                        effective_temperature,
-                    )
-        elif supported_params is not None and "temperature" not in supported_params:
-            _TEMPERATURE_SUPPORT_CACHE[cache_key] = False
-            send_temperature = False
-            if non_default_requested:
-                log.warning(
-                    "Model %s does not support temperature; ignoring temperature=%s",
-                    model_name,
-                    effective_temperature,
-                )
+    # Determine if temperature should be sent (checks cache and model support)
+    send_temperature, non_default_requested = _should_send_temperature(
+        cache_key=cache_key,
+        effective_temperature=effective_temperature,
+        treat_as_default=treat_as_default,
+        user_provided=user_provided,
+        supported_params=supported_params,
+        model_name=model_name,
+    )
 
     async def _call_with_retry(completion_kwargs: dict[str, Any]) -> Any:
         nonlocal send_temperature
@@ -238,6 +551,7 @@ async def agenerate(
                 return await acompletion(**call_kwargs)
             raise
 
+    messages = [{"role": "user", "content": template}]
     if structured_output:
         if not base_url:
             assert supported_params is not None
@@ -247,50 +561,43 @@ async def agenerate(
             assert supports_response_schema(
                 model=model_name
             ), "response_schema is not supported in this model"
-        messages = [{"role": "user", "content": template}]
 
         assert isinstance(
             output_parser, PydanticOutputParser
         ), "structured output only supported in PydanticOutputParser"
-        completion_kwargs = dict(
-            model=model_name,
+
+        # Build JSON schema response format with OpenAI compatibility fixes
+        schema = output_parser.pydantic_object.model_json_schema()
+        response_format = _build_json_schema_response_format(
+            schema, output_parser.pydantic_object
+        )
+
+        completion_kwargs = _build_structured_completion_kwargs(
+            model_name=model_name,
             messages=messages,
-            response_format=output_parser.pydantic_object,
-            drop_params=True,  # drop params to avoid model error if the model does not support it
+            response_format=response_format,
             base_url=base_url,
             api_key=api_key,
         )
         response = await _call_with_retry(completion_kwargs)
-        result = response.choices[0].message.content
-        # Include agent name in logs if available
-        agent_name = input_values.get("agent", "")
-        log_prefix = f" [{agent_name}]" if agent_name else ""
-        log.info(f"Generated result{log_prefix}: {result}")
-        assert isinstance(result, str)
-        return cast(OutputType, output_parser.parse(result))
-
-    messages = [{"role": "user", "content": template}]
-
-    completion_kwargs = dict(
-        model=model_name,
-        messages=messages,
-        drop_params=True,
-        base_url=base_url,
-        api_key=api_key,
-    )
-    response = await _call_with_retry(completion_kwargs)
+    else:
+        completion_kwargs = _build_standard_completion_kwargs(
+            model_name=model_name,
+            messages=messages,
+            base_url=base_url,
+            api_key=api_key,
+        )
+        response = await _call_with_retry(completion_kwargs)
     result = response.choices[0].message.content
 
+    # Only PydanticOutputParser supports context parameter
+    parse_kwargs = (
+        {"context": context} if isinstance(output_parser, PydanticOutputParser) else {}
+    )
+
     try:
-        parsed_result = output_parser.parse(result)
-    except Exception as e:
-        if isinstance(output_parser, ScriptOutputParser):
-            raise e
-        log.debug(
-            f"Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
-            extra={"markup": True},
-        )
-        # Handle bad output reformatting
+        parsed_result = output_parser.parse(result, **parse_kwargs)
+    except Exception:
         reformat_result = await format_bad_output(
             result,
             output_parser.get_format_instructions(),
@@ -298,7 +605,7 @@ async def agenerate(
             use_fixed_model_version,
             base_url=base_url,
         )
-        parsed_result = output_parser.parse(reformat_result)
+        parsed_result = output_parser.parse(reformat_result, **parse_kwargs)
 
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")
@@ -380,6 +687,8 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    agent_names: list[str] | None = None,
+    sender: str | None = None,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -418,6 +727,16 @@ async def agenerate_action(
                 Your action should follow the given format:
                 {format_instructions}
             """
+        # Build validation context if agent_names provided
+        validation_context = None
+        if agent_names is not None:
+            validation_context = {
+                "agent_names": agent_names,
+                "available_action_types": action_types,
+            }
+            if sender is not None:
+                validation_context["sender"] = sender
+
         return await agenerate(
             model_name=model_name,
             template=template,
@@ -432,6 +751,7 @@ async def agenerate_action(
             structured_output=True,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            context=validation_context,
         )
     except Exception as e:
         log.warning(f"Failed to generate action due to {e}")

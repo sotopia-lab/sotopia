@@ -132,11 +132,9 @@ class _ReachGoal(BaseModel):
 
 
 @pytest.mark.asyncio
-async def test_reach_goal_llm_evaluator_async() -> None:
-    evaluator = EpisodeLLMEvaluator(
-        "custom/structured@http://localhost:8000/v1",
-        response_format_class=EvaluationForAgents[_ReachGoal],
-    )
+async def test_reach_goal_llm_evaluator_async(
+    structured_evaluator_model_name: str,
+) -> None:
     background = ScriptBackground(
         scenario="Conversation between two friends at a trivia night",
         agent_names=["Samuel Anderson", "Giselle Rousseau"],
@@ -150,49 +148,27 @@ async def test_reach_goal_llm_evaluator_async() -> None:
         ],
     )
 
-    # response1,
-    response2 = await asyncio.gather(
-        evaluator.__acall__(
-            1,
-            [
-                (
-                    "Environment",
-                    background,
-                ),
-                (
-                    "Environment",
-                    SimpleMessage(message="Turn #1"),
-                ),
-                (
-                    "Alice",
-                    AgentAction(action_type="speak", argument="Thank you so much!"),
-                ),
-                (
-                    "Environment",
-                    SimpleMessage(message="Turn #2"),
-                ),
-                (
-                    "Bob",
-                    AgentAction(action_type="speak", argument="Fuck you!"),
-                ),
-                (
-                    "Environment",
-                    SimpleMessage(message="Turn #3"),
-                ),
-                (
-                    "Alice",
-                    AgentAction(
-                        action_type="speak", argument="Hope you have a great weekend."
-                    ),
-                ),
-                ("Environment", SimpleMessage(message="Turn #4")),
-                (
-                    "Bob",
-                    AgentAction(action_type="leave", argument="Leave"),
-                ),
-            ],
+    messages = [
+        ("Environment", background),
+        ("Environment", SimpleMessage(message="Turn #1")),
+        ("Alice", AgentAction(action_type="speak", argument="Thank you so much!")),
+        ("Environment", SimpleMessage(message="Turn #2")),
+        ("Bob", AgentAction(action_type="speak", argument="Fuck you!")),
+        ("Environment", SimpleMessage(message="Turn #3")),
+        (
+            "Alice",
+            AgentAction(action_type="speak", argument="Hope you have a great weekend."),
         ),
+        ("Environment", SimpleMessage(message="Turn #4")),
+        ("Bob", AgentAction(action_type="leave", argument="Leave")),
+    ]
+
+    evaluator = EpisodeLLMEvaluator(
+        structured_evaluator_model_name,
+        response_format_class=EvaluationForAgents[_ReachGoal],
     )
+
+    response2 = await asyncio.gather(evaluator.__acall__(1, messages))
     print("---------------------")
     print("Response after 2 turns:", response2)
 

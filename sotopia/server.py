@@ -335,11 +335,6 @@ async def run_async_server(
                 ),
             ],
         }
-        # agents_model_dict = {
-        #     agent_name: model_name
-        #     for agent_name, model_name in model_dict.items()
-        #     if agent_name.startswith("agent")
-        # }
 
         agent_keys = sorted(k for k in model_dict if re.fullmatch(r"agent\d+", k))
         agent_models = [model_dict[k] for k in agent_keys]

@@ -154,6 +154,59 @@ class AgentAction(Message):
 
         return f"{recipients_prefix} {action_str}"
 
+    @field_validator("action_type", mode="before")
+    @classmethod
+    def validate_action_type(cls, action_type: str | int, info: ValidationInfo) -> str:
+        """
+        Normalize action_type to ensure it's a valid string literal.
+        This handles cases where action_type comes from model_dump() or dict input,
+        ensuring Pydantic's Literal validation works correctly even when context is provided.
+
+        Also handles integer action_type (backward compatibility) if available_action_types
+        is provided in context.
+        """
+        # Handle integer action_type (backward compatibility)
+        if isinstance(action_type, int):
+            available_action_types = (
+                info.context.get("available_action_types", []) if info.context else []
+            )
+            if available_action_types:
+                action_idx = action_type
+                if 0 <= action_idx < len(available_action_types):
+                    return str(list(available_action_types)[action_idx])
+                else:
+                    raise ValueError(
+                        f"Invalid action_type index: {action_idx}. "
+                        f"Must be between 0 and {len(available_action_types) - 1}"
+                    )
+            else:
+                # No context provided, can't convert int to string
+                raise ValueError(
+                    "Integer action_type requires 'available_action_types' in context. "
+                    "Either provide context or use string literals."
+                )
+
+        # If it's already a string, ensure it's one of the valid literals
+        if isinstance(action_type, str):
+            valid_types = [
+                "none",
+                "speak",
+                "non-verbal communication",
+                "action",
+                "leave",
+            ]
+            if action_type in valid_types:
+                return action_type
+            # Try stripping whitespace in case of formatting issues
+            action_type = action_type.strip()
+            if action_type in valid_types:
+                return action_type
+            # If still not valid, let Pydantic's Literal validation handle the error
+            return action_type
+
+        # Fallback: convert to string
+        return str(action_type)
+
     @field_validator("to", mode="before")
     @classmethod
     def validate_to(

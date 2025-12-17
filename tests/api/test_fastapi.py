@@ -341,16 +341,19 @@ def test_delete_evaluation_dimension(create_mock_data: Callable[[], None]) -> No
     assert isinstance(response.json(), str)
 
 
-def test_websocket_simulate(create_mock_data: Callable[[], None]) -> None:
-    LOCAL_MODEL = "custom/llama3.2:1b@http://localhost:8000/v1"
+def test_websocket_simulate(
+    create_mock_data: Callable[[], None], local_llama_model_name: str
+) -> None:
+    model_name = local_llama_model_name
+
     with client.websocket_connect("/ws/simulation?token=test") as websocket:
         start_msg = {
             "type": "START_SIM",
             "data": {
                 "env_id": "tmppk_env_profile",
                 "agent_ids": ["tmppk_agent1", "tmppk_agent2"],
-                "agent_models": [LOCAL_MODEL, LOCAL_MODEL],
-                "evaluator_model": LOCAL_MODEL,
+                "agent_models": [model_name, model_name],
+                "evaluator_model": model_name,
                 "evaluation_dimension_list_name": "test_dimension_list",
             },
         }
