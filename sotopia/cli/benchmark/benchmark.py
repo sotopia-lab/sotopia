@@ -519,47 +519,22 @@ def save_to_jsonl(
     print(f"Output saved to {output_fn}")
 
 
-@app.command()
-def benchmark(
-    models: Annotated[
-        list[str],
-        typer.Argument(
-            help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}."
-        ),
-    ] = default_model_list,
-    agent_class: Annotated[
-        type[LLMAgent],
-        typer.Argument(
-            help="The agent class you want to use for the evaluated models. Must be a subclass of LLMAgent."
-        ),
-    ] = LLMAgent,
-    partner_model: Annotated[
-        str, typer.Argument(help="The partner model you want to use.")
-    ] = "together_ai/meta-llama/Llama-3-70b-chat-hf",
-    evaluator_model: Annotated[
-        str, typer.Argument(help="The evaluator model you want to use.")
-    ] = "gpt-4o",
-    batch_size: Annotated[
-        int, typer.Argument(help="The batch size you want to use.")
-    ] = 10,
-    task: Annotated[
-        str, typer.Argument(help="The task id you want to benchmark.")
-    ] = "hard",
-    url: Annotated[
-        str, typer.Argument(help="The url to fetch the benchmark combo.")
-    ] = "",
-    print_logs: Annotated[bool, typer.Argument(help="Print logs.")] = False,
-    only_show_performance: Annotated[
-        bool, typer.Argument(help="Only show performance.")
-    ] = False,
-    output_to_jsonl: Annotated[bool, typer.Argument(help="Output to jsonl.")] = False,
-    push_to_db: Annotated[bool, typer.Argument(help="Push to db.")] = False,
-    save_dir: Annotated[
-        str, typer.Argument(help="The directory to save the output.")
-    ] = ".",
-    tag: Annotated[str, typer.Argument(help="The tag for the experiment.")] = "",
+def _benchmark_impl(
+    models: list[str] = default_model_list,
+    agent_class: type[LLMAgent] = LLMAgent,
+    partner_model: str = "together_ai/meta-llama/Llama-3-70b-chat-hf",
+    evaluator_model: str = "gpt-4o",
+    batch_size: int = 10,
+    task: str = "hard",
+    url: str = "",
+    print_logs: bool = False,
+    only_show_performance: bool = False,
+    output_to_jsonl: bool = False,
+    push_to_db: bool = False,
+    save_dir: str = ".",
+    tag: str = "",
 ) -> None:
-    """A simple command-line interface example."""
+    """Internal implementation of benchmark logic."""
     _set_up_logs(print_logs=print_logs)
     benchmark_combo = initialize_benchmark_combo(url)
     if task == "hard":
@@ -682,3 +657,81 @@ def benchmark(
             agent_class=agent_class.__name__,
             tag=tag,
         )
+
+
+@app.command()
+def benchmark(
+    models: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--models",
+            "-m",
+            help=f"Language models to benchmark (default: {default_model_list})",
+        ),
+    ] = None,
+    partner_model: Annotated[
+        str,
+        typer.Option(help="The partner model you want to use."),
+    ] = "together_ai/meta-llama/Llama-3-70b-chat-hf",
+    evaluator_model: Annotated[
+        str,
+        typer.Option(help="The evaluator model you want to use."),
+    ] = "gpt-4o",
+    batch_size: Annotated[
+        int,
+        typer.Option(help="The batch size you want to use."),
+    ] = 10,
+    task: Annotated[
+        str,
+        typer.Option(help="The task id you want to benchmark."),
+    ] = "hard",
+    url: Annotated[
+        str,
+        typer.Option(help="The url to fetch the benchmark combo."),
+    ] = "",
+    print_logs: Annotated[
+        bool,
+        typer.Option(help="Print logs."),
+    ] = False,
+    only_show_performance: Annotated[
+        bool,
+        typer.Option(help="Only show performance."),
+    ] = False,
+    output_to_jsonl: Annotated[
+        bool,
+        typer.Option(help="Output to jsonl."),
+    ] = False,
+    push_to_db: Annotated[
+        bool,
+        typer.Option(help="Push to db."),
+    ] = False,
+    save_dir: Annotated[
+        str,
+        typer.Option(help="The directory to save the output."),
+    ] = ".",
+    tag: Annotated[
+        str,
+        typer.Option(help="The tag for the experiment."),
+    ] = "",
+) -> None:
+    """Run sotopia benchmark using LLMAgent (CLI interface)."""
+    # Handle default for models (can't use default with list[str] in typer.Option)
+    if models is None:
+        models = default_model_list
+
+    # Call the implementation with LLMAgent hard-coded
+    _benchmark_impl(
+        models=models,
+        agent_class=LLMAgent,  # Hard-coded for CLI
+        partner_model=partner_model,
+        evaluator_model=evaluator_model,
+        batch_size=batch_size,
+        task=task,
+        url=url,
+        print_logs=print_logs,
+        only_show_performance=only_show_performance,
+        output_to_jsonl=output_to_jsonl,
+        push_to_db=push_to_db,
+        save_dir=save_dir,
+        tag=tag,
+    )
