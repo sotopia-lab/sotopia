@@ -300,6 +300,7 @@ def test_sotopia_benchmark(
             partner_model="not_test_model",
             evaluator_model="eval_model",
             url="",
+            task="",  # Use empty task to avoid loading EnvironmentList
             only_show_performance=False,
             output_to_jsonl=False,
             push_to_db=False,
@@ -314,6 +315,7 @@ def test_sotopia_benchmark(
             partner_model="not_test_model",
             evaluator_model="eval_model",
             url="",
+            task="",  # Use empty task to avoid loading EnvironmentList
             only_show_performance=True,
             output_to_jsonl=False,
             push_to_db=False,
