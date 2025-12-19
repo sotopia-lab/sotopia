@@ -61,7 +61,8 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
             return self.pydantic_object.model_validate(data, context=context)
         else:
             # Fallback to JSON validation for backward compatibility
-            if "properties" in json_result:
+            # Type narrowing: check that json_result is a dict before accessing "properties"
+            if isinstance(json_result, dict) and "properties" in json_result:
                 return self.pydantic_object.model_validate_json(
                     json.dumps(json_result["properties"])
                 )

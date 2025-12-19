@@ -7,7 +7,7 @@ from typing import (
     cast,
 )
 
-from pydantic import BaseModel, create_model, field_validator
+from pydantic import create_model, field_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
@@ -267,7 +267,7 @@ class EvaluationDimensionBuilder:
     def create_reasoning_score_class(low: int, high: int) -> Type[LLMBaseModel]:
         """Create a custom reasoning score class for the given range"""
 
-        def create_validator(low_val: int, high_val: int):
+        def create_validator(low_val: int, high_val: int) -> Callable[[int], int]:
             def validator(v: int) -> int:
                 if not low_val <= v <= high_val:
                     raise ValueError(f"Score must be between {low_val} and {high_val}")
@@ -284,7 +284,8 @@ class EvaluationDimensionBuilder:
             @field_validator("score")
             @classmethod
             def validate_score(cls, v: int) -> int:
-                return create_validator(low, high)(v)
+                validator_func = create_validator(low, high)
+                return validator_func(v)
 
         return CustomReasoningScore
 
@@ -340,7 +341,7 @@ class EvaluationDimensionBuilder:
 
         dimension_model = create_model(
             "CustomEvaluationDimensionModel",
-            __base__=BaseModel,
+            __base__=LLMBaseModel,
             **fields,
         )
         return dimension_model
@@ -373,9 +374,9 @@ class EvaluationDimensionBuilder:
                 Field(..., description=dimension.description),
             )
 
-        model: Type[BaseModel] = create_model(
+        model = create_model(
             "CustomEvaluationDimensionModel",
-            __base__=BaseModel,
+            __base__=LLMBaseModel,
             **fields,
         )
         return model

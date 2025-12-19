@@ -59,14 +59,14 @@ def test_build_dimension_model(test_dimension: Callable[[], None]) -> None:
     model = EvaluationDimensionBuilder.build_dimension_model(["tmppk_test_dimension"])
     # The model expects CustomReasoningScore objects with reasoning and score fields
     # Pass as dictionary since the class created in the model is different from the one we create here
-    instance = model(test_dimension={"reasoning": "example", "score": 5})
+    instance = model(test_dimension={"reasoning": "example", "score": 5})  # type: ignore[call-arg]
     assert instance.model_dump()["test_dimension"]["reasoning"] == "example"
     assert instance.model_dump()["test_dimension"]["score"] == 5
     # Test validation errors for out of range values
     with pytest.raises(ValidationError):
-        model(test_dimension={"reasoning": "example", "score": 11})
+        model(test_dimension={"reasoning": "example", "score": 11})  # type: ignore[call-arg]
     with pytest.raises(ValidationError):
-        model(test_dimension={"reasoning": "example", "score": -1})
+        model(test_dimension={"reasoning": "example", "score": -1})  # type: ignore[call-arg]
 
 
 def test_build_dimension_model_from_dict() -> None:
@@ -82,12 +82,12 @@ def test_build_dimension_model_from_dict() -> None:
     model = EvaluationDimensionBuilder.build_dimension_model_from_dict(dimensions)
     # The model expects CustomReasoningScore objects with reasoning and score fields
     # Pass as dictionary since the class created in the model is different from the one we create here
-    instance = model(test_dim={"reasoning": "example", "score": 5})
+    instance = model(test_dim={"reasoning": "example", "score": 5})  # type: ignore[call-arg]
     assert instance.model_dump()["test_dim"]["reasoning"] == "example"
     assert instance.model_dump()["test_dim"]["score"] == 5
 
     with pytest.raises(ValidationError):
-        model(test_dim={"reasoning": "example", "score": 11})
+        model(test_dim={"reasoning": "example", "score": 11})  # type: ignore[call-arg]
 
 
 def test_select_existing_dimension_model_by_name(
@@ -99,12 +99,12 @@ def test_select_existing_dimension_model_by_name(
     )
     # The model expects CustomReasoningScore objects with reasoning and score fields
     # Pass as dictionary since the class created in the model is different from the one we create here
-    instance = model(test_dimension={"reasoning": "example", "score": 5})
+    instance = model(test_dimension={"reasoning": "example", "score": 5})  # type: ignore[call-arg]
     assert instance.model_dump()["test_dimension"]["reasoning"] == "example"
     assert instance.model_dump()["test_dimension"]["score"] == 5
 
     with pytest.raises(ValidationError):
-        model(test_dimension={"reasoning": "example", "score": 11})
+        model(test_dimension={"reasoning": "example", "score": 11})  # type: ignore[call-arg]
 
 
 def test_select_existing_dimension_model_by_list_name(
@@ -116,9 +116,9 @@ def test_select_existing_dimension_model_by_list_name(
     )
     # The model expects CustomReasoningScore objects with reasoning and score fields
     # Pass as dictionary since the class created in the model is different from the one we create here
-    instance = model(test_dimension={"reasoning": "example", "score": 5})
+    instance = model(test_dimension={"reasoning": "example", "score": 5})  # type: ignore[call-arg]
     assert instance.model_dump()["test_dimension"]["reasoning"] == "example"
     assert instance.model_dump()["test_dimension"]["score"] == 5
 
     with pytest.raises(ValidationError):
-        model(test_dimension={"reasoning": "example", "score": 11})
+        model(test_dimension={"reasoning": "example", "score": 11})  # type: ignore[call-arg]

@@ -5,7 +5,7 @@ from litellm.utils import supports_response_schema
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
 )
-from typing import Any, cast
+from typing import Any
 
 import gin
 
@@ -90,7 +90,10 @@ async def format_bad_output(
             model=model_name,
             messages=[{"role": "user", "content": content}],
         )
-    return response.choices[0].message.content
+    content = response.choices[0].message.content
+    if content is None:
+        raise ValueError("Response content is None")
+    return content
 
 
 def _sanitize_schema_name(name: str) -> str:
@@ -225,7 +228,7 @@ async def agenerate(
         base_url = None
         api_key = None
 
-    temperature_value = cast(float | None, temperature)
+    temperature_value: float | None = temperature
 
     supported_params: list[str] | None = None
     if base_url is None:
@@ -484,7 +487,7 @@ async def agenerate_script(
                     history=history,
                     agent=agent_name,
                 ),
-                output_parser=ScriptOutputParser(  # type: ignore[arg-type]
+                output_parser=ScriptOutputParser(  # type: ignore[call-arg,arg-type]
                     agent_names=agent_names,
                     background=background.to_natural_language(),
                     single_turn=True,
@@ -508,7 +511,7 @@ async def agenerate_script(
                 input_values=dict(
                     background=background.to_natural_language(),
                 ),
-                output_parser=ScriptOutputParser(  # type: ignore[arg-type]
+                output_parser=ScriptOutputParser(  # type: ignore[call-arg,arg-type]
                     agent_names=agent_names,
                     background=background.to_natural_language(),
                     single_turn=False,
