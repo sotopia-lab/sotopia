@@ -13,7 +13,7 @@ from sotopia.messages import AgentAction
 async def test_parallel_sotopia_env() -> None:
     env_profile = EnvironmentProfile(
         pk="test_pk",
-        code_name="test",
+        codename="test",
         scenario="test",
         agent_goals=["test 1", "test 2"],
     )
@@ -51,7 +51,7 @@ async def test_parallel_sotopia_env() -> None:
         max_steps -= 1
         # Create actual AgentAction objects instead of using sample()
         actions = {
-            agent: AgentAction(action_type="speak", argument="test message")
+            agent: AgentAction(action_type="speak", argument="test message", to=[])
             for agent in env.agents
         }
         await env.astep(actions)
@@ -63,7 +63,7 @@ async def test_parallel_sotopia_env() -> None:
 async def test_parallel_sotopia_env_script_writing_single_step() -> None:
     env_profile = EnvironmentProfile(
         pk="test_pk",
-        code_name="test",
+        codename="test",
         scenario="test",
         agent_goals=["test 1", "test 2"],
     )
@@ -104,7 +104,7 @@ async def test_parallel_sotopia_env_script_writing_single_step() -> None:
         max_steps -= 1
         # Create actual AgentAction objects instead of using sample()
         actions = {
-            agent: AgentAction(action_type="speak", argument="test message")
+            agent: AgentAction(action_type="speak", argument="test message", to=[])
             for agent in env.agents
         }
         await env.astep(actions)
@@ -120,7 +120,7 @@ async def test_parallel_sotopia_env_multi_agents_private_messages() -> None:
     """
     env_profile = EnvironmentProfile(
         pk="test_pk",
-        code_name="test",
+        codename="test",
         scenario="test",
         agent_goals=["test 1", "test 2", "test 3"],
     )
@@ -171,7 +171,7 @@ async def test_parallel_sotopia_env_multi_agents_private_messages() -> None:
             argument="psst only for agent2",
             to=["agent2"],
         ),
-        "agent2": AgentAction(action_type="speak", argument="hi all"),
+        "agent2": AgentAction(action_type="speak", argument="hi all", to=[]),
         "agent3": AgentAction(
             action_type="speak",
             argument="psst only for agent1",

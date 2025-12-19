@@ -391,7 +391,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(action_type="none", argument="")
+                complied_actions[agent] = AgentAction(
+                    action_type="none", argument="", to=[]
+                )
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
@@ -480,7 +482,9 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(action_type="none", argument="")
+                complied_actions[agent] = AgentAction(
+                    action_type="none", argument="", to=[]
+                )
 
         self.recv_message(
             "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")

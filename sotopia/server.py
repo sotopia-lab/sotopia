@@ -170,7 +170,9 @@ async def arun_one_episode(
                 agent_mask = env.action_mask
                 for idx in range(len(agent_mask)):
                     if agent_mask[idx] == 0:
-                        actions[idx] = AgentAction(action_type="none", argument="")
+                        actions[idx] = AgentAction(
+                            action_type="none", argument="", to=[]
+                        )
                     else:
                         pass
 
@@ -225,7 +227,6 @@ async def arun_one_episode(
                 " ".join(info[agent_name]["comments"] for agent_name in env.agents)
             )
             done = all(terminated.values())
-
         epilog = EpisodeLog(
             environment=env.profile.pk,
             agents=[agent.profile.pk for agent in agent_list],

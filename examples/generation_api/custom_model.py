@@ -13,7 +13,6 @@
 from sotopia.generation_utils import (
     ListOfIntOutputParser,
     agenerate,
-    default_temperature,
 )
 import logging
 
@@ -27,7 +26,7 @@ async def generate_n_random_numbers(n: int) -> list[int]:
         template="Generate {n} random integer numbers. {format_instructions}",
         input_values={"n": str(n)},
         output_parser=ListOfIntOutputParser(n),
-        temperature=default_temperature(0.0),
+        temperature=0.0,
     )
 
 

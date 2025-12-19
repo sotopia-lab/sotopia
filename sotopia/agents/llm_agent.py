@@ -68,7 +68,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             )
 
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
-            return AgentAction(action_type="none", argument="")
+            return AgentAction(action_type="none", argument="", to=[])
         else:
             # Use agent names from script_background if available
             agent_names = (
@@ -84,6 +84,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent=self.agent_name,
                 goal=self.goal,
                 script_like=self.script_like,
+                structured_output=True,
                 agent_names=agent_names,
                 sender=self.agent_name,
             )
@@ -167,7 +168,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         action_type = obs.available_actions[int(input("Action type: "))]
         argument = input("Argument: ")
 
-        return AgentAction(action_type=action_type, argument=argument)
+        return AgentAction(action_type=action_type, argument=argument, to=[])
 
     async def aact(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
@@ -197,7 +198,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         else:
             argument = ""
 
-        return AgentAction(action_type=action_type, argument=argument)
+        return AgentAction(action_type=action_type, argument=argument, to=[])
 
 
 class Agents(dict[str, BaseAgent[Observation, AgentAction]]):

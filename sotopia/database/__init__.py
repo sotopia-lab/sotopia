@@ -8,6 +8,7 @@ from rich import print as rprint
 
 from .aggregate_annotations import map_human_annotations_to_episode_logs
 from .annotators import Annotator
+from .base_models import LLMBaseModel, LLMEvalBaseModel
 from .env_agent_combo_storage import EnvAgentComboStorage
 from .evaluation_dimensions import (
     BaseCustomEvaluationDimension,
@@ -61,6 +62,8 @@ from .storage_backend import (
 from .waiting_room import MatchingInWaitingRoom
 
 __all__ = [
+    "LLMBaseModel",
+    "LLMEvalBaseModel",
     "AgentProfile",
     "BaseAgentProfile",
     "EnvironmentProfile",

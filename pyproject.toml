@@ -48,8 +48,8 @@ realtime = [
     "pyaudio>=0.2.14,<0.3.0",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pre-commit",
     "nbmake",
     "types-setuptools",
@@ -85,6 +85,7 @@ aact = { git = "https://github.com/ProKil/aact" , branch = "main" }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "real_llm: marks tests as requiring real LLM API calls (deselect with '-m \"not real_llm\"')",
     "slow: marks tests as slow running (deselect with '-m \"not slow\"')",

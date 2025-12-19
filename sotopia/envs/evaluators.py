@@ -11,9 +11,8 @@ from litellm.utils import supports_response_schema
 from sotopia.generation_utils import (
     PydanticOutputParser,
     agenerate,
-    custom_temperature,
-    default_temperature,
 )
+from sotopia.database import LLMEvalBaseModel
 from sotopia.messages import (
     AgentAction,
     Message,
@@ -25,7 +24,7 @@ log = logging.getLogger("evaluators")
 T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
 
-class EvaluationForAgents(BaseModel, Generic[T_eval_dim]):
+class EvaluationForAgents(LLMEvalBaseModel, Generic[T_eval_dim]):
     evaluations: dict[str, T_eval_dim]
 
 
@@ -181,12 +180,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     + "] (no other keys).\n"
                 )
 
-            temperature_setting = (
-                default_temperature(temperature)
-                if temperature == 0.0
-                else custom_temperature(temperature)
-            )
-
             # Use structured output if model supports it (not just custom/structured endpoints)
             use_structured_output = self.model_name.startswith(
                 "custom/structured"
@@ -204,7 +197,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 output_parser=PydanticOutputParser[self.response_format_class](  # type: ignore[name-defined]
                     pydantic_object=self.response_format_class
                 ),
-                temperature=temperature_setting,
+                temperature=temperature,
                 structured_output=use_structured_output,
             )
             response_list = []

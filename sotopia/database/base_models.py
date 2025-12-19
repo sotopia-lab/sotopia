@@ -16,11 +16,36 @@ if sys.version_info >= (3, 11):
 else:
     pass
 
+from pydantic import BaseModel, ConfigDict
 from redis_om.model.model import NotFoundError
 
 from .storage_backend import get_storage_backend, is_local_backend
 
 T = TypeVar("T")
+
+
+class LLMBaseModel(BaseModel):
+    """
+    Base model for LLM structured output with extra='forbid' configuration.
+
+    This ensures that all fields are required and no extra fields are allowed,
+    which is compatible with OpenAI's strict mode requirements.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class LLMEvalBaseModel(LLMBaseModel):
+    """
+    Base model for LLM evaluation dimensions.
+
+    Models inheriting from this class will automatically use non-strict mode
+    in structured outputs because they typically use dict[str, T] patterns
+    which are incompatible with strict mode's requirement for
+    additionalProperties: false.
+    """
+
+    pass
 
 
 class LocalQueryResult:
@@ -218,6 +243,8 @@ def patch_model_for_local_storage(model_class: Type[T]) -> Type[T]:
 
 # Re-export for convenience
 __all__ = [
+    "LLMBaseModel",
+    "LLMEvalBaseModel",
     "NotFoundError",
     "LocalQueryResult",
     "add_local_storage_methods",

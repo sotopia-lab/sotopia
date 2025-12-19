@@ -21,8 +21,8 @@ def test_rule_based_terminated_evaluator() -> None:
     response = evaluator(
         1,
         [
-            ("Alice", AgentAction(action_type="leave", argument="")),
-            ("Bob", AgentAction(action_type="none", argument="")),
+            ("Alice", AgentAction(action_type="leave", argument="", to=[])),
+            ("Bob", AgentAction(action_type="none", argument="", to=[])),
         ],
     )
     comment = response[0][1][1]
@@ -30,8 +30,8 @@ def test_rule_based_terminated_evaluator() -> None:
     response = evaluator(
         1,
         [
-            ("Alice", AgentAction(action_type="speak", argument="Leave!")),
-            ("Bob", AgentAction(action_type="leave", argument="")),
+            ("Alice", AgentAction(action_type="speak", argument="Leave!", to=[])),
+            ("Bob", AgentAction(action_type="leave", argument="", to=[])),
         ],
     )
     comment = response[0][1][1]
@@ -39,8 +39,8 @@ def test_rule_based_terminated_evaluator() -> None:
     response = evaluator(
         3,
         [
-            ("Alice", AgentAction(action_type="none", argument="")),
-            ("Bob", AgentAction(action_type="none", argument="")),
+            ("Alice", AgentAction(action_type="none", argument="", to=[])),
+            ("Bob", AgentAction(action_type="none", argument="", to=[])),
         ]
         * 3,
     )
@@ -95,8 +95,8 @@ async def test_rule_based_terminated_evaluator_async() -> None:
     response = await evaluator.__acall__(
         1,
         [
-            ("Alice", AgentAction(action_type="leave", argument="")),
-            ("Bob", AgentAction(action_type="none", argument="")),
+            ("Alice", AgentAction(action_type="leave", argument="", to=[])),
+            ("Bob", AgentAction(action_type="none", argument="", to=[])),
         ],
     )
     comment = response[0][1][1]
@@ -104,8 +104,8 @@ async def test_rule_based_terminated_evaluator_async() -> None:
     response = await evaluator.__acall__(
         1,
         [
-            ("Alice", AgentAction(action_type="speak", argument="Leave!")),
-            ("Bob", AgentAction(action_type="leave", argument="")),
+            ("Alice", AgentAction(action_type="speak", argument="Leave!", to=[])),
+            ("Bob", AgentAction(action_type="leave", argument="", to=[])),
         ],
     )
     comment = response[0][1][1]
@@ -113,8 +113,8 @@ async def test_rule_based_terminated_evaluator_async() -> None:
     response = await evaluator.__acall__(
         3,
         [
-            ("Alice", AgentAction(action_type="none", argument="")),
-            ("Bob", AgentAction(action_type="none", argument="")),
+            ("Alice", AgentAction(action_type="none", argument="", to=[])),
+            ("Bob", AgentAction(action_type="none", argument="", to=[])),
         ]
         * 3,
     )
@@ -137,10 +137,10 @@ async def test_reach_goal_llm_evaluator_async(
 ) -> None:
     background = ScriptBackground(
         scenario="Conversation between two friends at a trivia night",
-        agent_names=["Samuel Anderson", "Giselle Rousseau"],
+        agent_names=["Alice", "Bob"],
         agent_backgrounds=[
-            "Samuel Anderson is a 29-year-old male software developer. He/him pronouns. Samuel Anderson can cook very well. Personality and values description: Samuel Anderson, though somewhat impulsive and free-spirited, values enjoyment. His decision-making is often spontaneous, staying within familiar boundaries. Samuel's secrets: He was once a competitive figure skater.",
-            "Giselle Rousseau is a 21-year-old nonbinary art student. They/them pronouns. Giselle Rousseau enjoys biking and photography. Personality and values description: Giselle Rousseau, open-minded and outgoing yet sensitive, advocates care and fairness. Her decision-making is intuitive and inclusive. Giselle's secrets: Sells forged paintings to wealthy clients",
+            "Alice is a 29-year-old female software developer. She/her pronouns. Alice can cook very well. Personality and values description: Alice, though somewhat impulsive and free-spirited, values enjoyment. Her decision-making is often spontaneous, staying within familiar boundaries. Alice's secrets: She was once a competitive figure skater.",
+            "Bob is a 21-year-old male software developer. He/him pronouns. Bob enjoys biking and photography. Personality and values description: Bob, open-minded and outgoing yet sensitive, advocates care and fairness. His decision-making is intuitive and inclusive. Bob's secrets: He was once a competitive figure skater",
         ],
         agent_goals=[
             "Greet your friends and be polite",
@@ -151,16 +151,23 @@ async def test_reach_goal_llm_evaluator_async(
     messages = [
         ("Environment", background),
         ("Environment", SimpleMessage(message="Turn #1")),
-        ("Alice", AgentAction(action_type="speak", argument="Thank you so much!")),
+        (
+            "Alice",
+            AgentAction(action_type="speak", argument="Thank you so much!", to=["Bob"]),
+        ),
         ("Environment", SimpleMessage(message="Turn #2")),
-        ("Bob", AgentAction(action_type="speak", argument="Fuck you!")),
+        ("Bob", AgentAction(action_type="speak", argument="Fuck you!", to=["Alice"])),
         ("Environment", SimpleMessage(message="Turn #3")),
         (
             "Alice",
-            AgentAction(action_type="speak", argument="Hope you have a great weekend."),
+            AgentAction(
+                action_type="speak",
+                argument="Hope you have a great weekend.",
+                to=["Bob"],
+            ),
         ),
         ("Environment", SimpleMessage(message="Turn #4")),
-        ("Bob", AgentAction(action_type="leave", argument="Leave")),
+        ("Bob", AgentAction(action_type="leave", argument="Leave", to=["Alice"])),
     ]
 
     evaluator = EpisodeLLMEvaluator(

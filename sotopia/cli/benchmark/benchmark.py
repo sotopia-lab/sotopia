@@ -41,6 +41,7 @@ from sotopia.samplers import (
 from sotopia.server import run_async_server
 
 from ..app import app
+from typing import Annotated
 
 # date and message only
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -71,10 +72,12 @@ dimension_range_mapping = OrderedDict(
 
 
 def get_avg_reward(
-    episodes: list[EpisodeLog], model_name: str
+    episodes: list[EpisodeLog],
+    model_name: str,
+    agent_class: str = "",
 ) -> dict[str, tuple[float, float]]:
     """
-    input: list of EpisodeLog, model_name
+    input: list of EpisodeLog, model_name, agent_class
 
     return: dictionary of {dimension: (avg_reward, margin_of_error (in 95% confidence interval))}, plus the distinct setting number and episode count (in the same format, but with 0 margin of error)
     """
@@ -84,9 +87,13 @@ def get_avg_reward(
     avg_reward_dict = {}
     avg_margin_dict = {}
     avg_variance_dict = {}
+
     for episode in episodes:
         assert episode.models is not None, "episode.models should not be None"
-        if episode.models[1] == model_name:
+        agent_classes = getattr(episode, "agent_classes", None)
+        if episode.models[1] == model_name and (
+            not agent_class or (agent_classes and agent_classes[0] == agent_class)
+        ):
             reward = get_rewards_from_episode(episode)[0][1]
             rewards_dict[f"{episode.environment}_0"].append(reward)
         else:
@@ -206,16 +213,18 @@ def _set_up_logs(
 
 def preprocess_episode_data(
     episode_list_with_tag: list[EpisodeLog],
-) -> dict[tuple[str, tuple[str, ...], tuple[str, ...]], bool]:
+) -> dict[tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, str]], bool]:
     """Preprocess episodes into a dictionary for quick lookup."""
     episode_dict = {}
     for episode in episode_list_with_tag:
         assert isinstance(episode, EpisodeLog), "episode should be an EpisodeLog"
         assert episode.models is not None, "episode.models should not be None"
+        agent_classes = getattr(episode, "agent_classes", None)
         episode_key = (
             episode.environment,
             tuple(episode.agents),
             tuple(episode.models),
+            tuple(agent_classes) if agent_classes else ("", ""),
         )
         episode_dict[episode_key] = True
     return episode_dict
@@ -226,14 +235,25 @@ def check_existing_episodes(
     agent_ids: list[str],
     models: dict[str, str],
     index: str,
-    episode_dict: dict[tuple[str, tuple[str, ...], tuple[str, ...]], bool],
+    episode_dict: dict[
+        tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, str]], bool
+    ],
+    agent_classes: dict[str, str],
 ) -> bool:
     models_list = (
         (models["env"], models["test_model"], models["partner_model"])
         if index == "0"
         else (models["env"], models["partner_model"], models["test_model"])
     )
-    episode_key = (env_id, tuple(agent_ids), models_list)
+    if agent_classes:
+        agent_classes_list = (
+            (agent_classes["test_model"], agent_classes["partner_model"])
+            if index == "0"
+            else (agent_classes["partner_model"], agent_classes["test_model"])
+        )
+    else:
+        agent_classes_list = ("", "")
+    episode_key = (env_id, tuple(agent_ids), models_list, agent_classes_list)
     return episode_dict.get(episode_key, False)
 
 
@@ -298,6 +318,8 @@ def benchmark_display(
     task: str = "hard",
     output_to_jsonl: bool = False,
     save_dir: str = ".",
+    agent_class: str = "",
+    tag: str = "",
 ) -> dict[str, dict[str, tuple[float, float]]]:
     """
     Usage: sotopia benchmark-display --model-list gpt-4o --model-list together_ai/meta-llama-Llama-3-70b-chat-hf
@@ -307,14 +329,24 @@ def benchmark_display(
     print(f"Displaying performance for {model_list} vs {partner_model} on task {task}")
     model_rewards_dict = dict()
     for model in model_list:
-        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
         episodes = EpisodeLog.find(EpisodeLog.tag == tag).all()
         if len(episodes) == 0:
             print(f"No episodes found for {model}")
             continue
-        avg_rewards = get_avg_reward(episodes, model)  # type: ignore
-        model_rewards_dict[model] = avg_rewards
-        # print(f"Model: {model}, episodes: {len(episodes)}, Avg Rewards: {avg_rewards}")
+        # Get test model results
+        test_model_rewards = get_avg_reward(episodes, model, agent_class)  # type: ignore
+        # Get partner model results
+        partner_model_rewards = get_avg_reward(
+            episodes,  # type: ignore
+            partner_model,
+            LLMAgent.__name__,
+        )
+        model_rewards_dict[f"{model} (test) {evaluator_model} as the evaluator"] = (
+            test_model_rewards
+        )
+        model_rewards_dict[
+            f"{partner_model} (partner) {evaluator_model} as the evaluator"
+        ] = partner_model_rewards
         rich.print(model_rewards_dict)
     if model_rewards_dict:
         display_in_table(model_rewards_dict)
@@ -330,6 +362,7 @@ def _list_all_env_agent_combo_not_in_db(
     env_agent_combo_storage_index_list: list[tuple[EnvAgentComboStorage, str]],
     tag: str = "",
     task: str = "",
+    agent_class: type[LLMAgent] = LLMAgent,
 ) -> list[EnvAgentCombo[Observation, AgentAction]]:
     """Iterate over each environment and return the first env-agent combo not in the database."""
     assert tag, "tag should not be empty"
@@ -349,6 +382,10 @@ def _list_all_env_agent_combo_not_in_db(
             models=model_names,
             index=index,
             episode_dict=episode_dict,
+            agent_classes={
+                "test_model": agent_class.__name__,
+                "partner_model": LLMAgent.__name__,
+            },
         ):
             logging.info(
                 f"Episode for {env_id} with agents {agent_ids} using {list(model_names.values())} already exists"
@@ -358,6 +395,7 @@ def _list_all_env_agent_combo_not_in_db(
         env = ParallelSotopiaEnv(
             env_profile=env_profile,
             action_order="round-robin",
+            model_name=model_names["env"],
             evaluators=[
                 RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
             ],
@@ -369,14 +407,17 @@ def _list_all_env_agent_combo_not_in_db(
             ],
         )
         agent_profiles = [AgentProfile.get(id) for id in agent_ids]
-        # make sure the second agent (i.e., the agent being benchmarked) is always the indexed agent
         agents = [
-            LLMAgent(agent_profile=agent_profile, model_name=agent_model)
-            for agent_profile, agent_model in zip(
-                agent_profiles,
-                [model_names["test_model"], model_names["partner_model"]]
-                if index == "0"
-                else [model_names["partner_model"], model_names["test_model"]],
+            agent_class(agent_profile=agent_profile, model_name=agent_model)
+            if (index == "0" and i == 0) or (index == "1" and i == 1)
+            else LLMAgent(agent_profile=agent_profile, model_name=agent_model)
+            for i, (agent_profile, agent_model) in enumerate(
+                zip(
+                    agent_profiles,
+                    [model_names["test_model"], model_names["partner_model"]]
+                    if index == "0"
+                    else [model_names["partner_model"], model_names["test_model"]],
+                )
             )
         ]
         list_of_env_agent_combo_storage.append((env, agents))
@@ -386,23 +427,71 @@ def _list_all_env_agent_combo_not_in_db(
 def display_in_table(
     model_rewards_dict: dict[str, dict[str, tuple[float, float]]],
 ) -> None:
-    table = rich.table.Table(
-        title="Rewards Evaluation (+/- CI bounds)",
-    )
-    table.add_column("Model")
-    for dimension in model_rewards_dict[list(model_rewards_dict.keys())[0]].keys():
-        table.add_column(dimension)
-    table.add_column("Settings")
-    table.add_column("Episodes")
-    for model, rewards in model_rewards_dict.items():
-        table.add_row(
-            model,
-            *(
-                [f"{rewards[k][0]:.2f} ± {rewards[k][1]:.2f}" for k in rewards.keys()]
-                + [f"{rewards[k][0]:.0f}" for k in ["setting_num", "episode_count"]]
-            ),
+    # Group models by their type (test/partner)
+    test_models = {k: v for k, v in model_rewards_dict.items() if "(test)" in k}
+    partner_models = {k: v for k, v in model_rewards_dict.items() if "(partner)" in k}
+
+    # Create a table for test models
+    if test_models:
+        test_table = rich.table.Table(
+            title="Test Model Performance (+/- CI bounds)",
+            show_header=True,
+            header_style="bold magenta",
         )
-    rich.print(table)
+        test_table.add_column("Model")
+        for dimension in list(test_models.values())[0].keys():
+            if dimension not in ["setting_num", "episode_count"]:
+                test_table.add_column(dimension)
+        test_table.add_column("Settings")
+        test_table.add_column("Episodes")
+
+        for model, rewards in test_models.items():
+            test_table.add_row(
+                model.replace(" (test)", ""),
+                *(
+                    [
+                        f"{rewards[k][0]:.2f} ± {rewards[k][1]:.2f}"
+                        for k in rewards.keys()
+                        if k not in ["setting_num", "episode_count"]
+                    ]
+                    + [
+                        f"{rewards['setting_num'][0]:.0f}",
+                        f"{rewards['episode_count'][0]:.0f}",
+                    ]
+                ),
+            )
+        rich.print(test_table)
+
+    # Create a table for partner models
+    if partner_models:
+        partner_table = rich.table.Table(
+            title="Partner Model Performance (+/- CI bounds)",
+            show_header=True,
+            header_style="bold cyan",
+        )
+        partner_table.add_column("Model")
+        for dimension in list(partner_models.values())[0].keys():
+            if dimension not in ["setting_num", "episode_count"]:
+                partner_table.add_column(dimension)
+        partner_table.add_column("Settings")
+        partner_table.add_column("Episodes")
+
+        for model, rewards in partner_models.items():
+            partner_table.add_row(
+                model.replace(" (partner)", ""),
+                *(
+                    [
+                        f"{rewards[k][0]:.2f} ± {rewards[k][1]:.2f}"
+                        for k in rewards.keys()
+                        if k not in ["setting_num", "episode_count"]
+                    ]
+                    + [
+                        f"{rewards['setting_num'][0]:.0f}",
+                        f"{rewards['episode_count'][0]:.0f}",
+                    ]
+                ),
+            )
+        rich.print(partner_table)
 
 
 def save_to_jsonl(
@@ -430,40 +519,22 @@ def save_to_jsonl(
     print(f"Output saved to {output_fn}")
 
 
-@app.command()
-def benchmark(
-    models: list[str] = typer.Option(
-        default_model_list,
-        help=f"All the language model you want to benchmark. Default is the pre-loaded model list {default_model_list}.",
-    ),
-    partner_model: str = typer.Option(
-        "together_ai/meta-llama/Llama-3-70b-chat-hf",
-        help="The partner model you want to use.",
-    ),
-    evaluator_model: str = typer.Option(
-        "gpt-4o", help="The evaluator model you want to use."
-    ),
-    batch_size: int = typer.Option(10, help="The batch size you want to use."),
-    task: str = typer.Option("hard", help="The task id you want to benchmark."),
-    url: str = typer.Option("", help="The url to fetch the benchmark combo."),
-    print_logs: bool = typer.Option(False, help="Print logs."),
-    only_show_performance: bool = typer.Option(False, help="Only show performance."),
-    output_to_jsonl: bool = typer.Option(False, help="Output to jsonl."),
-    push_to_db: bool = typer.Option(False, help="Push to db."),
-    save_dir: str = typer.Option(".", help="The directory to save the output."),
+def _benchmark_impl(
+    models: list[str] = default_model_list,
+    agent_class: type[LLMAgent] = LLMAgent,
+    partner_model: str = "together_ai/meta-llama/Llama-3-70b-chat-hf",
+    evaluator_model: str = "gpt-4o",
+    batch_size: int = 10,
+    task: str = "hard",
+    url: str = "",
+    print_logs: bool = False,
+    only_show_performance: bool = False,
+    output_to_jsonl: bool = False,
+    push_to_db: bool = False,
+    save_dir: str = ".",
+    tag: str = "",
 ) -> None:
-    if only_show_performance:
-        benchmark_display(
-            models,
-            partner_model,
-            evaluator_model,
-            task,
-            output_to_jsonl,
-            save_dir,
-        )
-        return
-
-    """A simple command-line interface example."""
+    """Internal implementation of benchmark logic."""
     _set_up_logs(print_logs=print_logs)
     benchmark_combo = initialize_benchmark_combo(url)
     if task == "hard":
@@ -477,7 +548,45 @@ def benchmark(
                     env_agent_combo_storage_index_list.append(
                         (env_agent_combo_storage, index)
                     )
+    elif task == "cooperative":
+        # Filter environments that have "mutual" in the codename
+        cooperative_combo = []
+        for env_agent_combo_storage in benchmark_combo:
+            env_id = env_agent_combo_storage.env_id
+            try:
+                env_profile = EnvironmentProfile.get(env_id)
+                if "mutual" in env_profile.codename.lower():
+                    cooperative_combo.append(env_agent_combo_storage)
+            except Exception as e:
+                logging.warning(f"Failed to get environment profile for {env_id}: {e}")
 
+        # Use the filtered environments for cooperative tasks
+        benchmark_combo = cooperative_combo
+        env_agent_combo_storage_index_list = [
+            (env_agent_combo_storage, "0")
+            for env_agent_combo_storage in benchmark_combo
+        ] + [
+            (env_agent_combo_storage, "1")
+            for env_agent_combo_storage in benchmark_combo
+        ]
+    elif task == "competitive":
+        competitive_combo = []
+        for env_agent_combo_storage in benchmark_combo:
+            env_id = env_agent_combo_storage.env_id
+            try:
+                env_profile = EnvironmentProfile.get(env_id)
+                if "craigslist" in env_profile.codename.lower():
+                    competitive_combo.append(env_agent_combo_storage)
+            except Exception as e:
+                logging.warning(f"Failed to get environment profile for {env_id}: {e}")
+        benchmark_combo = competitive_combo
+        env_agent_combo_storage_index_list = [
+            (env_agent_combo_storage, "0")
+            for env_agent_combo_storage in benchmark_combo
+        ] + [
+            (env_agent_combo_storage, "1")
+            for env_agent_combo_storage in benchmark_combo
+        ]
     else:
         env_agent_combo_storage_index_list = [
             (env_agent_combo_storage, "1")
@@ -486,11 +595,26 @@ def benchmark(
             (env_agent_combo_storage, "0")
             for env_agent_combo_storage in benchmark_combo
         ]
+    if models is None:
+        models = default_model_list
     for model in models:
         typer.echo(
             f"Running benchmark for {model} chatting with {partner_model} on task {task} with {evaluator_model} as the evaluator."
         )
-        tag = f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+        if partner_model == model and agent_class.__name__ == LLMAgent.__name__:
+            typer.echo(
+                typer.style(
+                    "Partner model and test model, and their agent classes are the same. Please use different models.",
+                    fg=typer.colors.RED,
+                    bold=True,
+                )
+            )
+            continue
+        tag = (
+            f"benchmark_{model}_{partner_model}_{evaluator_model}_{task}_trial0"
+            if tag == ""
+            else tag
+        )
         typer.echo(typer.style(f"Tag: {tag}", fg=typer.colors.GREEN, bold=True))
         model_names = {
             "env": evaluator_model,
@@ -502,6 +626,7 @@ def benchmark(
             tag=tag,
             env_agent_combo_storage_index_list=env_agent_combo_storage_index_list,
             task=task,
+            agent_class=agent_class,
         )
         number_of_fix_turns = 0
         while True:
@@ -517,15 +642,96 @@ def benchmark(
                 tag=tag,
                 env_agent_combo_storage_index_list=env_agent_combo_storage_index_list,
                 task=task,
+                agent_class=agent_class,
             )
             number_of_fix_turns += 1
             if len(env_agent_combo_list) == 0 or number_of_fix_turns >= 5:
-                return
+                break
 
-    benchmark_display(
-        models,
-        partner_model,
-        evaluator_model,
-        task,
+        benchmark_display(
+            [model],
+            partner_model,
+            evaluator_model,
+            task,
+            output_to_jsonl=output_to_jsonl,
+            agent_class=agent_class.__name__,
+            tag=tag,
+        )
+
+
+@app.command()
+def benchmark(
+    models: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--models",
+            "-m",
+            help=f"Language models to benchmark (default: {default_model_list})",
+        ),
+    ] = None,
+    partner_model: Annotated[
+        str,
+        typer.Option(help="The partner model you want to use."),
+    ] = "together_ai/meta-llama/Llama-3-70b-chat-hf",
+    evaluator_model: Annotated[
+        str,
+        typer.Option(help="The evaluator model you want to use."),
+    ] = "gpt-4o",
+    batch_size: Annotated[
+        int,
+        typer.Option(help="The batch size you want to use."),
+    ] = 10,
+    task: Annotated[
+        str,
+        typer.Option(help="The task id you want to benchmark."),
+    ] = "hard",
+    url: Annotated[
+        str,
+        typer.Option(help="The url to fetch the benchmark combo."),
+    ] = "",
+    print_logs: Annotated[
+        bool,
+        typer.Option(help="Print logs."),
+    ] = False,
+    only_show_performance: Annotated[
+        bool,
+        typer.Option(help="Only show performance."),
+    ] = False,
+    output_to_jsonl: Annotated[
+        bool,
+        typer.Option(help="Output to jsonl."),
+    ] = False,
+    push_to_db: Annotated[
+        bool,
+        typer.Option(help="Push to db."),
+    ] = False,
+    save_dir: Annotated[
+        str,
+        typer.Option(help="The directory to save the output."),
+    ] = ".",
+    tag: Annotated[
+        str,
+        typer.Option(help="The tag for the experiment."),
+    ] = "",
+) -> None:
+    """Run sotopia benchmark using LLMAgent (CLI interface)."""
+    # Handle default for models (can't use default with list[str] in typer.Option)
+    if models is None:
+        models = default_model_list
+
+    # Call the implementation with LLMAgent hard-coded
+    _benchmark_impl(
+        models=models,
+        agent_class=LLMAgent,  # Hard-coded for CLI
+        partner_model=partner_model,
+        evaluator_model=evaluator_model,
+        batch_size=batch_size,
+        task=task,
+        url=url,
+        print_logs=print_logs,
+        only_show_performance=only_show_performance,
         output_to_jsonl=output_to_jsonl,
+        push_to_db=push_to_db,
+        save_dir=save_dir,
+        tag=tag,
     )

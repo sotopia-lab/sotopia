@@ -1,15 +1,16 @@
 import re
 from typing import Literal, cast
 
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from pydantic import Field, field_validator, ValidationInfo
 from pydantic_core import PydanticCustomError
 
+from sotopia.database import LLMBaseModel
 from sotopia.utils import format_docstring
 
 ActionType = Literal["none", "speak", "non-verbal communication", "action", "leave"]
 
 
-class Message(BaseModel):
+class Message(LLMBaseModel):
     """
     An interface for messages.
     There is only one required method: to_natural_language
@@ -131,9 +132,8 @@ class AgentAction(Message):
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
     # New structured fields for private messages
-    to: list[str] | None = Field(
-        default=None,
-        description="recipient name(s), when specified, the action is only visible to the listed agents",
+    to: list[str] = Field(
+        description="recipient name(s), when specified, the action is only visible to the listed agents, empty list means public action",
     )
 
     def to_natural_language(self) -> str:
@@ -325,7 +325,7 @@ class ScriptInteraction(Message):
                 name: str = cast(str, res["name"])
 
                 parsed_action = AgentAction(
-                    action_type=cast(ActionType, action), argument=argument
+                    action_type=cast(ActionType, action), argument=argument, to=[]
                 )
                 if name not in agent_names:
                     print(
@@ -340,7 +340,7 @@ class ScriptInteraction(Message):
                     f"The error is: {e}",
                 )
                 raise e
-                parsed_action = AgentAction(action_type="none", argument="")
+                parsed_action = AgentAction(action_type="none", argument="", to=[])
                 name = agent_names[line_idx % 2]  # TODO same question as above
             inactive_agent_name = (
                 agent_names[0] if name == agent_names[1] else agent_names[1]
@@ -365,7 +365,9 @@ class ScriptInteraction(Message):
                         (
                             inactive_agent_name,
                             "Environment",
-                            AgentAction(action_type="none", argument="did nothing"),
+                            AgentAction(
+                                action_type="none", argument="did nothing", to=[]
+                            ),
                         ),
                     ],
                 )
@@ -458,6 +460,6 @@ class ScriptInteraction(Message):
             ]
         ]
         results_2: list[tuple[str, Message]] = [
-            ("", AgentAction(action_type="none", argument=""))
+            ("", AgentAction(action_type="none", argument="", to=[]))
         ]
         return (results_1, results_2)

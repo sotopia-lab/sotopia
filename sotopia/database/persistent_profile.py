@@ -11,6 +11,7 @@ from pydantic import BaseModel, model_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
 
+from . import LLMBaseModel
 from .base_models import patch_model_for_local_storage
 from .storage_backend import is_local_backend
 
@@ -68,7 +69,7 @@ else:
             super().__init__(**kwargs)
 
 
-class BaseEnvironmentProfile(BaseModel):
+class BaseEnvironmentProfile(LLMBaseModel):
     pk: str | None = Field(default_factory=lambda: "")
     codename: str = Field(
         default="",
@@ -129,7 +130,7 @@ else:
             super().__init__(**kwargs)
 
 
-class BaseRelationshipProfile(BaseModel):
+class BaseRelationshipProfile(LLMBaseModel):
     pk: str | None = Field(default_factory=lambda: "")
     agent_1_id: str
     agent_2_id: str

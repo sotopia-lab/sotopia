@@ -76,7 +76,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         )
                     )
                     last_timestamp = sorted_message_list[-1][0]
-            return AgentAction(action_type="none", argument="")
+            return AgentAction(action_type="none", argument="", to=[])
         else:
             async with aiohttp.ClientSession() as session:
                 # 1. post observation to the message list
@@ -137,7 +137,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                         f"{self._URL}/lock/{self.session_id}/{self.sender_id}/no%20action",
                     )
                     self.reset("Someone has left or the conversation is too long.")
-                    return AgentAction(action_type="leave", argument="")
+                    return AgentAction(action_type="leave", argument="", to=[])
             action_string = sorted_message_list[-1][2]
             try:
                 action = AgentAction.model_validate_json(action_string)
@@ -149,7 +149,7 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
                     )
                 )
                 return AgentAction(
-                    action_type="speak", argument=sorted_message_list[-1][2]
+                    action_type="speak", argument=sorted_message_list[-1][2], to=[]
                 )
 
     def reset(

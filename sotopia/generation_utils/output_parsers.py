@@ -1,14 +1,16 @@
 import json
 import re
-from typing import Any, Generic, Type, TypeVar, Optional
+from typing import Generic, Type, TypeVar, Optional, Any
 from pydantic import BaseModel, Field
 import json_repair
+
+from sotopia.database import LLMBaseModel
 
 OutputType = TypeVar("OutputType", bound=object)
 T = TypeVar("T", bound=BaseModel)
 
 
-class EnvResponse(BaseModel):
+class EnvResponse(LLMBaseModel):
     reasoning: str = Field(
         description="first reiterate agents' social goals and then reason about what agents say/do and whether that aligns with their goals."
     )
@@ -16,7 +18,7 @@ class EnvResponse(BaseModel):
     p2_rate: int = Field(description="rating of participant 2, on the scale of 0 to 9")
 
 
-class OutputParser(BaseModel, Generic[OutputType]):
+class OutputParser(LLMBaseModel, Generic[OutputType]):
     def parse(self, result: str) -> OutputType:
         raise NotImplementedError
 
@@ -36,9 +38,21 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
         json_result = json_repair.loads(result)
         assert isinstance(json_result, dict)
 
-        # Extract the data dict
-        if "properties" in json_result:
-            data = json_result["properties"]
+        # Handle nested type-value structure
+        def extract_value(obj: dict[str, Any] | list[Any] | str) -> Any:
+            if isinstance(obj, dict):
+                if "value" in obj:
+                    return obj["value"]
+                return {k: extract_value(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [extract_value(item) for item in obj]
+            return obj
+
+        json_result = extract_value(json_result)
+        if isinstance(json_result, dict) and "properties" in json_result:
+            return self.pydantic_object.model_validate_json(
+                json.dumps(json_result["properties"])
+            )
         else:
             data = json_result
 
@@ -47,7 +61,8 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
             return self.pydantic_object.model_validate(data, context=context)
         else:
             # Fallback to JSON validation for backward compatibility
-            if "properties" in json_result:
+            # Type narrowing: check that json_result is a dict before accessing "properties"
+            if isinstance(json_result, dict) and "properties" in json_result:
                 return self.pydantic_object.model_validate_json(
                     json.dumps(json_result["properties"])
                 )

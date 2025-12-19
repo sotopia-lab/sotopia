@@ -3954,7 +3954,7 @@ requires-dist = [
     { name = "rich", specifier = ">=13.6.0,<15.0.0" },
     { name = "scipy", marker = "extra == 'examples'" },
     { name = "streamlit", marker = "extra == 'api'" },
-    { name = "together", specifier = ">=0.2.4,<1.5.0" },
+    { name = "together", specifier = ">=0.2.4,<1.6.0" },
     { name = "torch", marker = "extra == 'examples'" },
     { name = "transformers", marker = "extra == 'examples'" },
     { name = "uvicorn", marker = "extra == 'api'" },
