@@ -6,7 +6,7 @@ import json
 from unittest.mock import patch
 
 from sotopia.cli.benchmark.benchmark import (
-    benchmark,
+    _benchmark_impl,
     benchmark_display,
     run_async_benchmark_in_batch,
 )
@@ -295,7 +295,7 @@ def test_sotopia_benchmark(
         ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
 
         # `output_to_jsonl` will be tested in the next test, `push_to_db` has been tested elsewhere, so only test `only_show_performance`
-        benchmark(
+        _benchmark_impl(
             models=[model_name],
             partner_model="not_test_model",
             evaluator_model="eval_model",
@@ -309,7 +309,7 @@ def test_sotopia_benchmark(
         # Reset the mock for the second call
         mock_initialize_benchmark_combo.reset_mock()
 
-        benchmark(
+        _benchmark_impl(
             models=[model_name],
             partner_model="not_test_model",
             evaluator_model="eval_model",
