@@ -28,6 +28,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         agent_profile: AgentProfile | None = None,
         model_name: str = "gpt-4o-mini",
         script_like: bool = False,
+        script_background: ScriptBackground | None = None,
     ) -> None:
         super().__init__(
             agent_name=agent_name,
@@ -36,6 +37,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         )
         self.model_name = model_name
         self.script_like = script_like
+        self.script_background = script_background
 
     @property
     def goal(self) -> str:
@@ -50,7 +52,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     def act(
         self,
-        _obs: Observation,
+        obs: Observation,
     ) -> AgentAction:
         raise Exception("Sync act method is deprecated. Use aact instead.")
 
@@ -66,8 +68,14 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             )
 
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
-            return AgentAction(action_type="none", argument="")
+            return AgentAction(action_type="none", argument="", to=[])
         else:
+            # Use agent names from script_background if available
+            agent_names = (
+                self.script_background.agent_names
+                if self.script_background is not None
+                else None
+            )
             action = await agenerate_action(
                 self.model_name,
                 history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
@@ -77,19 +85,9 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 goal=self.goal,
                 script_like=self.script_like,
                 structured_output=True,
+                agent_names=agent_names,
+                sender=self.agent_name,
             )
-            # Temporary fix for mixtral-moe model for incorrect generation format
-            if "Mixtral-8x7B-Instruct-v0.1" in self.model_name:
-                current_agent = self.agent_name
-                if f"{current_agent}:" in action.argument:
-                    print("Fixing Mixtral's generation format")
-                    action.argument = action.argument.replace(f"{current_agent}: ", "")
-                elif f"{current_agent} said:" in action.argument:
-                    print("Fixing Mixtral's generation format")
-                    action.argument = action.argument.replace(
-                        f"{current_agent} said: ", ""
-                    )
-
             return action
 
 
@@ -170,7 +168,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         action_type = obs.available_actions[int(input("Action type: "))]
         argument = input("Argument: ")
 
-        return AgentAction(action_type=action_type, argument=argument)
+        return AgentAction(action_type=action_type, argument=argument, to=[])
 
     async def aact(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
@@ -200,7 +198,7 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         else:
             argument = ""
 
-        return AgentAction(action_type=action_type, argument=argument)
+        return AgentAction(action_type=action_type, argument=argument, to=[])
 
 
 class Agents(dict[str, BaseAgent[Observation, AgentAction]]):

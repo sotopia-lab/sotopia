@@ -27,7 +27,7 @@ logging.basicConfig(
 asyncio.run(
     run_async_server(
         model_dict={
-            "env": "gpt-4",
+            "env": "gpt-4o-mini",
             "agent1": "gpt-4o-mini",
             "agent2": "gpt-4o-mini",
         },

@@ -55,12 +55,9 @@ def generate_background_conversation(
     )
     background = ScriptBackground(
         scenario=scenario,
-        p1_name=role,
-        p2_name=basic_info["name"],
-        p1_background=role,
-        p2_background=initial_profile + "\n" + profile,
-        p1_goal=q_goal,
-        p2_goal=a_goal,
+        agent_names=[role, basic_info["name"]],
+        agent_backgrounds=[role, initial_profile + "\n" + profile],
+        agent_goals=[q_goal, a_goal],
     )
     with open(background_json_file, "w") as f:
         background_dict = json.loads(background.json())
@@ -76,11 +73,11 @@ def generate_background_conversation(
         "env": {"mode": "all"},
         basic_info["name"]: {
             "mode": "speak",
-            "goal": background.p2_goal,
+            "goal": background.agent_goals[1],
         },
         role: {
             "mode": "speak",
-            "goal": background.p1_goal,
+            "goal": background.agent_goals[0],
         },
     }
 

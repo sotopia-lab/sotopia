@@ -1,7 +1,17 @@
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Type,
+    Union,
+    cast,
+)
+
+from pydantic import BaseModel, create_model, field_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
-from pydantic import create_model, BaseModel, field_validator
-from typing import Type, Union, cast, Any
+
+from .base_models import LLMBaseModel, LLMEvalBaseModel, patch_model_for_local_storage
+from .storage_backend import is_local_backend
 
 
 def zero_to_ten(v: int) -> int:
@@ -22,7 +32,7 @@ def minus_ten_to_zero(v: int) -> int:
     return v
 
 
-class NegativeReasoningScore(BaseModel):
+class NegativeReasoningScore(LLMBaseModel):
     reasoning: str = Field(..., description="Detailed reasoning for the evaluation")
     score: int = Field(
         ...,
@@ -35,7 +45,7 @@ class NegativeReasoningScore(BaseModel):
         return minus_ten_to_zero(v)
 
 
-class PositiveReasoningScore(BaseModel):
+class PositiveReasoningScore(LLMBaseModel):
     reasoning: str = Field(..., description="Detailed reasoning for the evaluation")
     score: int = Field(
         ...,
@@ -48,7 +58,7 @@ class PositiveReasoningScore(BaseModel):
         return zero_to_ten(v)
 
 
-class BidirectionalReasoningScore(BaseModel):
+class BidirectionalReasoningScore(LLMBaseModel):
     reasoning: str = Field(..., description="Detailed reasoning for the evaluation")
     score: int = Field(
         ...,
@@ -61,7 +71,7 @@ class BidirectionalReasoningScore(BaseModel):
         return minus_five_to_five(v)
 
 
-class SotopiaDimensionsPlus(BaseModel):
+class SotopiaDimensionsPlus(LLMEvalBaseModel):
     """Updated SotopiaDimensions with more detailed instructions"""
 
     believability: PositiveReasoningScore = Field(
@@ -111,7 +121,7 @@ class SotopiaDimensionsPlus(BaseModel):
     )
 
 
-class SotopiaDimensions(BaseModel):
+class SotopiaDimensions(LLMEvalBaseModel):
     """The social dimensions used in Sotopia paper (ICLR 2024)"""
 
     believability: PositiveReasoningScore = Field(
@@ -161,7 +171,7 @@ class SotopiaDimensions(BaseModel):
     )
 
 
-class GoalDimension(BaseModel):
+class GoalDimension(LLMBaseModel):
     """Goal only evaluation"""
 
     goal: PositiveReasoningScore = Field(
@@ -172,24 +182,64 @@ class GoalDimension(BaseModel):
     )
 
 
-class BaseCustomEvaluationDimension(BaseModel):
+class BaseCustomEvaluationDimension(LLMBaseModel):
+    pk: str | None = ""
     name: str = Field(index=True)
     description: str = Field(index=True)
     range_high: int = Field(index=True)
     range_low: int = Field(index=True)
 
 
-class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
-    pass
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
+elif is_local_backend():
+
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension):
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
+else:
+
+    class CustomEvaluationDimension(BaseCustomEvaluationDimension, JsonModel):  # type: ignore[no-redef]
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 
 
-class BaseCustomEvaluationDimensionList(BaseModel):
+class BaseCustomEvaluationDimensionList(LLMBaseModel):
+    pk: str | None = ""
     name: str = Field(index=True)
-    dimension_pks: list[str] = Field(default_factory=lambda: [], index=True)
+    dimension_pks: list[str] = Field(default_factory=list, index=True)
 
 
-class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
-    pass
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
+elif is_local_backend():
+
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList):
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
+else:
+
+    class CustomEvaluationDimensionList(BaseCustomEvaluationDimensionList, JsonModel):  # type: ignore[no-redef]
+        def __init__(self, **kwargs: Any):
+            if "pk" not in kwargs:
+                kwargs["pk"] = ""
+            super().__init__(**kwargs)
 
 
 class EvaluationDimensionBuilder:
@@ -199,7 +249,7 @@ class EvaluationDimensionBuilder:
     """
 
     @staticmethod
-    def create_reasoning_score_class(low: int, high: int) -> Type[BaseModel]:
+    def create_reasoning_score_class(low: int, high: int) -> Type[LLMBaseModel]:
         """Create a custom reasoning score class for the given range"""
 
         def create_validator(low_val: int, high_val: int):
@@ -210,7 +260,7 @@ class EvaluationDimensionBuilder:
 
             return validator
 
-        class CustomReasoningScore(BaseModel):
+        class CustomReasoningScore(LLMBaseModel):
             reasoning: str = Field(
                 ..., description="Detailed reasoning for the evaluation"
             )
@@ -224,7 +274,7 @@ class EvaluationDimensionBuilder:
         return CustomReasoningScore
 
     @staticmethod
-    def build_dimension_model(dimension_ids: list[str]) -> Type[BaseModel]:
+    def build_dimension_model(dimension_ids: list[str]) -> Type[LLMBaseModel]:
         """
         Build an evaluation dimension from existing dimension primary keys.
         The returned model is a pydantic model that can be used to evaluate the conversation.
@@ -244,9 +294,9 @@ class EvaluationDimensionBuilder:
                 Field(..., description=dimension.description),
             )
 
-        model: Type[BaseModel] = create_model(
+        model: Type[LLMBaseModel] = create_model(
             "CustomEvaluationDimensionModel",
-            __base__=BaseModel,
+            __base__=LLMBaseModel,
             **fields,
         )
         return model
@@ -254,7 +304,7 @@ class EvaluationDimensionBuilder:
     @staticmethod
     def build_dimension_model_from_dict(
         dimensions: list[dict[str, Union[str, int]]],
-    ) -> Type[BaseModel]:
+    ) -> Type[LLMBaseModel]:
         """
         Build an evaluation dimension from a dictionary that specifies the parameters of the `CustomEvaluationDimension`.
         The returned model is a pydantic model that can be used to evaluate the conversation.
@@ -283,7 +333,7 @@ class EvaluationDimensionBuilder:
     @staticmethod
     def select_existing_dimension_model_by_name(
         dimension_names: list[str],
-    ) -> Type[BaseModel]:
+    ) -> Type[LLMBaseModel]:
         """
         Build an evaluation dimension from existing dimension names. For example `['believability', 'goal']`
         The returned model is a pydantic model that can be used to evaluate the conversation.
@@ -318,7 +368,7 @@ class EvaluationDimensionBuilder:
     @staticmethod
     def select_existing_dimension_model_by_list_name(
         list_name: str,
-    ) -> Type[BaseModel]:
+    ) -> Type[LLMBaseModel]:
         """
         Build an evaluation dimension from existing `CustomEvaluationDimensionList` list names. For example, directly use `sotopia`
         The returned model is a pydantic model that can be used to evaluate the conversation.
@@ -336,3 +386,10 @@ class EvaluationDimensionBuilder:
         dimension_ids = dimension_list.dimension_pks
         model = EvaluationDimensionBuilder.build_dimension_model(dimension_ids)
         return model
+
+
+# Patch model classes for local storage support
+CustomEvaluationDimension = patch_model_for_local_storage(CustomEvaluationDimension)  # type: ignore[misc]
+CustomEvaluationDimensionList = patch_model_for_local_storage(  # type: ignore[misc]
+    CustomEvaluationDimensionList
+)

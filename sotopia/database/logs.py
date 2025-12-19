@@ -1,20 +1,41 @@
 import sys
+from typing import TYPE_CHECKING
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
-from pydantic import model_validator, BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, model_validator
 from redis_om import JsonModel
 from redis_om.model.model import Field
-from typing import Literal
+
 from sotopia.database.persistent_profile import AgentProfile
 
+from .base_models import patch_model_for_local_storage
+from .storage_backend import is_local_backend
 
-class NonStreamingSimulationStatus(JsonModel):
+
+class BaseNonStreamingSimulationStatus(BaseModel):
+    pk: str | None = Field(default_factory=lambda: "")
     episode_pk: str = Field(index=True)
     status: Literal["Started", "Error", "Completed"]
+
+
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus, JsonModel):
+        pass
+elif is_local_backend():
+
+    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus):
+        pass
+else:
+
+    class NonStreamingSimulationStatus(BaseNonStreamingSimulationStatus, JsonModel):  # type: ignore[no-redef]
+        pass
 
 
 class BaseEpisodeLog(BaseModel):
@@ -22,6 +43,7 @@ class BaseEpisodeLog(BaseModel):
     # 1. The number of turns in messages and rewards should be the same or off by 1
     # 2. The agents in the messages are the same as the agetns
 
+    pk: str | None = Field(default_factory=lambda: "")
     environment: str = Field(index=True)
     agents: list[str] = Field(index=True)
     tag: str | None = Field(index=True, default="")
@@ -33,7 +55,9 @@ class BaseEpisodeLog(BaseModel):
     rewards_prompt: str = Field(default="")
 
     @model_validator(mode="after")
-    def agent_number_message_number_reward_number_turn_number_match(self) -> Self:
+    def agent_number_message_number_reward_number_turn_number_match(
+        self,
+    ) -> Self:
         agent_number = len(self.agents)
 
         assert (
@@ -82,12 +106,45 @@ class BaseEpisodeLog(BaseModel):
         return agent_profiles, messages_and_rewards
 
 
-class EpisodeLog(BaseEpisodeLog, JsonModel):
-    pass
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class EpisodeLog(BaseEpisodeLog, JsonModel):
+        pass
+elif is_local_backend():
+
+    class EpisodeLog(BaseEpisodeLog):
+        pass
+else:
+
+    class EpisodeLog(BaseEpisodeLog, JsonModel):  # type: ignore[no-redef]
+        pass
 
 
-class AnnotationForEpisode(JsonModel):
+class BaseAnnotationForEpisode(BaseModel):
+    pk: str | None = Field(default_factory=lambda: "")
     episode: str = Field(index=True, description="the pk id of episode log")
     annotator_id: str = Field(index=True, full_text_search=True)
     rewards: list[tuple[float, dict[str, float]] | float]
     reasoning: str
+
+
+if TYPE_CHECKING:
+    # For type checking, always assume Redis backend to get proper method signatures
+    class AnnotationForEpisode(BaseAnnotationForEpisode, JsonModel):
+        pass
+elif is_local_backend():
+
+    class AnnotationForEpisode(BaseAnnotationForEpisode):
+        pass
+else:
+
+    class AnnotationForEpisode(BaseAnnotationForEpisode, JsonModel):  # type: ignore[no-redef]
+        pass
+
+
+# Patch model classes for local storage support
+NonStreamingSimulationStatus = patch_model_for_local_storage(  # type: ignore[misc]
+    NonStreamingSimulationStatus
+)
+EpisodeLog = patch_model_for_local_storage(EpisodeLog)  # type: ignore[misc]
+AnnotationForEpisode = patch_model_for_local_storage(AnnotationForEpisode)  # type: ignore[misc]

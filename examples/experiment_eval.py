@@ -20,7 +20,7 @@ from sotopia.database import (
     SotopiaDimensions,
 )
 from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
+    EvaluationForAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
@@ -165,7 +165,7 @@ def _iterate_env_agent_combo_not_in_db(
                 terminal_evaluators=[
                     EpisodeLLMEvaluator(
                         model_names["env"],
-                        EvaluationForTwoAgents[evaluation_dimensions],  # type: ignore
+                        EvaluationForAgents[evaluation_dimensions],  # type: ignore
                         # TODO check how to do type annotation
                     ),
                 ],

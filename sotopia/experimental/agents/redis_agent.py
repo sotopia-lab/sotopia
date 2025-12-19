@@ -2,6 +2,7 @@ import logging
 import json
 import asyncio
 import sys
+import time
 from rich.logging import RichHandler
 import aiohttp
 from aiohttp import ClientSession, ClientWebSocketResponse
@@ -158,14 +159,66 @@ class RedisAgent(BaseAgent[Observation, AgentAction]):
         self.message_history.append(obs)
 
         if self.websocket_url:
-            """
-            TODO: Implement websocket message handling
-            """
-            # Default action if no websocket message is available
-            return AgentAction(
-                agent_name=self.node_name,
-                output_channel=self.output_channel,
-                action_type="none",
-                argument="",
-            )
+            # Wait for websocket message with timeout
+            start_time = time.time()
+            while self.last_websocket_message is None:
+                if time.time() - start_time > self.websocket_wait_time:
+                    logger.warning(
+                        f"Timeout waiting for websocket message after {self.websocket_wait_time}s"
+                    )
+                    # Default action if no websocket message is available
+                    return AgentAction(
+                        agent_name=self.node_name,
+                        output_channel=self.output_channel,
+                        action_type="none",
+                        argument="",
+                    )
+                await asyncio.sleep(self.loop_interval)
+
+            # Parse the websocket message
+            try:
+                message_data = json.loads(self.last_websocket_message)
+                # Clear the message after processing
+                self.last_websocket_message = None
+
+                # Try to parse as AgentAction directly
+                if isinstance(message_data, dict):
+                    # Ensure required fields are present
+                    action = AgentAction(
+                        agent_name=message_data.get("agent_name", self.node_name),
+                        output_channel=message_data.get(
+                            "output_channel", self.output_channel
+                        ),
+                        action_type=message_data.get("action_type", "none"),
+                        argument=message_data.get("argument", ""),
+                    )
+                    return action
+                else:
+                    logger.warning(
+                        f"Unexpected websocket message format: {message_data}"
+                    )
+                    return AgentAction(
+                        agent_name=self.node_name,
+                        output_channel=self.output_channel,
+                        action_type="none",
+                        argument="",
+                    )
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse websocket message as JSON: {e}")
+                self.last_websocket_message = None
+                return AgentAction(
+                    agent_name=self.node_name,
+                    output_channel=self.output_channel,
+                    action_type="none",
+                    argument="",
+                )
+            except Exception as e:
+                logger.error(f"Error processing websocket message: {e}")
+                self.last_websocket_message = None
+                return AgentAction(
+                    agent_name=self.node_name,
+                    output_channel=self.output_channel,
+                    action_type="none",
+                    argument="",
+                )
         return None
