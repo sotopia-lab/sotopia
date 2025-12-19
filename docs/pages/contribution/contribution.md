@@ -149,7 +149,7 @@ write better code faster. Here are some extensions that you might want to instal
 - Even Better TOML: For editing aact workflow files.
 
 ## Using Dev Containers for development
-You can use dev containers to make development consistent accross environments. It can be used with VS Code (preferred), other IDE's, or skip containers entirely. It is recommended to use VS Code as it is what Dev Containers was build for. Keeping a consistent IDE choice amongst developers also helps ensure we face less challenges.
+You can use dev containers to make development consistent across environments. It can be used with VS Code (preferred), other IDEs, or skip containers entirely. It is recommended to use VS Code as it is what Dev Containers was built for. Keeping a consistent IDE choice amongst developers also helps ensure we face fewer challenges.
 
 ### Using VS Code (Recommended)
    1. Install VS Code
@@ -161,18 +161,15 @@ You can use dev containers to make development consistent accross environments. 
 
 ### Other IDEs or Editors
 Without VS Code, you will need to use basic Docker configurations.
-   1. Assuming you have a docker-compose file, run: `docker-compose up`
-   1. That should download all the necessary project requirement dependencies, and start the application (assuming the docker-file is properly configured)
+   1. Please refer to [Dev Containers](https://containers.dev/supporting#editors) to see how to set up Dev Containers in other editors
+   1. Alternatively, you can use the Docker setup directly if your editor supports it
 
 ### Without Dev Containers
 If you do not want to use containers, you can run everything directly on your machine.
-   1. You'll need to ensure you have your pyproject.toml and / or requirments.txt files
-   1. You'll need `poetry` or `pip` to install the project dependencies.
-   1. Then you'll want to, create a virtual environment  install the project dependencies:
+   1. You'll need to ensure you have Python 3.10+ and install uv using `pip install uv`
+   1. You'll need `uv` to install the project dependencies.
+   1. Install all dependencies using uv:
       ```
-         python -m venv venv
-         source venv/bin/activate
-
-         pip install -r requirements.txt
+         uv sync --all-extras
       ```
-   1. From there you can run the application via it's entry point
+   1. From there you can run the application and tests using uv commands
