@@ -13,7 +13,7 @@ from pydantic import BaseModel, validate_call
 from rich import print
 from rich.logging import RichHandler
 
-from sotopia.database import EnvironmentProfile, RelationshipProfile
+from sotopia.database import EnvironmentProfile, RelationshipProfile, LLMEvalBaseModel
 from sotopia.messages import ActionType, AgentAction, ScriptBackground
 from sotopia.messages.message_classes import (
     ScriptInteraction,
@@ -77,9 +77,12 @@ async def format_bad_output(
     }
     content = template.format(**input_values)
     if isinstance(output_parser, PydanticOutputParser):
+        response_format = _build_json_schema_response_format(
+            output_parser.pydantic_object,
+        )
         response = await acompletion(
             model=model_name,
-            response_format=output_parser.pydantic_object,
+            response_format=response_format,
             messages=[{"role": "user", "content": content}],
         )
     else:
@@ -87,10 +90,7 @@ async def format_bad_output(
             model=model_name,
             messages=[{"role": "user", "content": content}],
         )
-    reformatted_output = response.choices[0].message.content
-    assert isinstance(reformatted_output, str)
-    log.info(f"Reformated output: {reformatted_output}")
-    return reformatted_output
+    return response.choices[0].message.content
 
 
 def _sanitize_schema_name(name: str) -> str:
@@ -114,7 +114,7 @@ def _sanitize_schema_name(name: str) -> str:
 
 
 def _build_json_schema_response_format(
-    schema: dict[str, Any], pydantic_class: type[BaseModel]
+    pydantic_class: type[BaseModel],
 ) -> dict[str, Any]:
     """
     Build complete OpenAI response_format dict for structured output.
@@ -130,6 +130,7 @@ def _build_json_schema_response_format(
         Complete response_format dict with type, json_schema, name, schema, strict
     """
     # Sanitize the schema name
+    schema = pydantic_class.model_json_schema()
     original_name = schema.get("title", pydantic_class.__name__)
     sanitized_name = _sanitize_schema_name(original_name)
 
@@ -138,7 +139,6 @@ def _build_json_schema_response_format(
     # which requires additionalProperties with a schema (for dynamic keys).
     # OpenAI's strict mode only allows additionalProperties: false, so we disable
     # strict mode for these models.
-    from sotopia.database.base_models import LLMEvalBaseModel
 
     use_strict = not issubclass(pydantic_class, LLMEvalBaseModel)
 
@@ -246,10 +246,8 @@ async def agenerate(
             output_parser, PydanticOutputParser
         ), "structured output only supported in PydanticOutputParser"
 
-        # # Build JSON schema response format with OpenAI compatibility fixes
-        schema = output_parser.pydantic_object.model_json_schema()
         response_format = _build_json_schema_response_format(
-            schema, output_parser.pydantic_object
+            output_parser.pydantic_object
         )
 
         # Build completion kwargs with structured output

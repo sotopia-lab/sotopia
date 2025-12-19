@@ -57,13 +57,16 @@ def test_dimension_list() -> Generator[None, None, None]:
 def test_build_dimension_model(test_dimension: Callable[[], None]) -> None:
     # Test building model from dimension id
     model = EvaluationDimensionBuilder.build_dimension_model(["tmppk_test_dimension"])
-    instance = model(test_dimension=("example", 5))
-    assert instance.dict()["test_dimension"] == ("example", 5)
+    # The model expects CustomReasoningScore objects with reasoning and score fields
+    # Pass as dictionary since the class created in the model is different from the one we create here
+    instance = model(test_dimension={"reasoning": "example", "score": 5})
+    assert instance.model_dump()["test_dimension"]["reasoning"] == "example"
+    assert instance.model_dump()["test_dimension"]["score"] == 5
     # Test validation errors for out of range values
     with pytest.raises(ValidationError):
-        model(test_dimension=("example", 11))
+        model(test_dimension={"reasoning": "example", "score": 11})
     with pytest.raises(ValidationError):
-        model(test_dimension=("example", -1))
+        model(test_dimension={"reasoning": "example", "score": -1})
 
 
 def test_build_dimension_model_from_dict() -> None:
@@ -77,12 +80,14 @@ def test_build_dimension_model_from_dict() -> None:
         }
     ]
     model = EvaluationDimensionBuilder.build_dimension_model_from_dict(dimensions)
-
-    instance = model(test_dim=("example", 5))
-    assert instance.dict()["test_dim"] == ("example", 5)
+    # The model expects CustomReasoningScore objects with reasoning and score fields
+    # Pass as dictionary since the class created in the model is different from the one we create here
+    instance = model(test_dim={"reasoning": "example", "score": 5})
+    assert instance.model_dump()["test_dim"]["reasoning"] == "example"
+    assert instance.model_dump()["test_dim"]["score"] == 5
 
     with pytest.raises(ValidationError):
-        model(test_dim=("example", 11))
+        model(test_dim={"reasoning": "example", "score": 11})
 
 
 def test_select_existing_dimension_model_by_name(
@@ -92,11 +97,14 @@ def test_select_existing_dimension_model_by_name(
     model = EvaluationDimensionBuilder.select_existing_dimension_model_by_name(
         ["test_dimension"]
     )
-    instance = model(test_dimension=("example", 5))
-    assert instance.dict()["test_dimension"] == ("example", 5)
+    # The model expects CustomReasoningScore objects with reasoning and score fields
+    # Pass as dictionary since the class created in the model is different from the one we create here
+    instance = model(test_dimension={"reasoning": "example", "score": 5})
+    assert instance.model_dump()["test_dimension"]["reasoning"] == "example"
+    assert instance.model_dump()["test_dimension"]["score"] == 5
 
     with pytest.raises(ValidationError):
-        model(test_dimension=("example", 11))
+        model(test_dimension={"reasoning": "example", "score": 11})
 
 
 def test_select_existing_dimension_model_by_list_name(
@@ -106,8 +114,11 @@ def test_select_existing_dimension_model_by_list_name(
     model = EvaluationDimensionBuilder.select_existing_dimension_model_by_list_name(
         "test_list"
     )
-    instance = model(test_dimension=("example", 5))
-    assert instance.dict()["test_dimension"] == ("example", 5)
+    # The model expects CustomReasoningScore objects with reasoning and score fields
+    # Pass as dictionary since the class created in the model is different from the one we create here
+    instance = model(test_dimension={"reasoning": "example", "score": 5})
+    assert instance.model_dump()["test_dimension"]["reasoning"] == "example"
+    assert instance.model_dump()["test_dimension"]["score"] == 5
 
     with pytest.raises(ValidationError):
-        model(test_dimension=("example", 11))
+        model(test_dimension={"reasoning": "example", "score": 11})

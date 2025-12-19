@@ -1,6 +1,7 @@
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Type,
     Union,
     cast,
@@ -247,6 +248,20 @@ class EvaluationDimensionBuilder:
     EvaluationDimensionBuilder is a utility class for creating and managing evaluation dimensions.
     It provides methods to build evaluation dimension models from various inputs such as primary keys, dictionaries, and names.
     """
+
+    @staticmethod
+    def create_range_validator(
+        low: int, high: int
+    ) -> Callable[[tuple[str, int]], tuple[str, int]]:
+        """Create a validator function for a tuple (name, score) that validates the score is in range"""
+
+        def validator(value: tuple[str, int]) -> tuple[str, int]:
+            name, score = value
+            if not low <= score <= high:
+                raise ValueError(f"Score must be between {low} and {high}, got {score}")
+            return (name, score)
+
+        return validator
 
     @staticmethod
     def create_reasoning_score_class(low: int, high: int) -> Type[LLMBaseModel]:
