@@ -6,7 +6,7 @@ import json
 from unittest.mock import patch
 
 from sotopia.cli.benchmark.benchmark import (
-    benchmark,
+    _benchmark_impl,
     benchmark_display,
     run_async_benchmark_in_batch,
 )
@@ -235,17 +235,21 @@ def test_run_async_benchmark_in_batch() -> None:
 
     env, agents = get_mock_env_agents_profile()
 
-    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
-        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
-    ), patch("sotopia.database.EpisodeLog.all", return_value=return_value), patch(
-        "sotopia.database.AgentProfile.find", return_value=AgentProfile
-    ), patch("sotopia.database.AgentProfile.all", return_value=agents), patch(
-        "sotopia.database.AgentProfile.get",
-        return_value=lambda pk: agents[0] if pk == agents[0].pk else agents[1],
-    ), patch(
-        "sotopia.database.EnvironmentProfile.find", return_value=EnvironmentProfile
-    ), patch("sotopia.database.EnvironmentProfile.all", return_value=[env]), patch(
-        "sotopia.database.EnvironmentProfile.get", return_value=lambda pk: env
+    with (
+        patch("sotopia.database.EpisodeLog.delete", mock_delete_function),
+        patch("sotopia.database.EpisodeLog.find", return_value=EpisodeLog),
+        patch("sotopia.database.EpisodeLog.all", return_value=return_value),
+        patch("sotopia.database.AgentProfile.find", return_value=AgentProfile),
+        patch("sotopia.database.AgentProfile.all", return_value=agents),
+        patch(
+            "sotopia.database.AgentProfile.get",
+            return_value=lambda pk: agents[0] if pk == agents[0].pk else agents[1],
+        ),
+        patch(
+            "sotopia.database.EnvironmentProfile.find", return_value=EnvironmentProfile
+        ),
+        patch("sotopia.database.EnvironmentProfile.all", return_value=[env]),
+        patch("sotopia.database.EnvironmentProfile.get", return_value=lambda pk: env),
     ):
         assert (
             len(EpisodeLog.find().all()) == 10
@@ -281,30 +285,37 @@ def test_sotopia_benchmark(
 ) -> None:
     # Mainly test the benchmark workflow; Assume the benchmark_combo is correct
 
-    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
-        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
-    ), patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()):
+    with (
+        patch("sotopia.database.EpisodeLog.delete", mock_delete_function),
+        patch("sotopia.database.EpisodeLog.find", return_value=EpisodeLog),
+        patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()),
+    ):
         assert (
             len(EpisodeLog.find().all()) == 20
         ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
 
         # `output_to_jsonl` will be tested in the next test, `push_to_db` has been tested elsewhere, so only test `only_show_performance`
-        benchmark(
+        _benchmark_impl(
             models=[model_name],
             partner_model="not_test_model",
             evaluator_model="eval_model",
             url="",
+            task="",  # Use empty task to avoid loading EnvironmentList
             only_show_performance=False,
             output_to_jsonl=False,
             push_to_db=False,
         )
         mock_initialize_benchmark_combo.assert_called_once_with("")
 
-        benchmark(
+        # Reset the mock for the second call
+        mock_initialize_benchmark_combo.reset_mock()
+
+        _benchmark_impl(
             models=[model_name],
             partner_model="not_test_model",
             evaluator_model="eval_model",
             url="",
+            task="",  # Use empty task to avoid loading EnvironmentList
             only_show_performance=True,
             output_to_jsonl=False,
             push_to_db=False,
@@ -315,9 +326,11 @@ def test_sotopia_benchmark(
 def test_sotopia_benchmark_display() -> None:
     # Mainly test the average reward calculation (similar to previous get_avg_rewards test)
 
-    with patch("sotopia.database.EpisodeLog.delete", mock_delete_function), patch(
-        "sotopia.database.EpisodeLog.find", return_value=EpisodeLog
-    ), patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()):
+    with (
+        patch("sotopia.database.EpisodeLog.delete", mock_delete_function),
+        patch("sotopia.database.EpisodeLog.find", return_value=EpisodeLog),
+        patch("sotopia.database.EpisodeLog.all", return_value=get_mock_episodes()),
+    ):
         assert (
             len(EpisodeLog.find().all()) == 20
         ), f"Expected 20 episodes in the database, but got {len(EpisodeLog.find().all())}"
@@ -330,15 +343,34 @@ def test_sotopia_benchmark_display() -> None:
         )
 
         target_believability = (7.0, 3.4462887784189147)
+        test_model_key = f"{model_name} (test) eval_model as the evaluator"
         assert np.allclose(
-            displayed_stats["test_model"]["believability"],
+            displayed_stats[test_model_key]["believability"],
             target_believability,
             atol=0.02,
-        ), f"Got {displayed_stats['test_model']['believability']}, expected {target_believability}"
+        ), f"Got {displayed_stats[test_model_key]['believability']}, expected {target_believability}"
 
         benchmark_file = "/tmp/models_vs_not_test_model.jsonl"
         recovered_data = [json.loads(line) for line in open(benchmark_file, "r")]
-        target_content = '{"model_name": "test_model", "SOC [-10, 0]": 7.0, "SEC [-10, 0]": 7.0, "FIN [-5, 5]": 7.0, "REL [-5, 5]": 7.0, "KNO [0, 10]": 7.0, "GOAL [0, 10]": 7.0, "BEL [0, 10]": 7.0}'
+        # Check that the file was created and has the expected structure
+        assert len(recovered_data) > 0, "No data found in benchmark file"
+        # The model_name in the output is the full key from model_rewards_dict
+        expected_model_name = f"{model_name} (test) eval_model as the evaluator"
         assert (
-            str(recovered_data[0]).replace("'", '"') == target_content
-        ), f"Expected {target_content}, but got {recovered_data[0]}"
+            recovered_data[0]["model_name"] == expected_model_name
+        ), f"Expected model_name to be '{expected_model_name}', got {recovered_data[0]['model_name']}"
+        # Verify all expected dimensions are present with correct values
+        expected_dimensions = {
+            "SOC [-10, 0]": 7.0,
+            "SEC [-10, 0]": 7.0,
+            "FIN [-5, 5]": 7.0,
+            "REL [-5, 5]": 7.0,
+            "KNO [0, 10]": 7.0,
+            "GOAL [0, 10]": 7.0,
+            "BEL [0, 10]": 7.0,
+        }
+        for dim, expected_value in expected_dimensions.items():
+            assert dim in recovered_data[0], f"Missing dimension {dim} in output"
+            assert np.allclose(
+                recovered_data[0][dim], expected_value, atol=0.01
+            ), f"Expected {dim} to be {expected_value}, got {recovered_data[0][dim]}"

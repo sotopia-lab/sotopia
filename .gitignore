@@ -166,6 +166,8 @@ redis-data/*
 
 sotopia/cli/install/redis-data/*
 redis-stack-server-*/
+
+*.rdb
 examples/experimental/negotiation_arena/redis-data/*
 *.rdb
 *.dot

@@ -6,13 +6,13 @@ from typing import Any, Literal, Optional, Type, TypeVar
 
 from gin import configurable
 from gymnasium.spaces.dict import Dict
-from gymnasium.spaces.discrete import Discrete
 from gymnasium.spaces.text import Text
+from gymnasium.spaces import Space
 from pettingzoo.utils.env import ParallelEnv
 from pydantic import validate_call
 from redis_om.model.model import NotFoundError
 
-from sotopia.agents.llm_agent import Agents
+from sotopia.agents.llm_agent import Agents, LLMAgent
 from sotopia.database import EnvironmentProfile
 from sotopia.database.persistent_profile import (
     AgentProfile,
@@ -33,15 +33,45 @@ from .evaluators import Evaluator, unweighted_aggregate_evaluate
 TBackground = TypeVar("TBackground", bound=ScriptBackground)
 
 
-def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
-    action_str = ""
-    for agent, action in actions.items():
-        # Only record actions that did something
-        if action.action_type != "none":
-            if action_str != "":
-                action_str += ";"  # separate actions with semicolon
-            action_str += f"{agent} {action.to_natural_language()}"
-    return action_str
+class LiteralSpace(Space[Any]):
+    """Space that samples randomly from list values"""
+
+    def __init__(self, values: list[Any], seed: int | None = None):
+        super().__init__((), None, seed)
+        self._values = values
+
+    def sample(self, mask: Any = None) -> Any:
+        return self.np_random.choice(self._values)
+
+    def contains(self, x: Any) -> bool:
+        return isinstance(x, str) and x in self._values
+
+    def __repr__(self) -> str:
+        return f"LiteralSpace({self._values})"
+
+
+def _actions_to_natural_language_for_viewer(
+    actions: dict[str, AgentAction], viewer: str
+) -> str:
+    """
+    Per-viewer observation text:
+      - Public actions (no 'to'): visible to everyone
+      - Private actions (with 'to'): visible only to sender and recipients
+    """
+    parts: list[str] = []
+    for sender, action in actions.items():
+        if action.action_type == "none":
+            continue
+
+        to_list = action.to or []
+        is_public = len(to_list) == 0
+        can_see = is_public or (viewer in to_list) or (viewer == sender)
+
+        if not can_see:
+            continue
+
+        parts.append(f"{sender} {action.to_natural_language()}")
+    return ";".join(parts)
 
 
 def _map_gender_to_adj(gender: str) -> str:
@@ -301,7 +331,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         self.action_spaces = {
             agent: Dict(
                 dict(
-                    action_type=Discrete(len(self.available_action_types)),
+                    action_type=LiteralSpace(self.available_action_types),
                     argument=Text(256),
                 )
             )
@@ -316,28 +346,24 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
 
-        # Create observations for each agent
+        self.recv_message("Environment", self.background)
+
+        # Set script_background on agents and create observations
         observations = {}
-        if include_background_observations:
-            self.recv_message("Environment", self.background)
-            for i, agent_name in enumerate(self.agents):
-                agent_bg = agent_backgrounds[i]
-                observations[agent_name] = Observation(
-                    last_turn=agent_bg.to_natural_language(),
-                    turn_number=0,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[i]
-                    else ["none"],
-                )
-        else:
-            for i, agent_name in enumerate(self.agents):
-                observations[agent_name] = Observation(
-                    last_turn="",
-                    turn_number=0,
-                    available_actions=list(self.available_action_types)
-                    if self.action_mask[i]
-                    else ["none"],
-                )
+        for i, agent_name in enumerate(self.agents):
+            agent_bg = agent_backgrounds[i]
+            # Set script_background on agent if it's an LLMAgent
+            if agent_name in agents:
+                agent = agents[agent_name]
+                if isinstance(agent, LLMAgent):
+                    agent.script_background = agent_bg
+            observations[agent_name] = Observation(
+                last_turn=agent_bg.to_natural_language(),
+                turn_number=0,
+                available_actions=list(self.available_action_types)
+                if self.action_mask[i]
+                else ["none"],
+            )
 
         return observations
 
@@ -347,20 +373,24 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         """Normalize actions, apply mask, and record to history."""
         # Normalize actions to AgentAction objects
         complied_actions: dict[str, AgentAction] = {}
-        for key in actions.keys():
-            action = actions[key]
-            if isinstance(action, AgentAction):
-                complied_actions[key] = action
-            else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
-                ]
-                complied_actions[key] = AgentAction.parse_obj(action)
+        context = {
+            "agent_names": self.agents,
+            "available_action_types": self.available_action_types,
+        }
+        for sender, action in actions.items():
+            context["sender"] = sender
+            # Actions from agents are already validated during generation
+            assert isinstance(
+                action, AgentAction
+            ), f"Action must be AgentAction, got {type(action)}"
+            complied_actions[sender] = action
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(action_type="none", argument="")
+                complied_actions[agent] = AgentAction(
+                    action_type="none", argument="", to=[]
+                )
 
         if self.include_turn_marker:
             self.recv_message(
@@ -427,13 +457,15 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
-        obs = _actions_to_natural_language(complied_actions)
 
-        # Create observations for all agents dynamically
-        observations = {}
+        # Create observation for all agents dynamically
+        observations: dict[str, Observation] = {}
         for i, agent_name in enumerate(self.agents):
+            obs_for_viewer = _actions_to_natural_language_for_viewer(
+                complied_actions, agent_name
+            )
             observations[agent_name] = Observation(
-                last_turn=render_text_for_agent(obs, agent_id=i),
+                last_turn=render_text_for_agent(obs_for_viewer, agent_id=i),
                 turn_number=self.turn_number,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[i]
@@ -491,7 +523,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
-        obs = _actions_to_natural_language(complied_actions)
+
         # Create info dictionary for all agents
         info = {
             agent_name: {
@@ -500,16 +532,19 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             }
             for agent_name in self.agents
         }
-        if response.terminated:
+        if response.terminated and self.terminal_evaluators:
             info["rewards_prompt"] = {
                 "overall_prompt": self.terminal_evaluators[0].prompt  # type: ignore
             }
 
         # Create observations for all agents dynamically
-        observations = {}
+        observations: dict[str, Observation] = {}
         for i, agent_name in enumerate(self.agents):
+            obs_for_viewer = _actions_to_natural_language_for_viewer(
+                complied_actions, agent_name
+            )
             observations[agent_name] = Observation(
-                last_turn=render_text_for_agent(obs, agent_id=i),
+                last_turn=render_text_for_agent(obs_for_viewer, agent_id=i),
                 turn_number=self.turn_number,
                 available_actions=list(self.available_action_types)
                 if self.action_mask[i]

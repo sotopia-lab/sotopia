@@ -1,14 +1,16 @@
 import re
 from typing import Literal, cast
 
-from pydantic import BaseModel, Field
+from pydantic import Field, field_validator, ValidationInfo
+from pydantic_core import PydanticCustomError
 
+from sotopia.database import LLMBaseModel
 from sotopia.utils import format_docstring
 
 ActionType = Literal["none", "speak", "non-verbal communication", "action", "leave"]
 
 
-class Message(BaseModel):
+class Message(LLMBaseModel):
     """
     An interface for messages.
     There is only one required method: to_natural_language
@@ -41,7 +43,7 @@ class Observation(Message):
         if self.turn_number == 0:
             return f"\n{self.last_turn}\nConversation Starts:\n"
         else:
-            return f"Turn #{self.turn_number-1}: {self.last_turn}\n"
+            return f"Turn #{self.turn_number - 1}: {self.last_turn}\n"
 
 
 class ScriptBackground(Message):
@@ -143,19 +145,117 @@ class AgentAction(Message):
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
     )
+    # New structured fields for private messages
+    to: list[str] = Field(
+        description="recipient name(s), when specified, the action is only visible to the listed agents, empty list means public action",
+    )
 
     def to_natural_language(self) -> str:
+        recipients_prefix = "" if not self.to else f"[private to {self.to}] "
+
+        action_str = ""
         match self.action_type:
             case "none":
-                return "did nothing"
+                action_str = "did nothing"
             case "speak":
-                return f'said: "{self.argument}"'
+                action_str = f'said: "{self.argument}"'
             case "non-verbal communication":
-                return f"[{self.action_type}] {self.argument}"
+                action_str = f"[{self.action_type}] {self.argument}"
             case "action":
-                return f"[{self.action_type}] {self.argument}"
+                action_str = f"[{self.action_type}] {self.argument}"
             case "leave":
-                return "left the conversation"
+                action_str = "left the conversation"
+
+        return f"{recipients_prefix} {action_str}"
+
+    @field_validator("action_type", mode="before")
+    @classmethod
+    def validate_action_type(cls, action_type: str | int, info: ValidationInfo) -> str:
+        """
+        Normalize action_type to ensure it's a valid string literal.
+        This handles cases where action_type comes from model_dump() or dict input,
+        ensuring Pydantic's Literal validation works correctly even when context is provided.
+
+        Also handles integer action_type (backward compatibility) if available_action_types
+        is provided in context.
+        """
+        # Handle integer action_type (backward compatibility)
+        if isinstance(action_type, int):
+            available_action_types = (
+                info.context.get("available_action_types", []) if info.context else []
+            )
+            if available_action_types:
+                action_idx = action_type
+                if 0 <= action_idx < len(available_action_types):
+                    return str(list(available_action_types)[action_idx])
+                else:
+                    raise ValueError(
+                        f"Invalid action_type index: {action_idx}. "
+                        f"Must be between 0 and {len(available_action_types) - 1}"
+                    )
+            else:
+                # No context provided, can't convert int to string
+                raise ValueError(
+                    "Integer action_type requires 'available_action_types' in context. "
+                    "Either provide context or use string literals."
+                )
+
+        # If it's already a string, ensure it's one of the valid literals
+        if isinstance(action_type, str):
+            valid_types = [
+                "none",
+                "speak",
+                "non-verbal communication",
+                "action",
+                "leave",
+            ]
+            if action_type in valid_types:
+                return action_type
+            # Try stripping whitespace in case of formatting issues
+            action_type = action_type.strip()
+            if action_type in valid_types:
+                return action_type
+            # If still not valid, let Pydantic's Literal validation handle the error
+            return action_type
+
+        # Fallback: convert to string
+        return str(action_type)
+
+    @field_validator("to", mode="before")
+    @classmethod
+    def validate_to(
+        cls, to: list[str] | None, info: ValidationInfo
+    ) -> list[str] | None:
+        """
+        Validate the `to` recipients.
+
+        - If `to` is None or empty list or no context is provided, return unchanged.
+        - If `info.context["agent_names"]` is provided (via `model_validate(..., context=...)`),
+          raise a validation error if any recipients are not in that set or if a sender targets themselves.
+        """
+        if not to:
+            return to
+
+        agent_names = (
+            set(info.context.get("agent_names", [])) if info.context else set()
+        )
+        if not agent_names:
+            return to
+
+        sender = info.context.get("sender") if info.context else None
+        invalid = [
+            r
+            for r in to
+            if r not in agent_names or (sender is not None and r == sender)
+        ]
+        if invalid:
+            allowed = sorted(n for n in agent_names if n != sender)
+            raise PydanticCustomError(
+                "invalid_to",
+                "Invalid recipient(s) in 'to': {invalid}. Allowed: {allowed}. Regenerate with `to` subset of allowed, or omit `to` for public.",
+                {"invalid": invalid, "allowed": allowed},
+            )
+        return to
 
 
 ScriptInteractionReturnType = tuple[
@@ -238,7 +338,9 @@ class ScriptInteraction(Message):
                 cast(int, res["turn"])
                 name: str = cast(str, res["name"])
 
-                parsed_action = AgentAction(action_type=action, argument=argument)
+                parsed_action = AgentAction(
+                    action_type=cast(ActionType, action), argument=argument, to=[]
+                )
                 if name not in agent_names:
                     print(
                         f"The name of the agent, {name}, is not in the list of agent names, {agent_names}"
@@ -252,32 +354,37 @@ class ScriptInteraction(Message):
                     f"The error is: {e}",
                 )
                 raise e
-                parsed_action = AgentAction(action_type="none", argument="")
+                parsed_action = AgentAction(action_type="none", argument="", to=[])
                 name = agent_names[line_idx % 2]  # TODO same question as above
             inactive_agent_name = (
                 agent_names[0] if name == agent_names[1] else agent_names[1]
             )
             results.append(
-                [
-                    (
-                        "Environment",
-                        name,
-                        Observation(
-                            last_turn="environment is the agent",
-                            turn_number=line_idx + 1,
-                            available_actions=["none"],
+                cast(
+                    list[tuple[str, str, Message]],
+                    [
+                        *[
+                            (
+                                "Environment",
+                                name,
+                                Observation(
+                                    last_turn="environment is the agent",
+                                    turn_number=line_idx + 1,
+                                    available_actions=["none"],
+                                ),
+                            )
+                            for name in agent_names
+                        ],
+                        (name, "Environment", parsed_action),
+                        (
+                            inactive_agent_name,
+                            "Environment",
+                            AgentAction(
+                                action_type="none", argument="did nothing", to=[]
+                            ),
                         ),
-                    )
-                    for name in agent_names
-                ]
-                + [
-                    (name, "Environment", parsed_action),
-                    (
-                        inactive_agent_name,
-                        "Environment",
-                        AgentAction(action_type="none", argument="did nothing"),
-                    ),
-                ]
+                    ],
+                )
             )
 
             agent_results.append((name, parsed_action))
@@ -367,6 +474,6 @@ class ScriptInteraction(Message):
             ]
         ]
         results_2: list[tuple[str, Message]] = [
-            ("", AgentAction(action_type="none", argument=""))
+            ("", AgentAction(action_type="none", argument="", to=[]))
         ]
         return (results_1, results_2)

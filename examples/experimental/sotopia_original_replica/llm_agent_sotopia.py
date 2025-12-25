@@ -10,7 +10,7 @@ from sotopia.experimental.agents.datamodels import Observation, AgentAction
 from sotopia.database.persistent_profile import AgentProfile
 from typing import Any
 
-from sotopia.generation_utils import agenerate, StrOutputParser, custom_temperature
+from sotopia.generation_utils import agenerate, StrOutputParser
 
 # Check Python version
 if sys.version_info >= (3, 11):
@@ -131,7 +131,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                     "agent_name": self.name,
                 },
                 output_parser=StrOutputParser(),
-                temperature=custom_temperature(0.7),
+                temperature=0.7,
             )
 
             return AgentAction(
