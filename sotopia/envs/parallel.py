@@ -12,7 +12,7 @@ from pettingzoo.utils.env import ParallelEnv
 from pydantic import validate_call
 from redis_om.model.model import NotFoundError
 
-from sotopia.agents.llm_agent import Agents, LLMAgent
+from sotopia.agents.llm_agent import Agents
 from sotopia.database import EnvironmentProfile
 from sotopia.database.persistent_profile import (
     AgentProfile,
@@ -220,7 +220,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         agents: Agents | None = None,
         omniscient: bool = False,
         lite: bool = False,
-        include_background_observations: bool = True,
+        include_background_observations: bool | None = True,
     ) -> dict[str, Observation]:
         """Starting a new episode. Must be called before step().
 
@@ -346,24 +346,27 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
 
-        self.recv_message("Environment", self.background)
-
-        # Set script_background on agents and create observations
         observations = {}
-        for i, agent_name in enumerate(self.agents):
-            agent_bg = agent_backgrounds[i]
-            # Set script_background on agent if it's an LLMAgent
-            if agent_name in agents:
-                agent = agents[agent_name]
-                if isinstance(agent, LLMAgent):
-                    agent.script_background = agent_bg
-            observations[agent_name] = Observation(
-                last_turn=agent_bg.to_natural_language(),
-                turn_number=0,
-                available_actions=list(self.available_action_types)
-                if self.action_mask[i]
-                else ["none"],
-            )
+        if include_background_observations:
+            self.recv_message("Environment", self.background)
+            for i, agent_name in enumerate(self.agents):
+                agent_bg = agent_backgrounds[i]
+                observations[agent_name] = Observation(
+                    last_turn=agent_bg.to_natural_language(),
+                    turn_number=0,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[i]
+                    else ["none"],
+                )
+        else:
+            for i, agent_name in enumerate(self.agents):
+                observations[agent_name] = Observation(
+                    last_turn="",
+                    turn_number=0,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[i]
+                    else ["none"],
+                )
 
         return observations
 

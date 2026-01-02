@@ -268,7 +268,7 @@ class SocialDeductionGame(SocialGame):
         agents: Agents | None = None,
         omniscient: bool = False,
         lite: bool = False,
-        include_background_observations: bool = True,
+        include_background_observations: bool | None = False,
     ) -> dict[str, Observation]:
         """Reset environment and initialize game state."""
         # Call parent reset
@@ -277,7 +277,7 @@ class SocialDeductionGame(SocialGame):
             options=options,
             agents=agents,
             omniscient=omniscient,
-            include_background_observations=False,
+            include_background_observations=include_background_observations,
         )
 
         # Load config

@@ -257,7 +257,7 @@ class WerewolfEnv(SocialDeductionGame):
         agents: Agents | None = None,
         omniscient: bool = False,
         lite: bool = False,
-        include_background_observations: bool = True,
+        include_background_observations: bool | None = False,
     ) -> Dict[str, Observation]:
         obs = super().reset(
             seed=seed,
