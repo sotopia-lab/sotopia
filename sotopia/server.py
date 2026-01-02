@@ -63,7 +63,6 @@ def run_sync_server(
     else:
         environment_messages = env.reset()
     agents = Agents()
-    # agents_model_names = [model_name_dict["agent1"], model_name_dict["agent2"]]
     # derive agent keys like agent1, agent2, … agentN
     agent_keys = sorted(k for k in model_name_dict if re.fullmatch(r"agent\d+", k))
     agents_model_names = [model_name_dict[k] for k in agent_keys]
@@ -159,6 +158,7 @@ async def arun_one_episode(
         while not done:
             # gather agent messages
             agent_messages: dict[str, AgentAction] = dict()
+
             actions = await asyncio.gather(
                 *[
                     agents[agent_name].aact(environment_messages[agent_name])
@@ -231,7 +231,6 @@ async def arun_one_episode(
             environment=env.profile.pk,
             agents=[agent.profile.pk for agent in agent_list],
             tag=tag,
-            # models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
             models=[env.model_name] + [agent.model_name for agent in agent_list],
             messages=[
                 [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
