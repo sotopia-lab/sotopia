@@ -143,9 +143,16 @@ async def async_add_env_agent_combo_to_redis_queue(
         agent_indices = env_list.agent_index
         env_agent_combo_storage_pks: list[str] = []
         for env in envs:
-            env_agent_combo_storage = list(
+            env_agent_combos = list(
                 EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env).all()
-            )[0]
+            )
+            if not env_agent_combos:
+                logging.warning(
+                    "No EnvAgentComboStorage entry found for env %s; skipping.",
+                    env,
+                )
+                continue
+            env_agent_combo_storage = env_agent_combos[0]
             assert env_agent_combo_storage.pk
             env_agent_combo_storage_pks.append(env_agent_combo_storage.pk)
         assert agent_indices
@@ -153,6 +160,12 @@ async def async_add_env_agent_combo_to_redis_queue(
             "chat_server_combos_double",
             *tuple(set(env_agent_combo_storage_pks)),
         )
+        if not env_agent_combo_storage_pks:
+            logging.error(
+                "No valid agent/env combos were enqueued. "
+                "Ensure EnvAgentComboStorage contains entries for the selected environments."
+            )
+            return
         for agent_index, env_agent_combo_storage_pk in zip(
             agent_indices, env_agent_combo_storage_pks
         ):
@@ -171,9 +184,16 @@ async def async_add_env_agent_combo_to_redis_queue(
         envs = list(EnvironmentProfile.all_pks())
         random.shuffle(envs)
         for env in envs:
-            env_agent_combo_storage = list(
+            env_agent_combos = list(
                 EnvAgentComboStorage.find(EnvAgentComboStorage.env_id == env).all()
-            )[0]
+            )
+            if not env_agent_combos:
+                logging.warning(
+                    "No EnvAgentComboStorage entry found for env %s; skipping.",
+                    env,
+                )
+                continue
+            env_agent_combo_storage = env_agent_combos[0]
             assert env_agent_combo_storage.pk
             await r.rpush("chat_server_combos_double", env_agent_combo_storage.pk)
             await r.rpush("chat_server_combos_single_left", env_agent_combo_storage.pk)

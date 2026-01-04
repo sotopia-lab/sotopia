@@ -1,0 +1,16 @@
+# Dependencies
+node_modules
+.pnp*
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build output
+.next
+out
+dist
+
+# IDEs
+.DS_Store
+.idea
+*.log
