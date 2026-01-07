@@ -7,7 +7,7 @@ import pytest
 import requests
 import json
 from typing import Any
-from litellm import ModelResponse, Choices, Message  # type: ignore[attr-defined]
+from litellm.types.utils import ModelResponse, Choices, Message
 
 # Set local storage backend as default for tests unless explicitly overridden
 if "SOTOPIA_STORAGE_BACKEND" not in os.environ:
