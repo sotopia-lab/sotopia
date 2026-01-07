@@ -45,6 +45,14 @@ formatter = logging.Formatter(
 )
 console_handler.setFormatter(formatter)
 
+
+def fill_template(template: str, **kwargs: str) -> str:
+    """Fill template with kwargs, ignoring missing keys."""
+    for k, v in kwargs.items():
+        template = template.replace(f"{{{k}}}", v)
+    return template
+
+
 # Add handler to logger
 log.addHandler(console_handler)
 
@@ -299,6 +307,8 @@ async def agenerate(
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")
     log_prefix = f" [{agent_name}]" if agent_name else ""
+    log.debug(f"Model: {model_name}")
+    log.debug(f"Prompt: {messages}")
     log.info(f"Generated result{log_prefix}: {parsed_result}")
     return parsed_result
 
@@ -376,6 +386,7 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    custom_template: str | None = None,
     structured_output: bool = False,
     agent_names: list[str] | None = None,
     sender: str | None = None,
@@ -384,7 +395,13 @@ async def agenerate_action(
     Using langchain to generate an example episode
     """
     try:
-        if script_like:
+        if custom_template:
+            if script_like:
+                raise ValueError(
+                    "script_like and custom_template are mutually exclusive"
+                )
+            template = custom_template
+        elif script_like:
             # model as playwright
             template = """
                 Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
@@ -435,6 +452,7 @@ async def agenerate_action(
                 turn_number=str(turn_number),
                 history=history,
                 action_list=" ".join(action_types),
+                goal=goal,
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
