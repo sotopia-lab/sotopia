@@ -135,6 +135,10 @@ def generate_mock_json_from_schema(schema: dict[str, Any]) -> str:
                     for i, item_schema in enumerate(type_info["prefixItems"])
                 ]
             else:
+                # Special case: 'to' field in AgentAction should default to empty list
+                # (it's for private message recipients, empty = public)
+                if property_name == "to":
+                    return []
                 # Regular array with same type for all items
                 items = type_info.get("items", {})
                 # Generate 2 items by default

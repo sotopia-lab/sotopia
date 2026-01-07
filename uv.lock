@@ -3942,7 +3942,7 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.65.0" },
     { name = "lxml", specifier = ">=4.9.3,<6.0.0" },
     { name = "modal", marker = "extra == 'api'" },
-    { name = "openai", specifier = ">=1.11.0,<2.0.0" },
+    { name = "openai", specifier = ">=1.11.0,<3.0.0" },
     { name = "pandas", marker = "extra == 'examples'" },
     { name = "pettingzoo", specifier = "==1.25.0" },
     { name = "pyaudio", marker = "extra == 'realtime'", specifier = ">=0.2.14,<0.3.0" },

@@ -75,6 +75,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="", to=[])
         else:
+            custom_template = None
             if self.custom_template:
                 custom_template = fill_template(
                     self.custom_template, action_instructions=obs.action_instruction
