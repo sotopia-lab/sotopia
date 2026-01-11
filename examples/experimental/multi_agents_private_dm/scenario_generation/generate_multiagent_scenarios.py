@@ -96,7 +96,7 @@ HEARTBEAT_EVERY_SEC = 60
 # Files
 SEEDS_PATH = "scenario_seeds.json"
 OUT_PATH = "dataset.json"               # final scenario dataset
-OUT_PATH_ALL = "dataset_all.json"       # 
+OUT_PATH_ALL = "dataset_all.json"       # includes both good and bad scenarios (this file can be used as scenario_seeds.json in next iteration to diversify the seeds)
 
 
 # Prompts
