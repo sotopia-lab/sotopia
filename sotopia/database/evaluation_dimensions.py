@@ -290,7 +290,7 @@ class EvaluationDimensionBuilder:
         return CustomReasoningScore
 
     @staticmethod
-    def build_dimension_model(dimension_ids: list[str]) -> Type[LLMBaseModel]:
+    def build_dimension_model(dimension_ids: list[str]) -> Type[LLMEvalBaseModel]:
         """
         Build an evaluation dimension from existing dimension primary keys.
         The returned model is a pydantic model that can be used to evaluate the conversation.
@@ -312,7 +312,7 @@ class EvaluationDimensionBuilder:
 
         model: Type[LLMBaseModel] = create_model(
             "CustomEvaluationDimensionModel",
-            __base__=LLMBaseModel,
+            __base__=LLMEvalBaseModel,
             **fields,
         )
         return model
@@ -320,7 +320,7 @@ class EvaluationDimensionBuilder:
     @staticmethod
     def build_dimension_model_from_dict(
         dimensions: list[dict[str, Union[str, int]]],
-    ) -> Type[LLMBaseModel]:
+    ) -> Type[LLMEvalBaseModel]:
         """
         Build an evaluation dimension from a dictionary that specifies the parameters of the `CustomEvaluationDimension`.
         The returned model is a pydantic model that can be used to evaluate the conversation.
@@ -341,7 +341,7 @@ class EvaluationDimensionBuilder:
 
         dimension_model = create_model(
             "CustomEvaluationDimensionModel",
-            __base__=LLMBaseModel,
+            __base__=LLMEvalBaseModel,
             **fields,
         )
         return dimension_model
@@ -349,7 +349,7 @@ class EvaluationDimensionBuilder:
     @staticmethod
     def select_existing_dimension_model_by_name(
         dimension_names: list[str],
-    ) -> Type[LLMBaseModel]:
+    ) -> Type[LLMEvalBaseModel]:
         """
         Build an evaluation dimension from existing dimension names. For example `['believability', 'goal']`
         The returned model is a pydantic model that can be used to evaluate the conversation.
@@ -376,7 +376,7 @@ class EvaluationDimensionBuilder:
 
         model = create_model(
             "CustomEvaluationDimensionModel",
-            __base__=LLMBaseModel,
+            __base__=LLMEvalBaseModel,
             **fields,
         )
         return model
@@ -384,7 +384,7 @@ class EvaluationDimensionBuilder:
     @staticmethod
     def select_existing_dimension_model_by_list_name(
         list_name: str,
-    ) -> Type[LLMBaseModel]:
+    ) -> Type[LLMEvalBaseModel]:
         """
         Build an evaluation dimension from existing `CustomEvaluationDimensionList` list names. For example, directly use `sotopia`
         The returned model is a pydantic model that can be used to evaluate the conversation.
