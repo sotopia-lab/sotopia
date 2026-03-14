@@ -57,7 +57,18 @@ from .session_transaction import MessageTransaction, SessionTransaction
 from .storage_backend import (
     get_storage_backend,
     is_local_backend,
+    is_postgres_backend,
     is_redis_backend,
+)
+from .users import (
+    BaseEloHistory,
+    BaseGameResult,
+    BaseOAuthAccount,
+    BaseUserProfile,
+    EloHistory,
+    GameResult,
+    OAuthAccount,
+    UserProfile,
 )
 from .waiting_room import MatchingInWaitingRoom
 
@@ -80,6 +91,18 @@ __all__ = [
     "SessionTransaction",
     "MessageTransaction",
     "MatchingInWaitingRoom",
+    "UserProfile",
+    "BaseUserProfile",
+    "GameResult",
+    "BaseGameResult",
+    "OAuthAccount",
+    "BaseOAuthAccount",
+    "EloHistory",
+    "BaseEloHistory",
+    "get_storage_backend",
+    "is_local_backend",
+    "is_redis_backend",
+    "is_postgres_backend",
     "agentprofiles_to_csv",
     "agentprofiles_to_jsonl",
     "environmentprofiles_to_csv",
@@ -148,10 +171,10 @@ else:
 if is_redis_backend():
     try:
         # Initialize an empty JsonModel to ensure model is registered
-        JsonModel()
+        print("[Redis OM] Attempting to initialize JsonModel...", flush=True)
+        model = JsonModel()
+        print(f"[Redis OM] Successfully initialized JsonModel: {type(model)}", flush=True)
         rprint("[green]Successfully initialized Redis OM object[/green].")
     except Exception as e:
-        logger.error(
-            f"Failed to initialize Redis OM object: {e}. The connection to your redis database might be problematic."
-        )
-        rprint("[red]Failed to initialize Redis OM object[/red]")
+        print(f"[Redis OM] Warning during JsonModel initialization (non-blocking): {type(e).__name__}: {e}", flush=True)
+        rprint("[yellow]Redis OM object initialization warning (continuing anyway)[/yellow]")

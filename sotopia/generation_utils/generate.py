@@ -390,6 +390,7 @@ async def agenerate_action(
     structured_output: bool = False,
     agent_names: list[str] | None = None,
     sender: str | None = None,
+    action_instruction: str | None = None,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -411,6 +412,7 @@ async def agenerate_action(
                 {history}.
                 The script has proceeded to Turn #{turn_number}. Current available action types are
                 {action_list}.
+                {action_instruction_text}
                 Note: The script can be ended if 1. one agent have achieved social goals, 2. this conversation makes the agent uncomfortable, 3. the agent find it uninteresting/you lose your patience, 4. or for other reasons you think it should stop.
 
                 Please only generate a JSON string including the action type and the argument.
@@ -428,6 +430,7 @@ async def agenerate_action(
                 {history}.
                 You are at Turn #{turn_number}. Your available action types are
                 {action_list}.
+                {action_instruction_text}
                 Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
 
                 Please only generate a JSON string including the action type and the argument.
@@ -444,6 +447,11 @@ async def agenerate_action(
             if sender is not None:
                 validation_context["sender"] = sender
 
+        # Build action instruction text
+        action_instruction_text = ""
+        if action_instruction:
+            action_instruction_text = f"IMPORTANT: {action_instruction}"
+
         return await agenerate(
             model_name=model_name,
             template=template,
@@ -453,6 +461,7 @@ async def agenerate_action(
                 history=history,
                 action_list=" ".join(action_types),
                 goal=goal,
+                action_instruction_text=action_instruction_text,
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,

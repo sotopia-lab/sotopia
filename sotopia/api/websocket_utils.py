@@ -1,10 +1,12 @@
+import asyncio
+from collections.abc import Callable
 from sotopia.envs.evaluators import (
     EvaluationForAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
-from sotopia.agents import Agents, LLMAgent
-from sotopia.messages import Observation
+from sotopia.agents import Agents, LLMAgent, BaseAgent
+from sotopia.messages import Observation, AgentAction
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.database import (
     EnvironmentProfile,
@@ -15,7 +17,7 @@ from sotopia.database import (
 from sotopia.server import arun_one_episode
 
 from enum import Enum
-from typing import Type, TypedDict, Any, AsyncGenerator, List
+from typing import Type, TypedDict, Any, AsyncGenerator, List, Optional
 from pydantic import BaseModel
 import uuid
 
@@ -67,6 +69,8 @@ def get_env_agents(
     assert len(agent_ids) == len(
         agent_models
     ), f"Provided {len(agent_ids)} agent_ids but {len(agent_models)} agent_models"
+    environment_messages = {}
+    
     try:
         environment_profile: EnvironmentProfile = EnvironmentProfile.get(env_id)
         agent_profiles: list[AgentProfile] = [
@@ -101,7 +105,6 @@ def get_env_agents(
             list_name=evaluation_dimension_list_name
         )
     )
-
     agents = Agents({agent.agent_name: agent for agent in agent_list})
     env = ParallelSotopiaEnv(
         action_order="round-robin",
@@ -118,9 +121,10 @@ def get_env_agents(
     )
     if len(agent_ids) == 2:
         environment_messages = env.reset(agents=agents, omniscient=False)
+    else:
+        environment_messages = {}
     agents.reset()
-
-    return env, agents, environment_messages
+    return env, agents, environment_messages if 'environment_messages' in locals() else {}
 
 
 def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
@@ -139,6 +143,90 @@ def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
     return comment_chunks, general_comment
 
 
+class WebSocketHumanAgent(BaseAgent[Observation, AgentAction]):
+    """
+    A human-controlled agent that receives actions via WebSocket.
+    
+    This agent waits for human input from the frontend instead of
+    generating actions via an LLM.
+    """
+    
+    def __init__(
+        self,
+        agent_name: str,
+        agent_profile: AgentProfile,
+        action_queue_getter: Callable[[], asyncio.Queue[dict[str, Any]]],
+        goal: str = "",
+    ) -> None:
+        super().__init__(agent_name=agent_name, agent_profile=agent_profile)
+        self._action_queue_getter = action_queue_getter
+        self.goal = goal
+        self._current_observation: Optional[Observation] = None
+        
+    @property
+    def action_queue(self) -> asyncio.Queue[dict[str, Any]]:
+        """Get the action queue dynamically"""
+        return self._action_queue_getter()
+    
+    async def aact(self, obs: Observation) -> AgentAction:
+        """
+        Wait for human action from the WebSocket queue.
+        
+        The frontend sends actions via CLIENT_MSG, which are queued
+        by the server and consumed here.
+        """
+        self._current_observation = obs
+        
+        # Wait for human to submit their action
+        try:
+            action_data = await asyncio.wait_for(
+                self.action_queue.get(),
+                timeout=300.0  # 5 minute timeout for human response
+            )
+        except asyncio.TimeoutError:
+            # Return a timeout action if human doesn't respond
+            return AgentAction(
+                action_type="none",
+                argument="[Timed out waiting for response]",
+                to=[],
+            )
+        
+        # Parse the action from frontend
+        action_type = action_data.get("action_type", "speak")
+        argument = action_data.get("content", "")
+        
+        # Normalize action_type to canonical form
+        if action_type in ["kill", "vote", "save", "poison", "inspect", "investigate", "guard", "protect", "heal", "lynch"]:
+            # Convert verb actions to 'action' type with verb in argument
+            if not argument:
+                argument = action_type
+            else:
+                argument = f"{action_type} {argument}"
+            action_type = "action"
+        
+        return AgentAction(
+            action_type=action_type,
+            argument=argument,
+            to=[],
+        )
+    
+    def act(self, obs: Observation) -> AgentAction:
+        """Synchronous version - not typically used for human agents"""
+        raise NotImplementedError(
+            "WebSocketHumanAgent requires async operation via aact()"
+        )
+    
+    def reset(self) -> None:
+        """Reset the agent state"""
+        self._current_observation = None
+        # Clear any pending actions
+        while not self.action_queue.empty():
+            try:
+                self.action_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+
+
 class WebSocketSotopiaSimulator:
     def __init__(
         self,
@@ -150,7 +238,14 @@ class WebSocketSotopiaSimulator:
         evaluator_model: str = "gpt-4o",
         evaluation_dimension_list_name: str = "sotopia",
         max_turns: int = 20,
+        game_type: str = "chat",
+        human_agent_index: Optional[int] = None,
+        action_queue_getter: Optional[Callable[[], asyncio.Queue[dict[str, Any]]]] = None,
     ) -> None:
+        self.game_type = game_type
+        self.human_agent_index = human_agent_index
+        self.action_queue_getter = action_queue_getter
+        
         if len(agent_ids) == 2:
             try:
                 self.env, self.agents, self.environment_messages = get_env_agents(

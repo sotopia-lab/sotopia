@@ -58,6 +58,7 @@
       "actions": [
         "action"
       ],
+      "action_order": "simultaneous",
       "visibility": "team"
     },
     "Night_seer": {
@@ -67,6 +68,7 @@
       "actions": [
         "action"
       ],
+      "action_order": "simultaneous",
       "visibility": "private"
     },
     "Night_witch": {
@@ -76,6 +78,7 @@
       "actions": [
         "action"
       ],
+      "action_order": "simultaneous",
       "visibility": "private",
       "internal_state": {
         "save_available": true,
@@ -86,7 +89,7 @@
       "actions": [
         "speak"
       ],
-      "action_order": "round-robin",
+      "action_order": "simultaneous",
       "visibility": "public"
     },
     "Day_vote": {

@@ -1,8 +1,8 @@
 """Storage backend abstraction layer for Sotopia.
 
 This module provides an abstraction layer that allows Sotopia to work with
-either Redis or local JSON file storage, controlled by the SOTOPIA_STORAGE_BACKEND
-environment variable.
+either Redis, local JSON file storage, or PostgreSQL, controlled by the
+SOTOPIA_STORAGE_BACKEND environment variable.
 """
 
 import json
@@ -310,6 +310,211 @@ class LocalJSONBackend(StorageBackend):
         return str(uuid.uuid4())
 
 
+class PostgreSQLBackend(StorageBackend):
+    """PostgreSQL-based storage backend.
+
+    Stores data in PostgreSQL tables, one table per model class.
+    Uses a JSONB column for flexible schema storage.
+
+    Requires:
+    - POSTGRES_URL environment variable (or DATABASE_URL)
+
+    Install with: pip install sotopia[postgres]
+    """
+
+    def __init__(self) -> None:
+        """Initialize PostgreSQL backend."""
+        try:
+            import psycopg2
+            from psycopg2.extras import Json, RealDictCursor
+        except ImportError:
+            raise ImportError(
+                "PostgreSQL backend requires psycopg2. "
+                "Install with: pip install sotopia[postgres]"
+            )
+
+        self._psycopg2 = psycopg2
+        self._Json = Json
+        self._RealDictCursor = RealDictCursor
+
+        # Get database URL
+        db_url = os.environ.get("POSTGRES_URL") or os.environ.get("DATABASE_URL")
+        if not db_url:
+            raise ValueError(
+                "PostgreSQL backend requires POSTGRES_URL or DATABASE_URL "
+                "environment variable"
+            )
+
+        self._db_url = db_url
+        self._conn: Any = None
+        self._tables_created: set[str] = set()
+
+    def _get_connection(self) -> Any:
+        """Get or create database connection."""
+        if self._conn is None or self._conn.closed:
+            self._conn = self._psycopg2.connect(self._db_url)
+        return self._conn
+
+    def _ensure_table(self, model_class: Type[T]) -> str:
+        """Ensure table exists for model class.
+
+        Creates table if it doesn't exist. Uses a simple schema with:
+        - pk: Primary key (TEXT)
+        - data: JSONB column for all fields
+        - created_at: Timestamp
+
+        Args:
+            model_class: The model class
+
+        Returns:
+            Table name
+        """
+        table_name = model_class.__name__.lower()
+
+        if table_name in self._tables_created:
+            return table_name
+
+        conn = self._get_connection()
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    pk TEXT PRIMARY KEY,
+                    data JSONB NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Create GIN index on JSONB for faster filtering
+            cur.execute(f"""
+                CREATE INDEX IF NOT EXISTS idx_{table_name}_data
+                ON {table_name} USING GIN (data)
+            """)
+            conn.commit()
+
+        self._tables_created.add(table_name)
+        return table_name
+
+    def save(self, model_class: Type[T], pk: str, data: dict[str, Any]) -> None:
+        """Save a model instance to PostgreSQL.
+
+        Args:
+            model_class: The model class being saved
+            pk: Primary key for the instance
+            data: Dictionary representation of the model
+        """
+        table_name = self._ensure_table(model_class)
+        conn = self._get_connection()
+
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                INSERT INTO {table_name} (pk, data, updated_at)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (pk) DO UPDATE SET
+                    data = EXCLUDED.data,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (pk, self._Json(data)))
+            conn.commit()
+
+    def get(self, model_class: Type[T], pk: str) -> dict[str, Any]:
+        """Retrieve a model instance from PostgreSQL.
+
+        Args:
+            model_class: The model class to retrieve
+            pk: Primary key of the instance
+
+        Returns:
+            Dictionary representation of the model
+
+        Raises:
+            NotFoundError: If instance with given pk doesn't exist
+        """
+        table_name = self._ensure_table(model_class)
+        conn = self._get_connection()
+
+        with conn.cursor(cursor_factory=self._RealDictCursor) as cur:
+            cur.execute(f"SELECT data FROM {table_name} WHERE pk = %s", (pk,))
+            row = cur.fetchone()
+
+        if row is None:
+            raise NotFoundError(f"{model_class.__name__} with pk={pk} not found")
+
+        return dict(row["data"])
+
+    def delete(self, model_class: Type[T], pk: str) -> None:
+        """Delete a model instance from PostgreSQL.
+
+        Args:
+            model_class: The model class
+            pk: Primary key of the instance to delete
+
+        Raises:
+            NotFoundError: If instance with given pk doesn't exist
+        """
+        table_name = self._ensure_table(model_class)
+        conn = self._get_connection()
+
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM {table_name} WHERE pk = %s RETURNING pk", (pk,))
+            deleted = cur.fetchone()
+            conn.commit()
+
+        if deleted is None:
+            raise NotFoundError(f"{model_class.__name__} with pk={pk} not found")
+
+    def find(
+        self, model_class: Type[T], filters: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Find model instances matching the given filters.
+
+        Uses PostgreSQL JSONB containment operator for efficient filtering.
+
+        Args:
+            model_class: The model class to search
+            filters: Dictionary of field names to values
+
+        Returns:
+            List of dictionaries representing matching instances
+        """
+        table_name = self._ensure_table(model_class)
+        conn = self._get_connection()
+
+        with conn.cursor(cursor_factory=self._RealDictCursor) as cur:
+            # Use JSONB containment operator @>
+            cur.execute(
+                f"SELECT data FROM {table_name} WHERE data @> %s",
+                (self._Json(filters),)
+            )
+            rows = cur.fetchall()
+
+        return [dict(row["data"]) for row in rows]
+
+    def all(self, model_class: Type[T]) -> list[dict[str, Any]]:
+        """Retrieve all instances of a model class.
+
+        Args:
+            model_class: The model class
+
+        Returns:
+            List of dictionaries representing all instances
+        """
+        table_name = self._ensure_table(model_class)
+        conn = self._get_connection()
+
+        with conn.cursor(cursor_factory=self._RealDictCursor) as cur:
+            cur.execute(f"SELECT data FROM {table_name}")
+            rows = cur.fetchall()
+
+        return [dict(row["data"]) for row in rows]
+
+    def generate_pk(self) -> str:
+        """Generate a UUID primary key.
+
+        Returns:
+            A unique primary key string
+        """
+        return str(uuid.uuid4())
+
+
 # Global storage backend instance
 _storage_backend: StorageBackend | None = None
 
@@ -321,6 +526,7 @@ def get_storage_backend() -> StorageBackend:
     which backend to use:
     - "redis" (default): Use Redis via redis-om
     - "local": Use local JSON file storage
+    - "postgres" or "postgresql": Use PostgreSQL database
 
     Returns:
         The configured storage backend instance
@@ -339,10 +545,12 @@ def get_storage_backend() -> StorageBackend:
         _storage_backend = RedisBackend()
     elif backend_type == "local":
         _storage_backend = LocalJSONBackend()
+    elif backend_type in ("postgres", "postgresql"):
+        _storage_backend = PostgreSQLBackend()
     else:
         raise ValueError(
             f"Invalid SOTOPIA_STORAGE_BACKEND: {backend_type}. "
-            f"Must be 'redis' or 'local'."
+            f"Must be 'redis', 'local', or 'postgres'."
         )
 
     return _storage_backend
@@ -364,3 +572,12 @@ def is_local_backend() -> bool:
         True if using local backend, False otherwise
     """
     return isinstance(get_storage_backend(), LocalJSONBackend)
+
+
+def is_postgres_backend() -> bool:
+    """Check if the current storage backend is PostgreSQL.
+
+    Returns:
+        True if using PostgreSQL backend, False otherwise
+    """
+    return isinstance(get_storage_backend(), PostgreSQLBackend)

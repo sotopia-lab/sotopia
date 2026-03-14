@@ -49,6 +49,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+tsconfig.tsbuildinfo
 
 # Translations
 *.mo
@@ -165,9 +166,27 @@ docs/node_modules/*
 redis-data/*
 
 sotopia/cli/install/redis-data/*
+
+# Secrets and runtime files
+*.pem
+.backend.pid
+.frontend.pid
 redis-stack-server-*/
 
 *.rdb
 examples/experimental/negotiation_arena/redis-data/*
 *.rdb
 *.dot
+sotopia-chatbot/
+
+
+# Internal / scratch docs (not committed)
+internal-docs/
+.env.example
+sotopia-chat/frontend/.env.local.example
+
+# Frontend deployment diagram (local reference only)
+sotopia-chat/frontend/deployment-architecture
+# Local dev scripts (optional, not committed)
+scripts/start_local.sh
+scripts/stop_local.sh

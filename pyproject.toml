@@ -23,7 +23,13 @@ dependencies = [
     "pydantic>=2.5.0,<3.0.0",
     "hiredis>=3.0.0",
     "litellm>=1.80.11",
-    "aact"
+    "aact",
+    "uvicorn[standard]>=0.38.0",
+    "fastapi>=0.115.2",
+    "bcrypt>=4.0.0",
+    "PyJWT>=2.8.0",
+    "email-validator>=2.0.0",
+    "httpx>=0.25.0",  # For OAuth HTTP requests
 ]
 
 [build-system]
@@ -46,6 +52,11 @@ test = ["pytest", "pytest-cov", "pytest-asyncio"]
 realtime = [
     "websockets>=13.1,<14.0",
     "pyaudio>=0.2.14,<0.3.0",
+]
+postgres = [
+    "asyncpg>=0.29.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
 ]
 
 [dependency-groups]

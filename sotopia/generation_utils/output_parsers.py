@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 import json_repair
 
 from sotopia.database import LLMBaseModel
+from sotopia.messages import AgentAction
 
 OutputType = TypeVar("OutputType", bound=object)
 T = TypeVar("T", bound=BaseModel)
@@ -56,18 +57,63 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
         else:
             data = json_result
 
+        # Best-effort normalization for common non-canonical agent outputs.
+        # Some LLMs emit verbs like "kill", "vote", etc. as top-level
+        # `action_type` values. Normalize them to the canonical schema
+        # expected by `AgentAction` to avoid validation failures.
+        try:
+            if self.pydantic_object is AgentAction and isinstance(data, dict):
+                at = data.get("action_type")
+                # Allowed literals per AgentAction
+                valid_types = {"none", "speak", "non-verbal communication", "action", "leave"}
+                if isinstance(at, str) and at.strip() not in valid_types:
+                    verb_phrase = at.strip()
+                    parts = verb_phrase.split()
+                    verb = parts[0].lower() if parts else ""
+                    # verbs that should be treated as generic 'action'
+                    action_verbs = {
+                        "kill",
+                        "vote",
+                        "save",
+                        "poison",
+                        "inspect",
+                        "investigate",
+                        "guard",
+                        "protect",
+                        "heal",
+                        "lynch",
+                    }
+                    if verb in action_verbs:
+                        # If argument already exists, prefer it; otherwise try to recover from the verb phrase
+                        arg = data.get("argument")
+                        if not arg or (isinstance(arg, str) and not arg.strip()):
+                            if len(parts) > 1:
+                                arg = " ".join(parts[1:])
+                            else:
+                                # fallback to using the verb itself
+                                arg = verb
+                        # ensure argument is a string
+                        if not isinstance(arg, str):
+                            arg = str(arg)
+                        data["action_type"] = "action"
+                        data["argument"] = f"{verb} {arg}" if arg else verb
+                    else:
+                        # map informal speak verbs to 'speak'
+                        if verb in {"say", "says", "speak", "talk"}:
+                            data["action_type"] = "speak"
+                            if "argument" not in data or not data.get("argument"):
+                                # recover remaining phrase if present
+                                data["argument"] = " ".join(parts[1:]) if len(parts) > 1 else ""
+        except Exception:
+            # Never fail normalization; fall back to original data and let pydantic raise if needed
+            pass
+
         # Use model_validate with context if provided, otherwise use model_validate_json for backward compatibility
         if context is not None:
             return self.pydantic_object.model_validate(data, context=context)
         else:
-            # Fallback to JSON validation for backward compatibility
-            # Type narrowing: check that json_result is a dict before accessing "properties"
-            if isinstance(json_result, dict) and "properties" in json_result:
-                return self.pydantic_object.model_validate_json(
-                    json.dumps(json_result["properties"])
-                )
-            else:
-                return self.pydantic_object.model_validate_json(result)
+            # For structured output, use normalized data even without context
+            return self.pydantic_object.model_validate(data)
 
     def get_format_instructions(self) -> str:
         return json.dumps(self.pydantic_object.model_json_schema())

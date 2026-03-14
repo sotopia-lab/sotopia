@@ -7,8 +7,6 @@ import os
 from pathlib import Path
 import logging
 from typing import Any, Dict, List
-import random
-from collections import Counter
 
 from rich.logging import RichHandler
 import redis
@@ -126,7 +124,7 @@ class WerewolfActionHandler(ActionHandler):
                     env.internal_state["votes"][agent_name] = target
 
         elif env.current_state == "Night_werewolf":
-            # Werewolves choose kill target
+            # Werewolves choose kill target (record proposals only; unanimity enforced in _should_transition_state)
             role = env.agent_to_role.get(agent_name, "")
             if role == "Werewolf" and action.action_type == "action":
                 if "kill" in action.argument.lower():
@@ -139,22 +137,6 @@ class WerewolfActionHandler(ActionHandler):
                         if "kill_target_proposals" not in env.internal_state:
                             env.internal_state["kill_target_proposals"] = {}
                         env.internal_state["kill_target_proposals"][agent_name] = target
-                        # Update the werewolf kill result
-                        kill_votes = env.internal_state.get("kill_target_proposals", {})
-                        if kill_votes:
-                            # Count votes
-                            vote_counts = Counter(kill_votes.values())
-                            if vote_counts:
-                                # Find max votes
-                                max_votes = max(vote_counts.values())
-                                # Get all targets with max votes
-                                candidates = [
-                                    t for t, c in vote_counts.items() if c == max_votes
-                                ]
-                                # Break tie randomly
-                                env.internal_state["kill_target"] = random.choice(
-                                    candidates
-                                )
 
         elif env.current_state == "Night_seer":
             # Seer inspects someone
@@ -192,7 +174,7 @@ class WerewolfActionHandler(ActionHandler):
                     if target:
                         env.internal_state["saved_target"] = target
                 elif "poison" in action.argument.lower():
-                    env.internal_state["witch_have_posion"] = False
+                    env.internal_state["witch_have_poison"] = False
                     words = action.argument.split()
                     target = next(
                         (w for w in words if w[0].isupper() and w in env.agents),
@@ -223,10 +205,10 @@ class WerewolfActionHandler(ActionHandler):
         elif env.current_state == "Night_witch":
             if role == "Witch":
                 if env.internal_state.get(
-                    "witch_have_posion", True
+                    "witch_have_poison", True
                 ) and env.internal_state.get("witch_have_save", True):
                     use_potion_guide = "You can use 'save NAME' or 'poison NAME'. If you don't want to use potions, you can put 'skip' in the argument of action."
-                elif env.internal_state.get("witch_have_posion", True):
+                elif env.internal_state.get("witch_have_poison", True):
                     use_potion_guide = "You can use 'poison NAME'. If you don't want to use potions, you can put 'skip' in the argument of action."
                 elif env.internal_state.get("witch_have_save", True):
                     use_potion_guide = "You can use 'save NAME'. If you don't want to use potions, you can put 'skip' in the argument of action."
@@ -245,10 +227,33 @@ class WerewolfActionHandler(ActionHandler):
 
 
 class WerewolfEnv(SocialDeductionGame):
-    """Werewolf game with voting, kills, and special roles."""
+    """Werewolf game with voting, kills, and special roles.
+
+    Uses unanimity for werewolf kill target (both must pick the same player),
+    matching human play where wolves discuss and agree.
+    """
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(action_handler=WerewolfActionHandler(), **kwargs)
+
+    def _should_transition_state(self) -> bool:
+        """Require werewolf unanimity on kill target before transitioning."""
+        if self.current_state == "Night_werewolf":
+            proposals = self.internal_state.get("kill_target_proposals", {}) or {}
+            alive_werewolves = [
+                n for n, r in self.agent_to_role.items()
+                if r == "Werewolf" and self.agent_alive.get(n, False)
+            ]
+            if not alive_werewolves:
+                return True
+            if len(proposals) < len(alive_werewolves):
+                return False
+            targets = set(proposals.values())
+            if len(targets) == 1:
+                self.internal_state["kill_target"] = next(iter(targets))
+                return True
+            return False
+        return super()._should_transition_state()
 
     def reset(
         self,
@@ -268,7 +273,7 @@ class WerewolfEnv(SocialDeductionGame):
             include_background_observations=include_background_observations,
         )
         # Witch has potions
-        self.internal_state["witch_have_posion"] = True
+        self.internal_state["witch_have_poison"] = True
         self.internal_state["witch_have_save"] = True
         # Werewolves have kill targets
         self.internal_state["kill_target_proposals"] = {}

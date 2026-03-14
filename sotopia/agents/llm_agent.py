@@ -99,6 +99,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 structured_output=True,
                 agent_names=agent_names,
                 sender=self.agent_name,
+                action_instruction=obs.action_instruction,
             )
             return action
 
