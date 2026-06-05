@@ -55,7 +55,7 @@ dev = [
     "types-setuptools",
     "types-requests",
     "types-tqdm",
-    "types-protobuf==4.24.0.4",
+    "types-protobuf==7.34.1.20260518",
     "types-pyaudio",
     "lxml-stubs",
     "pandas-stubs",
