@@ -1,6 +1,10 @@
 import asyncio
+import json
+from collections.abc import Callable
+
 import pytest
 
+from sotopia.database import GoalDimension, SotopiaDimensions, SotopiaDimensionsPlus
 from sotopia.envs.evaluators import (
     EvaluationForAgents,
     EpisodeLLMEvaluator,
@@ -129,6 +133,102 @@ class _ReachGoal(BaseModel):
     goal: tuple[str, int] = Field(
         ..., description="First output a reasoning and then a score for the goal"
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "dimension_class", [GoalDimension, SotopiaDimensions, SotopiaDimensionsPlus]
+)
+async def test_episode_llm_evaluator_preserves_object_scores(
+    dimension_class: type[BaseModel], mock_llm_response: Callable[..., None]
+) -> None:
+    scores = {
+        "believability": (7, 3),
+        "relationship": (-3, 4),
+        "knowledge": (6, 2),
+        "secret": (-7, -1),
+        "social_rules": (-2, 0),
+        "financial_and_material_benefits": (-4, 5),
+        "goal": (8, 2),
+    }
+    payload = {
+        "evaluations": {
+            f"agent_{i + 1}": {
+                dimension: {
+                    "reasoning": f"Agent {i + 1} reasoning for {dimension}",
+                    "score": scores[dimension][i],
+                }
+                for dimension in dimension_class.model_fields
+            }
+            for i in range(2)
+        }
+    }
+    mock_llm_response(json.dumps(payload))
+    evaluator = EpisodeLLMEvaluator(
+        "custom/structured@http://localhost:8000/v1",
+        response_format_class=EvaluationForAgents[dimension_class],  # type: ignore[valid-type]
+    )
+    responses = await evaluator.__acall__(
+        1,
+        [
+            (name, AgentAction(action_type="speak", argument="Hello", to=[]))
+            for name in ("Alice", "Bob")
+        ],
+    )
+
+    assert responses == [
+        (
+            f"agent_{i + 1}",
+            (
+                (dimension, scores[dimension][i]),
+                f"Agent {i + 1} reasoning for {dimension}",
+            ),
+        )
+        for i in range(2)
+        for dimension in dimension_class.model_fields
+    ]
+    aggregate = unweighted_aggregate_evaluate(responses)
+    for i, rate in enumerate((aggregate.p1_rate, aggregate.p2_rate)):
+        assert isinstance(rate, tuple)
+        expected_scores = {
+            dimension: scores[dimension][i]
+            for dimension in dimension_class.model_fields
+        }
+        assert rate[0] == pytest.approx(
+            sum(expected_scores.values()) / len(expected_scores)
+        )
+        assert rate[1] == {**expected_scores, "overall_score": rate[0]}
+
+
+@pytest.mark.asyncio
+async def test_episode_llm_evaluator_preserves_tuple_scores(
+    mock_llm_response: Callable[..., None],
+) -> None:
+    mock_llm_response(
+        json.dumps(
+            {
+                "evaluations": {
+                    "agent_1": {"goal": ["Alice achieved her goal", 8]},
+                    "agent_2": {"goal": ["Bob made limited progress", 2]},
+                }
+            }
+        )
+    )
+    evaluator = EpisodeLLMEvaluator(
+        "custom/structured@http://localhost:8000/v1",
+        response_format_class=EvaluationForAgents[_ReachGoal],
+    )
+    responses = await evaluator.__acall__(
+        1,
+        [
+            (name, AgentAction(action_type="speak", argument="Hello", to=[]))
+            for name in ("Alice", "Bob")
+        ],
+    )
+    assert responses == [
+        ("agent_1", (("goal", 8), "Alice achieved her goal")),
+        ("agent_2", (("goal", 2), "Bob made limited progress")),
+    ]
 
 
 @pytest.mark.asyncio
