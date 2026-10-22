@@ -252,16 +252,20 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             ):
                 # Map agent names to expected format (agent_1, agent_2, etc.)
                 agent_key = f"agent_{i+1}"
-                for dimension in evaluation.model_dump().keys():
+                for dimension, value in evaluation.model_dump().items():
+                    if isinstance(value, dict):
+                        reasoning, score = value["reasoning"], value["score"]
+                    else:
+                        reasoning, score = value
                     response_list.append(
                         (
                             agent_key,
                             (
                                 (
                                     dimension,
-                                    evaluation.model_dump()[dimension][1],
+                                    score,
                                 ),
-                                evaluation.model_dump()[dimension][0],
+                                reasoning,
                             ),
                         )
                     )
