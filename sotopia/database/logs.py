@@ -1,5 +1,5 @@
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -53,6 +53,11 @@ class BaseEpisodeLog(BaseModel):
     reasoning: str = Field(default="")
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
     rewards_prompt: str = Field(default="")
+
+    def __init__(self, **kwargs: Any):
+        if "pk" not in kwargs:
+            kwargs["pk"] = ""
+        super().__init__(**kwargs)
 
     @model_validator(mode="after")
     def agent_number_message_number_reward_number_turn_number_match(

@@ -176,6 +176,8 @@ async def agenerate(
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
     context: dict[str, Any] | None = None,
+    system_message: str | None = None,
+    **extra_completion_kwargs: Any,
 ) -> OutputType:
     """
     Generate text using LiteLLM with optional structured output support.
@@ -242,7 +244,10 @@ async def agenerate(
     if base_url is None:
         supported_params = get_supported_openai_params(model=model_name)
 
-    messages = [{"role": "user", "content": template}]
+    messages: list[dict[str, str]] = []
+    if system_message:
+        messages.append({"role": "system", "content": system_message})
+    messages.append({"role": "user", "content": template})
     if structured_output:
         if not base_url:
             assert supported_params is not None
@@ -269,6 +274,7 @@ async def agenerate(
             "drop_params": True,  # litellm automatically drops unsupported params
             "base_url": base_url,
             "api_key": api_key,
+            **extra_completion_kwargs,
         }
         if temperature_value is not None:
             completion_kwargs["temperature"] = temperature_value
@@ -281,6 +287,7 @@ async def agenerate(
             "drop_params": True,  # litellm automatically drops unsupported params
             "base_url": base_url,
             "api_key": api_key,
+            **extra_completion_kwargs,
         }
         if temperature_value is not None:
             completion_kwargs["temperature"] = temperature_value
@@ -303,6 +310,28 @@ async def agenerate(
             base_url=base_url,
         )
         parsed_result = output_parser.parse(reformat_result, **parse_kwargs)
+
+    # Detect broken AgentAction outputs: schema parroting, reformatter
+    # meta-text, or format instruction leakage.  Replace with action_type="none".
+    if isinstance(parsed_result, AgentAction) and parsed_result.argument:
+        _arg = parsed_result.argument
+        _arg_lower = _arg.lower()
+        _is_garbage = (
+            # Raw JSON schema parroting
+            ('"additionalProperties"' in _arg and '"properties"' in _arg)
+            # Reformatter meta-text from GPT bad_output_process
+            or _arg_lower.startswith("reformatted")
+            or "format instructions" in _arg_lower
+            or "please only generate" in _arg_lower
+            # Template literal parroting (model echoed format example)
+            or ("<one of:" in _arg_lower and "<your message" in _arg_lower)
+        )
+        if _is_garbage:
+            parsed_result = AgentAction(
+                action_type="none",
+                argument="",
+                to=[],
+            )
 
     # Include agent name in logs if available
     agent_name = input_values.get("agent", "")
@@ -444,16 +473,62 @@ async def agenerate_action(
             if sender is not None:
                 validation_context["sender"] = sender
 
+        # For open-source models (structured_output=False): use a
+        # system / user message split so format instructions live in
+        # the system role and never appear as in-context text that the
+        # model might parrot back.
+        if not structured_output:
+            action_list_str = ", ".join(action_types)
+            system_msg = (
+                f"You are roleplaying as {agent}. Act and speak as "
+                f"{agent} would, keeping in mind {agent}'s social goal.\n"
+                f"Find {agent}'s goal (or background) in the "
+                f"'Here is the context of the interaction' field.\n"
+                f"Note that {agent}'s goal is only visible to you.\n"
+                f"Try your best to achieve {agent}'s goal in a way that "
+                f"aligns with their character traits.\n"
+                f"Maintain the conversation's naturalness and realism "
+                f"(do not repeat what others have already said).\n\n"
+                f"Available action types: {action_list_str}\n"
+                f'You can \"leave\" this conversation if you achieved your '
+                f"social goals, feel uncomfortable, lose interest, or "
+                f"want to stop.\n\n"
+                f"Respond with ONLY a JSON object (no other text):\n"
+                f'{{"action_type": "<one of: {action_list_str}>", '
+                f'"argument": "<your message text>", '
+                f'"to": [<recipient names or empty list>]}}'
+            )
+
+            return await agenerate(
+                model_name=model_name,
+                template="{history}\nYou are at Turn #{turn_number}.",
+                input_values=dict(
+                    history=history,
+                    turn_number=str(turn_number),
+                    format_instructions="",
+                ),
+                output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+                temperature=temperature,
+                structured_output=False,
+                system_message=system_msg,
+                bad_output_process_model=bad_output_process_model,
+                use_fixed_model_version=use_fixed_model_version,
+                context=validation_context,
+            )
+
+        # Structured output (OpenAI models) — single user message with
+        # response_format handling the schema.
+        input_values: dict[str, str] = dict(
+            agent=agent,
+            turn_number=str(turn_number),
+            history=history,
+            action_list=" ".join(action_types),
+            goal=goal,
+        )
         return await agenerate(
             model_name=model_name,
             template=template,
-            input_values=dict(
-                agent=agent,
-                turn_number=str(turn_number),
-                history=history,
-                action_list=" ".join(action_types),
-                goal=goal,
-            ),
+            input_values=input_values,
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
             structured_output=structured_output,
