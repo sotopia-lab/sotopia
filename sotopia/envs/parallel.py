@@ -12,7 +12,7 @@ from pettingzoo.utils.env import ParallelEnv
 from pydantic import validate_call
 from redis_om.model.model import NotFoundError
 
-from sotopia.agents.llm_agent import Agents, LLMAgent
+from sotopia.agents.llm_agent import Agents
 from sotopia.database import EnvironmentProfile
 from sotopia.database.persistent_profile import (
     AgentProfile,
@@ -166,6 +166,8 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         uuid_str: str | None = None,
         env_profile: EnvironmentProfile | None = None,
         background_class: Optional[Type[TBackground]] = None,
+        hide_unknown: bool = False,
+        include_turn_marker: bool = True,
     ) -> None:
         """A sotopia environment for parallel agents.
 
@@ -179,6 +181,8 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
             self.background_class = ScriptBackground
         else:
             self.background_class = background_class
+        self.hide_unknown = hide_unknown
+        self.include_turn_marker = include_turn_marker
         self.background = self.background_class(
             scenario="",
             agent_names=[],
@@ -216,6 +220,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         agents: Agents | None = None,
         omniscient: bool = False,
         lite: bool = False,
+        include_background_observations: bool | None = True,
     ) -> dict[str, Observation]:
         """Starting a new episode. Must be called before step().
 
@@ -225,6 +230,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 "partial_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound can be incompleted ("unknown" for missing parts), and the missing parts will be filled in by the environment.
                 "full_background_file" (str): Path to a json file which need to contain a ScriptBackground object. The backgound must be completed (no "unknown" for missing parts).
             omniscient (bool, optional): Whether the agents know the other agent's goal. Defaults to False.
+            include_background_observations (bool, optional): Whether to include the background (Environment's message) in the observation. Defaults to True.
         """
         super().__init__()
         MessengerMixin.reset_inbox(self)
@@ -276,7 +282,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                 # Lite mode - clear backgrounds
                 raw_background.agent_backgrounds = [""] * num_agents
 
-            # Create final rendered background (works for 2+ agents)
+            # Create final rendered background
             self.background = self.background_class(
                 scenario=render_text_for_environment(raw_background.scenario),
                 agent_names=raw_background.agent_names,
@@ -318,6 +324,7 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                     agent_goals=[
                         render_text_for_agent(goal, i) for goal in hidden_goals
                     ],
+                    hide_unknown=self.hide_unknown,
                 )
                 agent_backgrounds.append(agent_background)
 
@@ -339,42 +346,35 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         else:
             self.action_mask = [True for _ in self.agents]
 
-        self.recv_message("Environment", self.background)
-
-        # Set script_background on agents and create observations
         observations = {}
-        for i, agent_name in enumerate(self.agents):
-            agent_bg = agent_backgrounds[i]
-            # Set script_background on agent if it's an LLMAgent
-            if agent_name in agents:
-                agent = agents[agent_name]
-                if isinstance(agent, LLMAgent):
-                    agent.script_background = agent_bg
-            observations[agent_name] = Observation(
-                last_turn=agent_bg.to_natural_language(),
-                turn_number=0,
-                available_actions=list(self.available_action_types)
-                if self.action_mask[i]
-                else ["none"],
-            )
+        if include_background_observations:
+            self.recv_message("Environment", self.background)
+            for i, agent_name in enumerate(self.agents):
+                agent_bg = agent_backgrounds[i]
+                observations[agent_name] = Observation(
+                    last_turn=agent_bg.to_natural_language(),
+                    turn_number=0,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[i]
+                    else ["none"],
+                )
+        else:
+            for i, agent_name in enumerate(self.agents):
+                observations[agent_name] = Observation(
+                    last_turn="",
+                    turn_number=0,
+                    available_actions=list(self.available_action_types)
+                    if self.action_mask[i]
+                    else ["none"],
+                )
 
         return observations
 
-    @validate_call
-    def step(
+    def _process_incoming_actions(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
-    ) -> tuple[
-        dict[str, Observation],
-        dict[str, float],
-        dict[str, bool],
-        dict[str, bool],
-        dict[str, dict[Any, Any]],
-    ]:
-        # Time step ++
-        self.turn_number += 1
-
-        # Actions from agents are already validated during generation, use directly
-        # Only validate dict inputs (from action space sampling)
+    ) -> dict[str, AgentAction]:
+        """Normalize actions, apply mask, and record to history."""
+        # Normalize actions to AgentAction objects
         complied_actions: dict[str, AgentAction] = {}
         context = {
             "agent_names": self.agents,
@@ -395,12 +395,53 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
                     action_type="none", argument="", to=[]
                 )
 
-        self.recv_message(
-            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
-        )
+        if self.include_turn_marker:
+            self.recv_message(
+                "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
+            )
         for agent, action in complied_actions.items():
-            self.recv_message(agent, action)
+            # Only record actions from agents that are in turn
+            idx = self.agents.index(agent)
+            if self.action_mask[idx]:
+                self.recv_message(agent, action)
 
+        return complied_actions
+
+    async def _run_evaluators(self, evaluators: list[Evaluator]) -> Any:
+        """Run evaluators and aggregate results."""
+        return unweighted_aggregate_evaluate(
+            list(
+                itertools.chain(
+                    *await asyncio.gather(
+                        *[
+                            evaluator.__acall__(
+                                turn_number=self.turn_number,
+                                messages=self.inbox,
+                                env=self,
+                            )
+                            for evaluator in evaluators
+                        ]
+                    )
+                )
+            )
+        )
+
+    @validate_call
+    def step(
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+    ) -> tuple[
+        dict[str, Observation],
+        dict[str, float],
+        dict[str, bool],
+        dict[str, bool],
+        dict[str, dict[Any, Any]],
+    ]:
+        # Time step ++
+        self.turn_number += 1
+
+        complied_actions = self._process_incoming_actions(actions)
+
+        # Sync evaluation (not refactored to helper as it's sync vs async)
         response = unweighted_aggregate_evaluate(
             list(
                 itertools.chain(
@@ -464,66 +505,12 @@ class ParallelSotopiaEnv(ParallelEnv[str, Observation, AgentAction], MessengerMi
         # Time step ++
         self.turn_number += 1
 
-        # Actions from agents are already validated during generation, use directly
-        # Only validate dict inputs (from action space sampling)
-        complied_actions: dict[str, AgentAction] = {}
-        context = {
-            "agent_names": self.agents,
-            "available_action_types": self.available_action_types,
-        }
-        for sender, action in actions.items():
-            context["sender"] = sender
-            # Actions from agents are already validated during generation
-            assert isinstance(
-                action, AgentAction
-            ), f"Action must be AgentAction, got {type(action)}"
-            complied_actions[sender] = action
+        complied_actions = self._process_incoming_actions(actions)
 
-        # Masking actions from agent that are in turn
-        for idx, agent in enumerate(self.agents):
-            if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(
-                    action_type="none", argument="", to=[]
-                )
-
-        self.recv_message(
-            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
-        )
-        for agent, action in complied_actions.items():
-            self.recv_message(agent, action)
-
-        response = unweighted_aggregate_evaluate(
-            list(
-                itertools.chain(
-                    *await asyncio.gather(
-                        *[
-                            evaluator.__acall__(
-                                turn_number=self.turn_number,
-                                messages=self.inbox,
-                            )
-                            for evaluator in self.evaluators
-                        ]
-                    )
-                )
-            )
-        )
+        response = await self._run_evaluators(self.evaluators)
 
         if response.terminated:
-            terminal_response = unweighted_aggregate_evaluate(
-                list(
-                    itertools.chain(
-                        *await asyncio.gather(
-                            *[
-                                evaluator.__acall__(
-                                    turn_number=self.turn_number,
-                                    messages=self.inbox,
-                                )
-                                for evaluator in self.terminal_evaluators
-                            ]
-                        )
-                    )
-                )
-            )
+            terminal_response = await self._run_evaluators(self.terminal_evaluators)
             # incorporate terminal response into response
             response.p1_rate = response.p1_rate or terminal_response.p1_rate
             response.p2_rate = response.p2_rate or terminal_response.p2_rate

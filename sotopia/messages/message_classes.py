@@ -35,6 +35,9 @@ class Observation(Message):
     last_turn: str = Field(description="the last turn of the conversation")
     turn_number: int = Field(description="the turn number of the conversation")
     available_actions: list[ActionType] = Field(description="the available actions")
+    action_instruction: str = Field(
+        default="", description="instruction for the action"
+    )
 
     def to_natural_language(self) -> str:
         if self.turn_number == 0:
@@ -48,6 +51,9 @@ class ScriptBackground(Message):
     agent_names: list[str] = Field(description="names of all participants")
     agent_backgrounds: list[str] = Field(description="backgrounds of all participants")
     agent_goals: list[str] = Field(description="goals of all participants")
+    hide_unknown: bool = Field(
+        default=False, description="whether to hide unknown background/goals"
+    )
 
     def to_natural_language(self) -> str:
         # Format participant names naturally with "and" before the last name
@@ -64,12 +70,20 @@ class ScriptBackground(Message):
         if any(self.agent_backgrounds):
             backgrounds_text = ""
             for name, background in zip(self.agent_names, self.agent_backgrounds):
-                bg_text = background if background else "Unknown"
-                backgrounds_text += f"{name}'s background: {bg_text}\n"
+                if self.hide_unknown:
+                    if background and background != "Unknown":
+                        backgrounds_text += f"{name}'s background: {background}\n"
+                else:
+                    bg_text = background if background else "Unknown"
+                    backgrounds_text += f"{name}'s background: {bg_text}\n"
 
             goals_text = ""
             for name, goal in zip(self.agent_names, self.agent_goals):
-                goals_text += f"{name}'s goal: {goal}\n"
+                if self.hide_unknown:
+                    if goal and goal != "Unknown":
+                        goals_text += f"{name}'s goal: {goal}\n"
+                else:
+                    goals_text += f"{name}'s goal: {goal}\n"
 
             return format_docstring(
                 f"""Here is the context of this interaction:

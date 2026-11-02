@@ -19,11 +19,10 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
         MessengerMixin.__init__(self)
         if agent_profile is not None:
             self.profile = agent_profile
-            # Avoid trailing space when last_name is empty
             self.agent_name = (
-                self.profile.first_name
-                + (" " + self.profile.last_name if self.profile.last_name else "")
-            )
+                self.profile.first_name + " " + self.profile.last_name
+            ).strip()
+
         elif uuid_str is not None:
             # try retrieving profile from database
             try:
@@ -31,9 +30,8 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin):
             except NotFoundError:
                 raise ValueError(f"Agent with uuid {uuid_str} not found in database")
             self.agent_name = (
-                self.profile.first_name
-                + (" " + self.profile.last_name if self.profile.last_name else "")
-            )
+                self.profile.first_name + " " + self.profile.last_name
+            ).strip()
         else:
             assert (
                 agent_name is not None

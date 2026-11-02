@@ -1,5 +1,5 @@
-import logging
 import random
+import logging
 from typing import Any, Generator, Type, TypeVar
 
 from sotopia.agents.base_agent import BaseAgent

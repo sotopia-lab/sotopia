@@ -8,6 +8,7 @@ from sotopia.generation_utils.generate import (
     agenerate_action,
     agenerate_goal,
     agenerate_script,
+    fill_template,
 )
 from sotopia.messages import AgentAction, Observation
 from sotopia.messages.message_classes import ScriptBackground
@@ -28,6 +29,8 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         agent_profile: AgentProfile | None = None,
         model_name: str = "gpt-4o-mini",
         script_like: bool = False,
+        strict_action_constraint: bool = False,
+        custom_template: str | None = None,
         script_background: ScriptBackground | None = None,
     ) -> None:
         super().__init__(
@@ -37,6 +40,8 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         )
         self.model_name = model_name
         self.script_like = script_like
+        self.strict_action_constraint = strict_action_constraint
+        self.custom_template = custom_template
         self.script_background = script_background
 
     @property
@@ -70,6 +75,12 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             return AgentAction(action_type="none", argument="", to=[])
         else:
+            custom_template = None
+            if self.custom_template:
+                custom_template = fill_template(
+                    self.custom_template, action_instructions=obs.action_instruction
+                )
+
             # Use agent names from script_background if available
             agent_names = (
                 self.script_background.agent_names
@@ -84,6 +95,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
                 agent=self.agent_name,
                 goal=self.goal,
                 script_like=self.script_like,
+                custom_template=custom_template,
                 structured_output=True,
                 agent_names=agent_names,
                 sender=self.agent_name,
